@@ -1,0 +1,15 @@
+All required software can be locally installed in
+the source directory using 'make toolchain'.
+
+Note that on debian, the following packages must
+be installed:
+  curl libssl-dev make libpcre3-dev m4
+
+Then, the webserver can be compiled with 'make'.
+
+It is also possible to use a global Ocaml
+installation and install the libraries eliom,
+yojson, menhir, and ounit yourself, e.g., using the
+opam package package manager for OCaml
+(see http://opam.ocamlpro.com/).
+

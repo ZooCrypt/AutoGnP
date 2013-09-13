@@ -1,0 +1,8 @@
+<src/Util> or <src/Test> or <src/Parser> or <src/Symbolic> or <src/Logics>: include
+<src/Expr> or <src/Http>: include
+
+<src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), thread
+
+<src/Logics/Cpa.cmo> or <src/Logics/Cpa.ml>: package(eliom.server),package(eliom),package(yojson),thread
+
+<src/Http/Rest.cmo> or <src/Http/Rest.ml>: package(eliom.server),package(eliom),package(yojson),thread

@@ -1,0 +1,59 @@
+<div class="spacer"></div>
+
+<h1>CPA Secrity</h1>
+
+<h2>Define Scheme</h2>
+
+<p>
+  Before starting the proof, the types of the message variable and the random variables
+  have to be given. Additionally the cipher has to be defined and all employed hash functions
+  and trapdoor permutations have to be declared.
+</p>
+<p>
+  It is also possible to load one of the predefined schemes.
+</p>
+
+<h2>Proof of Scheme</h2>
+<p>
+The following rules can be applied to a goal:
+<ul>
+  <li><code>fail1 (H) (r1)</code> where <code>H</code> is a hash function symbol and <code>r1</code>is the name of a random variable that
+  does not occur in the proof yet.</li>
+  <li><code>fail2 (H) (r1)</code> where <code>H</code> is a hash function symbol and <code>r1</code>is the name of a random variable that
+  does not occur in the proof yet.</li>
+  <li><code>opt (r) (e)</code> where <code>r</code> is random variable that occurs in the goal and <code>e</code> is an expressions.
+   The rule replaces <code>r</code> by <code>r + e</code>.
+  </li>
+  <li><code>norm</code>. The rule replaces all terms with their normal-forms with respect to <code>=E</code>.</li>
+  <li><code>merge (r1) (r2) (r)</code></li>
+  <li><code>split (r) (r1) (r2)</code></li>
+  <li><code>perm (r) (f)</code>. NOTE: not implemented yet.</li>
+  <li><code>ind</code></li>
+  <li><code>ow</code></li>
+  <li><code>rnd</code></li>
+</ul>
+
+By clicking on <span style="color: red;">x</span>, the corresponding subproof will be removed and the rule application
+will be replaced with <code>Admit</code>.
+</p>
+
+<p>
+CPA Proof for OAEP based on partial-domain one-wayness:
+<pre>
+fail1 (G) (r1);
+  opt (r1) (m_b | (0^{k2}));
+  norm;
+  ind;
+opt (r1) (m_b | (0^{k2}));
+norm;
+fail1 (H) (r2);
+  opt (r2) (r);
+  norm;
+  rnd ( * ) ( r );
+opt (r) (r2);
+norm;
+merge (r1) (r) (r3);
+norm;
+ow (f) ( * ) (r3) (0) (k1 + k2) ( * ) 
+</pre>
+</p>

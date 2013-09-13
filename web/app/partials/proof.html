@@ -1,0 +1,326 @@
+<div class="spacer"></div>
+<h1>Prove IND-CPA security of scheme</h1>
+<div ng-controller="Proof">
+
+  <!-- -------------------------------------------------------------- -->
+  <!-- Show goal or proof summary -->
+
+  <div style="overflow-x: auto;" class="proof" ng-show="s.goal_idx != null">
+     <div class="inner" ng-bind-html-unsafe="s.goals[s.goal_idx]">
+     </div>
+  </div>
+  <div ng-show="s.goal_idx == null">
+    Proof completed.
+  </div>
+
+  <div class="smallspacer"></div>
+  
+  <!-- -------------------------------------------------------------- -->
+  <!-- Select goal and apply rule -->
+  
+  <!-- Expert mode -->
+  <form novalidate class="form-inline" ng-show="s.expert_mode && s.goal_idx != null">
+    <div class="control-group" ng-class="{'error' : s.err.cmd}">
+      <div class="input-append">
+        <input type="text" ng-model="s.cmd" class="input-xxlarge" autofocus>
+        <button ng-click="s.apply()">Apply</button>
+      </div>
+      <div ng-show="s.err.cmd">
+        <span class="help-inline" ng-show="s.err.cmd">{{s.err.cmd}}</span>
+      </div>
+    </div>
+  </form>
+
+  <!-- non-expert mode: supports the user with choosing the right rule and parameters -->
+  <div ng-show="!s.expert_mode && s.goal_idx != null">
+    <form novalidate class="form-inline">
+      <div class="control-group" class="error" ng-class="{'error' : s.err.cmd}">
+
+        <label class="control-label" style="padding-right: 5px;">Rule</label>
+        <select class="input-small" ng-model="s.cmd_rule" ng-change="s.update_cmd()">
+          <option ng-repeat="rule in s.applicable_rules">{{rule}}</option>
+        </select>
+      
+        <span ng-switch on="s.cmd_rule">
+
+          <!-- fail1 rule -->
+          <span ng-switch-when="fail1">
+            <label class="control-label pad_left_right">Hash function</label>
+            <select class="input-small" ng-model="s.cmd_fail1_hash" ng-change="s.update_cmd()">
+              <option ng-repeat="hash in s.goal_ai.hashes">{{hash}}</option>
+            </select>
+          </span>
+
+          <!-- fail2 rule -->
+          <span ng-switch-when="fail2">
+            <label class="control-label pad_left_right">Hash function</label>
+            <select class="input-small" ng-model="s.cmd_fail2_hash" ng-change="s.update_cmd()">
+              <option ng-repeat="hash in s.goal_ai.hashes">{{hash}}</option>
+            </select>
+          </span>
+
+          <!-- opt rule: FIXME only allowed in Xor context now -->
+          <span ng-switch-when="opt">
+            <label class="control-label pad_left_right">Random variable</label>
+            <select class="input-small" ng-model="s.cmd_opt_rvar" ng-change="s.update_cmd()">
+              <option ng-repeat="(rvar,e) in s.goal_ai.rvars_xor">{{rvar}}</option>
+            </select>
+            <label class="control-label" style="padding-right: 5px; padding-left: 10px">Expression</label>
+            <input type="text" ng-model="s.cmd_opt_expr" class="input-large" ng-change="s.update_cmd()">
+          </span>
+
+          <!-- norm rule -->
+          <span ng-switch-when="norm"></span>
+
+          <!-- rnd rule -->
+          <span ng-switch-when="rnd">
+            <label class="control-label pad_left_right">Random variable</label>
+            <select class="input-small" ng-model="s.cmd_rnd_rvar" ng-change="s.update_cmd()">
+              <option ng-repeat="rvar in s.goal_ai.rvars_event_only">{{rvar}}</option>
+            </select>
+            <label class="control-label pad_left_right">Context to deduce ``{{s.cmd_rnd_rvar}}'' from queries</label>
+            <input type="text" ng-model="s.cmd_rnd_ctxt" class="input-large" ng-change="s.update_cmd()"
+                   tooltip="use * to refer to the concatenation of the known messages">
+          </span>
+
+          <!-- merge rule -->
+          <span ng-switch-when="merge">
+            <label class="control-label pad_left_right">First random variable</label>
+            <select class="input-small" ng-model="s.cmd_merge_r1" ng-change="s.update_cmd()">
+              <option ng-repeat="rvar in s.goal_ai.rvars">{{rvar}}</option>
+            </select>
+            <label class="control-label pad_left_right">Second random variable</label>
+            <select class="input-small" ng-model="s.cmd_merge_r2" ng-change="s.update_cmd()">
+              <option ng-repeat="rvar in s.goal_ai.rvars">{{rvar}}</option>
+            </select>
+          </span>
+
+          <!-- split rule -->
+          <span ng-switch-when="split">
+            <label class="control-label pad_left_right">Random variable</label>
+            <select class="input-small" ng-model="s.cmd_split_rvar" ng-change="s.update_cmd()">
+              <option ng-repeat="rvar in s.goal_ai.rvars_non_basic">{{rvar}}</option>
+            </select>
+            <label class="control-label pad_left_right">Type of first random variable</label>
+            <input type="text" ng-model="s.cmd_split_type" class="input-large" ng-change="s.update_cmd()">
+          </span>
+
+          <!-- conj rule -->
+          <span ng-switch-when="conj">
+            <label class="control-label pad_left_right">Remove conjunct</label>
+            <select class="input-small" ng-model="s.cmd_conj_idx" ng-change="s.update_cmd()">
+              <option ng-repeat="i in s.goal_ai.conjs">{{i}}</option>
+            </select>
+          </span>
+
+          <!-- ind rule -->
+          <span ng-switch-when="ind"></span>
+
+          <!-- ow rule -->
+          <span ng-switch-when="ow">
+            <label class="control-label pad_left_right">Permutation</label>
+            <select class="input-small" ng-model="s.cmd_ow_perm" ng-change="s.update_cmd()"
+              ng-options="pr as pr.perm for pr in s.goal_ai.perms_rvars">
+            </select>
+            <div class="smallspacer"></div>
+            <div class="control-group">
+              <label class="control-label pad_left_right">Deducible bits of {{s.cmd_ow_perm.rvar}}, skip </label>
+              <select class="input-small" ng-model="s.cmd_ow_l" ng-change="s.update_cmd()"
+                ng-options="ty as ty for ty in s.skip_bits()">
+              </select>
+              <label class="control-label pad_left_right"> and take </label>
+              <select class="input-small" ng-model="s.cmd_ow_m" ng-change="s.update_cmd()"
+                ng-options="ty as ty for ty in s.take_bits()">
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label pad_left_right">
+                Context to deduce [{{s.cmd_ow_perm.rvar}}]{{'{'+s.cmd_ow_l}},{{s.cmd_ow_m+'}'}} from {{s.ow_context1(s.cmd_ow_perm.other_rvars)}}
+              </label>
+              <input type="text" ng-model="s.cmd_ow_c1" class="input-large" ng-change="s.update_cmd()"
+                     tooltip="use * to refer to the concatenation of the known messages">
+            </div>
+            <div class="control-group">
+              <label class="control-label pad_left_right">
+                Context to deduce ciphertext from {{s.ow_context2(s.cmd_ow_perm.other_rvars)}}
+              </label>
+              <input type="text" ng-model="s.cmd_ow_c2" class="input-large" ng-change="s.update_cmd()"
+                     tooltip="use * to refer to the concatenation of the known messages">
+            </div>
+          </span>
+
+        </span>
+        <span class="pad_left"><button ng-click="s.apply()" ng-show="s.cmd_rule.length > 1">Apply</button></span>
+      <!-- <button ng-click="apply()">Apply</button> -->
+      </div>
+      <div ng-show="s.err.cmd">
+        <span class="help-inline" ng-show="s.err.cmd">{{s.err.cmd}}</span>
+      </div>
+    </form>
+
+    <div ng-switch on="s.cmd_rule">
+      <div ng-switch-when="fail1">
+        The <strong>fail1</strong> rule takes a hash function <strong>H</strong> as argument
+        and replaces a hash function application <strong>H(e)</strong> in the original judgement
+        with a fresh random variable <strong>r</strong>. Additionally, another judgement
+        captures the proof obligation that the probability of the adversary querying
+        <strong>e</strong> to <strong>H</strong> is negligible.
+      </div>
+      <div ng-switch-when="fail2">
+        The <strong>fail2</strong> rule takes a hash function <strong>H</strong> as argument
+        and replaces a hash function application <strong>H(e)</strong> in the original judgement
+        with a fresh random variable <strong>r</strong>. Additionally, another judgement
+        captures the proof obligation that the probability of the adversary querying
+        <strong>e</strong> to <strong>H</strong> and the original event happening
+        is negligible.
+      </div>
+      <div ng-switch-when="opt">
+        The <strong>opt</strong> rule replaces a random variable <strong>r</strong> with
+        <strong>r+e</strong> where <strong>e</strong> is an expression not containing
+        <strong>e</strong>. The rule exploits that the expressions <strong>r</strong>
+        and <strong>r + e</strong> describe the same distribution on bitstrings.
+      </div>
+      <div ng-switch-when="rnd">
+        The <strong>rnd</strong> rule proves a judgement where it is possible to deduce a
+        random variable <strong>r</strong> from the adversary queries that does not
+        occur in the ciphertext. The rule exploits that the probability of the adversary
+        guessing a random variable that is independent of his view is negligible.<br>
+        <strong>Note:</strong> We use contexts to witness that <strong>r</strong>
+        is deducible. A context is an expression with a variable * that stands for the 
+        concatenation of all adversary queries.
+      </div>
+      <div ng-switch-when="merge">
+        The <strong>merge</strong> rule allows to merge two random variable <strong>r1</strong>
+        and <strong>r2</strong>.
+      </div>
+      <div ng-switch-when="split">
+        The <strong>split</strong> rule allows to split a random variable
+        <strong>r</strong> into two random variables <strong>r1</strong>
+        and <strong>r2</strong>.
+      </div>
+      <div ng-switch-when="conj">
+        The <strong>conj</strong> rule allows to remove the <strong>i</strong>-th conjunct from the
+        from the event.
+      </div>
+      <div ng-switch-when="ow">
+        The <strong>ow</strong> rule proves a judgement by reduction to the (partial-domain) one-wayness
+        assumption. Given a trapdoor permutation application <strong>f(r)</strong> to a random variable
+        <strong>r</strong>, a part <strong>[r]{l,k}</strong> must be deducible from the adversaries queries.
+        Futhermore, the ciphertext must be deducible from <strong>f(r)</strong>, <strong>m_b</strong>, and
+        additional random variables.
+      </div>
+    </div>
+    <div class="smallspacer"></div>
+  </div>
+
+  <form novalidate class="form-inline">
+    <div class="control-group">
+      <label class="control-label" style="padding-right: 5px;">Select goal</label>
+      <select class="input-small" ng-model="s.goal_idx" ng-change="s.updateApplicable()">
+        <option ng-repeat="gid in s.goal_idxs">{{gid}}</option>
+      </select>
+      <label class="checkbox" style="padding-left: 10px;">
+        <input ng-model="s.expert_mode" type="checkbox">Expert mode
+      </label>
+      <label class="checkbox" style="padding-left: 10px;">
+        <input ng-model="s.auto_norm" type="checkbox" ng-change="s.updateProofTree()">Normalize automatically
+      </label>
+    </div>
+  </form>
+
+  <!-- -------------------------------------------------------------- -->
+  <!-- Tabs with additional information -->
+  <tabs>
+
+  <pane heading="Proof Tree">
+    <div style="overflow-x: auto;" class="proof">
+      <div class="inner">
+        <table>
+          <tr ng-repeat="row in s.proof_arr"> <!-- FIXME: otherwise, no update happens -->
+            <td ng-repeat="cell in row" colspan="{{cell.colspan}}" style="text-align: left;">
+              <div ng-switch on="cell['type']">
+                <div ng-switch-when="judgement">
+                  <div class="judgement"><div ng-bind-html-unsafe="cell.judgement" style="padding: 0px 10px;"></div></div>
+                </div>
+                <div ng-switch-when="rule_name">
+                  <div class="rule_name">
+                    [{{cell.rule}}]
+                    <a ng-show="cell.rule != 'Admit'" ng-click="s.admit(cell.path)" style="color: blue" tooltip="Undo subproof">x</a>
+                  </div>
+                </div>
+                <div ng-switch-when="nabla">
+                  <div class="nabla" ng-bind-html-unsafe="cell.judgement"></div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </pane>
+  
+  <pane heading="Proof Script">
+    <div ng-show="s.history != ''">
+      <pre>{{s.history}}</pre>
+    </div>
+    <div ng-show="s.history == ''">
+      The proof script is empty.
+    </div>  
+  </pane>
+
+  <pane heading="Scheme declaration">
+    <p>Message type: <code>{{s.tscheme.msg_decl}}</code></p>
+    <p>Hash functions: <code>{{s.tscheme.hash_decls}}</code></p>
+    <p>Trapdoor permutations: <code>{{s.tscheme.ts_perm_decls}}</code> </p>
+    <p>Random variables: <code>{{s.tscheme.ts_rvar_decls}}</code></p>
+    <p>Cipher: <code>{{s.tscheme.ts_cipher}}</code></p>
+  </pane>
+
+  <!--
+  <pane heading="Norm">
+    <form novalidate class="form-inline">
+    <div class="control-group" ng-class="{'error' : err.nexpr}">
+      <div class="input-append">
+        <input type="text" ng-model="nexpr">
+        <button ng-click="norm(nexpr)" >Norm</button>
+      </div>
+      <div ng-show="err.nexpr">
+        <span class="help-inline" ng-show="err.nexpr">{{err.nexpr}}</span>
+      </div>
+    </div>
+    </form>
+  </pane>
+
+  <pane heading="Deduce">
+    <form novalidate class="form-inline">
+    <div class="control-group" ng-class="{'error' : err.deduc}">
+      <div class="input-append">
+        <input type="text" ng-model="known">
+        <input type="text" ng-model="context" ng-change="applyCtxt(true,known,context)">
+        <button ng-click="applyCtxt(false,known,context)" >Deduce</button>
+      </div>
+      <div ng-show="err.deduc">
+        <span class="help-inline" ng-show="err.deduc">{{err.deduc}}</span>
+      </div>
+      {{known}} with {{context}} ==> {{apply_ctxt_result}}
+    </div>
+    </form>
+  </pane>
+  -->
+
+  </tabs>
+
+  <div class="smallspacer"></div>
+
+  <tabs>
+  <pane heading="Bound ">
+    <p><div ng-bind-html-unsafe="s.bound"></div></p>
+  </pane>
+  <pane ng-show="s.bound !== s.bound_spd" heading="Bound for set-partial-domain">
+    <p><div ng-bind-html-unsafe="s.bound_spd"></div></p>
+  </pane>
+
+  </tabs>
+
+</div> <!-- end ng-controller -->
+<div class="spacer"></div>
