@@ -10,7 +10,7 @@ cur-dir := $(shell pwd)
 opam-root := $(shell opam config var root)
 
 
-all: web
+all: tutor-lib web
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html

@@ -10,10 +10,10 @@ Expr
 Norm
 ParserUtil
 Parse
-CpaTypes
-CpaPretty
-CpaUtil
-Cpa
-CpaParse
-CpaProofsearch
-CpaProve
+LogicTypes
+LogicPretty
+LogicUtil
+Logic
+LogicParse
+LogicProofsearch
+LogicProve

@@ -1,9 +1,9 @@
-open CpaProve
-open CpaParse
-open CpaProofsearch
+open LogicProve
+open LogicParse
+open LogicProofsearch
 open Util
-open Cpa
-open CpaBound
+open Logic
+open LogicBound
 
 module ERef = Eliom_reference
 module YS = Yojson.Safe
