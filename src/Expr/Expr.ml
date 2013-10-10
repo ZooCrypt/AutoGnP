@@ -157,11 +157,38 @@ module Me = E.M
 module Se = E.S
 module He = E.H
 
-(*
+
 (* ----------------------------------------------------------------------- *)
 (** {2 Indicator functions} *)
 
+let is_V e = match e.e_node with V _ -> true | _ -> false
 
+let is_H e = match e.e_node with H _ -> true | _ -> false
+
+let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
+
+let is_Proj e = match e.e_node with Proj _ -> true | _ ->  false
+
+let is_some_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
+
+let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
+
+let is_some_App e = match e.e_node with App _ -> true | _ -> false
+
+let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
+
+let is_some_Nary e = match e.e_node with Nary _ -> true | _ -> false
+
+let is_Nary o e = match e.e_node with Nary(o',_) -> o' = o | _ -> false
+
+let is_ElemH e = match e.e_node with ElemH _ -> true | _ -> false
+
+(* ----------------------------------------------------------------------- *)
+(** {3 Destructor functions} *)
+
+exception Destr_failure of string
+
+(*
     V    of 'a Vsym.gt
   | H    of 'a Hsym.gt * 'a gexpr
   | Tuple of ('a gexpr) list
@@ -191,43 +218,53 @@ module He = E.H
     | Xor
     | Land
   | ElemH of 'a gexpr * 'a Hsym.gt
-
 *)
-let is_V e = match e.e_node with V _ -> true | _ -> false
 
-let is_H e = match e.e_node with H _ -> true | _ -> false
-
-let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
-
-let is_Proj e = match e.e_node with Proj _ -> true | _ ->  false
-
-let is_some_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
-
-let is_Cnst e c = match e.e_node with Cnst c' -> c = c' | _ -> false
-
-let is_some_App e = match e.e_node with App _ -> true | _ -> false
-
-let is_App e o = match e.e_node with App(o',_) -> o = o' | _ -> false
-
-let is_some_Nary e = match e.e_node with Nary _ -> true | _ -> false
-
-let is_Nary e o = match e.e_node with Nary(o',_) -> o' = o | _ -> false
-
-let is_ElemH e = match e.e_node with ElemH _ -> true | _ -> false
-
-(*
-(* ----------------------------------------------------------------------- *)
-(** {3 Destructor functions} *)
-
-exception Destr_failure of string
 
 let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
 
 let destr_H e = match e.e_node with H(h,e) -> (h,e) | _ -> raise (Destr_failure "H")
 
-let destr_Xor e = match e.e_node with Xor(e,e') -> (e,e') | _ -> raise (Destr_failure "Xor")
+let destr_Tuple e = match e.e_node with Tuple(es) -> (es) | _ -> raise (Destr_failure "Tuple")
 
-*)
+let destr_Proj e = match e.e_node with Proj(i,e) -> (i,e) | _ -> raise (Destr_failure "Proj")
+
+let destr_Cnst e = match e.e_node with Cnst(c) -> (c) | _ -> raise (Destr_failure "Cnst")
+
+let destr_App e = match e.e_node with App(o,es) -> (o,es) | _ -> raise (Destr_failure "App")
+
+let destr_GExp e = match e.e_node with App(GExp,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GExp")
+
+let destr_GLog e = match e.e_node with App(GLog,[a]) -> a | _ -> raise (Destr_failure "GLog")
+
+let destr_GTExp e = match e.e_node with App(GTExp,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GTExp")
+
+let destr_GTLog e = match e.e_node with App(GTLog,[a]) -> a | _ -> raise (Destr_failure "GTLog")
+
+let destr_FOpp e = match e.e_node with App(FOpp,[a]) -> a | _ -> raise (Destr_failure "FOpp")
+
+let destr_FMinus e = match e.e_node with App(FMinus,[a;b]) -> (a,b) | _ -> raise (Destr_failure "FMinus")
+
+let destr_FInv e = match e.e_node with App(FInv,[a]) -> a | _ -> raise (Destr_failure "FInv")
+
+let destr_FDiv e = match e.e_node with App(FDiv,[a;b]) -> (a,b) | _ -> raise (Destr_failure "FDiv")
+
+let destr_Eq e = match e.e_node with App(Eq,[a;b]) -> (a,b) | _ -> raise (Destr_failure "Eq")
+
+let destr_Ifte e = match e.e_node with App(Eq,[a;b;c]) -> (a,b,c) | _ -> raise (Destr_failure "Ifte")
+
+let destr_GMult e = match e.e_node with Nary(GMult,e::es) -> e::es | _ -> raise (Destr_failure "GMult")
+
+let destr_GTMult e = match e.e_node with Nary(GTMult,e::es) -> e::es | _ -> raise (Destr_failure "GTMult")
+
+let destr_FPlus e = match e.e_node with Nary(FPlus,e::es) -> e::es | _ -> raise (Destr_failure "FPlus")
+
+let destr_FMult e = match e.e_node with Nary(FMult,e::es) -> e::es | _ -> raise (Destr_failure "FMult")
+
+let destr_Xor e = match e.e_node with Nary(Xor,e::es) -> e::es | _ -> raise (Destr_failure "Xor")
+
+let destr_Land e = match e.e_node with Nary(Land,e::es) -> e::es | _ -> raise (Destr_failure "Land")
+
 (* ----------------------------------------------------------------------- *)
 (** {4 Pretty printing} *)
 

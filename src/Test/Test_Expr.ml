@@ -3,8 +3,8 @@ open Type
 open OUnit
 
 let test_expr _ =
-  let tv = Tyvar.mk "k" in
-  let ty = mk_ty [tv] in
+  let lv = Lenvar.mk "k" in
+  let ty = mk_ty (BS lv) in
   let hs = Hsym.mk "H" ty ty in
   let h = mk_H hs (mk_Z ty) in
   Format.printf "exp: %a\n" pp_exp h;
