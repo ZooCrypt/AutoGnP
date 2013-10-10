@@ -78,7 +78,7 @@ module Mnt = Map.Make(struct type t = (string * int) let compare = Pervasives.co
 let idents_ty ty =
   List.fold_left (fun acc tv -> Si.add (ITyvar tv) acc) Si.empty ty.ty_sum
 
-let idents_rsym rsym = Si.add (IIdent rsym.Rsym.id) (idents_ty rsym.Rsym.ty)
+let idents_vsym vsym = Si.add (IIdent vsym.Vsym.id) (idents_ty vsym.Vsym.ty)
 
 let idents_psym psym = Si.add (IIdent psym.Psym.id) (idents_ty psym.Psym.dom)
 
@@ -92,7 +92,7 @@ let idents_e e0 =
                         (idents_ty e.e_ty)
     in
     match e.e_node with
-    | R rs               -> Si.union (idents_rsym rs) acc'
+    | V vs               -> Si.union (idents_vsym vs) acc'
     | P(f,_) | Pinv(f,_) -> Si.union (idents_psym f)  acc'
     | H(h,_)             -> Si.union (idents_hsym h)  acc'
     | _                  -> acc'
@@ -109,8 +109,8 @@ let idents_cj {cj_cipher; cj_ev} =
 
 let idents_rl rl =
   match rl with
-  | CpaOpt(r,e)  -> Si.union (idents_rsym r) (idents_e e) 
-  | CpaPerm(r,f) -> Si.union (idents_rsym r) (idents_psym f)
+  | CpaOpt(r,e)  -> Si.union (idents_vsym r) (idents_e e) 
+  | CpaPerm(r,f) -> Si.union (idents_vsym r) (idents_psym f)
   | CpaMerge(r1,r2,r) | CpaSplit(r,r1,r2) -> 
       si_unions [ idents_rsym r1; idents_rsym r2; idents_rsym r]
   | CpaFail1(h,e,r) | CpaFail2(h,e,r) ->

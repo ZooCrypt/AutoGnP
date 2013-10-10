@@ -1,5 +1,4 @@
-<src/Util> or <src/Test> or <src/Parser> or <src/Symbolic> or <src/Logic>: include
-<src/Expr> or <src/Http>: include
+<src/Util> or <src/Type> or <src/Expr>: include
 
 <src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), thread
 

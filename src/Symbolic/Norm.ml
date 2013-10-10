@@ -120,7 +120,7 @@ let rec norm1 e0 =
     | _ -> [x]
   in
   match e0.e_node with
-  | Z  | V(_) | R(_) | H _ -> e0
+  | Z  | V(_) | H _ -> e0
   | P(f, e)   -> (match e.e_node with
                   | Pinv(f', e') when Psym.equal f f' -> e'
                   | _ -> e0)
