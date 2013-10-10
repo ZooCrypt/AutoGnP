@@ -9,10 +9,10 @@ type 'a proj_type = 'a gty * 'a gty * 'a gty
 
 (* constants *)
 type cnst =
-    GGen
-  | FZ
-  | Z
-  | FOne
+    GGen (* generator of G *)
+  | FZ   (* 0 in Fq *)
+  | Z    (* 0 bitstring *)
+  | FOne (* 1 in Fq *)
 
 let cnst_hash = function
     GGen -> 1
@@ -49,11 +49,11 @@ let op_hash = function
 
 (* associative operators with variable arity *)
 type naryop =
-    GMult
-  | GTMult
-  | FPlus
-  | FMult
-  | Xor
+    GMult  (* multiplication in G *)
+  | GTMult (* multiplication in GT *)
+  | FPlus  (* plus in Fq *)
+  | FMult  (* multiplication in Fq *)
+  | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
 
 let naryop_hash = function
@@ -157,7 +157,6 @@ module Me = E.M
 module Se = E.S
 module He = E.H
 
-
 (* ----------------------------------------------------------------------- *)
 (** {2 Indicator functions} *)
 
@@ -187,39 +186,6 @@ let is_ElemH e = match e.e_node with ElemH _ -> true | _ -> false
 (** {3 Destructor functions} *)
 
 exception Destr_failure of string
-
-(*
-    V    of 'a Vsym.gt
-  | H    of 'a Hsym.gt * 'a gexpr
-  | Tuple of ('a gexpr) list
-  | Proj  of int * 'a gexpr
-  | Cnst of cnst
-      GGen
-    | FZ
-    | Z 
-    | FOne
-  | App  of op     * 'a gexpr list
-      GExp
-    | GLog
-    | EMap
-    | GTExp
-    | GTLog
-    | FOpp
-    | FMinus
-    | FInv
-    | FDiv
-    | Eq
-    | Ifte
-  | Nary of naryop * 'a gexpr list
-      GMult
-    | GTMult
-    | FPlus
-    | FMult
-    | Xor
-    | Land
-  | ElemH of 'a gexpr * 'a Hsym.gt
-*)
-
 
 let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
 
@@ -308,7 +274,6 @@ and pp_op fmt o es =
   | Ifte, [a;b;c] -> Format.fprintf fmt "%a ? %a : %a" pp_exp a pp_exp b pp_exp c
   | _             -> failwith "pp_op: invalid expression"
 
-
 (* ----------------------------------------------------------------------- *)
 (** {5 Constructor functions} *)
 
@@ -319,30 +284,87 @@ module type GexprBuild = sig
   type t
   val mk : t gexpr_node -> t gty -> t gexpr
   val ty_equal : t gty -> t gty -> bool
+  val mk_ty : t gty_node -> t gty
 end
 
 module ExprBuild : GexprBuild with type t = internal = struct
   type t = internal
   let mk = mk_e
   let ty_equal = Type.ty_equal
+  let mk_ty =  mk_ty
 end
 
 module EexprBuild : GexprBuild with type t = exported = struct
   type t = exported
   let mk = mk_ee
   let ty_equal = (=)
+  let mk_ty =  mk_ety
 end
 
 (*
+    V    of 'a Vsym.gt
+  | H    of 'a Hsym.gt * 'a gexpr
+  | Tuple of ('a gexpr) list
+  | Proj  of int * 'a gexpr
+  | Cnst of cnst
+      GGen
+    | FZ
+    | Z 
+    | FOne
+  | App  of op     * 'a gexpr list
+      GExp
+    | GLog
+    | EMap
+    | GTExp
+    | GTLog
+    | FOpp
+    | FMinus
+    | FInv
+    | FDiv
+    | Eq
+    | Ifte
+  | Nary of naryop * 'a gexpr list
+      GMult
+    | GTMult
+    | FPlus
+    | FMult
+    | Xor
+    | Land
+  | ElemH of 'a gexpr * 'a Hsym.gt
+*)
+
 module type S =
 sig
   type t
   exception TypeError of (t gty *  t gty * (t gexpr) * (t gexpr) option * string)
   val ensure_ty_equal : t gty -> t gty -> t gexpr -> t gexpr option -> string -> unit
-  val mk_Z : t gty -> t gexpr
   val mk_V : t Vsym.gt -> t gexpr
   val mk_H : t Hsym.gt -> t gexpr -> t gexpr
-  val mk_Xor : t gexpr -> t gexpr ->  t gexpr
+  val mk_Tuple : (t gexpr) list -> t gexpr
+  val mk_Proj : int -> t gexpr -> t gexpr
+  
+  val mk_GGen : t gexpr
+  val mk_FZ : t gexpr
+  val mk_FOne : t gexpr
+  val mk_Z : t Lenvar.gid -> t gexpr
+
+  val mk_GExp : t gexpr -> t gexpr -> t gexpr
+  val mk_GLog : t gexpr -> t gexpr
+  val mk_GTExp : t gexpr -> t gexpr -> t gexpr
+  val mk_GTLog : t gexpr -> t gexpr
+  val mk_FOpp : t gexpr -> t gexpr
+  val mk_FMinus : t gexpr -> t gexpr -> t gexpr
+  val mk_FInv : t gexpr -> t gexpr
+  val mk_FDiv : t gexpr -> t gexpr -> t gexpr
+  val mk_Eq : t gexpr -> t gexpr -> t gexpr
+  val mk_Ifte : t gexpr -> t gexpr -> t gexpr -> t gexpr
+
+  val mk_GMult : (t gexpr) list -> t gexpr
+  val mk_GTMult : (t gexpr) list -> t gexpr
+  val mk_FPlus : (t gexpr) list -> t gexpr
+  val mk_FPMult : (t gexpr) list -> t gexpr
+  val mk_Xor : (t gexpr) list -> t gexpr
+  val mk_Land : (t gexpr) list -> t gexpr
 end
 
 module Make (E : GexprBuild) : S with type t = E.t =
@@ -354,17 +376,43 @@ struct
   let ensure_ty_equal ty1 ty2 e1 e2 s =
     ignore (E.ty_equal ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
-  let mk_Z ty = E.mk Z ty
-  
   let mk_V v = E.mk (V v) v.Vsym.ty
   
   let mk_H h e =
     ensure_ty_equal e.e_ty h.Hsym.dom e None "mk_H";
     E.mk (H(h,e)) h.Hsym.codom
+
+  let mk_Tuple es =
+    E.mk (Tuple es) (E.mk_ty (Prod (List.map (fun e -> e.e_ty) es)))
+
+  let mk_Proj i e = match e.e_ty.ty_node with
+    | Prod(tys) when i >= 0 && List.length tys < i -> E.mk (Proj(i,e)) (List.nth tys i)
+    | _ -> raise (TypeError(e.e_ty, e.e_ty, e, None, "mk_Proj expected product type"))
   
-  let mk_Xor a b =
-    ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Xor";
-    E.mk (Xor(a,b)) a.e_ty
+  let mk_Cnst c ty = E.mk (Cnst c) ty
+
+  let mk_GGen = mk_Cnst GGen (E.mk_ty Group)
+  let mk_FZ = mk_Cnst FZ (E.mk_ty Fq)
+  let mk_FOne = mk_Cnst FOne (E.mk_ty Fq)
+  let mk_Z lv = mk_Cnst Z (E.mk_ty (BS lv))
+
+  let mk_GExp a b = assert false
+  let mk_GLog a = assert false
+  let mk_GTExp a b = assert false
+  let mk_GTLog a = assert false
+  let mk_FOpp a = assert false
+  let mk_FMinus a b = assert false
+  let mk_FInv a = assert false
+  let mk_FDiv a b = assert false
+  let mk_Eq a b = assert false
+  let mk_Ifte a b c = assert false
+
+  let mk_GMult es = assert false
+  let mk_GTMult es = assert false
+  let mk_FPlus es = assert false
+  let mk_FPMult es = assert false
+  let mk_Xor es = assert false
+  let mk_Land es = assert false
 end
 
 module Constructors : S with type t = internal = Make(ExprBuild) 
@@ -372,6 +420,7 @@ module EConstructors : S with type t = exported = Make(EexprBuild)
 
 include Constructors
 
+(*
 (* ----------------------------------------------------------------------- *)
 (** {6 Generic functions on [expr]} *)
 
