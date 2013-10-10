@@ -100,7 +100,7 @@ let parse_poly s =
 
 (** Using Singular to perform polynomial computations *)
 
-let singular_command = F.sprintf "/Users/beschmi/bin/Singular -q -t"
+let singular_command = F.sprintf "Singular -q -t"
 
 let call_singular cmd =
   (* F.printf "singular command: `%s'\n\n" singular_command; *)
