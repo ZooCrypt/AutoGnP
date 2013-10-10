@@ -1,4 +1,4 @@
-<src/Util> or <src/Type> or <src/Expr> or <src/Test> or <src/Singular>: include
+<src/Util> or <src/Type> or <src/Expr> or <src/Test> or <src/Singular> or <src/Game>: include
 
 <src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), thread
 

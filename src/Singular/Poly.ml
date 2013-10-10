@@ -18,14 +18,15 @@ let terms_of_monom bindings (m : monom) =
 
 let term_of_poly bindings p =
   let const i = match i with
+    | 0            -> mk_FZ
     | i when i > 0 -> mk_FPlus (replicate i mk_FOne)
     | _            -> mk_FOpp (mk_FPlus (replicate (-i) mk_FOne))
   in
   let summand (i,m) = match i, terms_of_monom bindings m with
-    | _,[]  -> const i
+    | _,[]   -> const i
     | 1,mes  -> mk_FMult mes
     | -1,mes -> mk_FOpp (mk_FMult mes)
-    | _,mes -> mk_FMult (const i::mes)
+    | _,mes  -> mk_FMult (const i::mes)
   in mk_FPlus (List.map summand p)
 
 (* for debugging only *)

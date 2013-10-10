@@ -96,7 +96,7 @@ val compare_on : ('a -> 'b) -> 'a -> 'a -> int
 (** [pplist sep pp_elt f l] takes a formatter [f], a separator
     [sep], and a pretty printer for ['e] and returns a
     pretty printer for lists of elements from ['e] *)
-val pp_list : string (* ('a, 'b, 'c, 'd, 'd, 'a) format6 -> *) ->
+val pp_list : ('a, 'b, 'c, 'd, 'd, 'a) format6 ->
   (Format.formatter -> 'e -> unit) -> Format.formatter -> 'e list -> unit
 
 (** [pplist_c] is equivalent to [pp_list ","] *)
