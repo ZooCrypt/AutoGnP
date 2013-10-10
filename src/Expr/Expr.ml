@@ -22,9 +22,11 @@ let cnst_hash = function
 
 (* operators with fixed arity *)
 type op =
-    GExp   (* exponentiation in source group *)
+    GMult  (* multiplication in G *)
+  | GExp   (* exponentiation in source group *)
   | GLog   (* discrete logarithm in source group *)
   | EMap   (* bilinear map *)
+  | GTMult (* multiplication in GT *)
   | GTExp  (* exponentiation in target group *)
   | GTLog  (* discrete logarithm in target group *)
   | FOpp   (* additive inverse in Fq *)
@@ -35,31 +37,29 @@ type op =
   | Ifte   (* if then else *)
 
 let op_hash = function
-    GExp   -> 1
-  | GLog   -> 2
-  | EMap   -> 3
-  | GTExp  -> 4
-  | GTLog  -> 5
-  | FOpp   -> 6
-  | FMinus -> 7
-  | FInv   -> 8
-  | FDiv   -> 9
-  | Eq     -> 10
-  | Ifte   -> 11
+    GMult  -> 1
+  | GExp   -> 2
+  | GLog   -> 3
+  | EMap   -> 4
+  | GTMult -> 5
+  | GTExp  -> 6
+  | GTLog  -> 7
+  | FOpp   -> 8
+  | FMinus -> 9
+  | FInv   -> 10
+  | FDiv   -> 11
+  | Eq     -> 12
+  | Ifte   -> 13
 
 (* associative operators with variable arity *)
 type naryop =
-    GMult  (* multiplication in G *)
-  | GTMult (* multiplication in GT *)
-  | FPlus  (* plus in Fq *)
+    FPlus  (* plus in Fq *)
   | FMult  (* multiplication in Fq *)
   | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
 
 let naryop_hash = function
-    GMult  -> 1
-  | GTMult -> 2
-  | FPlus  -> 3
+    FPlus  -> 3
   | FMult  -> 4
   | Xor    -> 5
   | Land   -> 6
@@ -199,9 +199,13 @@ let destr_Cnst e = match e.e_node with Cnst(c) -> (c) | _ -> raise (Destr_failur
 
 let destr_App e = match e.e_node with App(o,es) -> (o,es) | _ -> raise (Destr_failure "App")
 
+let destr_GMult e = match e.e_node with App(GMult,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GMult")
+
 let destr_GExp e = match e.e_node with App(GExp,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GExp")
 
 let destr_GLog e = match e.e_node with App(GLog,[a]) -> a | _ -> raise (Destr_failure "GLog")
+
+let destr_GTMult e = match e.e_node with App(GTMult,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GTMult")
 
 let destr_GTExp e = match e.e_node with App(GTExp,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GTExp")
 
@@ -218,10 +222,6 @@ let destr_FDiv e = match e.e_node with App(FDiv,[a;b]) -> (a,b) | _ -> raise (De
 let destr_Eq e = match e.e_node with App(Eq,[a;b]) -> (a,b) | _ -> raise (Destr_failure "Eq")
 
 let destr_Ifte e = match e.e_node with App(Eq,[a;b;c]) -> (a,b,c) | _ -> raise (Destr_failure "Ifte")
-
-let destr_GMult e = match e.e_node with Nary(GMult,e::es) -> e::es | _ -> raise (Destr_failure "GMult")
-
-let destr_GTMult e = match e.e_node with Nary(GTMult,e::es) -> e::es | _ -> raise (Destr_failure "GTMult")
 
 let destr_FPlus e = match e.e_node with Nary(FPlus,e::es) -> e::es | _ -> raise (Destr_failure "FPlus")
 
@@ -242,9 +242,7 @@ let pp_cnst fmt c ty =
   | FOne -> Format.fprintf fmt "1%%Fq"
 
 let pp_nop : (naryop -> string) = function
-    GMult  -> "x"
-  | GTMult -> "x"
-  | FPlus  -> "+"
+    FPlus  -> "+"
   | FMult  -> "*"
   | Xor    -> "(+)"
   | Land   -> "/\\"
@@ -261,9 +259,11 @@ let rec pp_exp fmt e =
   | ElemH(e,h) -> Format.fprintf fmt "%a in L_%a" pp_exp e Hsym.pp h
 and pp_op fmt o es = 
   match o, es with
+  | GMult, [a;b]  -> Format.fprintf fmt "(%a x %a)" pp_exp a pp_exp b
   | GExp, [a;b]   -> Format.fprintf fmt "%a^%a" pp_exp a pp_exp b
   | GLog, [a]     -> Format.fprintf fmt "log(%a)" pp_exp a
   | EMap, [a;b]   -> Format.fprintf fmt "e(%a,%a)" pp_exp a pp_exp b
+  | GTMult, [a;b] -> Format.fprintf fmt "(%a x %a)" pp_exp a pp_exp b
   | GTExp, [a;b]  -> Format.fprintf fmt "%a^%a" pp_exp a pp_exp b
   | GTLog, [a]    -> Format.fprintf fmt "log(%a)" pp_exp a
   | FOpp, [a]     -> Format.fprintf fmt "-%a" pp_exp a
@@ -301,38 +301,6 @@ module EexprBuild : GexprBuild with type t = exported = struct
   let mk_ty =  mk_ety
 end
 
-(*
-    V    of 'a Vsym.gt
-  | H    of 'a Hsym.gt * 'a gexpr
-  | Tuple of ('a gexpr) list
-  | Proj  of int * 'a gexpr
-  | Cnst of cnst
-      GGen
-    | FZ
-    | Z 
-    | FOne
-  | App  of op     * 'a gexpr list
-      GExp
-    | GLog
-    | EMap
-    | GTExp
-    | GTLog
-    | FOpp
-    | FMinus
-    | FInv
-    | FDiv
-    | Eq
-    | Ifte
-  | Nary of naryop * 'a gexpr list
-      GMult
-    | GTMult
-    | FPlus
-    | FMult
-    | Xor
-    | Land
-  | ElemH of 'a gexpr * 'a Hsym.gt
-*)
-
 module type S =
 sig
   type t
@@ -342,14 +310,18 @@ sig
   val mk_H : t Hsym.gt -> t gexpr -> t gexpr
   val mk_Tuple : (t gexpr) list -> t gexpr
   val mk_Proj : int -> t gexpr -> t gexpr
+  val mk_ElemH : t gexpr -> t Hsym.gt -> t gexpr
   
   val mk_GGen : t gexpr
   val mk_FZ : t gexpr
   val mk_FOne : t gexpr
   val mk_Z : t Lenvar.gid -> t gexpr
 
+  val mk_GMult : t gexpr -> t gexpr -> t gexpr
   val mk_GExp : t gexpr -> t gexpr -> t gexpr
   val mk_GLog : t gexpr -> t gexpr
+  val mk_EMap : t gexpr -> t gexpr -> t gexpr
+  val mk_GTMult : t gexpr -> t gexpr -> t gexpr
   val mk_GTExp : t gexpr -> t gexpr -> t gexpr
   val mk_GTLog : t gexpr -> t gexpr
   val mk_FOpp : t gexpr -> t gexpr
@@ -359,8 +331,6 @@ sig
   val mk_Eq : t gexpr -> t gexpr -> t gexpr
   val mk_Ifte : t gexpr -> t gexpr -> t gexpr -> t gexpr
 
-  val mk_GMult : (t gexpr) list -> t gexpr
-  val mk_GTMult : (t gexpr) list -> t gexpr
   val mk_FPlus : (t gexpr) list -> t gexpr
   val mk_FMult : (t gexpr) list -> t gexpr
   val mk_Xor : (t gexpr) list -> t gexpr
@@ -395,6 +365,10 @@ struct
   let mk_Proj i e = match e.e_ty.ty_node with
     | Prod(tys) when i >= 0 && List.length tys < i -> E.mk (Proj(i,e)) (List.nth tys i)
     | _ -> raise (TypeError(e.e_ty, e.e_ty, e, None, "mk_Proj expected product type"))
+
+  let mk_ElemH e h =
+    ensure_ty_equal e.e_ty h.Hsym.codom e None "mk_ElemH";
+    E.mk (ElemH(e,h)) ty_Bool
   
   let mk_Cnst c ty = E.mk (Cnst c) ty
 
@@ -405,14 +379,29 @@ struct
 
   let mk_App o es ty = E.mk (App(o,es)) ty
 
+  let mk_GMult a b =
+    ensure_ty_equal a.e_ty ty_G a None "mk_GMult";
+    ensure_ty_equal b.e_ty ty_G b None "mk_GMult";
+    mk_App GMult [a;b] ty_G
+
   let mk_GExp a b =
     ensure_ty_equal a.e_ty ty_G a None "mk_GExp";
-    ensure_ty_equal b.e_ty ty_G b None "mk_GExp";
+    ensure_ty_equal b.e_ty ty_Fq b None "mk_GExp";
     mk_App GExp [a;b] ty_G
 
   let mk_GLog a =
     ensure_ty_equal a.e_ty ty_G a None "mk_GLog";
     mk_App GLog [a] ty_G
+
+  let mk_EMap a b =
+    ensure_ty_equal a.e_ty ty_G a None "mk_EMap";
+    ensure_ty_equal b.e_ty ty_G b None "mk_EMap";
+    mk_App EMap [a;b] ty_GT
+
+  let mk_GTMult a b =
+    ensure_ty_equal a.e_ty ty_GT a None "mk_GTMult";
+    ensure_ty_equal b.e_ty ty_GT b None "mk_GTMult";
+    mk_App GTMult [a;b] ty_GT
 
   let mk_GTExp a b =
     ensure_ty_equal a.e_ty ty_GT a None "mk_GTExp";
@@ -450,23 +439,19 @@ struct
     ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Ifte";
     mk_App Eq [a;b;c] a.e_ty
 
-  let mk_nary s ty o es =
+  let mk_nary s o es ty =
     assert(es <> []);
     List.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
     E.mk (Nary(o,es)) ty
 
-  let mk_GMult es = mk_nary "mk_GMult" ty_G GMult es
-
-  let mk_GTMult es = mk_nary "mk_GTMult" ty_GT GTMult es
-
-  let mk_FPlus es = mk_nary "mk_FPlus" ty_Fq FPlus es
-  let mk_FMult es = mk_nary "mk_FMult" ty_Fq FMult es
+  let mk_FPlus es = mk_nary "mk_FPlus" FPlus es ty_Fq 
+  let mk_FMult es = mk_nary "mk_FMult" FMult es ty_Fq
   let mk_Xor es = match es with
     | e::_ -> (match e.e_ty.ty_node with
-               | BS _ -> mk_nary "mk_Xor" e.e_ty Xor es
+               | BS _ -> mk_nary "mk_Xor" Xor es e.e_ty
                | _ -> failwith "mk_Xor: expected bitstring argument")
     | _ -> failwith "mk_Xor: expected non-empty list"
-  let mk_Land es = mk_nary "mk_FMult" ty_Bool Land es
+  let mk_Land es = mk_nary "mk_FMult" Land es ty_Bool
 end
 
 module Constructors : S with type t = internal = Make(ExprBuild) 
@@ -474,22 +459,36 @@ module EConstructors : S with type t = exported = Make(EexprBuild)
 
 include Constructors
 
-(*
 (* ----------------------------------------------------------------------- *)
 (** {6 Generic functions on [expr]} *)
 
 let sub_map g e = 
   match e.e_node with
-  | Z | V _ -> e
-  | H(h,e1) ->
-      let e1' = g e1 in
-      if e1 == e1' then e
-      else mk_e (H(h,e1')) e.e_ty
-  | Xor(e1,e2) ->
-      let e1' = g e1 in
-      let e2' = g e2 in
-      if e1 == e1' && e2 == e2' then e
-      else mk_e (Xor(e1', e2')) e.e_ty 
+  | V _ | Cnst _ -> e
+  | H(h,e) ->
+      let e' = g e in
+      if e == e' then e
+      else mk_e (H(h,e')) e.e_ty
+  | ElemH(e,h) ->
+      let e' = g e in
+      if e == e' then e
+      else mk_e (ElemH(e',h)) e.e_ty
+  | Tuple(es) ->
+      let es' = smart_map g es in
+      if es == es' then e
+      else mk_e (Tuple(es')) e.e_ty
+  | Proj(i, e) ->
+      let e' = g e in
+      if e == e' then e
+      else mk_e (Proj(i,e')) e.e_ty
+  | App(o, es) ->
+      let es' = smart_map g es in
+      if es == es' then e
+      else mk_e (App(o,es')) e.e_ty
+  | Nary(o, es) ->
+      let es' = smart_map g es in
+      if es == es' then e
+      else mk_e (Nary(o,es')) e.e_ty
 
 let check_fun g e =
   let e' = g e in 
@@ -498,35 +497,30 @@ let check_fun g e =
 
 let e_sub_map g = sub_map (check_fun g)
 
-let e_sub_fold g acc e = 
+let e_sub_fold g acc e =
   match e.e_node with
-  | Z | V _ -> acc
-  | H(_,e) -> g acc e 
-  | Xor(e1,e2) -> g (g acc e1) e2
+  | V _ | Cnst _ -> acc
+  | H(_,e) | Proj(_, e) | ElemH(e,_) -> g acc e
+  | Tuple(es) | App(_, es) | Nary(_, es)-> List.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
-  | Z | V _ -> ()
-  | H(_,e) -> g e 
-  | Xor(e1,e2) -> g e1; g e2
+  | V _ | Cnst _ -> ()
+  | H(_,e) | Proj(_, e) | ElemH(e,_) -> g e
+  | Tuple(es) | App(_, es) | Nary(_, es)-> List.iter g es
 
 let rec e_iter g e =
   g e; e_sub_iter (e_iter g) e
 
-let e_sub_exists f e = 
-  match e.e_node with
-  | H(_,e) -> f e
-  | Xor(e1,e2) -> f e1 || f e2
-  | _ -> false
+
+let e_sub_exists f =
+  e_sub_fold (fun acc e -> acc || f e) false
 
 let rec e_exists f e =
   f e || e_sub_exists (e_exists f) e
 
-let e_sub_forall f e = 
-  match e.e_node with
-  | H(_,e) -> f e
-  | Xor(e1,e2) -> f e1 && f e2
-  | _ -> true
+let e_sub_forall f =
+  e_sub_fold (fun acc e -> acc && f e) true
 
 let rec e_forall f e = 
   f e && e_sub_forall (e_forall f) e
@@ -571,5 +565,3 @@ let e_replace e1 e2 =
   e_map_top (fun e -> if e_equal e e1 then e2 else raise Not_found)
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
-
-*)
