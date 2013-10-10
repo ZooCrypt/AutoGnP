@@ -70,14 +70,14 @@ type 'a gexpr = {
   e_tag  : int
 }
 and 'a gexpr_node =
-  | V    of 'a Vsym.gt
-  | H    of 'a Hsym.gt * 'a gexpr
-  | Tuple of ('a gexpr) list
-  | Proj  of int * 'a gexpr
-  | Cnst of cnst
-  | App  of op     * 'a gexpr list
-  | Nary of naryop * 'a gexpr list
-  | ElemH of 'a gexpr * 'a Hsym.gt
+  | V    of 'a Vsym.gt             (* variables (program, logical, random, ...) *)
+  | H    of 'a Hsym.gt * 'a gexpr  (* hash function application *)
+  | Tuple of ('a gexpr) list       (* tuples *)
+  | Proj  of int * 'a gexpr        (* projection *)
+  | Cnst of cnst                   (* constants *)
+  | App  of op     * 'a gexpr list (* fixed arity operators *)
+  | Nary of naryop * 'a gexpr list (* variable arity AC operators *)
+  | ElemH of 'a gexpr * 'a Hsym.gt (* ElemH(e,h): e in L_H *)
 
 
 type expr = internal gexpr
@@ -362,7 +362,7 @@ sig
   val mk_GMult : (t gexpr) list -> t gexpr
   val mk_GTMult : (t gexpr) list -> t gexpr
   val mk_FPlus : (t gexpr) list -> t gexpr
-  val mk_FPMult : (t gexpr) list -> t gexpr
+  val mk_FMult : (t gexpr) list -> t gexpr
   val mk_Xor : (t gexpr) list -> t gexpr
   val mk_Land : (t gexpr) list -> t gexpr
 end
@@ -376,6 +376,13 @@ struct
   let ensure_ty_equal ty1 ty2 e1 e2 s =
     ignore (E.ty_equal ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
+  let ty_G = E.mk_ty G
+  let ty_GT = E.mk_ty GT
+  let ty_Fq = E.mk_ty Fq
+  let ty_Bool = E.mk_ty Bool
+  let ty_BS lv = E.mk_ty (BS lv)
+  let ty_Prod tys = E.mk_ty (Prod tys)
+
   let mk_V v = E.mk (V v) v.Vsym.ty
   
   let mk_H h e =
@@ -383,7 +390,7 @@ struct
     E.mk (H(h,e)) h.Hsym.codom
 
   let mk_Tuple es =
-    E.mk (Tuple es) (E.mk_ty (Prod (List.map (fun e -> e.e_ty) es)))
+    E.mk (Tuple es) (ty_Prod (List.map (fun e -> e.e_ty) es))
 
   let mk_Proj i e = match e.e_ty.ty_node with
     | Prod(tys) when i >= 0 && List.length tys < i -> E.mk (Proj(i,e)) (List.nth tys i)
@@ -391,28 +398,75 @@ struct
   
   let mk_Cnst c ty = E.mk (Cnst c) ty
 
-  let mk_GGen = mk_Cnst GGen (E.mk_ty Group)
-  let mk_FZ = mk_Cnst FZ (E.mk_ty Fq)
-  let mk_FOne = mk_Cnst FOne (E.mk_ty Fq)
-  let mk_Z lv = mk_Cnst Z (E.mk_ty (BS lv))
+  let mk_GGen = mk_Cnst GGen ty_G
+  let mk_FZ = mk_Cnst FZ ty_Fq
+  let mk_FOne = mk_Cnst FOne ty_Fq
+  let mk_Z lv = mk_Cnst Z (ty_BS lv)
 
-  let mk_GExp a b = assert false
-  let mk_GLog a = assert false
-  let mk_GTExp a b = assert false
-  let mk_GTLog a = assert false
-  let mk_FOpp a = assert false
-  let mk_FMinus a b = assert false
-  let mk_FInv a = assert false
-  let mk_FDiv a b = assert false
-  let mk_Eq a b = assert false
-  let mk_Ifte a b c = assert false
+  let mk_App o es ty = E.mk (App(o,es)) ty
 
-  let mk_GMult es = assert false
-  let mk_GTMult es = assert false
-  let mk_FPlus es = assert false
-  let mk_FPMult es = assert false
-  let mk_Xor es = assert false
-  let mk_Land es = assert false
+  let mk_GExp a b =
+    ensure_ty_equal a.e_ty ty_G a None "mk_GExp";
+    ensure_ty_equal b.e_ty ty_G b None "mk_GExp";
+    mk_App GExp [a;b] ty_G
+
+  let mk_GLog a =
+    ensure_ty_equal a.e_ty ty_G a None "mk_GLog";
+    mk_App GLog [a] ty_G
+
+  let mk_GTExp a b =
+    ensure_ty_equal a.e_ty ty_GT a None "mk_GTExp";
+    ensure_ty_equal b.e_ty ty_GT b None "mk_GTExp";
+    mk_App GTExp [a;b] ty_GT
+
+  let mk_GTLog a =
+    ensure_ty_equal a.e_ty ty_GT a None "mk_GTLog";
+    mk_App GTLog [a] ty_GT
+
+  let mk_FOpp a =
+    ensure_ty_equal a.e_ty ty_Fq a None "mk_FOpp";
+    mk_App FOpp [a] ty_Fq
+
+  let mk_FMinus a b =
+    ensure_ty_equal a.e_ty ty_Fq a None "mk_FMinus";
+    ensure_ty_equal b.e_ty ty_Fq b None "mk_FMinus";
+    mk_App FMinus [a;b] ty_Fq
+
+  let mk_FInv a =
+    ensure_ty_equal a.e_ty ty_Fq a None "mk_FInv";
+    mk_App FInv [a] ty_Fq
+
+  let mk_FDiv a b =
+    ensure_ty_equal a.e_ty ty_Fq a None "mk_FDiv";
+    ensure_ty_equal b.e_ty ty_Fq b None "mk_FDiv";
+    mk_App FDiv [a;b] ty_Fq
+
+  let mk_Eq a b =
+    ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Eq";
+    mk_App Eq [a;b] ty_Bool
+
+  let mk_Ifte a b c =
+    ensure_ty_equal a.e_ty ty_Bool a None "mk_Ifte";
+    ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Ifte";
+    mk_App Eq [a;b;c] a.e_ty
+
+  let mk_nary s ty o es =
+    assert(es <> []);
+    List.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
+    E.mk (Nary(o,es)) ty
+
+  let mk_GMult es = mk_nary "mk_GMult" ty_G GMult es
+
+  let mk_GTMult es = mk_nary "mk_GTMult" ty_GT GTMult es
+
+  let mk_FPlus es = mk_nary "mk_FPlus" ty_Fq FPlus es
+  let mk_FMult es = mk_nary "mk_FMult" ty_Fq FMult es
+  let mk_Xor es = match es with
+    | e::_ -> (match e.e_ty.ty_node with
+               | BS _ -> mk_nary "mk_Xor" e.e_ty Xor es
+               | _ -> failwith "mk_Xor: expected bitstring argument")
+    | _ -> failwith "mk_Xor: expected non-empty list"
+  let mk_Land es = mk_nary "mk_FMult" ty_Bool Land es
 end
 
 module Constructors : S with type t = internal = Make(ExprBuild) 
