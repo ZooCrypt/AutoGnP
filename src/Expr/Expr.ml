@@ -2,6 +2,8 @@ open Type
 open Util
 open IdType
 
+module F = Format
+
 (* ----------------------------------------------------------------------- *)
 (** {1 Expressions} *)
 
@@ -236,42 +238,42 @@ let destr_Land e = match e.e_node with Nary(Land,e::es) -> e::es | _ -> raise (D
 
 let pp_cnst fmt c ty =
   match c with
-  | GGen -> Format.fprintf fmt "g"
-  | FZ   -> Format.fprintf fmt "0%%Fq"
-  | Z    -> Format.fprintf fmt "0%%%a" pp_ty ty
-  | FOne -> Format.fprintf fmt "1%%Fq"
+  | GGen -> F.fprintf fmt "g"
+  | FZ   -> F.fprintf fmt "0"
+  | Z    -> F.fprintf fmt "0%%%a" pp_ty ty
+  | FOne -> F.fprintf fmt "1"
 
 let pp_nop : (naryop -> string) = function
-    FPlus  -> "+"
-  | FMult  -> "*"
-  | Xor    -> "(+)"
-  | Land   -> "/\\"
+    FPlus  -> " + "
+  | FMult  -> " * "
+  | Xor    -> " (+) "
+  | Land   -> " /\\ "
 
 let rec pp_exp fmt e =
   match e.e_node with
   | V(v)       -> Vsym.pp fmt v
-  | H(h,e)     -> Format.fprintf fmt "%a(%a)" Hsym.pp h pp_exp e
-  | Tuple(es)  -> Format.fprintf fmt "(%a)" (pp_list "," pp_exp) es
-  | Proj(i,e)  -> Format.fprintf fmt "pi_%i(%a)" i pp_exp e
+  | H(h,e)     -> F.fprintf fmt "%a(%a)" Hsym.pp h pp_exp e
+  | Tuple(es)  -> F.fprintf fmt "(%a)" (pp_list "," pp_exp) es
+  | Proj(i,e)  -> F.fprintf fmt "pi_%i(%a)" i pp_exp e
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op fmt o es
-  | Nary(o,es) -> Format.fprintf fmt "(%a)" (pp_list (pp_nop o) pp_exp) es (* FIXME: handle prios *)
-  | ElemH(e,h) -> Format.fprintf fmt "%a in L_%a" pp_exp e Hsym.pp h
+  | Nary(o,es) -> F.fprintf fmt "(%a)" (pp_list (pp_nop o) pp_exp) es (* FIXME: handle prios *)
+  | ElemH(e,h) -> F.fprintf fmt "%a in L_%a" pp_exp e Hsym.pp h
 and pp_op fmt o es = 
   match o, es with
-  | GMult, [a;b]  -> Format.fprintf fmt "(%a x %a)" pp_exp a pp_exp b
-  | GExp, [a;b]   -> Format.fprintf fmt "%a^%a" pp_exp a pp_exp b
-  | GLog, [a]     -> Format.fprintf fmt "log(%a)" pp_exp a
-  | EMap, [a;b]   -> Format.fprintf fmt "e(%a,%a)" pp_exp a pp_exp b
-  | GTMult, [a;b] -> Format.fprintf fmt "(%a x %a)" pp_exp a pp_exp b
-  | GTExp, [a;b]  -> Format.fprintf fmt "%a^%a" pp_exp a pp_exp b
-  | GTLog, [a]    -> Format.fprintf fmt "log(%a)" pp_exp a
-  | FOpp, [a]     -> Format.fprintf fmt "-%a" pp_exp a
-  | FMinus, [a;b] -> Format.fprintf fmt "%a - %a" pp_exp a pp_exp b
-  | FInv, [a]     -> Format.fprintf fmt "%a^-1" pp_exp a
-  | FDiv, [a;b]   -> Format.fprintf fmt "%a / %a" pp_exp a pp_exp b
-  | Eq, [a;b]     -> Format.fprintf fmt "%a = %a" pp_exp a pp_exp b
-  | Ifte, [a;b;c] -> Format.fprintf fmt "%a ? %a : %a" pp_exp a pp_exp b pp_exp c
+  | GMult, [a;b]  -> F.fprintf fmt "(%a x %a)" pp_exp a pp_exp b
+  | GExp, [a;b]   -> F.fprintf fmt "%a^%a" pp_exp a pp_exp b
+  | GLog, [a]     -> F.fprintf fmt "log(%a)" pp_exp a
+  | EMap, [a;b]   -> F.fprintf fmt "e(%a,%a)" pp_exp a pp_exp b
+  | GTMult, [a;b] -> F.fprintf fmt "(%a x %a)" pp_exp a pp_exp b
+  | GTExp, [a;b]  -> F.fprintf fmt "%a^%a" pp_exp a pp_exp b
+  | GTLog, [a]    -> F.fprintf fmt "log(%a)" pp_exp a
+  | FOpp, [a]     -> F.fprintf fmt "-%a" pp_exp a
+  | FMinus, [a;b] -> F.fprintf fmt "%a - %a" pp_exp a pp_exp b
+  | FInv, [a]     -> F.fprintf fmt "%a^-1" pp_exp a
+  | FDiv, [a;b]   -> F.fprintf fmt "%a / %a" pp_exp a pp_exp b
+  | Eq, [a;b]     -> F.fprintf fmt "%a = %a" pp_exp a pp_exp b
+  | Ifte, [a;b;c] -> F.fprintf fmt "%a ? %a : %a" pp_exp a pp_exp b pp_exp c
   | _             -> failwith "pp_op: invalid expression"
 
 (* ----------------------------------------------------------------------- *)
@@ -440,9 +442,11 @@ struct
     mk_App Eq [a;b;c] a.e_ty
 
   let mk_nary s o es ty =
-    assert(es <> []);
-    List.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
-    E.mk (Nary(o,es)) ty
+    match es with
+    | []  -> failwith (F.sprintf "%s: empty list given" s);
+    | [a] -> a
+    | _   -> List.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
+             E.mk (Nary(o,es)) ty
 
   let mk_FPlus es = mk_nary "mk_FPlus" FPlus es ty_Fq 
   let mk_FMult es = mk_nary "mk_FMult" FMult es ty_Fq

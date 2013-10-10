@@ -6,30 +6,48 @@ open SingLexer
 
 module F = Format
 
-(** Singular pretty printer for field expressions *)
+(* Singular field expression *)
+type fexp =
+    V of int
+  | SOne
+  | SZ
+  | SOpp of fexp
+  | SInv of fexp
+  | SPlus of fexp * fexp
+  | SMult of fexp * fexp
 
 (* pretty-printer function for already abstracted field expression *)
-let pp_expr_sing fmt t = assert false
-(* 
-  let rec go rparens t = match t with
-  | V v             -> F.fprintf fmt "%a%" Vsym.pp v
-  | App (FMinus,[a]) -> parens (string "- " ^^ (parens  (go false a)))
-  | App (Inv,[a])   -> parens (string "1 / " ^^ (parens  (go false a)))
-  | Const Zero      -> string "0"
-  | Const One       -> string "1"
-  | Const _         -> failwith "Singular cannot understand Const"
-  | Proj (_,_)      -> failwith "Singular cannot understand Proj"
-  | Tuple _         -> failwith "Singular cannot understand Tuple"
-  | App (_,_)       -> failwith "Singular cannot understand this App"
-  | NaryApp (o,ts) when o = Sum || o = Prod ->
-     group (parens_maybe rparens (go_terms true (space ^^ pp_nop o) ts))
-  | NaryApp (_,_)   -> failwith "Singular cannot understand this NaryApp"
-  and go_terms rparens sep ts =
-    separate (sep ^^ break 1) (List.map (go rparens) ts)
-  in go false t
- *)
+let rec string_of_fexp e = match e with
+  | V i        -> F.sprintf "x%i" i
+  | SOne       -> "1"
+  | SZ         -> "0"
+  | SOpp(a)    -> F.sprintf "-(%s)" (string_of_fexp a)
+  | SInv(a)    -> F.sprintf "1/(%s)" (string_of_fexp a)
+  | SPlus(a,b) -> F.sprintf "(%s + %s)" (string_of_fexp a) (string_of_fexp b)
+  | SMult(a,b) -> F.sprintf "(%s * %s)" (string_of_fexp a) (string_of_fexp b)
 
-let string_of_term_sing e = assert false
+(* Abstraction of 'Expr.expr' to sfexp *)
+let abstract_non_field e0 =
+  let i = ref 0 in
+  let bindings = ref [] in
+  let lookup k = match massoc k !bindings with
+    | None   -> incr i; bindings := (k,!i)::!bindings; !i
+    | Some j -> j
+  in
+  let rec go e = match e.e_node with
+    | Cnst FOne              -> SOne
+    | Cnst FZ                -> SZ
+    | App (FOpp,[a])         -> SOpp(go a)
+    | App (FInv,[a])         -> SInv(go a)
+    | App (FMinus,[a;b])     -> SPlus(go a, SOpp (go b))
+    | App (FDiv,[a;b])       -> SMult(go a, SInv (go b))
+    | Nary (FPlus, a::es)       -> List.fold_left (fun acc e -> SPlus(acc, go e)) (go a) es
+    | Nary (FMult, a::es)       -> List.fold_left (fun acc e -> SMult(acc, go e)) (go a) es
+    | _ -> V (lookup e)
+  in
+  let se = go e0 in
+  (se, List.map swap !bindings)
+
 
 (** Parser for Singular Polynomials in Q[x1,..,xk] *)
 
@@ -80,82 +98,44 @@ let parse_poly s =
 
 (** Abstraction of non-field expression with variables *)
 
-(* PRE: expects an expression of type Zq *)
-let abstract_non_field t =
-  let bindings = ref (0,[]) in
-  let addBinding (t : Expr.expr) ty = match massoc t (snd !bindings) with
-    | None   -> let (i,(bs : (Expr.expr * (string * ty)) list)) = !bindings in
-                let i = i+1 in
-                let xi = F.sprintf "x%i" i in
-                let () = bindings := (i,(t,(xi,ty))::bs) in
-                (xi,ty)
-    | Some i -> i
-  in
-  let rec go e = match e.e_node with
-    | _ -> assert false (*
-    | App (o,[a]) when o = Minus || o = Inv -> App (o,[go a])
-    | Const Zero | Const One -> t
-    | NaryApp (o,ts) when o = Sum || o = Prod ->
-        NaryApp (o, List.map go ts)
-    | t -> let xi = addBinding t Zq in R(xi) *)
-  in
-  let t' = go t in (t', List.map swap (snd !bindings))
-
-let subst_binding bindings t = assert false
-(*  let substR v = match massoc v bindings with
-    | Some t -> t
-    | None   ->
-        failwith (sprintf "Singular.subst_binding_field: unknown variable: %s in %s"
-                    (fst v)
-                    (String.concat "," (List.map (fun x -> fst (fst x)) bindings)))
-  in fold_term_simp ~fR:substR t *)
-
 (** Using Singular to perform polynomial computations *)
 
 let singular_command = F.sprintf "/Users/beschmi/bin/Singular -q -t"
 
 let call_singular cmd =
-  (* debug (sprintf "singular command: `%s'\n\n" singular_command); *)
+  (* F.printf "singular command: `%s'\n\n" singular_command; *)
   let (c_in, c_out) = Unix.open_process singular_command in
   output_string c_out cmd;
-  (* debug (sprintf "singular input: `%s' has been sent\n\n" cmd); *)
+  (* F.printf "singular input: `%s' has been sent\n\n" cmd; *)
   flush_all ();
   let rec loop o =
     try
       let l = input_line c_in in
-      (* debug (sprintf "singular output: `%s'\n" l); *)
+      (* F.printf "singular output: `%s'\n" l; *)
       loop (o @ [l])
     with End_of_file ->
       ignore (Unix.close_process (c_in,c_out));
       o
   in loop []
 
-let norm t0 =
-  let (t,bindings) = abstract_non_field t0 in
-  let vars = List.sort compare (List.map (fun x -> fst (fst x)) bindings) in
+let norm e =
+  let (se,bindings) = abstract_non_field e in
+  let vars = List.map (fun x -> F.sprintf "x%i" (fst x)) bindings in
   let var_string = String.concat "," vars in
-  let cmd = F.sprintf "LIB \"poly.lib\";ring r2 = (0,%s),(a),dp;\n\
+  let cmd = F.sprintf "LIB \"poly.lib\";ring R = (0,%s),(a),dp;\n\
                        number f = %s;\nnumerator(f);denominator(f);quit;\n"
                       var_string
-                      (string_of_term_sing t)
+                      (string_of_fexp se)
   in
-  let import s = subst_binding bindings (term_of_poly (parse_poly s)) in
-  match call_singular cmd with
-    | [ snum; sdenom ] ->
-        let num   = import snum  in
-        let denom = import sdenom in
-        (* debug (sprintf "num: %s\ndenom: %s\n" (string_of_term num) (string_of_term denom)); *)
-        if e_equal denom mk_FOne then num
-        else mk_FMult [num; mk_FInv denom]
-    | repls          ->
-        failwith (F.sprintf "Singular.norm: unexpected result %s\n"
-                    (String.concat "\n" repls))
 
-let main () =
-  let vs = Vsym.mk "x" mk_Fq in
-  let v = mk_V vs in
-  let e = mk_FDiv v v in 
-  let (e',bindings) = abstract_non_field e in
-  F.printf "%a\n" pp_exp e';
-  print_newline ();
-  F.printf "%a\n" pp_exp (subst_binding bindings e')
+  let import s = term_of_poly bindings (parse_poly s) in
+  match call_singular cmd with
+  | [ snum; sdenom ] ->
+      let num   = import snum  in
+      let denom = import sdenom in
+      (* F.printf "num: %a\ndenom: %a\n" pp_exp num pp_exp denom; *)
+      if e_equal denom mk_FOne then num
+      else mk_FDiv num denom
+  | repls ->
+      failwith (F.sprintf "Singular.norm: unexpected result %s\n"
+                  (String.concat "\n" repls))
