@@ -83,6 +83,12 @@ val fsprintf : ('a, Format.formatter, unit) format -> 'a
     as in [fsprintf .. |> fsget] *)
 val fsget : unit -> string
 
+val replicate : int -> 'a -> 'a list
+
+val massoc : 'k -> ('k * 'v) list -> 'v option
+
+val swap : 'a * 'b -> 'b * 'a
+
 (** [compare_on f x y] yields the comparison
     [compare (f x) (f y)] *)
 val compare_on : ('a -> 'b) -> 'a -> 'a -> int

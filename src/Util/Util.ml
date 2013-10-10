@@ -85,6 +85,25 @@ let map_opt f m = match m with
   | Some x -> Some (f x)
   | None -> None
 
+(* let rec group xs0 =
+  let rec go acc xs = match (acc,xs) with
+        | ([],[])  -> []
+        | (acc,[]) -> [acc]
+        | ([],y::ys) -> go [y] ys
+        | (b::bs, y::ys) -> if b = y then go (b::y::bs) ys else (b::bs)::(go [y] ys)
+  in go [] xs0
+*)
+
+(* let nub_sort xs = map hd (group (sort compare xs)) *)
+
+let rec replicate i x = match i with
+  | 0 -> []
+  | k -> x :: replicate (k-1) x
+
+let massoc v l = try Some (List.assoc v l) with Not_found -> None
+
+let swap (x,y) = (y,x)
+
 let rec pp_list sep pp_elt f l =
   match l with
   | [] -> ()

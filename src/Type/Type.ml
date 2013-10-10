@@ -58,6 +58,16 @@ let mk_ty n = Hsty.hashcons {
 
 let mk_ety n = { ty_node = n; ty_tag = -1 }
 
+let mk_G = mk_ty G
+
+let mk_GT = mk_ty GT
+
+let mk_Fq = mk_ty Fq
+
+let mk_Bool = mk_ty Bool
+
+let mk_Prod tys = mk_ty (Prod tys)
+
 (* ----------------------------------------------------------------------- *)
 
 let rec ty_export ty =

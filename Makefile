@@ -45,32 +45,15 @@ clean:
 start-server : web
 	./scripts/start-server.sh
 
-Test_Util : 
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Util.d.byte && ./Test_Util.d.byte
-
 Test_Type : 
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte
 
 Test_Expr : 
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Expr.d.byte && ./Test_Expr.d.byte
 
-Test_Norm : 
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Norm.d.byte && ./Test_Norm.d.byte
+Test_Singular : 
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Singular.d.byte && ./Test_Singular.d.byte
 
-Test_Deducibility : 
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Deducibility.d.byte && ./Test_Deducibility.d.byte
-
-Test_Cpa : 
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Cpa.d.byte && OCAMLRUNPARAM="-b" ./Test_Cpa.d.byte
-
-Test_Parser : 
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Parser.d.byte && OCAMLRUNPARAM="-b" ./Test_Parser.d.byte
-
-Test_Bound : 
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Bound.d.byte && OCAMLRUNPARAM="-b" ./Test_Bound.d.byte
-
-Test_Web :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Web.d.byte && (killall ocamlrun; OCAMLRUNPARAM="-b" ./Test_Web.d.byte)
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@
