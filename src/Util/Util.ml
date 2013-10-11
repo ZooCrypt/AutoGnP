@@ -96,9 +96,11 @@ let map_opt f m = match m with
 
 (* let nub_sort xs = map hd (group (sort compare xs)) *)
 
-let rec replicate i x = match i with
-  | 0 -> []
-  | k -> x :: replicate (k-1) x
+let rec replicate_r acc i x =
+  if i <= 0 then acc 
+  else replicate_r (x::acc) (i-1) x
+  
+let replicate i x = replicate_r [] i x
 
 let massoc v l = try Some (List.assoc v l) with Not_found -> None
 

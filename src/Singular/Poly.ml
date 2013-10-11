@@ -8,24 +8,38 @@ type monom = (var * int) list (* m_i = x_i^j_i *)
 type coeff = int
 type poly = (coeff * monom) list (* a_1 * m_1 + .. + a_k * m_k *)
 
-let terms_of_monom bindings (m : monom) =
+let terms_of_monom hv (m : monom) =
   let go acc (i,k) =
-    let e = match massoc i bindings with
-      | Some e -> e
-      | None   -> failwith "terms_of_monom: unexpected variable returned by Singular"
-    in replicate k e @ acc 
-  in List.rev (List.fold_left go [] m)
+    let e = try Hashtbl.find hv i with Not_found -> assert false in
+    replicate_r acc k e in 
+  List.fold_left go [] m
 
-let term_of_poly bindings p =
-  let const i = match i with
-    | i when i > 0 -> mk_FPlus (replicate i mk_FOne)
-    | _            -> mk_FOpp (mk_FPlus (replicate (-i) mk_FOne))
-  in
-  let summand (i,m) = match i, terms_of_monom bindings m with
-    | _,[]  -> const i
+(* TODO move this *)
+let mk_FTwo = mk_FPlus [mk_FOne; mk_FOne]
+
+let rec of_pos_int n = 
+  if n <= 1 then mk_FOne 
+  else 
+    let q = n lsr 1 in
+    let r = n mod 2 in
+    let tq = mk_FMult [mk_FTwo; of_pos_int q] in
+    if r = 1 then mk_FPlus [tq; mk_FOne]
+    else tq 
+
+let of_int n = 
+  if n = 0 then mk_FZ
+  else if n > 0 then of_pos_int n
+  else mk_FOpp (of_pos_int (-n))
+
+let term_of_poly hv p =
+  let summand (i,m) = match i, terms_of_monom hv m with
+    | _,[]  -> of_int i
     | 1,mes  -> mk_FMult mes
     | -1,mes -> mk_FOpp (mk_FMult mes)
-    | _,mes -> mk_FMult (const i::mes)
+    | _,mes -> 
+      assert (i <> 0);
+      if i > 0 then mk_FMult (of_pos_int i    :: mes)
+      else mk_FOpp (mk_FMult (of_pos_int (-i) :: mes))
   in mk_FPlus (List.map summand p)
 
 (* for debugging only *)

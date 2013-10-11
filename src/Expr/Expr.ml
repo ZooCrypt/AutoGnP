@@ -15,12 +15,14 @@ type cnst =
   | FZ   (* 0 in Fq *)
   | Z    (* 0 bitstring *)
   | FOne (* 1 in Fq *)
+  | B  of bool
 
 let cnst_hash = function
-    GGen -> 1
+  | GGen -> 1
   | FZ   -> 2
   | Z    -> 3
   | FOne -> 4
+  | B b  -> if b then 5 else 6
 
 (* operators with fixed arity *)
 type op =
@@ -89,8 +91,8 @@ type eexpr = exported gexpr
 type eexpr_node = exported gexpr_node
 
 let e_equal : expr -> expr -> bool = (==)
-let e_hash e = e.e_tag
-let e_compare e1 e2 = e1.e_tag - e2.e_tag
+let e_hash (e:expr) = e.e_tag
+let e_compare (e1:expr) (e2:expr) = e1.e_tag - e2.e_tag
 
 module Hse = Hashcons.Make (struct
   type t = expr
@@ -174,6 +176,17 @@ let is_some_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
 
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
+let is_true e = is_Cnst (B true) e
+
+let is_false e = is_Cnst (B false) e
+
+let is_GGen e = is_Cnst GGen e
+
+let is_GTGen e = 
+  match e.e_node with
+  | App(EMap, [e1;e2]) -> is_GGen e1 && is_GGen e2
+  | _ -> false
+
 let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
 let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
@@ -242,6 +255,7 @@ let pp_cnst fmt c ty =
   | FZ   -> F.fprintf fmt "0"
   | Z    -> F.fprintf fmt "0%%%a" pp_ty ty
   | FOne -> F.fprintf fmt "1"
+  | B b  -> F.fprintf fmt "%b" b
 
 let pp_nop : (naryop -> string) = function
     FPlus  -> " + "
@@ -314,10 +328,14 @@ sig
   val mk_Proj : int -> t gexpr -> t gexpr
   val mk_ElemH : t gexpr -> t Hsym.gt -> t gexpr
   
-  val mk_GGen : t gexpr
-  val mk_FZ : t gexpr
-  val mk_FOne : t gexpr
-  val mk_Z : t Lenvar.gid -> t gexpr
+  val mk_GGen  : t gexpr
+  val mk_GTGen : t gexpr
+  val mk_FZ    : t gexpr
+  val mk_FOne  : t gexpr
+  val mk_Z     : t Lenvar.gid -> t gexpr
+  val mk_B     : bool -> t gexpr
+  val mk_True  : t gexpr
+  val mk_False : t gexpr
 
   val mk_GMult : t gexpr -> t gexpr -> t gexpr
   val mk_GExp : t gexpr -> t gexpr -> t gexpr
@@ -378,6 +396,10 @@ struct
   let mk_FZ = mk_Cnst FZ ty_Fq
   let mk_FOne = mk_Cnst FOne ty_Fq
   let mk_Z lv = mk_Cnst Z (ty_BS lv)
+  let mk_B  b = mk_Cnst (B b) ty_Bool
+  let mk_True = mk_B true
+  let mk_False = mk_B false
+
 
   let mk_App o es ty = E.mk (App(o,es)) ty
 
@@ -456,6 +478,9 @@ struct
                | _ -> failwith "mk_Xor: expected bitstring argument")
     | _ -> failwith "mk_Xor: expected non-empty list"
   let mk_Land es = mk_nary "mk_FMult" Land es ty_Bool
+
+  let mk_GTGen = mk_EMap mk_GGen mk_GGen
+
 end
 
 module Constructors : S with type t = internal = Make(ExprBuild) 

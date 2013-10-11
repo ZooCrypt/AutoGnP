@@ -1,7 +1,5 @@
-open Type
 open Expr
 open Poly
-open Util
 open SingLexer
 
 module F = Format
@@ -27,14 +25,19 @@ let rec string_of_fexp e = match e with
   | SMult(a,b) -> F.sprintf "(%s * %s)" (string_of_fexp a) (string_of_fexp b)
 
 (* Abstraction of 'Expr.expr' to sfexp *)
-let abstract_non_field e0 =
-  let i = ref 0 in
-  let bindings = ref [] in
-  let lookup k = match massoc k !bindings with
-    | None   -> incr i; bindings := (k,!i)::!bindings; !i
-    | Some j -> j
-  in
-  let rec go e = match e.e_node with
+let abstract_non_field before e0 =
+  let c = ref 0 in
+  let he = He.create 17 in
+  let lookup e =
+    try He.find he e 
+    with Not_found ->
+      let n = !c in
+      incr c;
+      He.add he e n;
+      n in
+  let rec go e = 
+    let e = before e in
+    match e.e_node with
     | Cnst FOne              -> SOne
     | Cnst FZ                -> SZ
     | App (FOpp,[a])         -> SOpp(go a)
@@ -46,8 +49,9 @@ let abstract_non_field e0 =
     | _ -> V (lookup e)
   in
   let se = go e0 in
-  (se, List.map swap !bindings)
-
+  let hv = Hashtbl.create 17 in
+  He.iter (fun e i -> Hashtbl.add hv i e) he;
+  (se, !c, hv)
 
 (** Parser for Singular Polynomials in Q[x1,..,xk] *)
 
@@ -118,9 +122,9 @@ let call_singular cmd =
       o
   in loop []
 
-let norm e =
-  let (se,bindings) = abstract_non_field e in
-  let vars = List.map (fun x -> F.sprintf "x%i" (fst x)) bindings in
+let norm before e =
+  let (se,c,hv) = abstract_non_field before e in
+  let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," vars in
   let cmd = F.sprintf "LIB \"poly.lib\";ring R = (0,%s),(a),dp;\n\
                        number f = %s;\nnumerator(f);denominator(f);quit;\n"
@@ -128,7 +132,7 @@ let norm e =
                       (string_of_fexp se)
   in
 
-  let import s = term_of_poly bindings (parse_poly s) in
+  let import s = term_of_poly hv (parse_poly s) in
   match call_singular cmd with
   | [ snum; sdenom ] ->
       let num   = import snum  in

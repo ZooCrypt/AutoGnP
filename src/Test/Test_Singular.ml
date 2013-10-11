@@ -14,8 +14,8 @@ let main =
   let (+:) a b = mk_FPlus [a;b] in
   let (&:) a b = mk_FMult [a;b] in
   let e =  ((v +: (num 2)) /: ((pow v 2) -: (num 4))) +: mk_H h mk_GGen in
-  let (e',bindings) = abstract_non_field e in
+  let (e',_c,_hv) = abstract_non_field (fun e -> e) e in
   F.printf "%a\n" pp_exp e;
   F.printf "%s\n" (string_of_fexp e');
   print_newline ();
-  F.printf "%a\n" pp_exp (norm e)
+  F.printf "%a\n" pp_exp (norm (fun e -> e) e)

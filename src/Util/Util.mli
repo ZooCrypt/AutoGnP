@@ -83,8 +83,10 @@ val fsprintf : ('a, Format.formatter, unit) format -> 'a
     as in [fsprintf .. |> fsget] *)
 val fsget : unit -> string
 
-val replicate : int -> 'a -> 'a list
+val replicate_r : 'a list -> int -> 'a -> 'a list
+val replicate   : int -> 'a -> 'a list
 
+(* TODO remove this *)
 val massoc : 'k -> ('k * 'v) list -> 'v option
 
 val swap : 'a * 'b -> 'b * 'a
