@@ -2,23 +2,12 @@ open Type
 open ExprSyntax
 open Expr
 open Game
+open Norm
 
 module F = Format
 
 let duni_Fq = (mk_Fq, [])
 let duni_Bool = (mk_Bool, [])
-
-let norm_exp e0 = 
-  let go e =
-    match e.e_node with
-    | App (FOpp,_)
-    | App (FInv,_)
-    | App (FMinus,_)
-    | App (FDiv,_)
-    | Nary (FPlus,_)
-    | Nary (FMult,_) -> Singular.norm e
-    | _              -> e
-  in e_map go e0
 
 let mk_bb1 () =
   let c = (Vsym.mk "c" mk_Fq) in
@@ -32,7 +21,7 @@ let mk_bb1 () =
   let b' = (Vsym.mk "b'" mk_Bool) in
   let m0 = (Vsym.mk "m0" mk_GT) in
   let m1 = (Vsym.mk "m1" mk_GT) in
-  let mb = (Vsym.mk "m0" mk_GT) in
+  let mb = (Vsym.mk "mb" mk_GT) in
 
   let vc  = v c in
   let vd  = v d in
@@ -57,7 +46,7 @@ let mk_bb1 () =
              g ^: vr]
      )
   in  
-  [ GCall([i'],f0,[]);
+  [ GCall([i'],mk_Tuple [],[]);
     GSamp(c,duni_Fq);
     GSamp(d,duni_Fq);
     GSamp(e,duni_Fq);
@@ -77,9 +66,10 @@ let mk_bb1 () =
   ]
 
 let main =
+  catch_TypeError (fun () -> 
   let bb1 =
     catch_TypeError (fun () -> mk_bb1 ()) in
   F.printf "G1 =\n%a\n\n" pp_gdef bb1;
-  let bb1' = map_gdef_exp norm_exp bb1 in
-  F.printf "G2 =%a\n\n" pp_gdef bb1';
+  let bb1' = map_gdef_exp norm_expr bb1 in
+  F.printf "G2 =%a\n\n" pp_gdef bb1')
 
