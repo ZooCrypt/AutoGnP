@@ -268,7 +268,7 @@ let rec pp_exp fmt e =
   match e.e_node with
   | V(v)       -> Vsym.pp fmt v
   | H(h,e)     -> F.fprintf fmt "%a(%a)" Hsym.pp h pp_exp e
-  | Tuple(es)  -> F.fprintf fmt "(%a)" (pp_list "," pp_exp) es
+  | Tuple(es)  -> F.fprintf fmt "(%a)" (pp_list ", " pp_exp) es
   | Proj(i,e)  -> F.fprintf fmt "pi_%i(%a)" i pp_exp e
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op fmt o es
