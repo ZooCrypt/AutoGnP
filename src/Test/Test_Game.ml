@@ -2,8 +2,6 @@ open Type
 open ExprSyntax
 open Expr
 open Game
-open Norm
-open Util
 
 module F = Format
 

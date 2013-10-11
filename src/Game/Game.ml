@@ -82,7 +82,7 @@ let norm_orcl s (o,vs,lc,e) =
 let norm_game g =
   let rec aux s rc lc = 
     match lc with
-  | [] -> List.rev rc
+  | [] -> List.rev rc, s
   | GLet(v,e) :: lc' ->
     let e = Norm.norm_subst s e in
     let v = mk_V v in
@@ -107,8 +107,6 @@ let wf_gdef _gd = true
 (* ----------------------------------------------------------------------- *)
 (** {3 Judgments and rules } *)
 
-let rnorm ju = assert false
-
 let apply rule goals = match goals with
   | g::gs -> rule g @ gs
   | _ -> failwith "there are no goals"
@@ -122,6 +120,11 @@ type ev = expr
 type judgment = { ju_gdef : gdef; ju_ev : ev }
 
 let mk_ju gd ev = { ju_gdef = gd; ju_ev = ev }
+
+let rnorm ju =
+  let g,s = norm_game ju.ju_gdef in
+  [{ ju_gdef = g;
+    ju_ev = norm_subst_ggen s ju.ju_ev }]
 
 let map_ju_exp f ju =
   { ju_gdef = map_gdef_exp f ju.ju_gdef; ju_ev = f ju.ju_ev }

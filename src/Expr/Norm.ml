@@ -76,7 +76,6 @@ let rec mk_simpl_op op l =
     let p2 = destr_gtexp e2 in
     let p = norm_field_expr (mk_FPlus [p1; p2]) in
     mk_gtexp p
- 
   | Eq, [e1;e2] -> 
     if e_equal e1 e2 then mk_True else mk_Eq e1 e2
   | Ifte, [e1;e2;e3] ->
