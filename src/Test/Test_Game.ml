@@ -8,7 +8,8 @@ module F = Format
 let duni_Fq = (mk_Fq, [])
 let duni_Bool = (mk_Bool, [])
 
-let mk_bb1 () =
+let main =
+  catch_TypeError (fun () ->
   let c = (Vsym.mk "c" mk_Fq) in
   let d = (Vsym.mk "d" mk_Fq) in
   let e = (Vsym.mk "e" mk_Fq) in
@@ -64,11 +65,15 @@ let mk_bb1 () =
            , [o1]);
     ]
   in
-  mk_ju g (mk_Eq vb vb')
+  let ps =  [mk_ju g (mk_Eq vb vb')] in
+  let vstar = Vsym.mk "*" mk_Fq in
+  let star = mk_V vstar in
+  F.printf "%a" pp_ps ps;
+  let ps = apply rnorm ps in
+  F.printf "%a" pp_ps ps;
+  let ps = apply (random 4 (vstar, star -: (vd *: vi'))
+                           (vstar, star +: (vd *: vi'))) ps in
+  F.printf "%a" pp_ps ps;
+  let ps = apply rnorm ps in
+  F.printf "%a" pp_ps ps)
 
-let main =
-  catch_TypeError (fun () -> 
-    let ps0 = [mk_bb1 ()] in
-    F.printf "%a" pp_ps ps0;
-    let ps1 = apply rnorm ps0 in
-    F.printf "%a" pp_ps ps1)
