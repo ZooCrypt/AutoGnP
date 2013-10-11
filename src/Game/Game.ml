@@ -3,6 +3,7 @@
 open Type
 open Util
 open Expr
+open Norm
 
 module F = Format
 
@@ -168,6 +169,8 @@ type context = (Vsym.t * expr)
 
 let inst_ctxt (v, e') e = e_replace (mk_V v) e e' 
 
+let e_equalmod e e' = e_equal (norm_expr e) (norm_expr e')
+
 (* 'random p c1 c2' takes a position p and two contexts. It first
    ensures that there is a random sampling 'x <-$ d' at position p.
    For now, its not excepted. Otherwise we have to apply c1/c2 to
@@ -177,12 +180,19 @@ let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 let random p c1 c2 ju =
   let z = juz_at p ju in
   match z.juz_foc with
-  | GSamp(v,((t,[]) as d) ) -> 
-    let freshv = Vsym.mk "xxx" (* FIXME *) t in
-    let juz = { z with
+  | GSamp(vs,((t,[]) as d) ) ->
+    let v = mk_V vs in
+    if e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
+       e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v
+    then (
+      let freshv = Vsym.mk (Id.name vs.Vsym.id) t in
+      let z = { z with
                 juz_foc   = GSamp(freshv,d);
-                juz_right = GLet(v, inst_ctxt c1 (mk_V freshv))::z.juz_right }
-    in [ ju_of_juz z ]
+                juz_right = GLet(vs, inst_ctxt c1 (mk_V freshv))::z.juz_right }
+      in [ ju_of_juz z ]
+    ) else (
+      failwith "random: contexts not bijective"
+    )
   | _ -> failwith "random: position given is not a sampling"
 
 (* ----------------------------------------------------------------------- *)
