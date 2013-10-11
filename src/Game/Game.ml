@@ -94,7 +94,7 @@ let pp_ps fmt ps =
   let ju_idxs =
     let i = ref 0 in List.map (fun ps -> incr i; (!i, ps)) ps
   in
-  let pp_ju_idx fmt (i,ju) = F.fprintf fmt "@[%i.@[ %a @]" i pp_ju ju in
+  let pp_ju_idx fmt (i,ju) = F.fprintf fmt "@[%i.@[ %a @]@]" i pp_ju ju in
   F.fprintf fmt "%a\n--------------------\n\n"
     (pp_list "\n\n" pp_ju_idx) ju_idxs
 
@@ -151,7 +151,6 @@ let iter_ju_exp f ju =
 (* ----------------------------------------------------------------------- *)
 (** {3 Helper functions for rules } *)
 
-
 (** smart constructors *)
 
 (* smart constructor for judgments *)
@@ -159,114 +158,38 @@ let mk_ju gd ev =
   (* FIXME: check that fvars(ev) \subseteq bindings(gd) *)
   { ju_gdef = gd; ju_ev = ev }
 
-(** zippers *)
+type gcmd_pos = int
 
-type ju_zipper =
-  { juz_pos : int;
-    juz_left : gcmd list;
-    juz_foc : gcmd;
-    juz_right : gcmd list;
-    juz_ev : ev }
+type odef_pos = (int * int)
 
-let mk_juz ju = match ju.ju_gdef with
-  | []    -> failwith "Cannot create zipper for empty game definition"
-  | c::cs -> { juz_pos = 0;
-               juz_left = [];
-               juz_foc = c;
-               juz_right = cs;
-               juz_ev = ju.ju_ev }
+type ocmd_pos = (int * int * int)
 
-let ju_of_juz z =
-  {ju_gdef = List.rev z.juz_left@[z.juz_foc]@z.juz_right; ju_ev = z.juz_ev }
+let get_ju_gcmd ju p = List.nth ju.ju_gdef p
 
-let juz_right z = match z.juz_right with
-  | []    -> failwith "Cannot move right, focused on last command"
-  | c::cs -> {z with juz_pos = z.juz_pos +1;
-                     juz_left = z.juz_foc::z.juz_left;
-                     juz_foc = c;
-                     juz_right = cs }
+let set_ju_gcmd ju p cmds =
+  assert (p >= 0 && p < List.length ju.ju_gdef);
+  { ju with ju_gdef = take p  ju.ju_gdef @ cmds @ drop (p+1)  ju.ju_gdef }
 
-(* let juz_left (p, left, foc, right, ev) = match left with
-  | []    -> failwith "Cannot move left, focused on first command"
-  | c::cs -> (p+1, cs, c, foc::right, ev)
- *)
-let juz_at i0 ju0 =
-  assert (i0 >= 0);
-  let juz0 = mk_juz ju0 in
-  let rec go i juz = if i = 0 then juz else go (i-1) (juz_right juz) in
-  go i0 juz0
+let get_ju_gcmd_ctxt ju p =
+  (take (p-1) ju.ju_gdef, List.nth ju.ju_gdef p, drop (p+1)  ju.ju_gdef)
 
-let norm_subst_ggen s e = Norm.abbrev_ggen (Norm.norm_subst s e)
+let get_ju_lcmd ju (i,j,k) = match get_ju_gcmd ju i with
+  | GCall(_,e,os) ->
+      let (_o,_vs,ms,_e) = List.nth os j in
+      List.nth ms k
+  | _ -> assert false
 
-let norm_distr s (ty,es) = 
-  (ty, List.map (norm_subst_ggen s) es)
-
-let norm_odef s (o,vs,lc,e) =
-  let rec aux s rc lc = 
-    match lc with
-    | [] -> (o,vs,List.rev rc, norm_subst_ggen s e)
-    | LLet (v, e) :: lc' ->
-      let e = Norm.norm_subst s e in
-      let v = mk_V v in
-      let s = Me.add v e s in
-      aux s rc lc' 
-    | (LBind _ as i)::lc' -> aux s (i::rc) lc'
-    | LSamp(v,d)::lc' ->
-      aux s (LSamp(v,norm_distr s d)::rc) lc'
-    | LGuard e::lc' ->
-      aux s (LGuard (norm_subst_ggen s e) :: rc) lc' in
-  aux s [] lc
-    
-let norm_gdef g =
-  let rec aux s rc lc = 
-    match lc with
-  | [] -> List.rev rc, s
-  | GLet(v,e) :: lc' ->
-    let e = Norm.norm_subst s e in
-    let v = mk_V v in
-    let s = Me.add v e s in
-    aux s rc lc'
-  | GSamp(v, d) :: lc' ->
-    aux s (GSamp(v,norm_distr s d) :: rc) lc'
-  | GCall(vs, e, odefs) :: lc'->
-    let e = Norm.abbrev_ggen (Norm.norm_subst s e) in
-    let odefs = List.map (norm_odef s) odefs in
-    aux s (GCall(vs, e, odefs)::rc) lc' in
-  aux Me.empty [] g
-
-let norm_ju ju =
-  let g,s = norm_gdef ju.ju_gdef in
-  { ju_gdef = g;
-    ju_ev = norm_subst_ggen s ju.ju_ev }
-
-let rnorm ju = [ norm_ju ju ]
-
-(* 'random p c1 c2' takes a position p and two contexts. It first
-   ensures that there is a random sampling 'x <-$ d' at position p.
-   For now, its not excepted. Otherwise we have to apply c1/c2 to
-   the excepted values.
-   Then it checks that under the inequalities that hold at position p,
-   forall x in supp(d), c2(c1(x)) = x.  *)
-let random p c1 c2 ju =
-  let z = juz_at p ju in
-  match z.juz_foc with
-  | GSamp(vs,((t,[]) as d) ) ->
-    let v = mk_V vs in
-    if Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
-       Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v
-    then (
-      let freshv = Vsym.mk (Id.name vs.Vsym.id) t in
-      let z = { z with
-                juz_foc   = GSamp(freshv,d);
-                juz_right = GLet(vs, inst_ctxt c1 (mk_V freshv))::z.juz_right }
-      in [ ju_of_juz z ]
-    ) else (
-      failwith "random: contexts not bijective"
-    )
-  | _ -> failwith "random: position given is not a sampling"
+let set_ju_lcmd ju (i,j,k) cmds = match get_ju_gcmd ju i with
+  | GCall(vs,e,os) ->
+      let (o,vs,ms,e) = List.nth os j in
+      let odef' = (o,vs,take k ms @ cmds @ drop (k+1) ms,e) in
+      set_ju_gcmd ju i [GCall (vs,e,take j os @ [ odef' ] @ drop (j+1) os)]
+  | _ -> assert false
 
 (* ----------------------------------------------------------------------- *)
 (** {3 Rules and tactic language} *)
+
+(** goal handling *)
 
 let apply rule goals = match goals with
   | g::gs -> rule g @ gs
@@ -276,4 +199,95 @@ let delay goals = match goals with
   | g::gs -> gs@[g]
   | []    -> []
 
+(** random rule *)
 
+let ensure_bijection c1 c2 v =
+  if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
+          Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
+  then failwith "random: contexts not bijective"
+
+(* 'random p c1 c2' takes a position p and two contexts. It first
+   ensures that there is a random sampling 'x <-$ d' at position p.
+   For now, its not excepted. Otherwise we have to apply c1/c2 to
+   the excepted values.
+   Then it checks that under the inequalities that hold at position p,
+   forall x in supp(d), c2(c1(x)) = x.  *)
+let rrandom p c1 c2 ju =
+  match get_ju_gcmd_ctxt ju p with
+  | (_left, GSamp(vs,((t,[]) as d)), _right) ->
+    let v = mk_V vs in
+    ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
+    let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
+    let cmds = [ GSamp(vs',d);
+                 GLet(vs, inst_ctxt c1 (mk_V vs')) ]
+    in
+    [ set_ju_gcmd ju p cmds ]
+  | _ -> failwith "random: position given is not a sampling"
+
+(* FIXME: buggy *)
+let rrandom_oracle p c1 c2 ju =
+  match get_ju_lcmd ju p with
+  | LSamp(vs,((t,[]) as d) ) ->
+    let v = mk_V vs in
+    ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
+    let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
+    let cmds = [ LSamp(vs',d);
+                 LLet(vs, inst_ctxt c1 (mk_V vs')) ]
+    in
+    [ set_ju_lcmd ju p cmds ]
+  | _ -> failwith "random: position given is not a sampling"
+
+(** Norm rule: conv and let-unfold for all included expressions and terms *)
+
+let norm_expr_def e = Norm.abbrev_ggen (Norm.norm_expr e)
+
+let norm_distr ?norm:(nf=norm_expr_def) s (ty,es) = 
+  (ty, List.map (fun e -> nf (e_subst s e)) es)
+
+let norm_odef ?norm:(nf=norm_expr_def) s (o,vs,lc,e) =
+  let rec aux s rc lc = 
+    match lc with
+    | [] -> (o,vs,List.rev rc, nf (e_subst s e))
+    | LLet (v, e) :: lc' ->
+      let e = nf (e_subst s e) in
+      let v = mk_V v in
+      let s = Me.add v e s in
+      aux s rc lc' 
+    | (LBind _ as i)::lc' -> aux s (i::rc) lc'
+    | LSamp(v,d)::lc' ->
+      aux s (LSamp(v,norm_distr s d)::rc) lc'
+    | LGuard e::lc' ->
+      aux s (LGuard (nf (e_subst s e)) :: rc) lc' in
+  aux s [] lc
+    
+let norm_gdef ?norm:(nf=norm_expr_def) g =
+  let rec aux s rc lc = 
+    match lc with
+    | [] -> List.rev rc, s
+    | GLet(v,e) :: lc' ->
+      let e = nf (e_subst s e) in
+      let v = mk_V v in
+      let s = Me.add v e s in
+      aux s rc lc'
+    | GSamp(v, d) :: lc' ->
+      aux s (GSamp(v,norm_distr s d) :: rc) lc'
+    | GCall(vs, e, odefs) :: lc'->
+      let e = nf (e_subst s e) in
+      let odefs = List.map (norm_odef s) odefs in
+      aux s (GCall(vs, e, odefs)::rc) lc'
+  in
+  aux Me.empty [] g
+
+let norm_ju ?norm:(nf=norm_expr_def) ju =
+  let g,s = norm_gdef ju.ju_gdef in
+  { ju_gdef = g;
+    ju_ev = nf (e_subst s ju.ju_ev) }
+
+(* unfold all lets and norm *)
+let rnorm ju = [ norm_ju ju ]
+
+(* norm without unfolding *)
+let rnorm_nounfold ju = [ map_ju_exp norm_expr_def ju ]
+
+(* norm without unfolding *)
+let runfold_only ju = [ norm_ju ~norm:(fun x -> x) ju ]
