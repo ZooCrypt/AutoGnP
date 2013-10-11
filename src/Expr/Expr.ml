@@ -607,20 +607,20 @@ let e_replace e1 e2 =
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
 
-type context = (Vsym.t * expr)
+type ctxt = (Vsym.t * expr)
 
 let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 
-let typeError_to_string (ty1,ty2,e1,me2,_s) =
+let typeError_to_string (ty1,ty2,e1,me2,s) =
   match me2 with
   | Some e2 -> 
       format_to_string (fun fmt ->
-        F.fprintf fmt "incompatible types `%a' vs. `%a' for expressions `%a' and `%a'"
-          pp_ty ty1 pp_ty ty2 pp_exp e1 pp_exp e2)
+        F.fprintf fmt "incompatible types `%a' vs. `%a' for expressions `%a' and `%a' in %s"
+          pp_ty ty1 pp_ty ty2 pp_exp e1 pp_exp e2 s)
   | None ->
       format_to_string (fun fmt ->
-        F.fprintf fmt "expected type `%a', got  `%a' for Expression `%a'"
-          pp_ty ty1 pp_ty ty2 pp_exp e1)
+        F.fprintf fmt "expected type `%a', got  `%a' for Expression `%a' in %s"
+          pp_ty ty1 pp_ty ty2 pp_exp e1 s)
 
 let catch_TypeError f =
   try f()
