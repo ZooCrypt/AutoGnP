@@ -54,7 +54,7 @@ let mk_bb1 () =
     GSamp(b,duni_Bool);
     GCall([m0;m1],
            tuple [g ^: vc; g ^: vd; g ^: vh],[o1]);
-    GLet([mb],ifte vb vm0 vm1);
+    GLet(mb,ifte vb vm0 vm1);
     GCall( [b']
          , tuple
              [ vmb 
@@ -71,5 +71,10 @@ let main =
     catch_TypeError (fun () -> mk_bb1 ()) in
   F.printf "G1 =\n%a\n\n" pp_gdef bb1;
   let bb1' = map_gdef_exp norm_expr bb1 in
-  F.printf "G2 =%a\n\n" pp_gdef bb1')
+  F.printf "G1' =%a\n\n" pp_gdef bb1';
+  let bb1'' = map_gdef_exp norm_ggen bb1' in
+  F.printf "G1'' =%a\n\n" pp_gdef bb1'';
+  let bb2 = norm_game bb1 in
+  F.printf "G2 =%a\n\n" pp_gdef bb2
+)
 

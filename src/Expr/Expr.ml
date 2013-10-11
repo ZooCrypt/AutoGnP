@@ -199,6 +199,9 @@ let is_Nary o e = match e.e_node with Nary(o',_) -> o' = o | _ -> false
 
 let is_ElemH e = match e.e_node with ElemH _ -> true | _ -> false
 
+let is_GLog e = is_App GLog e
+let is_GTLog e = is_App GTLog e
+
 (* ----------------------------------------------------------------------- *)
 (** {3 Destructor functions} *)
 

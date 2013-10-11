@@ -7,12 +7,18 @@ let mk_gexp p = mk_GExp mk_GGen p
 let mk_gtexp p = mk_GTExp mk_GTGen p
 
 let destr_gexp g = 
-  let (g1,p) = destr_GExp g in
+  let (g1,p) = try destr_GExp g with _ -> 
+    Format.printf "destr_gexp %a@." pp_exp g;
+    assert false
+  in
   assert (e_equal g1 mk_GGen);
   p
 
 let destr_gtexp g = 
-  let (g1,p) = destr_GTExp g in
+  let (g1,p) = try destr_GTExp g with _ ->
+    Format.printf "destr_gexp %a@." pp_exp g;
+    assert false
+  in
   assert (e_equal g1 mk_GTGen);
   p
 
@@ -77,7 +83,7 @@ let rec mk_simpl_op op l =
     if is_True e1 then e2 
     else if is_False e1 then e3 
     else if e_equal e2 e3 then e2
-    else mk_Ifte e1 e2 e3
+    else norm_ggt (mk_Ifte e1 e2 e3)
   | Not, [e] ->
     if is_True e then mk_False
     else if is_False e then mk_True
@@ -150,12 +156,39 @@ and norm_field_expr e =
     | App (FOpp,[_]) | App (FInv,[_])
     | App (FMinus,[_;_]) | App (FDiv,[_;_])
     | Nary (FPlus, _) | Nary (FMult, _)  -> e
-    | App(GLog, [e]) -> destr_gexp (norm_expr e)
-    | App(GTLog, [e]) -> destr_gtexp (norm_expr e)
+    | App(GLog, [e]) -> 
+      let e = norm_expr e in
+      (try destr_gexp e with _ -> assert false)
+    | App(GTLog, [e]) -> 
+      let e = norm_expr e in
+      (try destr_gtexp e with _ -> assert false)
     | _ -> norm_expr e in
   S.norm before e 
 
+let norm_subst s e = 
+  let e = e_subst s e in
+  norm_expr e
+
+let rec norm_ggen e = 
+  match e.e_node with
+  | App(GExp,[a;b]) ->
+    if e_equal a mk_GGen then
+      if e_equal b mk_FOne then mk_GGen
+      else if is_GLog b then destr_GLog b
+      else e_sub_map norm_ggen e
+    else e_sub_map norm_ggen e
+  | App(GTExp,[a;b]) ->
+    if e_equal a mk_GTGen then
+      if e_equal b mk_FOne then mk_GTGen
+      else if is_GTLog b then destr_GTLog b
+      else e_sub_map norm_ggen e
+    else e_sub_map norm_ggen e
+  | _ -> e_sub_map norm_ggen e
+
+
+
   
+
 
 
 
