@@ -10,7 +10,7 @@ cur-dir := $(shell pwd)
 opam-root := $(shell opam config var root)
 
 
-all: Test_Game
+all: Test_Proof_BB1
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
@@ -42,9 +42,6 @@ clean:
 ##########################################################################
 # Used for development and testing
 
-start-server : web
-	./scripts/start-server.sh
-
 Test_Type : 
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte
 
@@ -54,8 +51,8 @@ Test_Expr :
 Test_Singular : 
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Singular.d.byte && ./Test_Singular.d.byte
 
-Test_Game : 
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Game.d.byte && ./Test_Game.d.byte
+Test_Proof_BB1 : 
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proof_BB1.d.byte && ./Test_Proof_BB1.d.byte
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@

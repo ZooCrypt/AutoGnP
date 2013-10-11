@@ -1,3 +1,4 @@
+(* Internal module for Singular interface *)
 open Expr
 open Util
 

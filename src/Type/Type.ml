@@ -1,5 +1,4 @@
 open Util
-open IdType
 
 module Lenvar : IdType.ID = Id
 
@@ -15,8 +14,8 @@ and 'a gty_node =
   | Fq
   | Prod of ('a gty  list)
 
-type ty = internal gty
-type ety = exported gty
+type ty = IdType.internal gty
+type ety = IdType.exported gty
 
 let ty_equal : ty -> ty -> bool = (==)
 

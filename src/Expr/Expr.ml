@@ -321,7 +321,7 @@ module EexprBuild : GexprBuild with type t = exported = struct
   type t = exported
   let mk = mk_ee
   let ty_equal = (=)
-  let mk_ty =  mk_ety
+  let mk_ty = mk_ety
 end
 
 module type S =
@@ -606,6 +606,10 @@ let e_replace e1 e2 =
   e_map_top (fun e -> if e_equal e e1 then e2 else raise Not_found)
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
+
+type context = (Vsym.t * expr)
+
+let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 
 let typeError_to_string (ty1,ty2,e1,me2,_s) =
   match me2 with

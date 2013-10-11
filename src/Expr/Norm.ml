@@ -1,5 +1,6 @@
 open Type
 open Expr
+
 module S = Singular
 
 let mk_gexp p = mk_GExp mk_GGen p
@@ -164,29 +165,28 @@ and norm_field_expr e =
     | _ -> norm_expr e in
   S.norm before e 
 
-let norm_subst s e = 
+let norm_subst s e =
   let e = e_subst s e in
   norm_expr e
 
-let rec norm_ggen e = 
+let rec abbrev_ggen e = 
   match e.e_node with
   | App(GExp,[a;b]) ->
     if e_equal a mk_GGen then
       if e_equal b mk_FOne then mk_GGen
       else if is_GLog b then destr_GLog b
-      else e_sub_map norm_ggen e
-    else e_sub_map norm_ggen e
+      else e_sub_map abbrev_ggen e
+    else e_sub_map abbrev_ggen e
   | App(GTExp,[a;b]) ->
     if e_equal a mk_GTGen then
       if e_equal b mk_FOne then mk_GTGen
       else if is_GTLog b then destr_GTLog b
-      else e_sub_map norm_ggen e
-    else e_sub_map norm_ggen e
-  | _ -> e_sub_map norm_ggen e
+      else e_sub_map abbrev_ggen e
+    else e_sub_map abbrev_ggen e
+  | _ -> e_sub_map abbrev_ggen e
 
-
-
-  
+(* use norm_expr to check equality modulo equational theory *)
+let e_equalmod e e' = e_equal (norm_expr e) (norm_expr e')
 
 
 
