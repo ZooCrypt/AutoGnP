@@ -108,35 +108,47 @@ let parse_poly s =
 
 let singular_command = F.sprintf "Singular -q -t"
 
-let call_singular cmd =
+let singular_chans = ref None
+
+let call_singular cmd linenum =
   (* F.printf "singular command: `%s'\n\n" singular_command; *)
-  let (c_in, c_out) = Unix.open_process singular_command in
+  let (c_in, c_out) =
+    match !singular_chans with
+    | None ->
+        let cs = Unix.open_process singular_command in
+        output_string (snd cs) "LIB \"poly.lib\"; ring R = (0,x0),(a),dp;";
+        singular_chans := Some cs;
+        cs
+    | Some cs -> cs
+  in
   output_string c_out cmd;
   (* F.printf "singular input: `%s' has been sent\n\n" cmd; *)
   flush_all ();
-  let rec loop o =
-    try
-      let l = input_line c_in in
-      (* F.printf "singular output: `%s'\n" l; *)
-      loop (o @ [l])
-    with End_of_file ->
-      ignore (Unix.close_process (c_in,c_out));
-      o
-  in loop []
+  let rec loop o linenum =
+    if linenum = 0 then o
+    else (
+      try
+        let l = input_line c_in in
+        (* F.printf "singular output: `%s'\n" l; *)
+        loop (o @ [l]) (linenum - 1)
+      with End_of_file ->
+        ignore (Unix.close_process (c_in,c_out)); (* FIXME: close on exit *)
+        o)
+  in loop [] linenum
 
 let norm before e =
   let (se,c,hv) = abstract_non_field before e in
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
-  let cmd = F.sprintf "LIB \"poly.lib\";ring R = (0,%s),(a),dp;\n\
-                       number f = %s;\nnumerator(f);denominator(f);quit;\n"
+  let cmd = F.sprintf "ring R = (0,%s),(a),dp;\n\
+                       number f = %s;\nnumerator(f);denominator(f);\n"
                       var_string
                       (string_of_fexp se)
   in
 
   let import s = term_of_poly hv (parse_poly s) in
-  match call_singular cmd with
-  | [ snum; sdenom ] ->
+  match call_singular cmd 3 with
+  | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
       let num   = import snum  in
       let denom = import sdenom in
       (* F.printf "num: %a\ndenom: %a\n" pp_exp num pp_exp denom; *)
