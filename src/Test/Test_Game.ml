@@ -3,6 +3,7 @@ open ExprSyntax
 open Expr
 open Game
 open Norm
+open Util
 
 module F = Format
 
@@ -45,36 +46,31 @@ let mk_bb1 () =
      tuple [ g ^: ((vc *: vd) +: (vr *: ((vd *: vi) +: vh)));
              g ^: vr]
      )
-  in  
-  [ GCall([i'],mk_Tuple [],[]);
-    GSamp(c,duni_Fq);
-    GSamp(d,duni_Fq);
-    GSamp(e,duni_Fq);
-    GSamp(h,duni_Fq);
-    GSamp(b,duni_Bool);
-    GCall([m0;m1],
-           tuple [g ^: vc; g ^: vd; g ^: vh],[o1]);
-    GLet(mb,ifte vb vm0 vm1);
-    GCall( [b']
-         , tuple
-             [ vmb 
-               &: ((em (g,g)) ^^: (vc *: vd *: ve));
-              g ^: ve;
-              g ^: (ve *: ((vd *: vi') +: vh))]
-         , [o1]);
-
-  ]
+  in
+  let g =
+    [ GCall([i'],mk_Tuple [],[]);
+      GSamp(c,duni_Fq);
+      GSamp(d,duni_Fq);
+      GSamp(e,duni_Fq);
+      GSamp(h,duni_Fq);
+      GSamp(b,duni_Bool);
+      GCall([m0;m1],
+             tuple [g ^: vc; g ^: vd; g ^: vh],[]);
+      GLet(mb,ifte vb vm0 vm1);
+      GCall( [b']
+           , tuple
+               [ vmb 
+                 &: ((em (g,g)) ^^: (vc *: vd *: ve));
+                 g ^: ve;
+                 g ^: (ve *: ((vd *: vi') +: vh))]
+           , [o1]);
+    ]
+  in
+  mk_ju g (mk_Eq vb vb')
 
 let main =
   catch_TypeError (fun () -> 
-  let bb1 =
-    catch_TypeError (fun () -> mk_bb1 ()) in
-  F.printf "G1 =\n%a\n\n" pp_gdef bb1;
-  let bb1' = map_gdef_exp norm_expr bb1 in
-  F.printf "G1' =%a\n\n" pp_gdef bb1';
-  let bb1'' = map_gdef_exp norm_ggen bb1' in
-  F.printf "G1'' =%a\n\n" pp_gdef bb1'';
-  let bb2 = norm_game bb1 in
-  F.printf "G2 =%a\n\n" pp_gdef bb2
-)
-
+    let ps0 = [mk_bb1 ()] in
+    F.printf "%a" pp_ps ps0;
+    let ps1 = apply rnorm ps0 in
+    F.printf "%a" pp_ps ps1)
