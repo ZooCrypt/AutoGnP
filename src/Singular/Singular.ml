@@ -38,14 +38,16 @@ let abstract_non_field before e0 =
   let rec go e = 
     let e = before e in
     match e.e_node with
-    | Cnst FOne              -> SOne
-    | Cnst FZ                -> SZ
-    | App (FOpp,[a])         -> SOpp(go a)
-    | App (FInv,[a])         -> SInv(go a)
-    | App (FMinus,[a;b])     -> SPlus(go a, SOpp (go b))
-    | App (FDiv,[a;b])       -> SMult(go a, SInv (go b))
-    | Nary (FPlus, a::es)       -> List.fold_left (fun acc e -> SPlus(acc, go e)) (go a) es
-    | Nary (FMult, a::es)       -> List.fold_left (fun acc e -> SMult(acc, go e)) (go a) es
+    | Cnst FOne           -> SOne
+    | Cnst FZ             -> SZ
+    | App (FOpp,[a])      -> SOpp(go a)
+    | App (FInv,[a])      -> SInv(go a)
+    | App (FMinus,[a;b])  -> SPlus(go a, SOpp (go b))
+    | App (FDiv,[a;b])    -> SMult(go a, SInv (go b))
+    | Nary (FPlus, a::es) -> 
+      List.fold_left (fun acc e -> SPlus(acc, go e)) (go a) es
+    | Nary (FMult, a::es) -> 
+      List.fold_left (fun acc e -> SMult(acc, go e)) (go a) es
     | _ -> V (lookup e)
   in
   let se = go e0 in
@@ -85,17 +87,17 @@ let parse_poly s =
     | INT i::rest                 -> psep  rest poly (coeff*i) []
     | (VAR i)::POW::(INT j)::rest -> psep  rest poly coeff (mon@[(i,j)])
     | (VAR i)::rest               -> psep  rest poly coeff (mon@[(i,1)])
-    | MINUS::rest                 -> pterm rest poly (coeff * (0)) mon
+    | MINUS::rest                 -> pterm rest poly (coeff * (-1)) mon
     | _                           ->
       failwith ("Singular.parse_poly: pmonom expected var or var^int, got "
                 ^ string_of_tokens toks)
   and psep toks poly coeff mon = match toks with
-    | TIMES::rest                        -> pterm rest poly coeff mon
-    | PLUS::rest                         -> pterm rest (poly@[(coeff,mon)]) (-1) []
-    | MINUS::rest                        -> pterm rest (poly@[(coeff,mon)]) (-1) []
-    | CLOSE::[]                          -> poly@[(coeff,mon)]
-    | []                                 -> poly@[(coeff,mon)]
-    | _                                  ->
+    | TIMES::rest -> pterm rest poly coeff mon
+    | PLUS::rest  -> pterm rest (poly@[(coeff,mon)]) 1    []
+    | MINUS::rest -> pterm rest (poly@[(coeff,mon)]) (-1) []
+    | CLOSE::[]   -> poly@[(coeff,mon)]
+    | []          -> poly@[(coeff,mon)]
+    | _           ->
       failwith ("Singular.parse_poly: psep expected *, +, or ), got "
                 ^ string_of_tokens toks)
   in pterm (lex_to_list SingLexer.lex s) [] 1 []
@@ -125,7 +127,7 @@ let call_singular cmd =
 let norm before e =
   let (se,c,hv) = abstract_non_field before e in
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
-  let var_string = String.concat "," vars in
+  let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
   let cmd = F.sprintf "LIB \"poly.lib\";ring R = (0,%s),(a),dp;\n\
                        number f = %s;\nnumerator(f);denominator(f);quit;\n"
                       var_string

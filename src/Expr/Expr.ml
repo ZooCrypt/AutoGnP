@@ -38,6 +38,7 @@ type op =
   | FInv   (* mult. inverse in Fq *)
   | FDiv   (* division in Fq *)
   | Eq     (* equality *)
+  | Not    (* negation *)
   | Ifte   (* if then else *)
 
 let op_hash = function
@@ -53,6 +54,7 @@ let op_hash = function
   | FInv   -> 10
   | FDiv   -> 11
   | Eq     -> 12
+  | Not    -> 14
   | Ifte   -> 13
 
 (* associative operators with variable arity *)
@@ -176,9 +178,9 @@ let is_some_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
 
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
-let is_true e = is_Cnst (B true) e
+let is_True e = is_Cnst (B true) e
 
-let is_false e = is_Cnst (B false) e
+let is_False e = is_Cnst (B false) e
 
 let is_GGen e = is_Cnst GGen e
 
@@ -236,6 +238,8 @@ let destr_FDiv e = match e.e_node with App(FDiv,[a;b]) -> (a,b) | _ -> raise (De
 
 let destr_Eq e = match e.e_node with App(Eq,[a;b]) -> (a,b) | _ -> raise (Destr_failure "Eq")
 
+let destr_Not e = match e.e_node with App(Not,[a]) -> a | _ -> raise (Destr_failure "FDiv")
+
 let destr_Ifte e = match e.e_node with App(Eq,[a;b;c]) -> (a,b,c) | _ -> raise (Destr_failure "Ifte")
 
 let destr_FPlus e = match e.e_node with Nary(FPlus,e::es) -> e::es | _ -> raise (Destr_failure "FPlus")
@@ -257,12 +261,6 @@ let pp_cnst fmt c ty =
   | FOne -> F.fprintf fmt "1"
   | B b  -> F.fprintf fmt "%b" b
 
-let pp_nop : (naryop -> string) = function
-    FPlus  -> " + "
-  | FMult  -> " * "
-  | Xor    -> " (+) "
-  | Land   -> " /\\ "
-
 let rec pp_exp fmt e =
   match e.e_node with
   | V(v)       -> Vsym.pp fmt v
@@ -271,7 +269,7 @@ let rec pp_exp fmt e =
   | Proj(i,e)  -> F.fprintf fmt "pi_%i(%a)" i pp_exp e
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op fmt o es
-  | Nary(o,es) -> F.fprintf fmt "(%a)" (pp_list (pp_nop o) pp_exp) es (* FIXME: handle prios *)
+  | Nary(o,es) -> F.fprintf fmt "(%a)"  pp_nop (o,es)
   | ElemH(e,h) -> F.fprintf fmt "%a in L_%a" pp_exp e Hsym.pp h
 and pp_op fmt o es = 
   match o, es with
@@ -288,7 +286,13 @@ and pp_op fmt o es =
   | FDiv, [a;b]   -> F.fprintf fmt "%a / %a" pp_exp a pp_exp b
   | Eq, [a;b]     -> F.fprintf fmt "%a = %a" pp_exp a pp_exp b
   | Ifte, [a;b;c] -> F.fprintf fmt "%a ? %a : %a" pp_exp a pp_exp b pp_exp c
+  | Not, [a]      -> F.fprintf fmt "not (%a)" pp_exp a
   | _             -> failwith "pp_op: invalid expression"
+and pp_nop fmt (o,es) = match o with
+    FPlus  -> pp_list " + " pp_exp fmt es
+  | FMult  -> pp_list " * " pp_exp fmt es
+  | Xor    -> pp_list " (+) " pp_exp fmt es
+  | Land   -> pp_list " /\\ " pp_exp fmt es
 
 (* ----------------------------------------------------------------------- *)
 (** {5 Constructor functions} *)
@@ -349,6 +353,7 @@ sig
   val mk_FInv : t gexpr -> t gexpr
   val mk_FDiv : t gexpr -> t gexpr -> t gexpr
   val mk_Eq : t gexpr -> t gexpr -> t gexpr
+  val mk_Not : t gexpr -> t gexpr  
   val mk_Ifte : t gexpr -> t gexpr -> t gexpr -> t gexpr
 
   val mk_FPlus : (t gexpr) list -> t gexpr
@@ -429,12 +434,12 @@ struct
 
   let mk_GTExp a b =
     ensure_ty_equal a.e_ty ty_GT a None "mk_GTExp";
-    ensure_ty_equal b.e_ty ty_GT b None "mk_GTExp";
+    ensure_ty_equal b.e_ty ty_Fq b None "mk_GTExp";
     mk_App GTExp [a;b] ty_GT
 
   let mk_GTLog a =
     ensure_ty_equal a.e_ty ty_GT a None "mk_GTLog";
-    mk_App GTLog [a] ty_GT
+    mk_App GTLog [a] ty_Fq
 
   let mk_FOpp a =
     ensure_ty_equal a.e_ty ty_Fq a None "mk_FOpp";
@@ -458,10 +463,14 @@ struct
     ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Eq";
     mk_App Eq [a;b] ty_Bool
 
+  let mk_Not a =
+    ensure_ty_equal a.e_ty ty_Bool a None "mk_Not";
+    mk_App Not [a] ty_Bool
+
   let mk_Ifte a b c =
     ensure_ty_equal a.e_ty ty_Bool a None "mk_Ifte";
-    ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Ifte";
-    mk_App Eq [a;b;c] a.e_ty
+    ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
+    mk_App Ifte [a;b;c] b.e_ty
 
   let mk_nary s o es ty =
     match es with
@@ -594,3 +603,20 @@ let e_replace e1 e2 =
   e_map_top (fun e -> if e_equal e e1 then e2 else raise Not_found)
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
+
+let typeError_to_string (ty1,ty2,e1,me2,_s) =
+  match me2 with
+  | Some e2 -> 
+      format_to_string (fun fmt ->
+        F.fprintf fmt "incompatible types `%a' vs. `%a' for expressions `%a' and `%a'"
+          pp_ty ty1 pp_ty ty2 pp_exp e1 pp_exp e2)
+  | None ->
+      format_to_string (fun fmt ->
+        F.fprintf fmt "expected type `%a', got  `%a' for Expression `%a'"
+          pp_ty ty1 pp_ty ty2 pp_exp e1)
+
+let catch_TypeError f =
+  try f()
+  with Constructors.TypeError(ty1,ty2,e1,me2,s) ->
+    print_string (typeError_to_string (ty1,ty2,e1,me2,s));
+    raise (Constructors.TypeError(ty1,ty2,e1,me2,s))
