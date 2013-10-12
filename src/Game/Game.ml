@@ -253,9 +253,13 @@ let norm_odef ?norm:(nf=norm_expr_def) s (o,vs,lc,e) =
       let v = mk_V v in
       let s = Me.add v e s in
       aux s rc lc' 
-    | (LBind _ as i)::lc' -> aux s (i::rc) lc'
+    | (LBind (vs,_) as i)::lc' -> 
+      let s = List.fold_left (fun s v -> Me.remove (mk_V v) s) s vs in
+      aux s (i::rc) lc'
     | LSamp(v,d)::lc' ->
-      aux s (LSamp(v,norm_distr s d)::rc) lc'
+      let d = norm_distr ~norm:nf s d in
+      let s = Me.remove (mk_V v) s in
+      aux s (LSamp(v,d)::rc) lc'
     | LGuard e::lc' ->
       aux s (LGuard (nf (e_subst s e)) :: rc) lc' in
   aux s [] lc
@@ -270,16 +274,19 @@ let norm_gdef ?norm:(nf=norm_expr_def) g =
       let s = Me.add v e s in
       aux s rc lc'
     | GSamp(v, d) :: lc' ->
-      aux s (GSamp(v,norm_distr s d) :: rc) lc'
+      let d = norm_distr ~norm:nf s d in
+      let s = Me.remove (mk_V v) s in
+      aux s (GSamp(v,d) :: rc) lc'
     | GCall(vs, e, odefs) :: lc'->
       let e = nf (e_subst s e) in
-      let odefs = List.map (norm_odef s) odefs in
+      let odefs = List.map (norm_odef ~norm:nf s) odefs in
+      let s = List.fold_left (fun s v -> Me.remove (mk_V v) s) s vs in
       aux s (GCall(vs, e, odefs)::rc) lc'
   in
   aux Me.empty [] g
 
 let norm_ju ?norm:(nf=norm_expr_def) ju =
-  let g,s = norm_gdef ju.ju_gdef in
+  let g,s = norm_gdef ~norm:nf ju.ju_gdef in
   { ju_gdef = g;
     ju_ev = nf (e_subst s ju.ju_ev) }
 
