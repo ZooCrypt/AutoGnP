@@ -181,8 +181,8 @@ let get_ju_lcmd ju (i,j,k) = match get_ju_gcmd ju i with
 
 let set_ju_lcmd ju (i,j,k) cmds = match get_ju_gcmd ju i with
   | GCall(vs,e,os) ->
-      let (o,vs,ms,e) = List.nth os j in
-      let odef' = (o,vs,take k ms @ cmds @ drop (k+1) ms,e) in
+      let (o,ovs,ms,oe) = List.nth os j in
+      let odef' = (o,ovs,take k ms @ cmds @ drop (k+1) ms,oe) in
       set_ju_gcmd ju i [GCall (vs,e,take j os @ [ odef' ] @ drop (j+1) os)]
   | _ -> assert false
 
@@ -211,7 +211,7 @@ let ensure_bijection c1 c2 v =
    For now, its not excepted. Otherwise we have to apply c1/c2 to
    the excepted values.
    Then it checks that under the inequalities that hold at position p,
-   forall x in supp(d), c2(c1(x)) = x.  *)
+   forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x.  *)
 let rrandom p c1 c2 ju =
   match get_ju_gcmd_ctxt ju p with
   | (_left, GSamp(vs,((t,[]) as d)), _right) ->
@@ -224,7 +224,7 @@ let rrandom p c1 c2 ju =
     [ set_ju_gcmd ju p cmds ]
   | _ -> failwith "random: position given is not a sampling"
 
-(* FIXME: buggy *)
+(* random in oracle *)
 let rrandom_oracle p c1 c2 ju =
   match get_ju_lcmd ju p with
   | LSamp(vs,((t,[]) as d) ) ->
