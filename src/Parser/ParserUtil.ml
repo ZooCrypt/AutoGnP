@@ -1,5 +1,16 @@
 (** Types for parsing: Expressions, scheme descriptions, and commands. *)
 
+
+type parse_expr =
+  | V     of string
+  | H     of string * parse_expr
+  | Tuple of parse_expr list
+  | Proj  of int * parse_expr
+  | Cnst  of cnst
+  | App   of op * parse_expr list
+  | Nary  of naryop * parse_expr list
+  | ElemH of parse_expr * string
+
 (** Representation of input types. *)
 type ity = string list
 
