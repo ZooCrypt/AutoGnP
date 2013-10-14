@@ -24,6 +24,7 @@ let (-:) = mk_FMinus
 let (+:) a b = mk_FPlus [a;b]
 let ( *:) a b = mk_FMult [a;b]
 
+let ( **: ) a b = mk_GMult a b
 let ( &:) a b = mk_GTMult a b
 
 let ifte a b c = mk_Ifte a b c
