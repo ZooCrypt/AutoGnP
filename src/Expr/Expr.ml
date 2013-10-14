@@ -673,6 +673,8 @@ let e_find_all f e =
 
 let e_vars = e_find_all is_V
 
+let has_log e = e_exists (fun e -> is_GLog e || is_GTLog e) e
+
 let e_map f = 
   let tbl = He.create 103 in
   let rec aux e = 
@@ -698,6 +700,11 @@ let e_replace e1 e2 =
   e_map_top (fun e -> if e_equal e e1 then e2 else raise Not_found)
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
+
+
+
+
+
 
 type ctxt = Vsym.t * expr
 

@@ -193,6 +193,25 @@ let write_gcmd = function
 
 let write_gcmds c = fold_union write_gcmd c
 
+let has_log_distr (_,es) = List.exists has_log es
+  
+let has_log_lcmd = function
+  | LLet(_,e) | LGuard e -> has_log e
+  | LBind _ -> false
+  | LSamp(_,d) -> has_log_distr d
+
+let has_log_lcmds c = List.exists has_log_lcmd c
+
+let has_log_o (_,_,c,e) = has_log e || has_log_lcmds c
+
+let has_log_gcmd = function
+  | GLet(_,e) -> has_log e
+  | GSamp(_,d) -> has_log_distr d
+  | GCall(_,e,os) ->
+    has_log e || List.exists has_log_o os 
+
+let has_log_gcmds c = List.exists has_log_gcmd c
+
 (* ----------------------------------------------------------------------- *)
 (** {5 Helper functions for rules } *)
 
