@@ -77,7 +77,7 @@ let cut_n i l =
     match  l with
     | _ when i <= 0 -> r, l
     | [] -> assert false 
-    | a::l -> aux (i-1) r l in
+    | a::l -> aux (i-1) (a::r) l in
   aux i [] l
 
 let list_from_to i j = (* [i,j), i.e., excluding j *)
