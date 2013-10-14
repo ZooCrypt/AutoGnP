@@ -7,7 +7,12 @@ open Format
 (** {1 Expressions} *)
 type 'a proj_type = 'a Type.gty * 'a Type.gty * 'a Type.gty
 
-type cnst = GGen | FZ | Z | FOne | B of bool
+type cnst =
+    GGen
+  | FZ
+  | Z
+  | FOne
+  | B of bool
 
 val cnst_hash : cnst -> int
 
@@ -29,7 +34,11 @@ type op =
 
 val op_hash : op -> int
 
-type naryop = FPlus | FMult | Xor | Land
+type naryop =
+    FPlus
+  | FMult
+  | Xor
+  | Land
 
 val naryop_hash : naryop -> int
 

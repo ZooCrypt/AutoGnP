@@ -17,7 +17,7 @@ type lcmd = LLet   of Vsym.t * Expr.expr
               (* LLet(x,e): let (x1,..,xk) = e *)
           | LBind  of Vsym.t list * Hsym.t
               (* LBind([x1;..;xk], h): (x1,..,xk) <- L_h *)
-          | LSamp  of (Vsym.t * distr)
+          | LSamp  of Vsym.t * distr
               (* LSamp(x,d): x <-$ d *)
           | LGuard of Expr.expr
               (* LGuard(t): t *)
@@ -276,7 +276,7 @@ let ensure_bijection c1 c2 v =
    For now, its not excepted. Otherwise we have to apply c1/c2 to
    the excepted values.
    Then it checks that under the inequalities that hold at position p,
-   forall x in supp(d), c2(c1(x)) = x.  *)
+   forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x.  *)
 let rrandom p c1 c2 ju =
   match get_ju_ctxt ju p with
   | GSamp(vs,((t,[]) as d)), ctxt ->
@@ -289,7 +289,7 @@ let rrandom p c1 c2 ju =
     [ set_ju_ctxt cmds ctxt]
   | _ -> failwith "random: position given is not a sampling"
 
-(* FIXME: buggy *)
+(* random in oracle *)
 let rrandom_oracle p c1 c2 ju =
   match get_ju_octxt ju p with
   | LSamp(vs,((t,[]) as d)), ctxt ->

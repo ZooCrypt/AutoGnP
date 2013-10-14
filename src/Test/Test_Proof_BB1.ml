@@ -77,7 +77,7 @@ let main =
   let ps = apply rnorm ps in
   F.printf "%a" pp_ps ps;
   let ps = apply (rrandom_oracle (7,0,1)
-                    (vstar, star -: vi') (vstar, star +: vi')) ps in
+                    (vstar, (star -: vc) /: (vi -: vi')) (vstar, star *: (vi -: vi') +: vc)) ps in
   F.printf "%a" pp_ps ps;
   let ps = apply rnorm ps in
   F.printf "%a" pp_ps ps)

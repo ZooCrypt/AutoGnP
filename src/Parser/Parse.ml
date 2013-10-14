@@ -22,20 +22,8 @@ let wrap_error f s =
                            (S.sub s start (S.length s - start))))
   | _ -> raise (ParseError "Unknown error while lexing/parsing.")
 
-(** Parse operator declaration. *)
-let op_decls = wrap_error (Parser.op_decls Lexer.lex)
-
-(** Parse constant declaration. *)
-let const_decls = wrap_error (Parser.const_decls Lexer.lex)
-
 (** Parse type declaration. *)
 let ty = wrap_error (Parser.typ Lexer.lex)
 
 (** Parse expression. *)
 let expr = wrap_error (Parser.expr Lexer.lex)
-
-(** Parse sequence of commands. *)
-let cmds = wrap_error (Parser.lcmds Lexer.lex)
-
-(** Parse description of scheme. *)
-let scheme_descr = wrap_error (Parser.scheme_descr Lexer.lex)

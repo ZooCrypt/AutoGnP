@@ -7,12 +7,12 @@ type 'a gty = {
   ty_tag : int
 }
 and 'a gty_node =
-  | BS   of ('a Lenvar.gid)
+  | BS   of 'a Lenvar.gid
   | Bool
   | G
   | GT
   | Fq
-  | Prod of ('a gty  list)
+  | Prod of 'a gty list
 
 type ty = IdType.internal gty
 type ety = IdType.exported gty
@@ -57,6 +57,8 @@ let mk_ty n = Hsty.hashcons {
 
 let mk_ety n = { ty_node = n; ty_tag = -1 }
 
+let mk_BS lv = mk_ty (BS lv)
+
 let mk_G = mk_ty G
 
 let mk_GT = mk_ty GT
@@ -82,7 +84,7 @@ let rec ty_export ty =
 
 let rec pp_ty fmt ty =
   match ty.ty_node with
-  | BS lv   -> Format.fprintf fmt "BS_%a" Lenvar.pp lv
+  | BS lv   -> Format.fprintf fmt "BS_%s" (Lenvar.name lv)
   | Bool    -> Format.fprintf fmt "Bool"
   | G       -> Format.fprintf fmt "G"
   | GT      -> Format.fprintf fmt "GT"

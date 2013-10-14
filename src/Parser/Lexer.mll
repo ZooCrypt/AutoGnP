@@ -14,42 +14,44 @@ rule lex = parse
   | "(*"   { comment lexbuf; lex lexbuf }
   | [' ' '\t']
   | newline     { Lexing.new_line lexbuf; lex lexbuf }
-  | "start_proof"  { STARTPROOF }
-  | "norm"  { NORM }
-  | "conj"  { CONJ }
-  | "opt"   { OPT }
-  | "perm"  { PERM }
-  | "split" { SPLIT }
-  | "merge" { MERGE }
-  | "fail1" { FAIL1 }
-  | "fail2" { FAIL2 }
-  | "ind"   { IND }
-  | "rnd"   { RND }
-  | "ow"    { OW }
-  | "admit" { ADMIT }
-  | "@"     { AT }
   | "("     { LPAREN }
   | ")"     { RPAREN }
-  | "{"     { LBRACE }
-  | "}"     { RBRACE }
-  | "["     { LBRACKET }
-  | "]"     { RBRACKET }
-  | "^-1"   { INV }
   | "+"     { PLUS }
-  | "0"     { ZERO }
-  | "|"     { CONC }
-  | ","     { COMMA }
+  | "-"     { MINUS }  
   | "*"     { STAR }
-  | ":"     { COLON }
-  | "m_b"   { MSG }
   | eof     { EOF }
-  | "->"    { TO }
-  | ";"     { SEMICOLON }
+  | "_"     { UNDERSCORE }  
+  | "BS"    { TBS }
+  | "Bool"  { TBOOL }
+  | "G"     { TG }
+  | "GT"    { TGT }
+  | "Fq"    { TFQ }
+  | "0"     { ZERO }
+  | "not"  { NOT }
+  | "true"  { TRUE }
+  | "false" { FALSE }
+  | ['l']['0'-'9']* as s { LV_ID s }
+  | ['a'-'f' 'h'-'k' 'm'-'z']
+    ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
+    as s { ID s }
+  | ":"     { COLON }  
+  | "?"     { QUESTION }
+  | "1"     { ONE }
+  | "e("     { EMAP }   
+  | "g"     { GEN }
+  | ","     { COMMA }
   | "^"     { CARET }
-  | ['0'-'9']+ as s {INT (int_of_string s)}
-  | ['k']['0'-'9']* as s { TV_ID s }
-  | ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']+ as s { ID s }
-
+  | "/"     { SLASH }  
+  | "/\\"   { LAND }  
+(*  | "{"     { LBRACE } *)
+(*  | "}"     { RBRACE } *)
+(*  | "["     { LBRACKET } *)
+(*  | "]"     { RBRACKET } *)
+(*  | "^-1"   { INV } *)
+(*  | ":"     { COLON } *)
+(*  | "->"    { TO } *)
+(*  | "."     { DOT }   *)
+(*  | ['0'-'9']+ as s {INT (int_of_string s)} *)    
 
 and comment = parse
   | "*)"        { () }

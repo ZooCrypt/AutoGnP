@@ -42,17 +42,23 @@ clean:
 ##########################################################################
 # Used for development and testing
 
-Test_Type : 
+Test_Type :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte
 
-Test_Expr : 
+Test_Expr :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Expr.d.byte && ./Test_Expr.d.byte
 
-Test_Singular : 
+Test_Singular :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Singular.d.byte && ./Test_Singular.d.byte
 
-Test_Proof_BB1 : 
+Test_Proof_BB1 :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proof_BB1.d.byte && ./Test_Proof_BB1.d.byte
+
+Test_Pretty_Expr :
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
+
+Test_Parser :
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Parser.d.byte && ./Test_Parser.d.byte
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@
