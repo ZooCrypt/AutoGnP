@@ -51,7 +51,7 @@ and 'a gexpr_node =
   | Cnst of cnst
   | App of op * 'a gexpr list
   | Nary of naryop * 'a gexpr list
-  | ElemH of 'a gexpr * 'a Hsym.gt
+  | ElemH of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
 
 type expr = IdType.internal gexpr
 
@@ -96,6 +96,7 @@ val is_Nary : naryop -> 'a gexpr -> bool
 val is_ElemH : 'a gexpr -> bool
 val is_GLog : 'a gexpr -> bool
 val is_GTLog : 'a gexpr -> bool
+val is_Eq    : 'a gexpr -> bool
 
 (* ----------------------------------------------------------------------- *)
 (** {3 Destructor functions} *)
@@ -125,6 +126,7 @@ val destr_FPlus  : 'a gexpr -> 'a gexpr list
 val destr_FMult  : 'a gexpr -> 'a gexpr list
 val destr_Xor    : 'a gexpr -> 'a gexpr list
 val destr_Land   : 'a gexpr -> 'a gexpr list
+val destr_ElemH  : 'a gexpr -> 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
 
 (* ----------------------------------------------------------------------- *)
 (** {4 Constructor functions} *)
@@ -135,7 +137,7 @@ val mk_V      : Vsym.t -> expr
 val mk_H      : Hsym.t -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
-val mk_ElemH  : expr -> Hsym.t -> expr
+val mk_ElemH  : expr -> expr -> (Vsym.t * Hsym.t) list -> expr
 val mk_GGen   : expr
 val mk_GTGen  : expr
 val mk_FZ     : expr
@@ -175,7 +177,7 @@ module EConstructors :
     val mk_H      : Hsym.et -> eexpr -> eexpr
     val mk_Tuple  : eexpr list -> eexpr
     val mk_Proj   : int -> eexpr -> eexpr
-    val mk_ElemH  : eexpr -> Hsym.et -> eexpr
+    val mk_ElemH  : eexpr -> eexpr -> (Vsym.et * Hsym.et) list -> eexpr
     val mk_GGen   : eexpr
     val mk_GTGen  : eexpr
     val mk_FZ     : eexpr

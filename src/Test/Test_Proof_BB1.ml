@@ -2,6 +2,8 @@ open Type
 open ExprSyntax
 open Expr
 open Game
+open CoreRule
+open Rules
 
 module F = Format
 

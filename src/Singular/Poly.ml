@@ -13,7 +13,8 @@ let terms_of_monom hv (m : monom) =
   let go acc (i,k) =
     let e = try Hashtbl.find hv i with Not_found -> assert false in
     replicate_r acc k e in 
-  List.fold_left go [] m
+  let l = List.fold_left go [] m in
+  List.sort e_compare l 
 
 (* TODO move this *)
 let mk_FTwo = mk_FPlus [mk_FOne; mk_FOne]
@@ -40,8 +41,10 @@ let term_of_poly hv p =
     | _,mes -> 
       assert (i <> 0);
       if i > 0 then mk_FMult (of_pos_int i    :: mes)
-      else mk_FOpp (mk_FMult (of_pos_int (-i) :: mes))
-  in mk_FPlus (List.map summand p)
+      else mk_FOpp (mk_FMult (of_pos_int (-i) :: mes))        
+  in
+  let s = List.map summand p in
+  mk_FPlus (List.sort e_compare s)
 
 (* for debugging only *)
 

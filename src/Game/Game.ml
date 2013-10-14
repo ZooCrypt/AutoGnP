@@ -1,6 +1,6 @@
-(* Games and judgments *)
-open Type
+(* Games *)
 open Util
+open Type
 open Expr
 
 module F = Format
@@ -98,7 +98,6 @@ let pp_ps fmt ps =
   F.fprintf fmt "%a\n--------------------\n\n"
     (pp_list "\n\n" pp_ju_idx) ju_idxs
 
-
 (* ----------------------------------------------------------------------- *)
 (** {3 Generic functions: map_*_expr, iter_*_expr } *)
 
@@ -148,8 +147,9 @@ let iter_gdef_exp f gdef = List.iter (iter_gcmd_exp f) gdef
 let iter_ju_exp f ju =
   iter_gdef_exp f ju.ju_gdef; f ju.ju_ev
 
+
 (* ----------------------------------------------------------------------- *)
-(** { Read and write variables } *)
+(** {4 Read and write variables } *)
 
 let fold_union f es =
   List.fold_left (fun s e -> Se.union s (f e)) Se.empty es
@@ -194,9 +194,15 @@ let write_gcmd = function
 let write_gcmds c = fold_union write_gcmd c
 
 (* ----------------------------------------------------------------------- *)
-(** {3 Helper functions for rules } *)
+(** {5 Helper functions for rules } *)
 
 (** smart constructors *)
+let is_call = function
+  | GCall _ -> true
+  | _ -> false
+
+let has_call c = List.exists is_call c
+
 
 (* smart constructor for judgments *)
 let mk_ju gd ev =
@@ -251,58 +257,59 @@ let set_ju_lcmd ju p cmds =
   let _, ctxt = get_ju_octxt ju p in
   set_ju_octxt cmds ctxt
 
+
 (* ----------------------------------------------------------------------- *)
-(** {3 Rules and tactic language} *)
+(** {6 Equality} *) 
 
-(** goal handling *)
+let d_equal (ty1,es1) (ty2,es2) = 
+  ty_equal ty1 ty2 && 
+    list_eq_for_all2 e_equal es1 es2
+  
+let lc_equal i1 i2 = 
+  match i1, i2 with
+  | LLet(x1,e1), LLet(x2,e2) ->
+    Vsym.equal x1 x2 && e_equal e1 e2
+  | LBind(xs1,h1), LBind(xs2,h2) ->
+    list_eq_for_all2 Vsym.equal xs1 xs2 && Hsym.equal h1 h2
+  | LSamp(x1,d1), LSamp(x2,d2) ->
+    Vsym.equal x1 x2 && d_equal d1 d2
+  | LGuard e1, LGuard e2 -> e_equal e1 e2
+  | LLet _  , (LBind _ | LSamp _ | LGuard _) 
+  | LBind _ , (LLet _  | LSamp _ | LGuard _) 
+  | LSamp _ , (LLet _  | LBind _ | LGuard _) 
+  | LGuard _, (LLet _  | LBind _ | LSamp _ ) -> false
 
-let apply rule goals = match goals with
-  | g::gs -> rule g @ gs
-  | _ -> failwith "there are no goals"
+let lcs_equal c1 c2 = list_eq_for_all2 lc_equal c1 c2
 
-let delay goals = match goals with
-  | g::gs -> gs@[g]
-  | []    -> []
+let o_equal (o1,xs1,c1,e1) (o2,xs2,c2,e2) = 
+  Osym.equal o1 o2 &&
+    list_eq_for_all2 Vsym.equal xs1 xs2 &&
+    lcs_equal c1 c2 &&
+    e_equal e1 e2 
 
-(** random rule *)
+let gc_equal i1 i2 =
+  match i1, i2 with
+  | GLet(x1,e1), GLet(x2,e2) ->
+    Vsym.equal x1 x2 && e_equal e1 e2
+  | GSamp(x1,d1), GSamp(x2,d2) ->
+    Vsym.equal x1 x2 && d_equal d1 d2
+  | GCall(xs1,e1,os1), GCall(xs2,e2,os2) ->
+    list_eq_for_all2 Vsym.equal xs1 xs2 &&
+      e_equal e1 e2 &&
+      list_eq_for_all2 o_equal os1 os2
+  | GLet _, (GSamp _ | GCall _) 
+  | GSamp _, (GLet _ | GCall _) 
+  | GCall _, (GLet _ | GSamp _) -> false
 
-let ensure_bijection c1 c2 v =
-  if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
-          Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
-  then failwith "random: contexts not bijective"
+let gcs_equal c1 c2 = list_eq_for_all2 gc_equal c1 c2
 
-(* 'random p c1 c2' takes a position p and two contexts. It first
-   ensures that there is a random sampling 'x <-$ d' at position p.
-   For now, its not excepted. Otherwise we have to apply c1/c2 to
-   the excepted values.
-   Then it checks that under the inequalities that hold at position p,
-   forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x.  *)
-let rrandom p c1 c2 ju =
-  match get_ju_ctxt ju p with
-  | GSamp(vs,((t,[]) as d)), ctxt ->
-    let v = mk_V vs in
-    ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
-    let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
-    let cmds = [ GSamp(vs',d);
-                 GLet(vs, inst_ctxt c1 (mk_V vs')) ]
-    in
-    [ set_ju_ctxt cmds ctxt]
-  | _ -> failwith "random: position given is not a sampling"
+let ju_equal ju1 ju2 = 
+  gcs_equal ju1.ju_gdef ju2.ju_gdef &&
+    e_equal ju1.ju_ev ju2.ju_ev
 
-(* random in oracle *)
-let rrandom_oracle p c1 c2 ju =
-  match get_ju_octxt ju p with
-  | LSamp(vs,((t,[]) as d)), ctxt ->
-    let v = mk_V vs in
-    ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
-    let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
-    let cmds = [ LSamp(vs',d);
-                 LLet(vs, inst_ctxt c1 (mk_V vs')) ]
-    in
-    [ set_ju_octxt cmds ctxt]
-  | _ -> failwith "random: position given is not a sampling"
 
-(** Norm rule: conv and let-unfold for all included expressions and terms *)
+(* ----------------------------------------------------------------------- *)
+(** {7 Normalization } *) 
 
 let norm_expr_def e = Norm.abbrev_ggen (Norm.norm_expr e)
 
@@ -355,74 +362,4 @@ let norm_ju ?norm:(nf=norm_expr_def) ju =
   { ju_gdef = g;
     ju_ev = nf (e_subst s ju.ju_ev) }
 
-(* unfold all lets and norm *)
-let rnorm ju = [ norm_ju ju ]
-
-(* norm without unfolding *)
-let rnorm_nounfold ju = [ map_ju_exp norm_expr_def ju ]
-
-(* norm without unfolding *)
-let runfold_only ju = [ norm_ju ~norm:(fun x -> x) ju ]
-
-(* Swapping instruction *)
-
-let disjoint s1 s2 = 
-  Se.is_empty (Se.inter s1 s2)
-
-let check_swap read write i c =
-  let i = [i] in
-  let ir = read i in
-  let iw = write i in
-  let cr = read c in
-  let cw = write c in
-  if not (disjoint iw cw && 
-            disjoint ir cw &&
-            disjoint cr iw) then 
-    failwith "swap : can not swap" (* FIXME improve the error message *)
-    
-let is_call = function
-  | GCall _ -> true
-  | _ -> false
-
-let has_call c = List.exists is_call c
-
-let swap i delta ju = 
-  if delta = 0 then ju
-  else
-    let i,(hd,tl,e) = get_ju_ctxt ju i in
-    let c1,c2,c3 = 
-      if delta < 0 then 
-        let hhd, thd = cut_n (-delta) hd in
-        thd, hhd, tl
-      else
-        let htl, ttl = cut_n delta tl in
-        hd, List.rev htl, ttl in
-    check_swap read_gcmds write_gcmds i c2;
-    if is_call i && has_call c2 then
-      failwith "swap : can not swap";
-    let c2,c3 = if delta > 0 then c2, i::c3 else i::c2, c3 in
-    set_ju_ctxt c2 (c1,c3,e)
-
-let rswap i delta ju = [swap i delta ju]
-
-let swap_oracle i delta ju = 
-  if delta = 0 then ju
-  else
-    let i,(((hd,tl), odecl, call), ctxt) = get_ju_octxt ju i in
-    let c1,c2,c3 = 
-      if delta < 0 then
-        let hhd,thd = cut_n delta hd in
-        thd,hhd,tl
-      else 
-        let htl, ttl = cut_n delta tl in
-        hd, List.rev htl, ttl in
-    check_swap read_lcmds write_lcmds i c2;
-    let c2, c3 = 
-      if delta > 0 then c2, i::c3 else i::c2, c3 in
-    set_ju_octxt c2 (((c1,c3),odecl,call),ctxt)
-
-let rswap_oracle i delta ju =
-  [swap_oracle i delta ju]
-  
-  
   

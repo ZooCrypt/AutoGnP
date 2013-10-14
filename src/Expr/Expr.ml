@@ -83,7 +83,9 @@ and 'a gexpr_node =
   | Cnst of cnst                   (* constants *)
   | App  of op     * 'a gexpr list (* fixed arity operators *)
   | Nary of naryop * 'a gexpr list (* variable arity AC operators *)
-  | ElemH of 'a gexpr * 'a Hsym.gt (* ElemH(e,h): e in L_H *)
+  | ElemH of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
+          (* ElemH(e1,e2,[(x1,L_Hh1)...]:
+              e1 in [e2 | x1 <- L_Hh1, ....) *)
 
 
 type expr = internal gexpr
@@ -109,7 +111,10 @@ module Hse = Hashcons.Make (struct
     | Cnst c1, Cnst c2           -> c1 = c2
     | App(o1,es1), App(o2, es2)  -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
-    | ElemH(e1,h1), ElemH(e2,h2) -> e_equal e1 e2 && Hsym.equal h1 h2
+    | ElemH(e1,e1',vh1), ElemH(e2,e2',vh2) -> 
+      e_equal e1 e2 && e_equal e1' e2' &&
+        list_eq_for_all2 (fun (v1,h1) (v2,h2) ->
+          Vsym.equal v1 v2 && Hsym.equal h1 h2) vh1 vh2
     | _, _                       -> false
 
   let hash_node = function
@@ -120,7 +125,10 @@ module Hse = Hashcons.Make (struct
     | Cnst(c)    -> cnst_hash c
     | App(o,es)  -> Hashcons.combine_list e_hash (op_hash o) es
     | Nary(o,es) -> Hashcons.combine_list e_hash (naryop_hash o) es
-    | ElemH(e,h) -> Hashcons.combine (Hsym.hash h)  (e_hash e)
+    | ElemH(e1,e2,vh) -> 
+        Hashcons.combine_list 
+          (fun (v,h) -> Hashcons.combine (Vsym.hash v) (Hsym.hash h))
+          (Hashcons.combine (e_hash e1) (e_hash e2)) vh
 
   let hash e =
     Hashcons.combine (ty_hash e.e_ty) (hash_node e.e_node)
@@ -150,7 +158,9 @@ let rec e_export e =
     | Cnst(c)    -> Cnst(c)
     | App(o,es)  -> App(o, List.map e_export es)
     | Nary(o,es) -> Nary(o, List.map e_export es)
-    | ElemH(e,h) -> ElemH(e_export e, Hsym.export h)
+    | ElemH(e1,e2,h) -> 
+      ElemH(e_export e1,e_export e2,
+            List.map (fun (v,h) -> Vsym.export v, Hsym.export h) h)
   in mk_ee e ty
 
 
@@ -201,7 +211,7 @@ let is_ElemH e = match e.e_node with ElemH _ -> true | _ -> false
 
 let is_GLog e = is_App GLog e
 let is_GTLog e = is_App GTLog e
-
+let is_Eq e = is_App Eq e
 (* ----------------------------------------------------------------------- *)
 (** {3 Destructor functions} *)
 
@@ -209,50 +219,64 @@ exception Destr_failure of string
 
 let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
 
-let destr_H e = match e.e_node with H(h,e) -> (h,e) | _ -> raise (Destr_failure "H")
+let destr_H e = 
+  match e.e_node with H(h,e) -> (h,e) | _ -> raise (Destr_failure "H")
 
-let destr_Tuple e = match e.e_node with Tuple(es) -> (es) | _ -> raise (Destr_failure "Tuple")
+let destr_Tuple e = 
+  match e.e_node with Tuple(es) -> (es) | _ -> raise (Destr_failure "Tuple")
 
-let destr_Proj e = match e.e_node with Proj(i,e) -> (i,e) | _ -> raise (Destr_failure "Proj")
+let destr_Proj e = 
+  match e.e_node with Proj(i,e) -> (i,e) | _ -> raise (Destr_failure "Proj")
 
-let destr_Cnst e = match e.e_node with Cnst(c) -> (c) | _ -> raise (Destr_failure "Cnst")
+let destr_Cnst e = 
+  match e.e_node with Cnst(c) -> (c) | _ -> raise (Destr_failure "Cnst")
 
-let destr_App e = match e.e_node with App(o,es) -> (o,es) | _ -> raise (Destr_failure "App")
+let destr_App e =
+  match e.e_node with App(o,es) -> (o,es) | _ -> raise (Destr_failure "App")
 
-let destr_GMult e = match e.e_node with App(GMult,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GMult")
+let destr_App_uop s o e = 
+   match e.e_node with 
+   | App(o',[e1]) when o = o' -> e1
+   | _ -> raise (Destr_failure s)
+  
+let destr_App_bop s o e =
+   match e.e_node with 
+   | App(o',[e1;e2]) when o = o' -> (e1,e2)
+   | _ -> raise (Destr_failure s)
 
-let destr_GExp e = match e.e_node with App(GExp,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GExp")
+let destr_Narry s o e =
+  match e.e_node with
+  | Nary(o',es) when o = o' -> es 
+  | _ -> raise (Destr_failure s)
 
-let destr_GLog e = match e.e_node with App(GLog,[a]) -> a | _ -> raise (Destr_failure "GLog")
+let destr_GMult  e = destr_App_bop "GMult"  GMult e
+let destr_GTMult e = destr_App_bop "GTMult" GTMult e
 
-let destr_GTMult e = match e.e_node with App(GTMult,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GTMult")
+let destr_GExp   e = destr_App_bop "GExp"  GExp e
+let destr_GTExp  e = destr_App_bop "GTExp" GTExp e
 
-let destr_GTExp e = match e.e_node with App(GTExp,[a;b]) -> (a,b) | _ -> raise (Destr_failure "GTExp")
+let destr_GLog   e = destr_App_uop "GLog"  GLog e
+let destr_GTLog  e = destr_App_uop "GTLog" GTLog e
 
-let destr_GTLog e = match e.e_node with App(GTLog,[a]) -> a | _ -> raise (Destr_failure "GTLog")
+let destr_FOpp   e = destr_App_uop "FOpp"   FOpp e
+let destr_FMinus e = destr_App_bop "FMinus" FMinus e
+let destr_FInv   e = destr_App_uop "FInv"   FInv e
+let destr_FDiv   e = destr_App_bop "FDiv"   FDiv e 
+let destr_FPlus  e = destr_Narry   "FPlus"  FPlus e
+let destr_FMult  e = destr_Narry   "FMult"  FMult e
 
-let destr_FOpp e = match e.e_node with App(FOpp,[a]) -> a | _ -> raise (Destr_failure "FOpp")
-
-let destr_FMinus e = match e.e_node with App(FMinus,[a;b]) -> (a,b) | _ -> raise (Destr_failure "FMinus")
-
-let destr_FInv e = match e.e_node with App(FInv,[a]) -> a | _ -> raise (Destr_failure "FInv")
-
-let destr_FDiv e = match e.e_node with App(FDiv,[a;b]) -> (a,b) | _ -> raise (Destr_failure "FDiv")
-
-let destr_Eq e = match e.e_node with App(Eq,[a;b]) -> (a,b) | _ -> raise (Destr_failure "Eq")
-
-let destr_Not e = match e.e_node with App(Not,[a]) -> a | _ -> raise (Destr_failure "FDiv")
-
-let destr_Ifte e = match e.e_node with App(Eq,[a;b;c]) -> (a,b,c) | _ -> raise (Destr_failure "Ifte")
-
-let destr_FPlus e = match e.e_node with Nary(FPlus,e::es) -> e::es | _ -> raise (Destr_failure "FPlus")
-
-let destr_FMult e = match e.e_node with Nary(FMult,e::es) -> e::es | _ -> raise (Destr_failure "FMult")
-
-let destr_Xor e = match e.e_node with Nary(Xor,e::es) -> e::es | _ -> raise (Destr_failure "Xor")
-
-let destr_Land e = match e.e_node with Nary(Land,e::es) -> e::es | _ -> raise (Destr_failure "Land")
-
+let destr_Eq     e = destr_App_bop "Eq"   Eq e 
+let destr_Not    e = destr_App_uop "Not"  Not e
+let destr_Xor    e = destr_Narry   "Xor"  Xor e 
+let destr_Land   e = destr_Narry   "Land" Land e
+let destr_Ifte   e = 
+  match e.e_node with 
+  | App(Eq,[a;b;c]) -> (a,b,c) 
+  | _ -> raise (Destr_failure "Ifte")
+let destr_ElemH  e = 
+  match e.e_node with
+  | ElemH(e1,e2,vh) -> e1,e2,vh
+  | _ -> raise (Destr_failure "ElemH")
 (* ----------------------------------------------------------------------- *)
 (** {4 Pretty printing} *)
 
@@ -300,8 +324,13 @@ let rec pp_exp_p above fmt e =
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op_p above fmt o es
   | Nary(o,es) -> fpr fmt "%a"  (pp_nop_p above) (o,es)
-  | ElemH(e,h) -> let p = notsep above && above<>NInfix(Land) in
-      open_p fmt p; fpr fmt "%a in L_%a" (pp_exp_p Top) e Hsym.pp h; close_p fmt p
+  | ElemH(e1,e2,h) -> 
+    let p = notsep above && above<>NInfix(Land) in
+    open_p fmt p; fpr fmt "%a in [%a | %a]" 
+      (pp_exp_p Top) e1 (pp_exp_p Top) e2 
+      (pp_list ",@ " (fun fmt (v,h) ->
+        F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h;
+    close_p fmt p
 and pp_op_p above fmt op es =
   let o = open_p fmt in
   let c = close_p fmt in
@@ -392,7 +421,7 @@ sig
   val mk_H : t Hsym.gt -> t gexpr -> t gexpr
   val mk_Tuple : (t gexpr) list -> t gexpr
   val mk_Proj : int -> t gexpr -> t gexpr
-  val mk_ElemH : t gexpr -> t Hsym.gt -> t gexpr
+  val mk_ElemH : t gexpr -> t gexpr -> (t Vsym.gt * t Hsym.gt) list -> t gexpr
   
   val mk_GGen  : t gexpr
   val mk_GTGen : t gexpr
@@ -453,9 +482,11 @@ struct
     | Prod(tys) when i >= 0 && List.length tys < i -> E.mk (Proj(i,e)) (List.nth tys i)
     | _ -> raise (TypeError(e.e_ty, e.e_ty, e, None, "mk_Proj expected product type"))
 
-  let mk_ElemH e h =
-    ensure_ty_equal e.e_ty h.Hsym.codom e None "mk_ElemH";
-    E.mk (ElemH(e,h)) ty_Bool
+  let mk_ElemH e1 e2 h =
+    ensure_ty_equal e1.e_ty e2.e_ty e1 None "mk_ElemH";
+    List.iter (fun (v,h) ->
+      ensure_ty_equal v.Vsym.ty h.Hsym.dom (mk_V v) None "mk_ElemH") h;
+    E.mk (ElemH(e1,e2,h)) ty_Bool
   
   let mk_Cnst c ty = E.mk (Cnst c) ty
 
@@ -565,22 +596,23 @@ include Constructors
 let sub_map g e = 
   match e.e_node with
   | V _ | Cnst _ -> e
-  | H(h,e) ->
-      let e' = g e in
-      if e == e' then e
-      else mk_e (H(h,e')) e.e_ty
-  | ElemH(e,h) ->
-      let e' = g e in
-      if e == e' then e
-      else mk_e (ElemH(e',h)) e.e_ty
+  | H(h,e1) ->
+      let e1' = g e1 in
+      if e1 == e1' then e
+      else mk_e (H(h,e1')) e.e_ty
+  | ElemH(e1,e2,h) ->
+      let e1' = g e1 in
+      let e2' = g e2 in
+      if e1 == e1' && e2 == e2' then e
+      else mk_e (ElemH(e1',e2',h)) e.e_ty
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
       else mk_e (Tuple(es')) e.e_ty
-  | Proj(i, e) ->
-      let e' = g e in
-      if e == e' then e
-      else mk_e (Proj(i,e')) e.e_ty
+  | Proj(i, e1) ->
+      let e1' = g e1 in
+      if e1 == e1' then e
+      else mk_e (Proj(i,e1')) e.e_ty
   | App(o, es) ->
       let es' = smart_map g es in
       if es == es' then e
@@ -600,18 +632,19 @@ let e_sub_map g = sub_map (check_fun g)
 let e_sub_fold g acc e =
   match e.e_node with
   | V _ | Cnst _ -> acc
-  | H(_,e) | Proj(_, e) | ElemH(e,_) -> g acc e
+  | H(_,e) | Proj(_, e) -> g acc e
+  | ElemH(e1,e2,_) -> g (g acc e1) e2
   | Tuple(es) | App(_, es) | Nary(_, es)-> List.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | H(_,e) | Proj(_, e) | ElemH(e,_) -> g e
+  | H(_,e) | Proj(_, e) -> g e
+  | ElemH(e1,e2,_) -> g e1; g e2
   | Tuple(es) | App(_, es) | Nary(_, es)-> List.iter g es
 
 let rec e_iter g e =
   g e; e_sub_iter (e_iter g) e
-
 
 let e_sub_exists f =
   e_sub_fold (fun acc e -> acc || f e) false
