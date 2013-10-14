@@ -17,7 +17,7 @@ type lcmd = LLet   of Vsym.t * Expr.expr
               (* LLet(x,e): let (x1,..,xk) = e *)
           | LBind  of Vsym.t list * Hsym.t
               (* LBind([x1;..;xk], h): (x1,..,xk) <- L_h *)
-          | LSamp  of (Vsym.t * distr)
+          | LSamp  of Vsym.t * distr
               (* LSamp(x,d): x <-$ d *)
           | LGuard of Expr.expr
               (* LGuard(t): t *)
