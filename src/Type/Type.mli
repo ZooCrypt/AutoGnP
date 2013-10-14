@@ -28,6 +28,7 @@ module Hty : Hashtbl.S with type key = ty
 
 val mk_ty : IdType.internal gty_node -> Hsty.t
 
+val mk_BS : Lenvar.id -> ty
 val mk_G : ty
 val mk_GT : ty
 val mk_Fq : ty

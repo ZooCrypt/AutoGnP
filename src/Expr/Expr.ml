@@ -316,9 +316,9 @@ and pp_op_p above fmt op es =
     fpr fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after;
   in
   match op, es with
-  | GMult,  [a;b] -> pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1)) GMult " x " a b
+  | GMult,  [a;b] -> pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1)) GMult " * " a b
   | GExp,   [a;b] -> pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1)) GExp "^" a b
-  | GTMult, [a;b] -> pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) GTMult " x " a b
+  | GTMult, [a;b] -> pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) GTMult " * " a b
   | GTExp,  [a;b] -> pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) GTExp "^" a b
   | FDiv,   [a;b] -> pp_bin (notsep above) FDiv "/" a b
   | FMinus, [a;b] -> pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "-" a b
@@ -327,7 +327,7 @@ and pp_op_p above fmt op es =
   | GTLog,  [a]   -> pp_prefix GTLog "log("  ")"   a
   | FOpp,   [a]   -> pp_prefix FOpp  "-"     ""    a
   | FInv,   [a]   -> pp_prefix FInv  ""      "^-1" a
-  | Not,    [a]   -> pp_prefix Not   "not (" ")"   a  
+  | Not,    [a]   -> pp_prefix Not   "not " ""     a
   | EMap,   [a;b] ->
       let p = false in
       let ppe i = pp_exp_p (Infix(EMap,i)) in
@@ -666,7 +666,7 @@ let e_replace e1 e2 =
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
 
-type ctxt = (Vsym.t * expr)
+type ctxt = Vsym.t * expr
 
 let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 
