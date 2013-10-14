@@ -56,6 +56,14 @@ val drop : int -> 'a list -> 'a list
     is shorter than [k], then fewer elements are returned.  *)
 val take : int -> 'a list -> 'a list
 
+(** [split_n k l] return rhd, a, tl such that 
+    l = List.rev_append rhd (a::tl) and List.length rhd = k *)
+val split_n : int -> 'a list -> 'a list * 'a * 'a list
+
+(** [cut_n k l] return rhd, tl such that 
+    l = List.rev_append rhd tl and List.length rhd = k *)
+val cut_n : int -> 'a list -> 'a list * 'a list
+
 (** [list_from_to i j] returns the list with all natural
      numbers from [i] to [j-1]. *)
 val list_from_to : int -> int -> int list

@@ -62,6 +62,24 @@ let rec take i l =
   | x::xs when i > 0 -> x::(take (i - 1) xs)
   | _ -> []
 
+let split_n i l = 
+  assert (i >= 0);
+  let rec aux i r l = 
+    match l with 
+    | [] -> assert false
+    | x::xs ->
+      if i = 0 then r,x,xs
+      else aux (i-1) (x::r) xs in
+  aux i [] l
+
+let cut_n i l = 
+  let rec aux i r l = 
+    match  l with
+    | _ when i <= 0 -> r, l
+    | [] -> assert false 
+    | a::l -> aux (i-1) r l in
+  aux i [] l
+
 let list_from_to i j = (* [i,j), i.e., excluding j *)
   let rec go aux i = if i >= j then aux else go (i::aux) (i+1)
   in List.rev (go [] i)

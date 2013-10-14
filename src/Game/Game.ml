@@ -149,6 +149,51 @@ let iter_ju_exp f ju =
   iter_gdef_exp f ju.ju_gdef; f ju.ju_ev
 
 (* ----------------------------------------------------------------------- *)
+(** { Read and write variables } *)
+
+let fold_union f es =
+  List.fold_left (fun s e -> Se.union s (f e)) Se.empty es
+
+let read_distr (_,es) = fold_union e_vars es
+
+let read_lcmd = function 
+  | LLet(_,e) | LGuard e -> e_vars e
+  | LBind _ -> Se.empty
+  | LSamp(_,d) -> read_distr d
+
+let read_lcmds c = fold_union read_lcmd c
+
+let add_binding xs = 
+  fold_union (fun x -> Se.singleton (mk_V x)) xs
+
+let write_lcmd i = 
+  match i with
+  | LLet(x,_)  | LSamp(x,_) -> Se.singleton (mk_V x) 
+  | LBind (xs,_) -> add_binding xs 
+  | LGuard _ -> Se.empty
+
+let write_lcmds c = fold_union write_lcmd c
+
+let read_odef (_,xs,cmd,e) = 
+  let r = Se.union (read_lcmds cmd) (e_vars e) in
+  let w = Se.union (add_binding xs) (write_lcmds cmd) in
+  Se.diff r w 
+
+let read_gcmd = function
+  | GLet(_,e) -> e_vars e 
+  | GSamp(_,d) -> read_distr d
+  | GCall(_,e,odef) -> 
+    Se.union (e_vars e) (fold_union read_odef odef)
+
+let read_gcmds c = fold_union read_gcmd c
+
+let write_gcmd = function
+  | GLet (x,_) | GSamp (x,_) -> Se.singleton (mk_V x)
+  | GCall (xs,_,_) -> add_binding xs
+
+let write_gcmds c = fold_union write_gcmd c
+
+(* ----------------------------------------------------------------------- *)
 (** {3 Helper functions for rules } *)
 
 (** smart constructors *)
@@ -166,25 +211,45 @@ type ocmd_pos = (int * int * int)
 
 let get_ju_gcmd ju p = List.nth ju.ju_gdef p
 
+type ju_ctxt = gdef * gdef * ev
+  
+let get_ju_ctxt ju p = 
+  let rhd,i,tl =  split_n p ju.ju_gdef in
+  i, (rhd, tl, ju.ju_ev)
+
+let set_ju_ctxt cmd (rhd,tl,ev) = 
+  { ju_gdef = List.rev_append rhd (cmd @ tl);
+    ju_ev   = ev }
+
 let set_ju_gcmd ju p cmds =
   assert (p >= 0 && p < List.length ju.ju_gdef);
-  { ju with ju_gdef = take p  ju.ju_gdef @ cmds @ drop (p+1)  ju.ju_gdef }
+  let _, ctxt = get_ju_ctxt ju p in
+  set_ju_ctxt cmds ctxt
 
-let get_ju_gcmd_ctxt ju p =
-  (take (p-1) ju.ju_gdef, List.nth ju.ju_gdef p, drop (p+1)  ju.ju_gdef)
-
-let get_ju_lcmd ju (i,j,k) = match get_ju_gcmd ju i with
-  | GCall(_,e,os) ->
-      let (_o,_vs,ms,_e) = List.nth os j in
-      List.nth ms k
-  | _ -> assert false
-
-let set_ju_lcmd ju (i,j,k) cmds = match get_ju_gcmd ju i with
-  | GCall(vs,e,os) ->
+let get_ju_lcmd ju (i,j,k) = 
+  match get_ju_gcmd ju i with
+  | GCall(_,_,os) ->
       let (o,vs,ms,e) = List.nth os j in
-      let odef' = (o,vs,take k ms @ cmds @ drop (k+1) ms,e) in
-      set_ju_gcmd ju i [GCall (vs,e,take j os @ [ odef' ] @ drop (j+1) os)]
+      o,vs,split_n k ms, e
   | _ -> assert false
+
+let get_ju_octxt ju (i,j,k) = 
+  match get_ju_ctxt ju i with
+  | GCall(vsa,e,os), ctxt ->
+    let rohd, (o,vs,ms,oe), otl = split_n j os in
+    let rhd, i, tl = split_n k ms in
+    i, (((rhd,tl), (o,vs,oe), (rohd, otl, (vsa,e))), ctxt)
+  | _ -> assert false
+
+let set_ju_octxt cmd (((rhd,tl), (o,vs,oe), (rohd, otl, (vsa,e))), ctxt) =
+  let ms = List.rev_append rhd (cmd @ tl) in
+  let os = List.rev_append rohd ((o,vs,ms, oe) :: otl) in
+  let i = [GCall(vsa, e, os)] in
+  set_ju_ctxt i ctxt
+
+let set_ju_lcmd ju p cmds = 
+  let _, ctxt = get_ju_octxt ju p in
+  set_ju_octxt cmds ctxt
 
 (* ----------------------------------------------------------------------- *)
 (** {3 Rules and tactic language} *)
@@ -213,28 +278,28 @@ let ensure_bijection c1 c2 v =
    Then it checks that under the inequalities that hold at position p,
    forall x in supp(d), c2(c1(x)) = x.  *)
 let rrandom p c1 c2 ju =
-  match get_ju_gcmd_ctxt ju p with
-  | (_left, GSamp(vs,((t,[]) as d)), _right) ->
+  match get_ju_ctxt ju p with
+  | GSamp(vs,((t,[]) as d)), ctxt ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
     let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
     let cmds = [ GSamp(vs',d);
                  GLet(vs, inst_ctxt c1 (mk_V vs')) ]
     in
-    [ set_ju_gcmd ju p cmds ]
+    [ set_ju_ctxt cmds ctxt]
   | _ -> failwith "random: position given is not a sampling"
 
 (* FIXME: buggy *)
 let rrandom_oracle p c1 c2 ju =
-  match get_ju_lcmd ju p with
-  | LSamp(vs,((t,[]) as d) ) ->
+  match get_ju_octxt ju p with
+  | LSamp(vs,((t,[]) as d)), ctxt ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
     let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
     let cmds = [ LSamp(vs',d);
                  LLet(vs, inst_ctxt c1 (mk_V vs')) ]
     in
-    [ set_ju_lcmd ju p cmds ]
+    [ set_ju_octxt cmds ctxt]
   | _ -> failwith "random: position given is not a sampling"
 
 (** Norm rule: conv and let-unfold for all included expressions and terms *)
@@ -298,3 +363,66 @@ let rnorm_nounfold ju = [ map_ju_exp norm_expr_def ju ]
 
 (* norm without unfolding *)
 let runfold_only ju = [ norm_ju ~norm:(fun x -> x) ju ]
+
+(* Swapping instruction *)
+
+let disjoint s1 s2 = 
+  Se.is_empty (Se.inter s1 s2)
+
+let check_swap read write i c =
+  let i = [i] in
+  let ir = read i in
+  let iw = write i in
+  let cr = read c in
+  let cw = write c in
+  if not (disjoint iw cw && 
+            disjoint ir cw &&
+            disjoint cr iw) then 
+    failwith "swap : can not swap" (* FIXME improve the error message *)
+    
+let is_call = function
+  | GCall _ -> true
+  | _ -> false
+
+let has_call c = List.exists is_call c
+
+let swap i delta ju = 
+  if delta = 0 then ju
+  else
+    let i,(hd,tl,e) = get_ju_ctxt ju i in
+    let c1,c2,c3 = 
+      if delta < 0 then 
+        let hhd, thd = cut_n (-delta) hd in
+        thd, hhd, tl
+      else
+        let htl, ttl = cut_n delta tl in
+        hd, List.rev htl, ttl in
+    check_swap read_gcmds write_gcmds i c2;
+    if is_call i && has_call c2 then
+      failwith "swap : can not swap";
+    let c2,c3 = if delta > 0 then c2, i::c3 else i::c2, c3 in
+    set_ju_ctxt c2 (c1,c3,e)
+
+let rswap i delta ju = [swap i delta ju]
+
+let swap_oracle i delta ju = 
+  if delta = 0 then ju
+  else
+    let i,(((hd,tl), odecl, call), ctxt) = get_ju_octxt ju i in
+    let c1,c2,c3 = 
+      if delta < 0 then
+        let hhd,thd = cut_n delta hd in
+        thd,hhd,tl
+      else 
+        let htl, ttl = cut_n delta tl in
+        hd, List.rev htl, ttl in
+    check_swap read_lcmds write_lcmds i c2;
+    let c2, c3 = 
+      if delta > 0 then c2, i::c3 else i::c2, c3 in
+    set_ju_octxt c2 (((c1,c3),odecl,call),ctxt)
+
+let rswap_oracle i delta ju =
+  [swap_oracle i delta ju]
+  
+  
+  
