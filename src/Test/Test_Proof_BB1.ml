@@ -37,9 +37,9 @@ let main =
   let vm0 = v m0 in
   let vm1 = v m1 in
   let vmb = v mb in
-
-  let o1 =
-    (Osym.mk "kg" mk_Fq (mk_Prod [mk_G;mk_G]),
+  let oname = Osym.mk "kg" mk_Fq (mk_Prod [mk_G;mk_G]) in
+  let o1 = 
+    (oname,
      [i],
      [ LGuard(mk_Not (mk_Eq vi vi'));
        LSamp(r,duni_Fq)
@@ -48,7 +48,7 @@ let main =
              g ^: vr]
      )
   in
-  let g =
+  let g1 =
     [ GCall([i'],mk_Tuple [],[]);
       GSamp(c,duni_Fq);
       GSamp(d,duni_Fq);
@@ -67,7 +67,51 @@ let main =
            , [o1]);
     ]
   in
-  let ps =  [mk_ju g (mk_Eq vb vb')] in
+  let gc = (Vsym.mk "gc" mk_G) in
+  let vgc = mk_V gc in
+  let gd = (Vsym.mk "gd" mk_G) in
+  let vgd = mk_V gd in
+  let ge = (Vsym.mk "ge" mk_G) in
+  let vge = mk_V ge in
+  let gu = (Vsym.mk "gu" mk_GT) in
+  let vgu = mk_V gu in
+  let ii' = vi -: vi' in
+  let o2 = 
+    (oname,
+     [i],
+     [ LGuard(mk_Not (mk_Eq vi vi'));
+       LSamp(r,duni_Fq)
+     ],
+     tuple [ (vgc ^: ((f0 -: vh)/:ii')) **: 
+               (vgd ^: vr) **: 
+               (g ^: ((vh *: vr)/:ii'));
+             (vgc ^: (f1/:ii')) **: (g ^: ((f0 -: vr)/:ii'))]
+    ) in
+ 
+  let g2 =
+    [ GSamp(c,duni_Fq);
+      GSamp(d,duni_Fq);
+      GSamp(e,duni_Fq);
+      GLet (gc, g ^: vc);
+      GLet (gd, g ^: vd);
+      GLet (ge, g ^: ve);
+      GLet (gu, em(g,g) ^^: (vc *: (vd *: ve)));
+      GCall([i'],mk_Tuple [],[]);
+      GSamp(h,duni_Fq);
+      GSamp(b,duni_Bool);
+      GCall([m0;m1],
+             tuple [vgc; vgd;  (vgd ^: (f0 -:vi')) **: (g ^: vh)],[]);
+      GLet(mb,ifte vb vm0 vm1);
+      GCall( [b']
+           , tuple
+               [ vmb &: vgu;
+                 vge;
+                 vge ^: vh]
+           , [o2]);
+    ]
+  in
+  let bb' = mk_Eq vb vb' in
+  let ps =  [mk_ju g1 bb'] in
   let vstar = Vsym.mk "*" mk_Fq in
   let star = mk_V vstar in
   F.printf "%a" pp_ps ps;
@@ -82,6 +126,13 @@ let main =
                     (vstar, (star -: vc) /: (vi -: vi')) (vstar, star *: (vi -: vi') +: vc)) ps in
   F.printf "%a" pp_ps ps;
   let ps = apply rnorm ps in
-  F.printf "%a" pp_ps ps)
+  F.printf "%a" pp_ps ps;
+  let ps = apply (rswap 0 3) ps in
+  F.printf "%a" pp_ps ps;
+  let ju2 = {ju_gdef = g2; ju_ev = bb'} in 
+  F.printf "g2 = %a@." pp_ju ju2;
+  let ps = apply (rconv ju2) ps in
+  F.printf "%a" pp_ps ps;
+  )
 
 
