@@ -316,14 +316,14 @@ let notsep above = above <> Top && above <> PrefixApp && above <> Tup
 let rec pp_exp_p above fmt e =
   let fpr fmt = F.fprintf fmt in
   match e.e_node with
-  | V(v)       -> Vsym.pp fmt v
+  | V(v)       -> Format.fprintf fmt "%a" Vsym.pp v 
   | H(h,e)     -> fpr fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
   | Tuple(es)  -> let p = above <> PrefixApp in
       open_p fmt p; fpr fmt "%a" (pp_list ", " (pp_exp_p Tup)) es; close_p fmt p
   | Proj(i,e)  -> fpr fmt "pi_%i(%a)" i (pp_exp_p Tup) e
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
-  | App(o,es)  -> pp_op_p above fmt o es
-  | Nary(o,es) -> fpr fmt "%a"  (pp_nop_p above) (o,es)
+  | App(o,es)  -> fpr fmt "%a" (pp_op_p above) (o,es) (* e.e_tag *)
+  | Nary(o,es) -> fpr fmt "(%a)"  (pp_nop_p above) (o,es) (* e.e_tag *)
   | ElemH(e1,e2,h) -> 
     let p = notsep above && above<>NInfix(Land) in
     open_p fmt p; fpr fmt "%a in [%a | %a]" 
@@ -331,7 +331,7 @@ let rec pp_exp_p above fmt e =
       (pp_list ",@ " (fun fmt (v,h) ->
         F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h;
     close_p fmt p
-and pp_op_p above fmt op es =
+and pp_op_p above fmt (op, es) =
   let o = open_p fmt in
   let c = close_p fmt in
   let fpr fmt = F.fprintf fmt in

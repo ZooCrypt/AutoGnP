@@ -51,16 +51,19 @@ let pp_distr fmt (ty,es) = match es with
   | _  -> F.fprintf fmt "%a \\ {%a}" pp_ty ty
             (pp_list "," pp_exp) es
 
+(*let pp_v fmt v = F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
+let pp_v fmt v = Vsym.pp fmt v 
+
 let pp_binder fmt vs = match vs with
-  | [v] -> Vsym.pp fmt v
-  | _   -> F.fprintf fmt "(%a)" (pp_list "," Vsym.pp) vs
+  | [v] -> pp_v fmt v
+  | _   -> F.fprintf fmt "(%a)" (pp_list "," pp_v) vs
 
 let pp_lcmd fmt lc = match lc with
   | LLet(vs,e)  -> F.fprintf fmt "let %a = %a" pp_binder [vs]
                      pp_exp e
   | LBind(vs,h) -> F.fprintf fmt "%a <- L_%a" pp_binder vs
                      Hsym.pp h
-  | LSamp(v,d)  -> F.fprintf fmt "%a <-$ %a" Vsym.pp v
+  | LSamp(v,d)  -> F.fprintf fmt "%a <-$ %a" pp_binder [v]
                      pp_distr d
   | LGuard(e)   -> pp_exp fmt e
 
@@ -77,7 +80,7 @@ let pp_odef fmt (o, vs, ms, e) =
 let pp_gcmd fmt gc = match gc with
   | GLet(vs,e)      -> F.fprintf fmt "let %a = %a" pp_binder [vs]
                          pp_exp e
-  | GSamp(v,d)      -> F.fprintf fmt "%a <-$ %a" Vsym.pp v
+  | GSamp(v,d)      -> F.fprintf fmt "%a <-$ %a" pp_binder [v]
                          pp_distr d
   | GCall(vs,e,[]) -> F.fprintf fmt "%a <- A%a" pp_binder vs pp_exp e
   | GCall(vs,e,os) -> F.fprintf fmt "%a <- A%a with @.  %a"

@@ -25,6 +25,14 @@ let rec string_of_fexp e = match e with
   | SMult(a,b) -> F.sprintf "(%s * %s)" (string_of_fexp a) (string_of_fexp b)
 
 (* Abstraction of 'Expr.expr' to sfexp *)
+let rec rename hr = function 
+  | V i -> V (Hashtbl.find hr i)
+  | (SOne | SZ) as e -> e
+  | SOpp e -> SOpp (rename hr e)
+  | SInv e -> SInv (rename hr e)
+  | SPlus(e1,e2) -> SPlus (rename hr e1, rename hr e2)
+  | SMult(e1,e2) -> SMult (rename hr e1, rename hr e2)
+
 let abstract_non_field before e0 =
   let c = ref 0 in
   let he = He.create 17 in
@@ -51,9 +59,14 @@ let abstract_non_field before e0 =
     | _ -> V (lookup e)
   in
   let se = go e0 in
+  let binding = List.sort e_compare (He.fold (fun e _ l -> e::l) he []) in
+  let hr = Hashtbl.create 17 in
   let hv = Hashtbl.create 17 in
-  He.iter (fun e i -> Hashtbl.add hv i e) he;
-  (se, !c, hv)
+  let c = ref 0 in
+  List.iter (fun e -> let i = !c in incr c;
+                      Hashtbl.add hr (He.find he e) i;
+                      Hashtbl.add hv i e) binding;
+  (rename hr se, !c, hv)
 
 (** Parser for Singular Polynomials in Q[x1,..,xk] *)
 

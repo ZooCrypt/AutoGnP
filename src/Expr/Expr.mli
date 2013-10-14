@@ -210,7 +210,7 @@ module EConstructors :
 (** {5 Pretty printing} *)
 val pp_cnst : formatter -> cnst -> 'a Type.gty -> unit
 val pp_exp  : formatter -> 'a gexpr -> unit
-val pp_op   : formatter -> op -> 'a gexpr list -> unit
+val pp_op   : formatter -> op * 'a gexpr list -> unit
 val pp_nop  : formatter -> naryop * 'a gexpr list -> unit
 
 (* ----------------------------------------------------------------------- *)
