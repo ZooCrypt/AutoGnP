@@ -385,6 +385,9 @@ let pp_exp fmt e = pp_exp_p Top fmt e
 let pp_op  fmt x = pp_op_p  Top fmt x
 let pp_nop fmt x = pp_nop_p Top fmt x
 
+(* no parens around tuples *)
+let pp_exp_tnp fmt e = pp_exp_p PrefixApp fmt e
+
 (* ----------------------------------------------------------------------- *)
 (** {5 Constructor functions} *)
 

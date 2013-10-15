@@ -13,9 +13,9 @@
 %token TGT
 %token TFQ
 %token STAR
+%left  STAR
 %token LPAREN
 %token RPAREN
-%token UNDERSCORE
 %token <string> LV_ID /* always l<int> */
 
 /************************************************************************/
@@ -37,6 +37,9 @@
 %token COLON
 %token QUESTION
 %token LAND
+%left  LAND
+
+%token EQUAL
 
 %token COMMA
 
@@ -44,6 +47,31 @@
 %token ONE
 %token GEN
 %token EMAP
+%token UNIT
+
+/************************************************************************/
+/* Tokens for games */
+
+%token LEFTARROW
+%token LET
+%token SAMP
+%token BACKSLASH
+%token LBRACKET
+%token RBRACKET
+%token MID
+%token SEMICOLON
+%token LIST
+%token WITH
+%token <string> AID
+
+/************************************************************************/
+/* Tokens for theories */
+
+%token TO
+%token ADVERSARY
+%token ORACLE
+%token PROVE
+%token DOT
 
 /************************************************************************/
 /* Production types */
@@ -52,11 +80,27 @@
 
 %type <ParserUtil.parse_expr> expr
 
+%type <ParserUtil.lcmd> lcmd
+
+%type <ParserUtil.odef> odef
+
+%type <ParserUtil.gcmd> gcmd
+
+%type <ParserUtil.gdef> gdef
+
+%type <ParserUtil.theory> theory
+
 /************************************************************************/
 /* Start productions */
 %start typ
 
 %start expr
+
+%start odef
+
+%start gdef
+
+%start theory
 
 %%
 
@@ -67,12 +111,12 @@ typ :
 | t=typ0 EOF { t }
 
 typ0 :
-| TBS UNDERSCORE s=LV_ID { BS(s) }
+| TBS s=LV_ID { BS(s) }
 | TBOOL { Bool }
 | TG { G }
 | TGT { GT }
 | TFQ { Fq }
-| LPAREN RPAREN { Prod([]) }
+| UNIT { Prod([]) }
 | LPAREN l = typlist0 RPAREN { Prod(l) }
 
 typlist0 :
@@ -81,42 +125,127 @@ typlist0 :
 
 /************************************************************************/
 /* Expressions */
+
 /* FIXME: check operator precedence */
+
 expr :
 | e = expr0 EOF { e }
 
 expr0 :
+| e1 = expr1 EQUAL e2 = expr1 { Eq(e1,e2) }
+| e1 = expr1 QUESTION e2 = expr1 COLON e3 = expr1 { Ifte(e1, e2, e3) }
 | e = expr1 { e }
-| e1 = expr0 PLUS e2 = expr0 { Plus(e1, e2) }
-| e1 = expr0 MINUS e2 = expr0 { Minus(e1, e2) }
-| e1 = expr0 SLASH e2 = expr0 { Div(e1, e2) }
-| e1 = expr0 QUESTION e2 = expr0 COLON e3 = expr0
-  { Ifte(e1, e2, e3) }
-| MINUS e1 = expr0 { Opp(e1) }  
+
+expr1 :
+| e1 = expr1 PLUS e2 = expr1 { Plus(e1, e2) }
+| e = expr2 { e }
+
+expr2:
+| e1 = expr2 MINUS e2 = expr2 { Minus(e1, e2) }
+| e = expr3 { e }
+
+expr3:
+| e1 = expr4 SLASH e2 = expr4 { Div(e1, e2) }
+| e = expr4 { e }
+
+expr4 :
+| e1 = expr4 STAR e2 = expr4 { Mult(e1,e2) }
+| e1 = expr4 LAND e2 = expr4 { Land(e1,e2) }
+| e = expr5 { e }
+
+expr5:
+| e1 = expr6 CARET e2 = expr6 { Exp(e1, e2) }
+| e  = expr6 { e }
 
 exprlist0 :
 | e = expr0 { [e] }
 | e = expr0 COMMA l = exprlist0 { e::l }
 
-expr1 :
-| e1 = expr1 STAR e2 = expr1 { Mult(e1,e2) }
-| e1 = expr1 LAND e2 = expr1 { Land(e1,e2) }
-| e = expr2 { e }
-
-expr2:
-| e1 = expr2 CARET e2 = expr2 { Exp(e1, e2) }
-| e = expr3 { e }
-
-expr3 :
+expr6 :
 | s = ID { V(s) }
-| ONE { Cnst(Expr.FOne) }
-| ZERO { Cnst(Expr.FZ) }
-| GEN { Cnst(Expr.GGen) }
-| TRUE { Cnst(Expr.B true) }
-| FALSE { Cnst(Expr.B false) }
+| UNIT   { Tuple [] }
+| ONE    { Cnst(Expr.FOne) }
+| ZERO   { Cnst(Expr.FZ) }
+| GEN    { Cnst(Expr.GGen) }
+| TRUE   { Cnst(Expr.B true) }
+| FALSE  { Cnst(Expr.B false) }
 | s = ID LPAREN l = exprlist0 RPAREN { SApp(s,l) }
-| NOT e = expr0 { Not(e) }
+| MINUS e1 = expr6 { Opp(e1) }
+| NOT e = expr6 { Not(e) }
 | EMAP e1 = expr0 COMMA e2 = expr0 RPAREN { EMap(e1,e2) }
 | LPAREN e = expr0 RPAREN {e}
-| LPAREN RPAREN { Tuple []}
 | LPAREN e = expr0 COMMA l = exprlist0 RPAREN { Tuple(e::l) }
+
+
+/************************************************************************/
+/* List comprehensions */
+/* FIXME: handle shift-reduce conflict */
+
+idlist :
+| UNIT { [] }
+| LPAREN is = idlist0 RPAREN { is }
+| is = idlist0 { is }
+
+idlist0 :
+| i = ID { [i] }
+| i = ID COMMA is = idlist0 { i :: is }
+
+lcmd :
+| LET i = ID EQUAL e = expr0 { LLet(i,e) }
+| is = idlist LEFTARROW LIST hsym = ID { LBind(is,hsym) }
+| i = ID SAMP t = typ0 BACKSLASH es = exprlist0 { LSamp(i,t,es) }
+| i = ID SAMP t = typ0                          { LSamp(i,t,[]) }
+| e = expr0 { LGuard(e) }
+
+lcmdlist :
+| c = lcmd { [c] }
+| c = lcmd COMMA cs = lcmdlist { c::cs }
+
+lcomp :
+| LBRACKET e = expr0 MID cmds = lcmdlist RBRACKET { (cmds, e) }
+
+odef :
+| oname = AID UNIT EQUAL lc = lcomp { (oname,[],lc) }
+| oname = AID LPAREN args = idlist RPAREN EQUAL lc = lcomp { (oname, args, lc) }
+
+/************************************************************************/
+/* games */
+
+odeflist :
+| od = odef { [od] }
+| od = odef COMMA ods = odeflist { od::ods }
+
+mexprlist0 :
+| e = expr0 COMMA es = exprlist0 { Tuple(e::es) }
+| e = expr0  { e }
+
+gcmd :
+| LET i = ID EQUAL e = expr0 { GLet(i,e) }
+| is = idlist LEFTARROW asym = AID LPAREN e = mexprlist0 RPAREN WITH os = odeflist { GCall(is,asym,e,os) }
+| is = idlist LEFTARROW asym = AID LPAREN e = mexprlist0 RPAREN                    { GCall(is,asym,e,[]) }
+| is = idlist LEFTARROW asym = AID UNIT WITH os = odeflist { GCall(is,asym,Tuple [],os) }
+| is = idlist LEFTARROW asym = AID UNIT                    { GCall(is,asym,Tuple [],[]) }
+| i = ID SAMP t = typ0 BACKSLASH es = exprlist0 { GSamp(i,t,es) }
+| i = ID SAMP t = typ0                          { GSamp(i,t,[]) }
+
+gcmdlist0 :
+| c = gcmd { [c] }
+| c = gcmd SEMICOLON cs = gcmdlist0 { c::cs }
+
+gdef0 :
+| cs = gcmdlist0 { cs }
+
+gdef :
+| gdef0 EOF { [] }
+
+/************************************************************************/
+/* instructions and theory */
+
+instr :
+| ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ADecl(i,t1,t2) }
+| ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ODecl(i,t1,t2) }
+| PROVE  LBRACKET g = gdef0 RBRACKET COLON e  = expr0 DOT { Judgment(g,e) }
+
+theory :
+| i = instr EOF { [i] }
+| i = instr t = theory { i::t }

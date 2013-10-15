@@ -10,46 +10,64 @@ let blank = [' ' '\t' '\r' '\n']
 let newline = '\n'
 
 rule lex = parse
-  | blank+ { lex lexbuf }
-  | "(*"   { comment lexbuf; lex lexbuf }
+  | blank+  { lex lexbuf }
+  | "(*"    { comment lexbuf; lex lexbuf }
   | [' ' '\t']
-  | newline     { Lexing.new_line lexbuf; lex lexbuf }
+  | newline { Lexing.new_line lexbuf; lex lexbuf }
+  | eof     { EOF }
   | "("     { LPAREN }
   | ")"     { RPAREN }
   | "+"     { PLUS }
   | "-"     { MINUS }  
   | "*"     { STAR }
-  | eof     { EOF }
-  | "_"     { UNDERSCORE }  
-  | "BS"    { TBS }
+  | "BS_"   { TBS }
   | "Bool"  { TBOOL }
   | "G"     { TG }
   | "GT"    { TGT }
   | "Fq"    { TFQ }
   | "0"     { ZERO }
-  | "not"  { NOT }
+  | "not"   { NOT }
   | "true"  { TRUE }
   | "false" { FALSE }
-  | ['l']['0'-'9']* as s { LV_ID s }
-  | ['a'-'f' 'h'-'k' 'm'-'z']
+  | "let"   { LET }
+  | "adversary" { ADVERSARY }
+  | "oracle" { ORACLE }
+  | "prove" { PROVE }
+  | "with"  { WITH }
+  | ['k']['0'-'9']* as s { LV_ID s }
+  | ['a'-'f' 'h'-'j' 'm'-'v' 'x'-'z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
     as s { ID s }
-  | ":"     { COLON }  
+  | ['A'-'E' 'H'-'Z']
+    ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
+    as s { AID s }
+  | ":"     { COLON }
+  | ";"     { SEMICOLON }
+  | "()"    { UNIT }
   | "?"     { QUESTION }
   | "1"     { ONE }
-  | "e("     { EMAP }   
+  | "e("    { EMAP }
   | "g"     { GEN }
   | ","     { COMMA }
   | "^"     { CARET }
   | "/"     { SLASH }  
-  | "/\\"   { LAND }  
+  | "/\\"   { LAND }
+  | "L_"    { LIST }
+  | "<-"    { LEFTARROW }
+  | "<-$"   { SAMP }
+  | "\\"    { BACKSLASH }
+  | "["     { LBRACKET }
+  | "]"     { RBRACKET }
+  | "="     { EQUAL }
+  | "|"     { MID }
+  | "->"    { TO }
+  | "." { DOT }
+
 (*  | "{"     { LBRACE } *)
 (*  | "}"     { RBRACE } *)
-(*  | "["     { LBRACKET } *)
-(*  | "]"     { RBRACKET } *)
 (*  | "^-1"   { INV } *)
 (*  | ":"     { COLON } *)
-(*  | "->"    { TO } *)
+
 (*  | "."     { DOT }   *)
 (*  | ['0'-'9']+ as s {INT (int_of_string s)} *)    
 

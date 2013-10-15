@@ -213,6 +213,8 @@ val pp_exp  : formatter -> 'a gexpr -> unit
 val pp_op   : formatter -> op * 'a gexpr list -> unit
 val pp_nop  : formatter -> naryop * 'a gexpr list -> unit
 
+val pp_exp_tnp  : formatter -> 'a gexpr -> unit
+
 (* ----------------------------------------------------------------------- *)
 (** {6 Generic functions on [expr]} *)
 

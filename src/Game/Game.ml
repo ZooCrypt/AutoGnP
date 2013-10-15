@@ -31,7 +31,7 @@ type gcmd = GLet  of Vsym.t * Expr.expr
               (* GLet([x1;..xk], e): let (x1,..,xk) = e *)
           | GSamp of Vsym.t * distr
               (* GSamp(x,d): x <-$ d *)
-          | GCall of Vsym.t list * Expr.expr * odef list
+          | GCall of Vsym.t list * Asym.t * Expr.expr * odef list
               (* GCall([x1;..xk], e, [o1;..;ol]): (x1,..,xk) <- A(e) with o1,..,ol *)
 
 (* game definition *)
@@ -82,10 +82,11 @@ let pp_gcmd fmt gc = match gc with
                          pp_exp e
   | GSamp(v,d)      -> F.fprintf fmt "%a <-$ %a" pp_binder [v]
                          pp_distr d
-  | GCall(vs,e,[]) -> F.fprintf fmt "%a <- A%a" pp_binder vs pp_exp e
-  | GCall(vs,e,os) -> F.fprintf fmt "%a <- A%a with @.  %a"
-                        pp_binder vs pp_exp e
-                        (pp_list ",@." pp_odef) os
+  | GCall(vs,asym,e,[]) -> F.fprintf fmt "%a <- %a(%a)" pp_binder vs Asym.pp asym pp_exp_tnp e
+  | GCall(vs,asym,e,os) -> F.fprintf fmt "%a <- %a(%a) with @.  %a"
+                             pp_binder vs pp_exp_tnp e
+                             Asym.pp asym
+                             (pp_list ",@." pp_odef) os
 
 let pp_gdef fmt gd =
   F.fprintf fmt "@[%a @]" (pp_list ";@." pp_gcmd) gd
@@ -120,7 +121,7 @@ let map_odef_exp f (o,vs,ms,e) =
 let map_gcmd_exp f gcmd = match gcmd with
   | GLet(vs,e)     -> GLet(vs, f e)
   | GSamp(v,d)     -> GSamp(v, map_distr_exp f d)
-  | GCall(vs,e,os) -> GCall(vs, f e, List.map (map_odef_exp f) os)
+  | GCall(vs,asym,e,os) -> GCall(vs, asym, f e, List.map (map_odef_exp f) os)
 
 let map_gdef_exp f gdef = List.map (map_gcmd_exp f) gdef
 
@@ -143,7 +144,7 @@ let iter_odef_exp f (_o,_vs,ms,e) =
 let iter_gcmd_exp f gcmd = match gcmd with
   | GLet(_,e)     -> f e
   | GSamp(_,d)    -> iter_distr_exp f d
-  | GCall(_,e,os) -> f e; List.iter (iter_odef_exp f) os
+  | GCall(_,_,e,os) -> f e; List.iter (iter_odef_exp f) os
 
 let iter_gdef_exp f gdef = List.iter (iter_gcmd_exp f) gdef
 
@@ -185,14 +186,14 @@ let read_odef (_,xs,cmd,e) =
 let read_gcmd = function
   | GLet(_,e) -> e_vars e 
   | GSamp(_,d) -> read_distr d
-  | GCall(_,e,odef) -> 
+  | GCall(_,_,e,odef) -> 
     Se.union (e_vars e) (fold_union read_odef odef)
 
 let read_gcmds c = fold_union read_gcmd c
 
 let write_gcmd = function
   | GLet (x,_) | GSamp (x,_) -> Se.singleton (mk_V x)
-  | GCall (xs,_,_) -> add_binding xs
+  | GCall (xs,_,_,_) -> add_binding xs
 
 let write_gcmds c = fold_union write_gcmd c
 
@@ -210,7 +211,7 @@ let has_log_o (_,_,c,e) = has_log e || has_log_lcmds c
 let has_log_gcmd = function
   | GLet(_,e) -> has_log e
   | GSamp(_,d) -> has_log_distr d
-  | GCall(_,e,os) ->
+  | GCall(_,_,e,os) ->
     has_log e || List.exists has_log_o os 
 
 let has_log_gcmds c = List.exists has_log_gcmd c
@@ -256,23 +257,23 @@ let set_ju_gcmd ju p cmds =
 
 let get_ju_lcmd ju (i,j,k) = 
   match get_ju_gcmd ju i with
-  | GCall(_,_,os) ->
+  | GCall(_,_,_,os) ->
       let (o,vs,ms,e) = List.nth os j in
       o,vs,split_n k ms, e
   | _ -> assert false
 
 let get_ju_octxt ju (i,j,k) = 
   match get_ju_ctxt ju i with
-  | GCall(vsa,e,os), ctxt ->
+  | GCall(vsa,asym,e,os), ctxt ->
     let rohd, (o,vs,ms,oe), otl = split_n j os in
     let rhd, i, tl = split_n k ms in
-    i, (((rhd,tl), (o,vs,oe), (rohd, otl, (vsa,e))), ctxt)
+    i, (((rhd,tl), (o,vs,oe), (rohd, otl, (asym,vsa,e))), ctxt)
   | _ -> assert false
 
-let set_ju_octxt cmd (((rhd,tl), (o,vs,oe), (rohd, otl, (vsa,e))), ctxt) =
+let set_ju_octxt cmd (((rhd,tl), (o,vs,oe), (rohd, otl, (asym,vsa,e))), ctxt) =
   let ms = List.rev_append rhd (cmd @ tl) in
   let os = List.rev_append rohd ((o,vs,ms, oe) :: otl) in
-  let i = [GCall(vsa, e, os)] in
+  let i = [GCall(vsa, asym, e, os)] in
   set_ju_ctxt i ctxt
 
 let set_ju_lcmd ju p cmds = 
@@ -315,10 +316,11 @@ let gc_equal i1 i2 =
     Vsym.equal x1 x2 && e_equal e1 e2
   | GSamp(x1,d1), GSamp(x2,d2) ->
     Vsym.equal x1 x2 && d_equal d1 d2
-  | GCall(xs1,e1,os1), GCall(xs2,e2,os2) ->
+  | GCall(xs1,as1,e1,os1), GCall(xs2,as2,e2,os2) ->
     list_eq_for_all2 Vsym.equal xs1 xs2 &&
       e_equal e1 e2 &&
-      list_eq_for_all2 o_equal os1 os2
+      list_eq_for_all2 o_equal os1 os2 &&
+      Asym.equal as1 as2
   | GLet _, (GSamp _ | GCall _) 
   | GSamp _, (GLet _ | GCall _) 
   | GCall _, (GLet _ | GSamp _) -> false
@@ -371,11 +373,11 @@ let norm_gdef ?norm:(nf=norm_expr_def) g =
       let d = norm_distr ~norm:nf s d in
       let s = Me.remove (mk_V v) s in
       aux s (GSamp(v,d) :: rc) lc'
-    | GCall(vs, e, odefs) :: lc'->
+    | GCall(vs, asym, e, odefs) :: lc'->
       let e = nf (e_subst s e) in
       let odefs = List.map (norm_odef ~norm:nf s) odefs in
       let s = List.fold_left (fun s v -> Me.remove (mk_V v) s) s vs in
-      aux s (GCall(vs, e, odefs)::rc) lc'
+      aux s (GCall(vs, asym, e, odefs)::rc) lc'
   in
   aux Me.empty [] g
 
