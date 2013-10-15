@@ -48,6 +48,7 @@ let main0 =
 *)
 
 let main =
+  try
   catch_TypeError (fun () ->
   let c = (Vsym.mk "c" mk_Fq) in
   let d = (Vsym.mk "d" mk_Fq) in
@@ -192,4 +193,6 @@ let main =
   F.printf "%a" pp_ps ps;
   let ps = apply rrandom_indep ps in
   F.printf "%a" pp_ps ps;
+  Singular.print_trace ()
   )
+  with _ -> Singular.print_trace ()
