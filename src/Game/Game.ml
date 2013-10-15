@@ -88,7 +88,7 @@ let pp_gcmd fmt gc = match gc with
                         (pp_list ",@." pp_odef) os
 
 let pp_gdef fmt gd =
-  F.fprintf fmt "@[%a @]" (pp_list "@." pp_gcmd) gd
+  F.fprintf fmt "@[%a @]" (pp_list ";@." pp_gcmd) gd
 
 let pp_ju fmt ju =
   F.fprintf fmt "@[%a@. : %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
