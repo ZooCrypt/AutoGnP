@@ -74,7 +74,10 @@ let main =
   let vm0 = v m0 in
   let vm1 = v m1 in
   let vmb = v mb in
-  let oname = Osym.mk "kg" mk_Fq (mk_Prod [mk_G;mk_G]) in
+  let oname = Osym.mk "Gg" mk_Fq (mk_Prod [mk_G;mk_G]) in
+  let aname1 = Asym.mk "A1" (mk_Prod []) mk_Fq in
+  let aname2 = Asym.mk "A2" (mk_Prod [mk_G;mk_G;mk_G]) (mk_Prod [mk_G;mk_G]) in
+  let aname3 = Asym.mk "A3" (mk_Prod [mk_GT; mk_G; mk_G]) mk_Bool in
   let o1 = 
     (oname,
      [i],
@@ -86,16 +89,16 @@ let main =
      )
   in
   let g1 =
-    [ GCall([i'],mk_Tuple [],[]);
+    [ GCall([i'],aname1,mk_Tuple [],[]);
       GSamp(c,duni_Fq);
       GSamp(d,duni_Fq);
       GSamp(e,duni_Fq);
       GSamp(h,duni_Fq);
       GSamp(b,duni_Bool);
-      GCall([m0;m1],
+      GCall([m0;m1],aname2,
              tuple [g ^: vc; g ^: vd; g ^: vh],[]);
       GLet(mb,ifte vb vm0 vm1);
-      GCall( [b']
+      GCall( [b'], aname3
            , tuple
                [ vmb 
                  &: ((em (g,g)) ^^: (vc *: vd *: ve));
@@ -158,13 +161,13 @@ let main =
       GLet (gd, g ^: vd);
       GLet (ge, g ^: ve);
       GLet (gu, em(g,g) ^^: (mk_FMult [vc;vd;ve]));
-      GCall([i'],mk_Tuple [],[]);
+      GCall([i'],aname1,mk_Tuple [],[]);
       GSamp(h,duni_Fq);
       GSamp(b,duni_Bool);
-      GCall([m0;m1],
+      GCall([m0;m1],aname2,
              tuple [vgc; vgd;  (vgd ^: (f0 -:vi')) **: (g ^: vh)],[]);
       GLet(mb,ifte vb vm0 vm1);
-      GCall( [b']
+      GCall( [b'], aname3
            , tuple
                [ vmb &: vgu;
                  vge;
