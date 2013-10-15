@@ -10,6 +10,43 @@ module F = Format
 let duni_Fq = (mk_Fq, [])
 let duni_Bool = (mk_Bool, [])
 
+(*
+let main0 = 
+  let c = (Vsym.mk "c" mk_Fq) in
+  let d = (Vsym.mk "d" mk_Fq) in
+  let e = (Vsym.mk "e" mk_Fq) in
+  let h = (Vsym.mk "h" mk_Fq) in
+  let b = (Vsym.mk "b" mk_Bool) in
+  let i = (Vsym.mk "i" mk_Fq) in
+  let r = (Vsym.mk "r" mk_Fq) in
+  let i' = (Vsym.mk "i'" mk_Fq) in
+  let b' = (Vsym.mk "b'" mk_Bool) in
+  let m0 = (Vsym.mk "m0" mk_GT) in
+  let m1 = (Vsym.mk "m1" mk_GT) in
+  let mb = (Vsym.mk "mb" mk_GT) in
+
+  let vc  = v c in
+  let vd  = v d in
+  let ve  = v e in
+  let vh  = v h in
+  let vb  = v b in
+  let vi  = v i in
+  let vr  = v r in
+  let vi' = v i' in
+  let vb' = v b' in
+  let vm0 = v m0 in
+  let vm1 = v m1 in
+  let vmb = ifte vb vm0 vm1 in
+  let e = (vc -: f1) /: ((vc *: vc) -: f1) in
+(*vmb &: ((em (g,g)) ^^: (vc *: vd *: ve)) in *)
+  F.printf "e = %a@." pp_exp e;
+  let e = Norm.norm_expr e in
+  F.printf "e1 = %a@." pp_exp e;
+  let e = Norm.norm_expr e in
+  F.printf "e2 = %a@." pp_exp e
+
+*)
+
 let main =
   catch_TypeError (fun () ->
   let c = (Vsym.mk "c" mk_Fq) in
@@ -139,6 +176,17 @@ let main =
   F.printf "%a" pp_ps ps;
   let ps = apply (rbddh "u") ps in
   F.printf "%a" pp_ps ps;
+  let ps = apply rnorm ps in
+  F.printf "%a" pp_ps ps;
+  let ps = apply (rswap 3 4) ps in
+  F.printf "%a" pp_ps ps;
+  let ps = apply (rrandom 7 (vstar, star -: (mk_GTLog (ifte vb vm0 vm1)))
+                    (vstar, star +: (mk_GTLog (ifte vb vm0 vm1)))) ps in
+  F.printf "%a" pp_ps ps;
+  let ps = apply rnorm ps in
+  F.printf "%a" pp_ps ps;
+  let ps = apply (rswap 5 3) ps in
+  F.printf "%a" pp_ps ps;
+  let ps = apply rrandom_indep ps in
+  F.printf "%a" pp_ps ps;
   )
-
-
