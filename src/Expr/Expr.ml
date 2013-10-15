@@ -352,11 +352,11 @@ and pp_op_p above fmt (op, es) =
   | FDiv,   [a;b] -> pp_bin (notsep above) FDiv "/" a b
   | FMinus, [a;b] -> pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "-" a b
   | Eq,     [a;b] -> pp_bin (notsep above && above<>NInfix(Land)) Eq "=" a b
-  | GLog,   [a]   -> pp_prefix GLog "log("   ")"   a
+  | GLog,   [a]   -> pp_prefix GLog  "log("  ")"   a
   | GTLog,  [a]   -> pp_prefix GTLog "log("  ")"   a
   | FOpp,   [a]   -> pp_prefix FOpp  "-"     ""    a
   | FInv,   [a]   -> pp_prefix FInv  ""      "^-1" a
-  | Not,    [a]   -> pp_prefix Not   "not " ""     a
+  | Not,    [a]   -> pp_prefix Not   "not "  ""    a
   | EMap,   [a;b] ->
       let p = false in
       let ppe i = pp_exp_p (Infix(EMap,i)) in
