@@ -10,7 +10,7 @@ cur-dir := $(shell pwd)
 opam-root := $(shell opam config var root)
 
 
-all: Test_Proof_BB1
+all: zoocrypt
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
@@ -59,6 +59,9 @@ Test_Pretty_Expr :
 
 Test_Parser :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Parser.d.byte && ./Test_Parser.d.byte
+
+zoocrypt :
+	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.d.byte && ./zoocrypt.d.byte ./examples/bb1.zc
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@

@@ -16,7 +16,7 @@
 %left  STAR
 %token LPAREN
 %token RPAREN
-%token <string> LV_ID /* always l<int> */
+%token <string> LV_ID /* always k<int> */
 
 /************************************************************************/
 /* Tokens for expressions */
@@ -63,6 +63,7 @@
 %token LIST
 %token WITH
 %token <string> AID
+%token <int> INT
 
 /************************************************************************/
 /* Tokens for theories */
@@ -74,6 +75,8 @@
 %token DOT
 %token PRINTGOALS
 %token RNORM
+%token RRANDOM
+%token RRANDOM_ORACLE
 
 /************************************************************************/
 /* Production types */
@@ -249,7 +252,11 @@ instr :
 | PROVE  LBRACKET g = gdef0 RBRACKET COLON e  = expr0 DOT { Judgment(g,e) }
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }
-| RNORM DOT{ Apply(Rnorm) }
+| RNORM DOT { Apply(Rnorm) }
+| RRANDOM i = INT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT { Apply(Rrandom(i-1,i1,e1,i2,e2)) }
+| RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN
+                 LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT
+                 { Apply(Rrandom_oracle(i-1,j-1,k-1,i1,e1,i2,e2)) }
 
 theory :
 | i = instr EOF { [i] }

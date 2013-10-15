@@ -36,6 +36,9 @@ rule lex = parse
   | "print_goals" { PRINTGOALS }
   | "rnorm" { RNORM }
   | "with"  { WITH }
+  | "rrandom" { RRANDOM } 
+  | "rrandom_oracle" { RRANDOM_ORACLE }   
+  | ['1'-'9']['0'-'9']* as s { INT(int_of_string(s)) }
   | ['k']['0'-'9']* as s { LV_ID s }
   | ['a'-'f' 'h'-'j' 'm'-'v' 'x'-'z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*

@@ -84,8 +84,7 @@ let pp_gcmd fmt gc = match gc with
                          pp_distr d
   | GCall(vs,asym,e,[]) -> F.fprintf fmt "%a <- %a(%a)" pp_binder vs Asym.pp asym pp_exp_tnp e
   | GCall(vs,asym,e,os) -> F.fprintf fmt "%a <- %a(%a) with @.  %a"
-                             pp_binder vs pp_exp_tnp e
-                             Asym.pp asym
+                             pp_binder vs Asym.pp asym pp_exp_tnp e
                              (pp_list ",@." pp_odef) os
 
 let pp_gdef fmt gd =

@@ -129,6 +129,8 @@ type gdef = gcmd list
 
 type tactic =
     Rnorm
+  | Rrandom of int * string * parse_expr * string * parse_expr
+  | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr
 
 type instr =
     ODecl of string * parse_ty * parse_ty
@@ -169,7 +171,6 @@ let lcmd_of_parse_lcmd ps lcmd =
   | LGuard(e) ->
       Game.LGuard(expr_of_parse_expr ps.ps_vars e)
   | LBind(_) -> assert false (* not implemented yet *)
-
 
 let odef_of_parse_odef ps (oname, vs, (m,e)) =
   let osym = try Ht.find ps.ps_odecls oname
@@ -233,6 +234,48 @@ let handle_instr ps instr =
        | Some(jus) ->
            { ps with ps_goals = Some(CoreRule.apply Rules.rnorm jus) }
        | None -> assert false)
+  | Apply(Rrandom(i,sv1,e1,sv2,e2)) ->
+      let ty =
+        (match ps.ps_goals with
+         | Some(ju::_) ->
+             (match Game.get_ju_gcmd ju i with
+              | Game.GSamp(v,_) -> v.Vsym.ty
+              | _ -> assert false)
+         | _ -> assert false)
+      in
+      let v1 = create_var ps sv1 ty in
+      let e1 = expr_of_parse_expr ps.ps_vars e1 in
+      Ht.remove ps.ps_vars sv1;
+      let v2 = create_var ps sv2 ty in
+      let e2 = expr_of_parse_expr ps.ps_vars e2 in
+      Ht.remove ps.ps_vars sv2;
+      (match ps.ps_goals with
+       | Some(jus) ->
+           { ps with ps_goals = Some(CoreRule.apply (CoreRule.rrandom i (v1,e1) (v2,e2)) jus) }
+       | None -> assert false)
+
+  | Apply(Rrandom_oracle(i,j,k,sv1,e1,sv2,e2)) ->
+      let ty =
+        (match ps.ps_goals with
+         | Some(ju::_) ->
+             (match Game.get_ju_lcmd ju (i,j,k) with
+              | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
+              | _ -> assert false)
+         | _ -> assert false)
+      in
+      let v1 = create_var ps sv1 ty in
+      let e1 = expr_of_parse_expr ps.ps_vars e1 in
+      Ht.remove ps.ps_vars sv1;
+      let v2 = create_var ps sv2 ty in
+      let e2 = expr_of_parse_expr ps.ps_vars e2 in
+      Ht.remove ps.ps_vars sv2;
+      (match ps.ps_goals with
+       | Some(jus) ->
+           { ps with ps_goals = Some(CoreRule.apply
+                                       (CoreRule.rrandom_oracle (i,j,k) (v1,e1) (v2,e2))
+                                        jus) }
+       | None -> assert false)
+
   | PrintGoals(s) ->
       Format.printf "proof state %s:\n" s;
       (match ps.ps_goals with
@@ -252,4 +295,3 @@ let handle_instr ps instr =
   | Judgment(gd, e) ->
       let ju = ju_of_parse_ju ps gd e in
       { ps with ps_goals = Some([ju]) }
-
