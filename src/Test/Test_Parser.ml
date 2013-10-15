@@ -34,14 +34,9 @@ let f _ =
 
 let test_theory s =
   let pt = Parse.theory s in
-  let ps = List.fold_left (fun ps i -> PU.handle_instr ps i) PU.mk_ps pt in
-  match ps.PU.ps_goals with
-  | Some(gds) ->
-      let i = ref 0 in
-      List.iter (fun gd -> incr i; Format.printf "%i: %a" !i Game.pp_ju gd) gds
-  | None -> Format.printf "Something failed"
+  List.fold_left (fun ps i -> PU.handle_instr ps i) PU.mk_ps pt
 
-let () = test_theory
+let ps = test_theory
 "adversary A1 : () -> Fq.\
 adversary A2 : (G * G * G) -> (GT * GT).\
 adversary A3 : (GT * G * G) -> Bool.\
@@ -57,4 +52,7 @@ prove \
   let mb = (b?m0:m1);\
   b' <- A3(mb * e(g,g)^((c*d)*e), g^e, g^(e*(d*i' + h))) with\
     Kg(i) = [ (g^(c*d + r*(d*i + h)), g^r) | not (i=i'), r <-$ Fq]\
-] : b = b'."
+] : b = b'. \
+print_goals : start.
+rnorm.
+print_goals : after_norm."

@@ -33,6 +33,8 @@ rule lex = parse
   | "adversary" { ADVERSARY }
   | "oracle" { ORACLE }
   | "prove" { PROVE }
+  | "print_goals" { PRINTGOALS }
+  | "rnorm" { RNORM }
   | "with"  { WITH }
   | ['k']['0'-'9']* as s { LV_ID s }
   | ['a'-'f' 'h'-'j' 'm'-'v' 'x'-'z']

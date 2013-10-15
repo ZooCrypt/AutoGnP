@@ -72,6 +72,8 @@
 %token ORACLE
 %token PROVE
 %token DOT
+%token PRINTGOALS
+%token RNORM
 
 /************************************************************************/
 /* Production types */
@@ -245,6 +247,9 @@ instr :
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ODecl(i,t1,t2) }
 | PROVE  LBRACKET g = gdef0 RBRACKET COLON e  = expr0 DOT { Judgment(g,e) }
+| PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
+| PRINTGOALS DOT { PrintGoals("") }
+| RNORM DOT{ Apply(Rnorm) }
 
 theory :
 | i = instr EOF { [i] }

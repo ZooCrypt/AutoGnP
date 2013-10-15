@@ -20,8 +20,8 @@ let wrap_error f s0 =
                   "Syntax error at offset %d (length %d): parsed ``%s'', error at ``%s''"
                   start
                   (S.length s)
-                  (if start >= S.length s then s  else (S.sub s 0 (start - 1)))
-                  (if start >= S.length s then "" else (S.sub s start (S.length s - start - 1)))
+                  (if start >= S.length s then s  else (S.sub s 0 start))
+                  (if start >= S.length s then "" else (S.sub s start (S.length s - start)))
       in
       print_endline err;
       raise (ParseError "error")

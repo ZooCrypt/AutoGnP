@@ -127,10 +127,15 @@ type gcmd =
 (* game definition *)
 type gdef = gcmd list
 
+type tactic =
+    Rnorm
+
 type instr =
     ODecl of string * parse_ty * parse_ty
   | ADecl of string * parse_ty * parse_ty
   | Judgment of gdef * parse_expr
+  | PrintGoals of string
+  | Apply of tactic
 
 type theory = instr list
 
@@ -223,6 +228,19 @@ let ju_of_parse_ju ps gd e =
 
 let handle_instr ps instr =
   match instr with
+  | Apply(Rnorm) ->
+      (match ps.ps_goals with
+       | Some(jus) ->
+           { ps with ps_goals = Some(CoreRule.apply Rules.rnorm jus) }
+       | None -> assert false)
+  | PrintGoals(s) ->
+      Format.printf "proof state %s:\n" s;
+      (match ps.ps_goals with
+       | Some(jus) ->
+           let i = ref 0 in
+           List.iter (fun ju -> incr i; Format.printf "goal %i:\n%a\n\n" !i Game.pp_ju ju) jus;
+       | None -> Format.printf "No goals\n\n%!");
+      ps
   | ODecl(s,t1,t2) ->
       if Ht.mem ps.ps_odecls s then failwith "oracle with same name already declared."
       else Ht.add ps.ps_odecls s (Osym.mk s (ty_of_parse_ty t1) (ty_of_parse_ty t2));
