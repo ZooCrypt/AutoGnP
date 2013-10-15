@@ -136,7 +136,7 @@ let call_singular cmd linenum =
   in
   output_string c_out cmd;
   (* F.printf "singular input: `%s' has been sent\n\n" cmd; *)
-  flush_all ();
+  flush c_out;
   let rec loop o linenum =
     if linenum = 0 then o
     else (
