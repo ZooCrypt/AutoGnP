@@ -26,15 +26,14 @@ let check_conv ju1 ju2 =
   ju_equal (norm_ju ju1) (norm_ju ju2) 
 
 let rconv new_ju1 ju1 = 
-
-  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
-  Format.printf "new_ju = %a@." pp_ju new_ju1; 
+  (* Format.printf "Check conv@.ju = %a@." pp_ju ju1; *)
+  (* Format.printf "new_ju = %a@." pp_ju new_ju1; *)
   let ju = norm_ju ju1 in
   let new_ju = norm_ju new_ju1 in
-  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
-  Format.printf "new_ju = %a@." pp_ju new_ju1; 
-  Format.printf "norm ju = %a@." pp_ju ju;
-  Format.printf "norm new_ju = %a@." pp_ju new_ju; 
+  (* Format.printf "Check conv@.ju = %a@." pp_ju ju1;  *)
+  (* Format.printf "new_ju = %a@." pp_ju new_ju1;  *)
+  (* Format.printf "norm ju = %a@." pp_ju ju; *)
+  (* Format.printf "norm new_ju = %a@." pp_ju new_ju;  *)
   if not (ju_equal ju new_ju) then
     (  
       Format.printf "ju = %a@.new_ju = %a@." 
@@ -43,7 +42,8 @@ let rconv new_ju1 ju1 =
       (try
          let (i1,i2) = List.find (fun (i1,i2) -> not (gc_equal i1 i2)) cc in
          Format.printf "i1 = %a@.i2 = %a@." pp_gcmd i1 pp_gcmd i2
-       with _ -> Format.printf "????@."); 
+       with _ -> Format.printf "????@.");
+      flush_all (); 
       failwith "rconv: not convertible");
   [new_ju1]
 
