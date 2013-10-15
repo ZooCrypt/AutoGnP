@@ -107,9 +107,9 @@ module Hse = Hashcons.Make (struct
     | V v1, V v2                 -> Vsym.equal v1 v2
     | H(f1,e1), H(f2,e2)         -> Hsym.equal f1 f2 && e_equal e1 e2
     | Tuple es1, Tuple es2       -> list_eq_for_all2 e_equal es1 es2
-    | Proj(i1, e1), Proj(i2, e2) -> i1 = i2 && e_equal e1 e2
+    | Proj(i1,e1), Proj(i2,e2)   -> i1 = i2 && e_equal e1 e2
     | Cnst c1, Cnst c2           -> c1 = c2
-    | App(o1,es1), App(o2, es2)  -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
+    | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | ElemH(e1,e1',vh1), ElemH(e2,e2',vh2) -> 
       e_equal e1 e2 && e_equal e1' e2' &&
