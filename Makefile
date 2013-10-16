@@ -54,6 +54,9 @@ Test_Singular :
 Test_Proof_BB1 :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proof_BB1.d.byte && ./Test_Proof_BB1.d.byte
 
+Test_Wf :
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Wf.d.byte && ./Test_Wf.d.byte
+
 Test_Pretty_Expr :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
 

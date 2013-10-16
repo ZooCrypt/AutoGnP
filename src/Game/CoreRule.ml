@@ -10,7 +10,10 @@ open Game
 (** goal handling *)
 
 let apply rule goals = match goals with
-  | g::gs -> rule g @ gs
+  | g::gs ->
+      let gs' = rule g in
+      List.iter Wf.wf_ju gs';
+      gs' @ gs
   | _ -> failwith "there are no goals"
 
 let delay goals = match goals with
@@ -86,7 +89,7 @@ let rrandom p c1 c2 ju =
   | GSamp(vs,((t,[]) as d)), (rhd, tl, ev) ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
-    let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
+    let vs' = Vsym.mk ((Id.name vs.Vsym.id)^"%") t in
     let cmds = [ GSamp(vs,d);
                  GLet(vs', inst_ctxt c1 (mk_V vs)) ]
     in
@@ -100,7 +103,7 @@ let rrandom_oracle p c1 c2 ju =
   | LSamp(vs,((t,[]) as d)), (((rhd,tl), (o,ovs,oe), octxt), gctxt) ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
-    let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
+    let vs' = Vsym.mk ((Id.name vs.Vsym.id)^"%") t in
     let cmds = [ LSamp(vs,d);
                  LLet(vs', inst_ctxt c1 (mk_V vs)) ]
     in
