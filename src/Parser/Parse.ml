@@ -17,7 +17,7 @@ let wrap_error f s0 =
   | Parser.Error ->
       let start = Lexing.lexeme_start sbuf in
       let err = Printf.sprintf
-                  "Syntax error at offset %d (length %d): parsed ``%s'', error at ``%s''"
+                  "Syntax error at offset %d (length %d): parsed ``%s'',\nerror at ``%s''"
                   start
                   (S.length s)
                   (if start >= S.length s then s  else (S.sub s 0 start))

@@ -134,6 +134,7 @@ type tactic =
   | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr
   | Requiv of gdef
   | Rbddh of string
+  | Rddh of string
   | Rindep
 
 type instr =

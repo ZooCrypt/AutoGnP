@@ -79,6 +79,7 @@
 %token RSWAP
 %token REQUIV
 %token RBDDH
+%token RDDH
 %token RINDEP
 
 /************************************************************************/
@@ -262,6 +263,7 @@ instr :
 | RINDEP DOT { Apply(Rindep) }
 | RSWAP i = INT j = INT DOT { Apply(Rswap(i-1,j)) }
 | RBDDH s = ID DOT { Apply(Rbddh(s)) }
+| RDDH s = ID DOT { Apply(Rddh(s)) }
 | REQUIV LBRACKET gd = gdef0 RBRACKET DOT { Apply(Requiv(gd)) }
 | RRANDOM i = INT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT { Apply(Rrandom(i-1,i1,e1,i2,e2)) }
 | RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN

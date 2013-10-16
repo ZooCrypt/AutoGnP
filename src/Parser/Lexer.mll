@@ -41,6 +41,7 @@ rule lex = parse
   | "rswap" { RSWAP }
   | "requiv" { REQUIV }
   | "rbddh" { RBDDH }
+  | "rddh" { RDDH }
   | "rindep" { RINDEP }
   | "rrandom_oracle" { RRANDOM_ORACLE }
   | ['1'-'9']['0'-'9']* as s { INT(int_of_string(s)) }

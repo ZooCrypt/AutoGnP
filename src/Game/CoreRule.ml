@@ -203,7 +203,7 @@ let rddh vc ju =
     (GLet (_y,ey) as i4) ::
      GLet (z,ez) :: c when
          check_ddh a b ex ey ez c ju.ju_ev ->
-    let vc = Vsym.mk vc mk_Fq in
+    (* let vc = Vsym.mk vc mk_Fq in *)
     [{ju with ju_gdef =
         i1 :: i2:: GSamp(vc,(mk_Fq,[])) :: 
           i3 :: i4 :: GLet(z,mk_GExp mk_GGen (mk_V vc)) :: c }]

@@ -5,13 +5,11 @@ open Rules
 let handle_tactic ps tac jus =
   let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in
   match tac with
-  | Rnorm ->
-      { ps with ps_goals = Some(apply rnorm jus) }
+  | Rnorm -> apply_rule rnorm ps
 
   | Rindep -> apply_rule rrandom_indep ps
 
-  | Rswap(i,j) ->
-      { ps with ps_goals = Some(apply (rswap i j) jus) }
+  | Rswap(i,j) -> apply_rule (rswap i j) ps
 
   | Requiv(gd) ->
       let gd = gdef_of_parse_gdef true ps gd in (* reuse variables from previous games *)
@@ -19,11 +17,15 @@ let handle_tactic ps tac jus =
                 | ju::_ -> ju
                 | _ -> assert false)
       in
-      { ps with ps_goals = Some(apply (rconv { Game.ju_gdef = gd; Game.ju_ev = ju.Game.ju_ev }) jus) }
+      apply_rule (rconv { Game.ju_gdef = gd; Game.ju_ev = ju.Game.ju_ev }) ps
 
   | Rbddh(s) ->
       let v = create_var false ps s Type.mk_Fq in
       apply_rule (rbddh v) ps
+
+  | Rddh(s) ->
+      let v = create_var false ps s Type.mk_Fq in
+      apply_rule (rddh v) ps
 
   | Rrandom(i,sv1,e1,sv2,e2) ->
       let ty =
@@ -40,7 +42,7 @@ let handle_tactic ps tac jus =
       let v2 = create_var false ps sv2 ty in
       let e2 = expr_of_parse_expr ps.ps_vars e2 in
       Ht.remove ps.ps_vars sv2;
-      { ps with ps_goals = Some(apply (rrandom i (v1,e1) (v2,e2)) jus) }
+      apply_rule (rrandom i (v1,e1) (v2,e2)) ps
 
   | Rrandom_oracle(i,j,k,sv1,e1,sv2,e2) ->
       let ty =
@@ -57,8 +59,7 @@ let handle_tactic ps tac jus =
       let v2 = create_var false ps sv2 ty in
       let e2 = expr_of_parse_expr ps.ps_vars e2 in
       Ht.remove ps.ps_vars sv2;
-      { ps with
-        ps_goals = Some(apply (rrandom_oracle (i,j,k) (v1,e1) (v2,e2)) jus) }
+      apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2)) ps
 
 let handle_instr ps instr =
   match instr with
