@@ -6,6 +6,8 @@
 
 <src/Main/zoocrypt.d.byte>: thread, package(unix)
 
+<src/Main/zoocrypt.native>: thread, package(unix)
+
 <src/Logics/Cpa.cmo> or <src/Logics/Cpa.ml>: package(eliom.server),package(eliom),package(yojson),thread
 
 <src/Http/Rest.cmo> or <src/Http/Rest.ml>: package(eliom.server),package(eliom),package(yojson),thread
