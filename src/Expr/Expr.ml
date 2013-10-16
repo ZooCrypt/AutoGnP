@@ -531,7 +531,7 @@ struct
 
   let mk_GLog a =
     ensure_ty_equal a.e_ty ty_G a None "mk_GLog";
-    mk_App GLog [a] ty_G
+    mk_App GLog [a] ty_Fq
 
   let mk_EMap a b =
     ensure_ty_equal a.e_ty ty_G a None "mk_EMap";
