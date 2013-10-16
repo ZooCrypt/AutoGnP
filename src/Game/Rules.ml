@@ -6,7 +6,7 @@ open CoreRule
 
 (* unfold all lets and norm *)
 let rnorm ju = 
-  let new_ju = norm_ju ju in
+  let new_ju = norm_ju ~norm:norm_expr_def ju in
   rconv new_ju ju
 
 (* norm without unfolding *)

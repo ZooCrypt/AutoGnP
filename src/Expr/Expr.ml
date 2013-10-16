@@ -54,8 +54,8 @@ let op_hash = function
   | FInv   -> 10
   | FDiv   -> 11
   | Eq     -> 12
-  | Not    -> 14
-  | Ifte   -> 13
+  | Not    -> 13
+  | Ifte   -> 14
 
 (* associative operators with variable arity *)
 type naryop =
@@ -94,9 +94,13 @@ type expr_node = internal gexpr_node
 type eexpr = exported gexpr
 type eexpr_node = exported gexpr_node
 
-let e_equal : expr -> expr -> bool = (==)
+let e_equal : expr -> expr -> bool = (==) 
+(*let e_equal e1 e2 = 
+  e1 == e2 || e1 = e2 *)
 let e_hash (e:expr) = e.e_tag
-let e_compare (e1:expr) (e2:expr) = e1.e_tag - e2.e_tag
+let e_compare (e1:expr) (e2:expr) = 
+(*  compare e1 e2 *)
+ e1.e_tag - e2.e_tag 
 
 module Hse = Hashcons.Make (struct
   type t = expr
@@ -173,6 +177,17 @@ module Me = E.M
 module Se = E.S
 module He = E.H
 
+
+(*module EOrder = struct
+  type t = expr
+  let equal = e_equal
+  let compare = e_compare
+  let hash : t -> int = Hashtbl.hash
+end
+module Me = Map.Make(EOrder)
+module Se = Set.Make(EOrder)
+module He = Hashtbl.Make(EOrder)
+*)
 (* ----------------------------------------------------------------------- *)
 (** {2 Indicator functions} *)
 
@@ -316,13 +331,13 @@ let notsep above = above <> Top && above <> PrefixApp && above <> Tup
 let rec pp_exp_p above fmt e =
   let fpr fmt = F.fprintf fmt in
   match e.e_node with
-  | V(v)       -> Format.fprintf fmt "%a" Vsym.pp v 
+  | V(v)       -> Format.fprintf fmt "%a" Vsym.pp v (*Id.tag v.Vsym.id*)
   | H(h,e)     -> fpr fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
   | Tuple(es)  -> let p = above <> PrefixApp in
       open_p fmt p; fpr fmt "%a" (pp_list ", " (pp_exp_p Tup)) es; close_p fmt p
   | Proj(i,e)  -> fpr fmt "pi_%i(%a)" i (pp_exp_p Tup) e
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
-  | App(o,es)  -> fpr fmt "%a" (pp_op_p above) (o,es) (* e.e_tag *)
+  | App(o,es)  -> fpr fmt "%a" (pp_op_p above) (o,es) (*e.e_tag *)
   | Nary(o,es) -> fpr fmt "(%a)"  (pp_nop_p above) (o,es) (* e.e_tag *)
   | ElemH(e1,e2,h) -> 
     let p = notsep above && above<>NInfix(Land) in

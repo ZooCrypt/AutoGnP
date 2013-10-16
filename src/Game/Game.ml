@@ -83,15 +83,16 @@ let pp_gcmd fmt gc = match gc with
   | GSamp(v,d)      -> F.fprintf fmt "%a <-$ %a" pp_binder [v]
                          pp_distr d
   | GCall(vs,e,[]) -> F.fprintf fmt "%a <- A%a" pp_binder vs pp_exp e
-  | GCall(vs,e,os) -> F.fprintf fmt "%a <- A%a with @.  %a"
-                        pp_binder vs pp_exp e
-                        (pp_list ",@." pp_odef) os
+  | GCall(vs,e,os) -> 
+    F.fprintf fmt "%a <- A%a with @\n %a"
+      pp_binder vs pp_exp e
+      (pp_list ",@." pp_odef) os 
 
 let pp_gdef fmt gd =
-  F.fprintf fmt "@[%a @]" (pp_list "@." pp_gcmd) gd
+  F.fprintf fmt "@[%a @]" (pp_list "@\n" pp_gcmd) gd
 
 let pp_ju fmt ju =
-  F.fprintf fmt "@[%a@. : %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
+  F.fprintf fmt "@[%a@\n : %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
 
 let pp_ps fmt ps =
   let ju_idxs =
@@ -335,10 +336,10 @@ let ju_equal ju1 ju2 =
 
 let norm_expr_def e = Norm.abbrev_ggen (Norm.norm_expr e)
 
-let norm_distr ?norm:(nf=norm_expr_def) s (ty,es) = 
+let norm_distr ?norm:(nf=Norm.norm_expr) s (ty,es) = 
   (ty, List.map (fun e -> nf (e_subst s e)) es)
 
-let norm_odef ?norm:(nf=norm_expr_def) s (o,vs,lc,e) =
+let norm_odef ?norm:(nf=Norm.norm_expr) s (o,vs,lc,e) =
   let rec aux s rc lc = 
     match lc with
     | [] -> (o,vs,List.rev rc, nf (e_subst s e))
@@ -358,7 +359,7 @@ let norm_odef ?norm:(nf=norm_expr_def) s (o,vs,lc,e) =
       aux s (LGuard (nf (e_subst s e)) :: rc) lc' in
   aux s [] lc
     
-let norm_gdef ?norm:(nf=norm_expr_def) g =
+let norm_gdef ?norm:(nf=Norm.norm_expr) g =
   let rec aux s rc lc = 
     match lc with
     | [] -> List.rev rc, s
@@ -379,7 +380,7 @@ let norm_gdef ?norm:(nf=norm_expr_def) g =
   in
   aux Me.empty [] g
 
-let norm_ju ?norm:(nf=norm_expr_def) ju =
+let norm_ju ?norm:(nf=Norm.norm_expr) ju =
   let g,s = norm_gdef ~norm:nf ju.ju_gdef in
   { ju_gdef = g;
     ju_ev = nf (e_subst s ju.ju_ev) }

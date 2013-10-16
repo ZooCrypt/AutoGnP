@@ -32,10 +32,10 @@ module type S =
     val iter : (t -> unit) -> unit
       (** Iterate over entries of hash table. *)
 
-    val stats : unit -> int * int * int * int * int * int
+(*    val stats : unit -> int * int * int * int * int * int
       (** Retrieve hashtable stats. *)
     val clear : unit -> unit
-      (** Remove all entries from hashtable. *)
+      (** Remove all entries from hashtable. *) *)
   end
 
 (** Make hashcons module for {!HashedType}. *)

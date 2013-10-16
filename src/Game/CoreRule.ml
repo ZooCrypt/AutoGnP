@@ -26,15 +26,16 @@ let check_conv ju1 ju2 =
   ju_equal (norm_ju ju1) (norm_ju ju2) 
 
 let rconv new_ju1 ju1 = 
-
-  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
-  Format.printf "new_ju = %a@." pp_ju new_ju1; 
+(*  Format.printf "%a@." pp_gdef (snd (Util.cut_n 6 new_ju1.ju_gdef)); *)
+(*  Format.printf "%a@." pp_gdef (snd (Util.cut_n 6 ju1.ju_gdef)); *)
+(*  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
+  Format.printf "new_ju = %a@." pp_ju new_ju1; *)
   let ju = norm_ju ju1 in
   let new_ju = norm_ju new_ju1 in
-  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
+(*  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
   Format.printf "new_ju = %a@." pp_ju new_ju1; 
   Format.printf "norm ju = %a@." pp_ju ju;
-  Format.printf "norm new_ju = %a@." pp_ju new_ju; 
+  Format.printf "norm new_ju = %a@." pp_ju new_ju; *)
   if not (ju_equal ju new_ju) then
     (  
       Format.printf "ju = %a@.new_ju = %a@." 
