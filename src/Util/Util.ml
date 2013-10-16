@@ -35,6 +35,9 @@ module Mint = Ints.M
 module Sint = Ints.S
 module Hint = Ints.H
 
+module Mstring = Map.Make(String)
+module Sstring = Set.Make(String)
+
 let unique_int () = Oo.id (object end)
 
 (* ----------------------------------------------------------------------- *)

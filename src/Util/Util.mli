@@ -37,6 +37,9 @@ module Mint : Map.S with type key = int
 module Sint : Set.S with type elt = int
 module Hint : Hashtbl.S with type key = int
 
+module Sstring : Set.S with type elt = string
+module Mstring : Map.S with type key = string
+
 (** Returns a unique (in a program execution) [int]. *)
 val unique_int : unit -> int
 
