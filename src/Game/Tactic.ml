@@ -1,10 +1,29 @@
 open ParserUtil
+open CoreRule
+open Rules
 
-
-let handle_tactic ps tac jus = 
+let handle_tactic ps tac jus =
+  let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in
   match tac with
   | Rnorm ->
-      { ps with ps_goals = Some(CoreRule.apply Rules.rnorm jus) }
+      { ps with ps_goals = Some(apply rnorm jus) }
+
+  | Rindep -> apply_rule rrandom_indep ps
+
+  | Rswap(i,j) ->
+      { ps with ps_goals = Some(apply (rswap i j) jus) }
+
+  | Requiv(gd) ->
+      let gd = gdef_of_parse_gdef true ps gd in (* reuse variables from previous games *)
+      let ju = (match jus with
+                | ju::_ -> ju
+                | _ -> assert false)
+      in
+      { ps with ps_goals = Some(apply (rconv { Game.ju_gdef = gd; Game.ju_ev = ju.Game.ju_ev }) jus) }
+
+  | Rbddh(s) ->
+      let v = create_var false ps s Type.mk_Fq in
+      apply_rule (rbddh v) ps
 
   | Rrandom(i,sv1,e1,sv2,e2) ->
       let ty =
@@ -15,13 +34,13 @@ let handle_tactic ps tac jus =
               | _ -> assert false)
          | _ -> assert false)
       in
-      let v1 = create_var ps sv1 ty in
+      let v1 = create_var false ps sv1 ty in
       let e1 = expr_of_parse_expr ps.ps_vars e1 in
       Ht.remove ps.ps_vars sv1;
-      let v2 = create_var ps sv2 ty in
+      let v2 = create_var false ps sv2 ty in
       let e2 = expr_of_parse_expr ps.ps_vars e2 in
       Ht.remove ps.ps_vars sv2;
-      { ps with ps_goals = Some(CoreRule.apply (CoreRule.rrandom i (v1,e1) (v2,e2)) jus) }
+      { ps with ps_goals = Some(apply (rrandom i (v1,e1) (v2,e2)) jus) }
 
   | Rrandom_oracle(i,j,k,sv1,e1,sv2,e2) ->
       let ty =
@@ -32,15 +51,14 @@ let handle_tactic ps tac jus =
               | _ -> assert false)
          | _ -> assert false)
       in
-      let v1 = create_var ps sv1 ty in
+      let v1 = create_var false ps sv1 ty in
       let e1 = expr_of_parse_expr ps.ps_vars e1 in
       Ht.remove ps.ps_vars sv1;
-      let v2 = create_var ps sv2 ty in
+      let v2 = create_var false ps sv2 ty in
       let e2 = expr_of_parse_expr ps.ps_vars e2 in
       Ht.remove ps.ps_vars sv2;
-      { ps with ps_goals = Some(CoreRule.apply
-                                 (CoreRule.rrandom_oracle (i,j,k) (v1,e1) (v2,e2))
-                                 jus) }
+      { ps with
+        ps_goals = Some(apply (rrandom_oracle (i,j,k) (v1,e1) (v2,e2)) jus) }
 
 let handle_instr ps instr =
   match instr with
@@ -52,10 +70,13 @@ let handle_instr ps instr =
   | PrintGoals(s) ->
       Format.printf "proof state %s:\n" s;
       (match ps.ps_goals with
+       | Some([])  ->
+           Format.printf "No remaining goals, proof completed.\n\n%!"
        | Some(jus) ->
            let i = ref 0 in
            List.iter (fun ju -> incr i; Format.printf "goal %i:\n%a\n\n" !i Game.pp_ju ju) jus;
-       | None -> Format.printf "No goals\n\n%!");
+       | None ->
+           Format.printf "No goals\n\n%!");
       ps
   | ODecl(s,t1,t2) ->
       if Ht.mem ps.ps_odecls s then failwith "oracle with same name already declared."
@@ -66,7 +87,7 @@ let handle_instr ps instr =
       else Ht.add ps.ps_adecls s (Asym.mk s (ty_of_parse_ty t1) (ty_of_parse_ty t2));
       ps
   | Judgment(gd, e) ->
-      let ju = ju_of_parse_ju ps gd e in
+      let ju = ju_of_parse_ju false ps gd e in
       { ps with ps_goals = Some([ju]) }
 
 let eval_theory s =

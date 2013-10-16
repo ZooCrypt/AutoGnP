@@ -83,27 +83,29 @@ let ensure_bijection c1 c2 v =
    forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x.  *)
 let rrandom p c1 c2 ju =
   match get_ju_ctxt ju p with
-  | GSamp(vs,((t,[]) as d)), ctxt ->
+  | GSamp(vs,((t,[]) as d)), (rhd, tl, ev) ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
     let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
-    let cmds = [ GSamp(vs',d);
-                 GLet(vs, inst_ctxt c1 (mk_V vs')) ]
+    let cmds = [ GSamp(vs,d);
+                 GLet(vs', inst_ctxt c1 (mk_V vs)) ]
     in
-    [ set_ju_ctxt cmds ctxt]
+    let subst e = e_replace v (mk_V vs') e in
+    [ set_ju_ctxt cmds (rhd, map_gdef_exp subst tl, subst ev) ]
   | _ -> failwith "random: position given is not a sampling"
 
 (* random in oracle *)
 let rrandom_oracle p c1 c2 ju =
   match get_ju_octxt ju p with
-  | LSamp(vs,((t,[]) as d)), ctxt ->
+  | LSamp(vs,((t,[]) as d)), (((rhd,tl), (o,ovs,oe), octxt), gctxt) ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
     let vs' = Vsym.mk (Id.name vs.Vsym.id) t in
-    let cmds = [ LSamp(vs',d);
-                 LLet(vs, inst_ctxt c1 (mk_V vs')) ]
+    let cmds = [ LSamp(vs,d);
+                 LLet(vs', inst_ctxt c1 (mk_V vs)) ]
     in
-    [ set_ju_octxt cmds ctxt]
+    let subst e = e_replace v (mk_V vs') e in
+    [ set_ju_octxt cmds (((rhd,List.map (map_lcmd_exp subst) tl), (o,ovs,subst oe), octxt), gctxt) ]
   | _ -> failwith "random: position given is not a sampling"
 
 
@@ -221,7 +223,7 @@ let check_bddh a b c ex ey ez eU _C ev =
    e_equal ex (mk_GExp mk_GGen a) &&
    e_equal ey (mk_GExp mk_GGen b) &&
    e_equal ez (mk_GExp mk_GGen c) &&
-   e_equal eU (mk_GTExp mk_GTGen (mk_FMult [a;b;c])) &&
+   e_equal eU (mk_GTExp mk_GTGen (mk_FMult [mk_FMult [a;b]; c])) &&
    not (Se.mem a r) && not (Se.mem b r) && not (Se.mem c r) &&
    not (has_log_gcmds _C) && not (has_log ev) 
 
@@ -235,7 +237,7 @@ let rbddh vu ju =
     (GLet (_z,ez) as i6)::
     GLet (_U,eU) ::_C when
          check_bddh a b c ex ey ez eU _C ju.ju_ev ->
-    let vu = Vsym.mk vu mk_Fq in
+    (* let vu = Vsym.mk vu mk_Fq in *)
     [{ju with ju_gdef =
         i1 :: i2:: i3 :: GSamp(vu,(mk_Fq,[])) :: 
           i4 :: i5 :: i6 :: GLet(_U,mk_GTExp mk_GTGen (mk_V vu)) :: _C }]

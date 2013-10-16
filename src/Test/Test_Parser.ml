@@ -16,6 +16,14 @@ let test_ep ht s =
 let _ = test_ep (Ht.create 20)
                 "not (true ? false : true /\\ true)"
 
+let _ =
+  let vc  = Vsym.mk "c" mk_Fq in
+  let vd  = Vsym.mk "d" mk_Fq in
+  let ht = Ht.create 20 in
+  Ht.add ht "c" vc;
+  Ht.add ht "d" vd;
+  test_ep ht "c - log(( true ? true : false))"
+
 (* let _ = test_ep (Ht.create 20) "(true,1)" *) (* FIXME *)
 
 let _ =

@@ -43,11 +43,10 @@
 
 %token COMMA
 
-%token ZERO
-%token ONE
 %token GEN
 %token EMAP
 %token UNIT
+%token LOG
 
 /************************************************************************/
 /* Tokens for games */
@@ -77,6 +76,10 @@
 %token RNORM
 %token RRANDOM
 %token RRANDOM_ORACLE
+%token RSWAP
+%token REQUIV
+%token RBDDH
+%token RINDEP
 
 /************************************************************************/
 /* Production types */
@@ -169,8 +172,10 @@ exprlist0 :
 expr6 :
 | s = ID { V(s) }
 | UNIT   { Tuple [] }
-| ONE    { Cnst(Expr.FOne) }
-| ZERO   { Cnst(Expr.FZ) }
+| i = INT
+  { Cnst( if i = 1 then Expr.FOne
+          else if i = 0 then Expr.FZ
+          else failwith "only 0/1 allowed in expressions" ) }
 | GEN    { Cnst(Expr.GGen) }
 | TRUE   { Cnst(Expr.B true) }
 | FALSE  { Cnst(Expr.B false) }
@@ -178,6 +183,7 @@ expr6 :
 | MINUS e1 = expr6 { Opp(e1) }
 | NOT e = expr6 { Not(e) }
 | EMAP e1 = expr0 COMMA e2 = expr0 RPAREN { EMap(e1,e2) }
+| LOG LPAREN e1 = expr0 RPAREN { Log(e1) }
 | LPAREN e = expr0 RPAREN {e}
 | LPAREN e = expr0 COMMA l = exprlist0 RPAREN { Tuple(e::l) }
 
@@ -253,6 +259,10 @@ instr :
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }
 | RNORM DOT { Apply(Rnorm) }
+| RINDEP DOT { Apply(Rindep) }
+| RSWAP i = INT j = INT DOT { Apply(Rswap(i-1,j)) }
+| RBDDH s = ID DOT { Apply(Rbddh(s)) }
+| REQUIV LBRACKET gd = gdef0 RBRACKET DOT { Apply(Requiv(gd)) }
 | RRANDOM i = INT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT { Apply(Rrandom(i-1,i1,e1,i2,e2)) }
 | RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN
                  LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT

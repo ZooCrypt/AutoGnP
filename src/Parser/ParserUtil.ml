@@ -129,8 +129,12 @@ type gdef = gcmd list
 
 type tactic =
     Rnorm
+  | Rswap of int * int
   | Rrandom of int * string * parse_expr * string * parse_expr
   | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr
+  | Requiv of gdef
+  | Rbddh of string
+  | Rindep
 
 type instr =
     ODecl of string * parse_ty * parse_ty
@@ -151,28 +155,36 @@ type proofstate =
 let mk_ps = { ps_odecls = Ht.create 20; ps_adecls = Ht.create 20;
               ps_vars = Ht.create 20; ps_goals = None }
 
-let create_var ps s ty =
-  if Ht.mem ps.ps_vars s then failwith "Variable name reused";
-  let v = Vsym.mk s ty in
-  Ht.add ps.ps_vars s v;
-  v
+let create_var reuse ps s ty =
+  (* Format.printf "query for %s\n%!" s; *)
+  if Ht.mem ps.ps_vars s then (
+    if reuse then (
+      (* Format.printf "reuse %a\n%!" Vsym.pp (Ht.find ps.ps_vars s); *)
+      Ht.find ps.ps_vars s
+    ) else failwith (Format.sprintf "Variable %s reused" s)
+  ) else (
+    let v = Vsym.mk s ty in
+    (* Format.printf "create %a\n%!" Vsym.pp v; *)
+    Ht.add ps.ps_vars s v;
+    v
+  )
 
-let lcmd_of_parse_lcmd ps lcmd =
+let lcmd_of_parse_lcmd reuse ps lcmd =
   match lcmd with
   | LLet(s,e) ->
       let e = expr_of_parse_expr ps.ps_vars e in
-      let v = create_var ps s e.Expr.e_ty in
+      let v = create_var reuse ps s e.Expr.e_ty in
       Game.LLet(v,e)
   | LSamp(s,t,es) ->
       let t = ty_of_parse_ty t in
       let es = List.map (expr_of_parse_expr ps.ps_vars) es in
-      let v = create_var ps s t in
+      let v = create_var reuse ps s t in
       Game.LSamp(v,(t,es))
   | LGuard(e) ->
       Game.LGuard(expr_of_parse_expr ps.ps_vars e)
   | LBind(_) -> assert false (* not implemented yet *)
 
-let odef_of_parse_odef ps (oname, vs, (m,e)) =
+let odef_of_parse_odef reuse ps (oname, vs, (m,e)) =
   let osym = try Ht.find ps.ps_odecls oname
              with Not_found -> failwith "oracle name not declared"
   in
@@ -181,25 +193,25 @@ let odef_of_parse_odef ps (oname, vs, (m,e)) =
      | Type.Prod([]), [] -> []
      | Type.Prod(ts), vs when List.length ts = List.length vs ->
          let vts = List.combine vs ts in
-         let vs = List.map (fun (v,t) -> create_var ps v t) vts in
+         let vs = List.map (fun (v,t) -> create_var reuse ps v t) vts in
          vs
-     | _, [v] -> [create_var ps v osym.Osym.dom]
+     | _, [v] -> [create_var reuse ps v osym.Osym.dom]
      | _ -> assert false)
   in
-  let m = List.map (lcmd_of_parse_lcmd ps) m in
+  let m = List.map (lcmd_of_parse_lcmd reuse ps) m in
   let e = expr_of_parse_expr ps.ps_vars e in
   (osym, vs, m, e)
 
-let gcmd_of_parse_gcmd ps gc =
+let gcmd_of_parse_gcmd reuse ps gc =
   match gc with
   | GLet(s,e) ->
       let e = expr_of_parse_expr ps.ps_vars e in
-      let v = create_var ps s e.Expr.e_ty in
+      let v = create_var reuse ps s e.Expr.e_ty in
       Game.GLet(v,e)
   | GSamp(s,t,es) ->
       let t = ty_of_parse_ty t in
       let es = List.map (expr_of_parse_expr ps.ps_vars) es in
-      let v = create_var ps s t in
+      let v = create_var reuse ps s t in
       Game.GSamp(v,(t,es))
   | GCall(vs,aname,e,os) ->
       let asym = try Ht.find ps.ps_adecls aname
@@ -208,21 +220,21 @@ let gcmd_of_parse_gcmd ps gc =
       let e = expr_of_parse_expr ps.ps_vars e in
       if not (Type.ty_equal e.Expr.e_ty asym.Asym.dom) then
         failwith "adversary argument has wrong type";
-      let os = List.map (odef_of_parse_odef ps) os in
+      let os = List.map (odef_of_parse_odef reuse ps) os in
       (match asym.Asym.codom.Type.ty_node, vs with
        | Type.Prod([]), [] -> Game.GCall([], asym, e, os)
        | Type.Prod(ts), vs when List.length ts = List.length vs ->
            let vts = List.combine vs ts in
-           let vs = List.map (fun (v,t) -> create_var ps v t) vts in
+           let vs = List.map (fun (v,t) -> create_var reuse ps v t) vts in
            Game.GCall(vs, asym, e, os)
        | _, [v] ->
-           let v = create_var ps v asym.Asym.codom in
+           let v = create_var reuse ps v asym.Asym.codom in
            Game.GCall([v], asym, e, os)           
        | _ -> assert false)
 
-let gdef_of_parse_gdef ps gd =
-  List.map (fun gc -> gcmd_of_parse_gcmd ps gc) gd
+let gdef_of_parse_gdef reuse ps gd =
+  List.map (fun gc -> gcmd_of_parse_gcmd reuse ps gc) gd
 
-let ju_of_parse_ju ps gd e =
-  let gd = gdef_of_parse_gdef ps gd in
+let ju_of_parse_ju reuse ps gd e =
+  let gd = gdef_of_parse_gdef reuse ps gd in
   { Game.ju_gdef = gd; Game.ju_ev = expr_of_parse_expr ps.ps_vars e }

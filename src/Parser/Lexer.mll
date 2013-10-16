@@ -22,11 +22,12 @@ rule lex = parse
   | "*"     { STAR }
   | "BS_"   { TBS }
   | "Bool"  { TBOOL }
+  | "g"     { GEN }
   | "G"     { TG }
   | "GT"    { TGT }
   | "Fq"    { TFQ }
-  | "0"     { ZERO }
   | "not"   { NOT }
+  | "log"   { LOG }
   | "true"  { TRUE }
   | "false" { FALSE }
   | "let"   { LET }
@@ -36,8 +37,12 @@ rule lex = parse
   | "print_goals" { PRINTGOALS }
   | "rnorm" { RNORM }
   | "with"  { WITH }
-  | "rrandom" { RRANDOM } 
-  | "rrandom_oracle" { RRANDOM_ORACLE }   
+  | "rrandom" { RRANDOM }
+  | "rswap" { RSWAP }
+  | "requiv" { REQUIV }
+  | "rbddh" { RBDDH }
+  | "rindep" { RINDEP }
+  | "rrandom_oracle" { RRANDOM_ORACLE }
   | ['1'-'9']['0'-'9']* as s { INT(int_of_string(s)) }
   | ['k']['0'-'9']* as s { LV_ID s }
   | ['a'-'f' 'h'-'j' 'm'-'v' 'x'-'z']
@@ -50,12 +55,10 @@ rule lex = parse
   | ";"     { SEMICOLON }
   | "()"    { UNIT }
   | "?"     { QUESTION }
-  | "1"     { ONE }
   | "e("    { EMAP }
-  | "g"     { GEN }
   | ","     { COMMA }
   | "^"     { CARET }
-  | "/"     { SLASH }  
+  | "/"     { SLASH }
   | "/\\"   { LAND }
   | "L_"    { LIST }
   | "<-"    { LEFTARROW }
@@ -66,7 +69,7 @@ rule lex = parse
   | "="     { EQUAL }
   | "|"     { MID }
   | "->"    { TO }
-  | "." { DOT }
+  | "."     { DOT }
 
 (*  | "{"     { LBRACE } *)
 (*  | "}"     { RBRACE } *)
