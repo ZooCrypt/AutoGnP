@@ -1,8 +1,4 @@
-module PU = ParserUtil
-
-let eval_theory s =
-  let pt = Parse.theory s in
-  List.fold_left (fun ps i -> PU.handle_instr ps i) PU.mk_ps pt
+open Tactic
 
 let main =
   if Array.length Sys.argv <> 2 then

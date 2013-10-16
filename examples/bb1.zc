@@ -2,6 +2,7 @@ adversary A1 : () -> Fq.
 adversary A2 : (G * G * G) -> (GT * GT).
 adversary A3 : (GT * G * G) -> Bool.
 oracle Kg : Fq -> (G * G).
+
 prove
   [ i' <- A1();
     c <-$ Fq;

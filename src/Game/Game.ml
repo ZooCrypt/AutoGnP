@@ -83,16 +83,16 @@ let pp_gcmd fmt gc = match gc with
   | GSamp(v,d)      -> F.fprintf fmt "%a <-$ %a" pp_binder [v]
                          pp_distr d
   | GCall(vs,asym,e,[]) -> F.fprintf fmt "%a <- %a(%a)" pp_binder vs Asym.pp asym pp_exp_tnp e
-  | GCall(vs,asym,e,os) -> F.fprintf fmt "%a <- %a(%a) with @\n  %a"
+  | GCall(vs,asym,e,os) -> F.fprintf fmt "%a <- %a(%a) with \n  %a"
                              pp_binder vs Asym.pp asym pp_exp_tnp e
                              (pp_list ",@\n" pp_odef) os
 
 let pp_gdef fmt gd =
-  F.fprintf fmt "@[%a @]" (pp_list ";@\n" pp_gcmd) gd
+  F.fprintf fmt "@[%a @]" (pp_list ";\n" pp_gcmd) gd
 
 
 let pp_ju fmt ju =
-  F.fprintf fmt "@[%a@\n : %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
+  F.fprintf fmt "@[%a\n : %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
 
 let pp_ps fmt ps =
   let ju_idxs =
