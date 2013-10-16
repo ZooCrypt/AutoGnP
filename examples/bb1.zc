@@ -1,0 +1,27 @@
+adversary A1 : () -> Fq.
+adversary A2 : (G * G * G) -> (GT * GT).
+adversary A3 : (GT * G * G) -> Bool.
+oracle Kg : Fq -> (G * G).
+prove
+  [ i' <- A1();
+    c <-$ Fq;
+    d <-$ Fq;
+    e <-$ Fq;
+    h <-$ Fq;
+    b <-$ Bool;
+    (m0,m1) <- A2(g^c, g^d, g^h);
+    let mb = (b?m0:m1);
+    b' <- A3(mb * e(g,g)^((c*d)*e), g^e, g^(e*(d*i' + h))) with
+      Kg(i) = [ (g^(c*d + r*(d*i + h)), g^r) | not (i=i'), r <-$ Fq]
+  ] : b = b'.
+
+  print_goals : start.
+  rnorm.
+  print_goals : after_norm.
+  rrandom 5 (x -> x - d*i') (x -> x + d* i').
+  rnorm.
+  print_goals : after_random.
+  rrandom_oracle (8,1,2) (x -> (x - c) / (i -i'))
+                         (x -> x * (i - i') + c).
+  rnorm.
+  print_goals : after_random_oracle.                         

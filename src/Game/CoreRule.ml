@@ -26,6 +26,7 @@ let check_conv ju1 ju2 =
   ju_equal (norm_ju ju1) (norm_ju ju2) 
 
 let rconv new_ju1 ju1 = 
+
 (*  Format.printf "%a@." pp_gdef (snd (Util.cut_n 6 new_ju1.ju_gdef)); *)
 (*  Format.printf "%a@." pp_gdef (snd (Util.cut_n 6 ju1.ju_gdef)); *)
 (*  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
@@ -44,7 +45,8 @@ let rconv new_ju1 ju1 =
       (try
          let (i1,i2) = List.find (fun (i1,i2) -> not (gc_equal i1 i2)) cc in
          Format.printf "i1 = %a@.i2 = %a@." pp_gcmd i1 pp_gcmd i2
-       with _ -> Format.printf "????@."); 
+       with _ -> Format.printf "????@.");
+      flush_all (); 
       failwith "rconv: not convertible");
   [new_ju1]
 

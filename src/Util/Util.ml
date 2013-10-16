@@ -132,3 +132,16 @@ let rec pp_list sep pp_elt f l =
 
 let pp_list_c pe = (pp_list "," pe)
 let pp_list_s = pp_list_c (fun fmt -> Format.fprintf fmt "%s")
+
+let input_file file_name =
+  let in_channel = open_in file_name in
+  let rec go lines =
+    try
+      let l = input_line in_channel in
+      go (l :: lines)
+    with
+      End_of_file -> lines
+  in
+  let lines = go [] in
+  let _ = close_in_noerr in_channel in
+  String.concat "\n" (List.rev lines)

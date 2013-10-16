@@ -4,20 +4,19 @@ open Expr
 module PU = ParserUtil
 module Ht = Hashtbl
 
-let f () =
+let _ =
   let pt = 
-    Parse.ty "(BS_l1 * (Bool * Bool * BS_l2))"
+    Parse.ty "(Bool * (Bool * Bool * Bool))"
   in Format.printf "%a\n\n" pp_ty (PU.ty_of_parse_ty pt)
 
 let test_ep ht s =
   let pt = Parse.expr s in
-  Format.printf "%a\n\n" pp_exp (PU.expr_of_parse_expr ~ht pt)
+  Format.printf "%a\n\n" pp_exp (PU.expr_of_parse_expr ht pt)
 
 let _ = test_ep (Ht.create 20)
                 "not (true ? false : true /\\ true)"
 
-let _ = test_ep (Ht.create 20)
-                "(1,1)"
+(* let _ = test_ep (Ht.create 20) "(true,1)" *) (* FIXME *)
 
 let _ =
   let vc  = Vsym.mk "c" mk_Fq in
