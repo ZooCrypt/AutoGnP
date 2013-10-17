@@ -321,80 +321,112 @@ type above =
   | NInfix of naryop   (* nary infix operator *)
   | Tup
 
-let open_p fmt b = if b then F.fprintf fmt "("
+(* Generic function for printing *)
+let pp_if c pp1 pp2 fmt x =
+  match c with
+  | true  -> pp1 fmt x
+  | false -> pp2 fmt x
 
-let close_p fmt b = if b then F.fprintf fmt ")"
+let pp_maybe c tx pp fmt x =
+  pp_if c (tx pp) pp fmt x
+
+let pp_enclose ~pre ~post pp fmt x =
+  Format.fprintf fmt "%(%)%a%(%)" pre pp x post
+
+let pp_paren pp fmt x =
+  pp_enclose ~pre:"(" ~post:")" pp fmt x
+
+let pp_maybe_paren c pp =
+  pp_maybe c pp_paren pp
 
 (* above does not have separators that allow to leave out parentheses *)
 let notsep above = above <> Top && above <> PrefixApp && above <> Tup
 
 let rec pp_exp_p above fmt e =
-  let fpr fmt = F.fprintf fmt in
   match e.e_node with
-  | V(v)       -> Format.fprintf fmt "%a" Vsym.pp v (*Id.tag v.Vsym.id*)
-  | H(h,e)     -> fpr fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
-  | Tuple(es)  -> let p = above <> PrefixApp in
-      open_p fmt p; fpr fmt "%a" (pp_list ", " (pp_exp_p Tup)) es; close_p fmt p
-  | Proj(i,e)  -> fpr fmt "pi_%i(%a)" i (pp_exp_p Tup) e
+  | V(v)       -> 
+    Format.fprintf fmt "%a" Vsym.pp v (*Id.tag v.Vsym.id*)
+  | H(h,e)     -> 
+    Format.fprintf fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
+  | Tuple(es)  -> 
+    let pp fmt = 
+      Format.fprintf fmt "@[<hov>%a@]" (pp_list ",@ " (pp_exp_p Tup)) in
+    pp_maybe_paren (above <> PrefixApp) pp fmt es
+  | Proj(i,e)  -> 
+    Format.fprintf fmt "pi_%i(%a)" i (pp_exp_p PrefixApp) e
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
-  | App(o,es)  -> fpr fmt "%a" (pp_op_p above) (o,es) (*e.e_tag *)
-  | Nary(o,es) -> fpr fmt "(%a)"  (pp_nop_p above) (o,es) (* e.e_tag *)
-  | ElemH(e1,e2,h) -> 
-    let p = notsep above && above<>NInfix(Land) in
-    open_p fmt p; fpr fmt "%a in [%a | %a]" 
-      (pp_exp_p Top) e1 (pp_exp_p Top) e2 
-      (pp_list ",@ " (fun fmt (v,h) ->
-        F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h;
-    close_p fmt p
+  | App(o,es)  -> pp_op_p above fmt (o,es) 
+  | Nary(o,es) -> pp_nop_p above fmt (o,es)
+  | ElemH(e1,e2,h) ->
+    let pp fmt () = 
+      Format.fprintf fmt "@[<hov 2>%a in@ [%a |@ %a]@]"
+        (pp_exp_p Top) e1 (pp_exp_p Top) e2 
+        (pp_list ",@ " (fun fmt (v,h) ->
+          F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h in
+    pp_maybe_paren (notsep above && above<>NInfix(Land)) pp fmt ()
+
 and pp_op_p above fmt (op, es) =
-  let o = open_p fmt in
-  let c = close_p fmt in
-  let fpr fmt = F.fprintf fmt in
   let pp_bin p op ops a b =
-    o p;
-    fpr fmt "%a%s%a" (pp_exp_p (Infix(op,0))) a ops
-                       (pp_exp_p (Infix(op,1))) b;
-    c p
-  in
+    let pp fmt () = 
+      Format.fprintf fmt "@[<hov>%a %s@ %a@]"
+        (pp_exp_p (Infix(op,0))) a ops
+        (pp_exp_p (Infix(op,1))) b in
+    pp_maybe_paren p pp fmt () in
+
   let pp_prefix op before after a =
-    fpr fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after;
-  in
+    Format.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after in
   match op, es with
-  | GMult,  [a;b] -> pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1)) GMult " * " a b
-  | GExp,   [a;b] -> pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1)) GExp "^" a b
-  | GTMult, [a;b] -> pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) GTMult " * " a b
-  | GTExp,  [a;b] -> pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) GTExp "^" a b
-  | FDiv,   [a;b] -> pp_bin (notsep above) FDiv "/" a b
-  | FMinus, [a;b] -> pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "-" a b
-  | Eq,     [a;b] -> pp_bin (notsep above && above<>NInfix(Land)) Eq "=" a b
-  | GLog,   [a]   -> pp_prefix GLog  "log("  ")"   a
-  | GTLog,  [a]   -> pp_prefix GTLog "log("  ")"   a
-  | FOpp,   [a]   -> pp_prefix FOpp  "-"     ""    a
-  | FInv,   [a]   -> pp_prefix FInv  ""      "^-1" a
-  | Not,    [a]   -> pp_prefix Not   "not "  ""    a
+  | GMult,  [a;b] -> 
+    pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1)) 
+      GMult " * " a b
+  | GExp,   [a;b] -> 
+    pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1))
+      GExp "^" a b
+  | GTMult, [a;b] -> 
+    pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) 
+      GTMult " * " a b
+  | GTExp,  [a;b] -> 
+    pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) 
+      GTExp "^" a b
+  | FDiv,   [a;b] -> 
+    pp_bin (notsep above) FDiv "/" a b
+  | FMinus, [a;b] -> 
+    pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "-" a b
+  | Eq,     [a;b] -> 
+    pp_bin (notsep above && above<>NInfix(Land)) Eq "=" a b
+  | GLog,   [a]   -> 
+    pp_prefix GLog  "log("  ")"   a
+  | GTLog,  [a]   -> 
+    pp_prefix GTLog "log("  ")"   a
+  | FOpp,   [a]   -> 
+    pp_prefix FOpp  "-"     ""    a
+  | FInv,   [a]   -> 
+    pp_prefix FInv  ""      "^-1" a
+  | Not,    [a]   -> 
+    pp_prefix Not   "not "  ""    a
   | EMap,   [a;b] ->
-      let p = false in
-      let ppe i = pp_exp_p (Infix(EMap,i)) in
-      o p; fpr fmt "e(%a,%a)" (ppe 0) a (ppe 1) b; c p
+    let ppe i = pp_exp_p (Infix(EMap,i)) in
+    Format.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
   | Ifte, [a;b;d] ->
-      let p = notsep above in
-      let ppe i = pp_exp_p (Infix(Ifte,i)) in
-      o p; fpr fmt "%a?%a:%a" (ppe 0) a (ppe 1) b (ppe 2) d; c p
+    let ppe i = pp_exp_p (Infix(Ifte,i)) in
+    let pp fmt () = 
+      Format.fprintf fmt "@[%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d in
+    pp_maybe_paren (notsep above) pp fmt () 
   | _             -> failwith "pp_op: invalid expression"
+
 and pp_nop_p above fmt (op,es) =
   let pp_nary op ops p =
-    open_p fmt p; pp_list ops (pp_exp_p (NInfix(op))) fmt es; close_p fmt p
-  in
+    pp_maybe_paren p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es in
   match op with
   | FPlus  -> pp_nary FPlus " + "   (notsep above)
   | Xor    -> pp_nary Xor   " (+) " (notsep above)
   | Land   -> pp_nary Land  " /\\ " (notsep above)
   | FMult  ->
-      let p = match above with
-              | NInfix(FPlus) | Infix(FMinus,_) -> false
-              | _ -> notsep above
-      in
-      pp_nary FMult "*" p
+    let p = 
+      match above with
+      | NInfix(FPlus) | Infix(FMinus,_) -> false
+      | _ -> notsep above in
+    pp_nary FMult "*" p
 
 let pp_exp fmt e = pp_exp_p Top fmt e
 let pp_op  fmt x = pp_op_p  Top fmt x

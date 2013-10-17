@@ -61,6 +61,16 @@ let handle_tactic ps tac jus =
       Ht.remove ps.ps_vars sv2;
       apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2)) ps
 
+let pp_goals fmt gs = 
+  match gs with
+  | None -> Format.printf "No goals@\n"
+  | Some [] -> Format.printf "No remaining goals, proof completed.@\n"
+  | Some jus ->
+    let pp_goal i ju =
+      Format.fprintf fmt "goal %i:@\n%a@\n@\n" i Game.pp_ju ju in
+    List.iteri pp_goal jus 
+      
+
 let handle_instr ps instr =
   match instr with
   | Apply(tac) ->
@@ -69,15 +79,7 @@ let handle_instr ps instr =
            handle_tactic ps tac jus
        | None -> assert false)
   | PrintGoals(s) ->
-      Format.printf "proof state %s:\n" s;
-      (match ps.ps_goals with
-       | Some([])  ->
-           Format.printf "No remaining goals, proof completed.\n\n%!"
-       | Some(jus) ->
-           let i = ref 0 in
-           List.iter (fun ju -> incr i; Format.printf "goal %i:\n%a\n\n" !i Game.pp_ju ju) jus;
-       | None ->
-           Format.printf "No goals\n\n%!");
+      Format.printf "@[<v>proof state %s:@\n%a@." s pp_goals ps.ps_goals;
       ps
   | ODecl(s,t1,t2) ->
       if Ht.mem ps.ps_odecls s then failwith "oracle with same name already declared."

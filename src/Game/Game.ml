@@ -46,9 +46,10 @@ type judgment = { ju_gdef : gdef; ju_ev : ev }
 (* ----------------------------------------------------------------------- *)
 (** {2 Pretty printing} *)
 
-let pp_distr fmt (ty,es) = match es with
+let pp_distr fmt (ty,es) = 
+  match es with
   | [] -> pp_ty fmt ty
-  | _  -> F.fprintf fmt "%a \\ {%a}" pp_ty ty
+  | _  -> F.fprintf fmt "@[<hov 2>%a \\@ {@[<hov 0>%a]}@]" pp_ty ty
             (pp_list "," pp_exp) es
 
 (*let pp_v fmt v = F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
@@ -56,43 +57,55 @@ let pp_v fmt v = Vsym.pp fmt v
 
 let pp_binder fmt vs = match vs with
   | [v] -> pp_v fmt v
-  | _   -> F.fprintf fmt "(%a)" (pp_list "," pp_v) vs
+  | _   -> F.fprintf fmt "(@[<hov 0>%a@])" (pp_list "," pp_v) vs
 
-let pp_lcmd fmt lc = match lc with
-  | LLet(vs,e)  -> F.fprintf fmt "let %a = %a" pp_binder [vs]
-                     pp_exp e
-  | LBind(vs,h) -> F.fprintf fmt "%a <- L_%a" pp_binder vs
-                     Hsym.pp h
-  | LSamp(v,d)  -> F.fprintf fmt "%a <-$ %a" pp_binder [v]
-                     pp_distr d
+let pp_lcmd fmt lc = 
+  match lc with
+  | LLet(vs,e)  -> 
+    F.fprintf fmt "@[<hov 2>let %a =@ %a@]" pp_binder [vs] pp_exp e
+  | LBind(vs,h) -> 
+    F.fprintf fmt "@[<hov 2>%a <-@ L_%a@]" pp_binder vs Hsym.pp h
+  | LSamp(v,d)  -> 
+    F.fprintf fmt "@[<hov 2>%a <-$@ %a@]" pp_binder [v] pp_distr d
   | LGuard(e)   -> pp_exp fmt e
+
+let pp_ilcmd fmt (i,lc) =
+  Format.fprintf fmt "%i: %a" i pp_lcmd lc
+
+let num_list l = List.mapi (fun i a -> i+1,a) l 
 
 let pp_lcomp fmt (e,m) =
   match m with
-  | [] -> F.fprintf fmt "[ %a ]" pp_exp e
-  | _  -> F.fprintf fmt "[ %a | %a ]" pp_exp e
-            (pp_list ", " pp_lcmd) m
+  | [] -> F.fprintf fmt "1: return %a;" pp_exp e
+  | _  -> F.fprintf fmt "%a;@,%i: return %a;@]" 
+            (pp_list ";@," pp_ilcmd) (num_list m) (List.length m) pp_exp e
 
 let pp_odef fmt (o, vs, ms, e) =
-  F.fprintf fmt "%a(%a) = %a" Osym.pp o pp_binder vs
-    pp_lcomp (e,ms)
+  F.fprintf fmt "@[<v>%a %a = [@,  @[<v>%a@]@,]@]" 
+    Osym.pp o pp_binder vs pp_lcomp (e,ms)
 
 let pp_gcmd fmt gc = match gc with
-  | GLet(vs,e)      -> F.fprintf fmt "let %a = %a" pp_binder [vs]
-                         pp_exp e
-  | GSamp(v,d)      -> F.fprintf fmt "%a <-$ %a" pp_binder [v]
-                         pp_distr d
-  | GCall(vs,asym,e,[]) -> F.fprintf fmt "%a <- %a(%a)" pp_binder vs Asym.pp asym pp_exp_tnp e
-  | GCall(vs,asym,e,os) -> F.fprintf fmt "%a <- %a(%a) with \n  %a"
-                             pp_binder vs Asym.pp asym pp_exp_tnp e
-                             (pp_list ",@\n" pp_odef) os
+  | GLet(vs,e)      -> 
+    F.fprintf fmt "@[<hov 2>let %a =@ %a@]" pp_binder [vs] pp_exp e
+  | GSamp(v,d)      -> 
+    F.fprintf fmt "@[<hov 2>%a <-$@ %a@]" pp_binder [v] pp_distr d
+  | GCall(vs,asym,e,[]) -> 
+    F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@])@]" 
+      pp_binder vs Asym.pp asym pp_exp_tnp e 
+  | GCall(vs,asym,e,os) -> 
+    F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@]) with@ %a@]"
+      pp_binder vs Asym.pp asym 
+      pp_exp_tnp e
+      (pp_list ";@ " pp_odef) os
+
+let pp_igcmd fmt (i,gc) = 
+  Format.fprintf fmt "@[%i: %a@]" i pp_gcmd gc 
 
 let pp_gdef fmt gd =
-  F.fprintf fmt "@[%a @]" (pp_list ";\n" pp_gcmd) gd
-
+  pp_list ";@," pp_igcmd fmt (num_list gd)
 
 let pp_ju fmt ju =
-  F.fprintf fmt "@[%a\n : %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
 
 let pp_ps fmt ps =
   let ju_idxs =
