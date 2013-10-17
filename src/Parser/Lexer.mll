@@ -35,6 +35,7 @@ rule lex = parse
   | "oracle" { ORACLE }
   | "prove" { PROVE }
   | "print_goals" { PRINTGOALS }
+  | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm" { RNORM }
   | "with"  { WITH }
   | "rrandom" { RRANDOM }

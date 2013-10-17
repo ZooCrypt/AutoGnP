@@ -2,10 +2,16 @@ open ParserUtil
 open CoreRule
 open Rules
 
+module Ht = Hashtbl
+
 let handle_tactic ps tac jus =
   let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in
   match tac with
   | Rnorm -> apply_rule rnorm ps
+
+  | Rnorm_unknown(is) ->
+      let vs = List.map (fun s -> Expr.mk_V (Ht.find ps.ps_vars s)) is in
+      apply_rule (rnorm_unknown vs) ps
 
   | Rindep -> apply_rule rrandom_indep ps
 

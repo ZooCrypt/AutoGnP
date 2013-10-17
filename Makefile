@@ -36,7 +36,7 @@ update-toolchain:
 
 clean:
 	ocamlbuild -clean
-	-@rm -rf synth.docdir
+	-@rm -rf tutor.docdir
 
 
 ##########################################################################
@@ -62,6 +62,9 @@ Test_Pretty_Expr :
 
 Test_Parser :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Parser.d.byte && ./Test_Parser.d.byte
+
+Test_Proofsearch :
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proofsearch.d.byte && ./Test_Proofsearch.d.byte
 
 zoocrypt :
 	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1.zc

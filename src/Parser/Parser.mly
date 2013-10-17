@@ -74,6 +74,7 @@
 %token DOT
 %token PRINTGOALS
 %token RNORM
+%token RNORM_UNKNOWN
 %token RRANDOM
 %token RRANDOM_ORACLE
 %token RSWAP
@@ -260,6 +261,8 @@ instr :
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }
 | RNORM DOT { Apply(Rnorm) }
+| RNORM_UNKNOWN DOT { Apply(Rnorm_unknown([])) }
+| RNORM_UNKNOWN is = idlist DOT { Apply(Rnorm_unknown(is)) }
 | RINDEP DOT { Apply(Rindep) }
 | RSWAP i = INT j = INT DOT { Apply(Rswap(i-1,j)) }
 | RBDDH s = ID DOT { Apply(Rbddh(s)) }

@@ -275,6 +275,8 @@ val e_subst : expr Me.t -> expr -> expr
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
 
+val se_of_list : expr list -> Se.t
+
 val has_log : expr -> bool
 
 type ctxt = Vsym.t * expr

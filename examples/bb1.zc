@@ -23,6 +23,8 @@ prove
                          (x -> x * (i - i') + c).
   rnorm.  print_goals : after_random_oracle.
   rswap 1 3.  print_goals : swap_1_1.
+  rnorm_unknown (c,d,e).  print_goals : norm_uk.
+  (* introduce let abstraction *)
   requiv
   [
     c <-$ Fq;

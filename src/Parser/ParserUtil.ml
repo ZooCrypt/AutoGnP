@@ -129,6 +129,7 @@ type gdef = gcmd list
 
 type tactic =
     Rnorm
+  | Rnorm_unknown of string list
   | Rswap of int * int
   | Rrandom of int * string * parse_expr * string * parse_expr
   | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr

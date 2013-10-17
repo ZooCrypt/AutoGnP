@@ -740,7 +740,7 @@ let e_replace e1 e2 =
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
 
-
+let se_of_list = List.fold_left (fun s e -> Se.add e s) Se.empty
 
 
 
