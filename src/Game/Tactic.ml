@@ -95,4 +95,4 @@ let handle_instr ps instr =
 
 let eval_theory s =
   let pt = Parse.theory s in
-  List.fold_left (fun ps i -> handle_instr ps i) mk_ps pt
+  List.fold_left (fun ps i -> handle_instr ps i) (mk_ps ()) pt

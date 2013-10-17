@@ -153,8 +153,9 @@ type proofstate =
     ps_goals  : (G.judgment list) option
   }
 
-let mk_ps = { ps_odecls = Ht.create 20; ps_adecls = Ht.create 20;
-              ps_vars = Ht.create 20; ps_goals = None }
+let mk_ps () =
+  { ps_odecls = Ht.create 20; ps_adecls = Ht.create 20;
+    ps_vars = Ht.create 20; ps_goals = None }
 
 let create_var reuse ps s ty =
   (* Format.printf "query for %s\n%!" s; *)

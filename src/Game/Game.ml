@@ -164,7 +164,6 @@ let iter_gdef_exp f gdef = List.iter (iter_gcmd_exp f) gdef
 let iter_ju_exp f ju =
   iter_gdef_exp f ju.ju_gdef; f ju.ju_ev
 
-
 (* ----------------------------------------------------------------------- *)
 (** {4 Read and write variables } *)
 
@@ -238,7 +237,6 @@ let is_call = function
   | _ -> false
 
 let has_call c = List.exists is_call c
-
 
 (* smart constructor for judgments *)
 let mk_ju gd ev =

@@ -54,6 +54,9 @@ Test_Singular :
 Test_Proof_BB1 :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proof_BB1.d.byte && ./Test_Proof_BB1.d.byte
 
+Test_Wf :
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Wf.d.byte && ./Test_Wf.d.byte
+
 Test_Pretty_Expr :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
 
@@ -61,7 +64,7 @@ Test_Parser :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Parser.d.byte && ./Test_Parser.d.byte
 
 zoocrypt :
-	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.d.byte && ./zoocrypt.d.byte ./examples/bb1.zc
+	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1.zc
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@
