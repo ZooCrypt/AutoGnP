@@ -22,10 +22,16 @@ let ensure_name_fresh wfs name =
   then failwith "duplicate name (variables, oracles, and adversaries)"
   else { wfs with wf_names = Sstring.add name wfs.wf_names }
 
+let ensure_names_fresh wfs names =
+  List.fold_left ensure_name_fresh wfs names
+
 let ensure_varname_fresh wfs vs =
   let name = Id.name vs.Vsym.id in
   let wfs = ensure_name_fresh wfs name in
   { wfs with wf_bvars = Vsym.S.add vs wfs.wf_bvars }
+
+let ensure_varnames_fresh wfs vs =
+  List.fold_left ensure_varname_fresh wfs vs
 
 let ty_prod vs =
   match List.map (fun vs -> vs.Vsym.ty) vs with
@@ -81,7 +87,7 @@ let rec wf_exp wfs e0 =
       | ElemH(e1,e2,(vhs)) ->
         assert (List.for_all
                   (fun (v,h) -> ty_equal v.Vsym.ty h.Hsym.dom) vhs);
-        let wfs = List.fold_left ensure_varname_fresh wfs (List.map fst vhs) in
+        let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
         wf_exp wfs e2;
         ignore (go e1);
         assert (ty_equal e1.e_ty e2.e_ty);
@@ -163,7 +169,7 @@ let wf_lcmds wfs0 odef0 =
 let wf_odef wfs (osym,vs,lcmds,e) =
    assert (ty_equal osym.Osym.dom (ty_prod vs) &&
              ty_equal osym.Osym.codom e.e_ty);
-   let wfs = List.fold_left ensure_varname_fresh wfs vs in
+   let wfs = ensure_varnames_fresh wfs vs in
    let wfs = wf_lcmds wfs lcmds in
    wf_exp wfs e
 
@@ -185,12 +191,12 @@ let wf_gdef gdef0 =
       let wfs = List.fold_left (fun wfs e -> add_ineq wfs e v) wfs es in
       go wfs gcmds
     | GCall(vs,asym,e,os)::gcmds ->
-      let wfs = List.fold_left ensure_varname_fresh wfs vs in
+      let wfs = ensure_varnames_fresh wfs vs in
       let wfs = ensure_name_fresh wfs (Id.name asym.Asym.id) in
       assert (ty_equal (ty_prod vs) asym.Asym.codom &&
                 ty_equal asym.Asym.dom e.e_ty);
       let wfs =
-        List.fold_left ensure_name_fresh wfs
+        ensure_names_fresh wfs
           (List.map (fun (osym,_,_,_) -> Id.name (osym.Osym.id)) os)
       in
       List.iter (wf_odef wfs) os;

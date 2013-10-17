@@ -234,7 +234,7 @@ let has_log_gcmds c = List.exists has_log_gcmd c
 (** smart constructors *)
 let is_call = function
   | GCall _ -> true
-  | _ -> false
+  | _       -> false
 
 let has_call c = List.exists is_call c
 
@@ -251,15 +251,18 @@ type ocmd_pos = (int * int * int)
 
 let get_ju_gcmd ju p = List.nth ju.ju_gdef p
 
-type ju_ctxt = gdef * gdef * ev
+type ju_ctxt =
+  { juc_left : gdef;
+    juc_right : gdef;
+    juc_ev : ev }
   
-let get_ju_ctxt ju p = 
+let get_ju_ctxt ju p =
   let rhd,i,tl =  split_n p ju.ju_gdef in
-  i, (rhd, tl, ju.ju_ev)
+  i, { juc_left = rhd; juc_right = tl; juc_ev = ju.ju_ev}
 
-let set_ju_ctxt cmd (rhd,tl,ev) = 
-  { ju_gdef = List.rev_append rhd (cmd @ tl);
-    ju_ev   = ev }
+let set_ju_ctxt cmds {juc_left; juc_right; juc_ev} =
+  { ju_gdef = List.rev_append juc_left (cmds @ juc_right);
+    ju_ev   = juc_ev }
 
 let set_ju_gcmd ju p cmds =
   assert (p >= 0 && p < List.length ju.ju_gdef);
@@ -273,19 +276,45 @@ let get_ju_lcmd ju (i,j,k) =
       o,vs,split_n k ms, e
   | _ -> assert false
 
+type ju_octxt =
+  { juoc_asym : Asym.t;
+    juoc_avars : Vsym.t list;
+    juoc_aarg : expr;
+    juoc_oright : odef list;
+    juoc_oleft : odef list;
+    juoc_osym : Osym.t;
+    juoc_oargs: Vsym.t list;
+    juoc_return : expr;
+    juoc_cleft : lcmd list;
+    juoc_cright : lcmd list;
+    juoc_juc : ju_ctxt }
+
 let get_ju_octxt ju (i,j,k) = 
   match get_ju_ctxt ju i with
-  | GCall(vsa,asym,e,os), ctxt ->
+  | GCall(vsa,asym,e,os), juc ->
     let rohd, (o,vs,ms,oe), otl = split_n j os in
     let rhd, i, tl = split_n k ms in
-    i, (((rhd,tl), (o,vs,oe), (rohd, otl, (asym,vsa,e))), ctxt)
+    i, { juoc_asym = asym;
+         juoc_avars = vsa;
+         juoc_aarg = e;
+         juoc_oright =  rohd;
+         juoc_oleft = otl;
+         juoc_osym = o;
+         juoc_oargs = vs;
+         juoc_return = oe;
+         juoc_cleft = rhd;
+         juoc_cright = tl;
+         juoc_juc = juc }
   | _ -> assert false
 
-let set_ju_octxt cmd (((rhd,tl), (o,vs,oe), (rohd, otl, (asym,vsa,e))), ctxt) =
-  let ms = List.rev_append rhd (cmd @ tl) in
-  let os = List.rev_append rohd ((o,vs,ms, oe) :: otl) in
-  let i = [GCall(vsa, asym, e, os)] in
-  set_ju_ctxt i ctxt
+let set_ju_octxt lcmds c =
+  let ms = List.rev_append c.juoc_cleft (lcmds @ c.juoc_cright) in
+  let os = List.rev_append c.juoc_oleft
+             ((c.juoc_osym,c.juoc_oargs,ms,c.juoc_return)
+              :: c.juoc_oright)
+  in
+  let i = [GCall(c.juoc_avars, c.juoc_asym, c.juoc_aarg, os)] in
+  set_ju_ctxt i c.juoc_juc
 
 let set_ju_lcmd ju p cmds = 
   let _, ctxt = get_ju_octxt ju p in
