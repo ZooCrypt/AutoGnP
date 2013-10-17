@@ -52,15 +52,15 @@ let ty_of_nop ty = function
   | Land  -> mk_Bool
   | Xor   -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
   | (FMult | FPlus) -> mk_Fq
+  | GMult  -> mk_G
+  | GTMult -> mk_GT
 
 let ty_of_op ty argtys o =
   match o with
   | GExp   -> ([mk_G;mk_Fq],mk_G,[])
   | GLog   -> ([mk_G],mk_Fq,[])
-  | GMult  -> ([mk_G;mk_G],mk_G,[])
   | GTExp  -> ([mk_GT;mk_Fq],mk_GT,[])
   | GTLog  -> ([mk_GT],mk_Fq,[])
-  | GTMult -> ([mk_GT;mk_GT],mk_GT,[])
   | EMap   -> ([mk_G;mk_G],mk_GT,[])
   | FMinus -> ([mk_Fq;mk_Fq],mk_Fq,[])
   | FOpp   -> ([mk_Fq],mk_Fq,[])

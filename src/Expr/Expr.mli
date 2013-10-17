@@ -17,11 +17,9 @@ type cnst =
 val cnst_hash : cnst -> int
 
 type op =
-    GMult
-  | GExp
+    GExp
   | GLog
   | EMap
-  | GTMult
   | GTExp
   | GTLog
   | FOpp
@@ -39,6 +37,8 @@ type naryop =
   | FMult
   | Xor
   | Land
+  | GMult
+  | GTMult
 
 val naryop_hash : naryop -> int
 
@@ -109,10 +109,10 @@ val destr_Tuple  : 'a gexpr -> 'a gexpr list
 val destr_Proj   : 'a gexpr -> int * 'a gexpr
 val destr_Cnst   : 'a gexpr -> cnst
 val destr_App    : 'a gexpr -> op * 'a gexpr list
-val destr_GMult  : 'a gexpr -> 'a gexpr * 'a gexpr
+val destr_GMult  : 'a gexpr -> ('a gexpr) list
 val destr_GExp   : 'a gexpr -> 'a gexpr * 'a gexpr
 val destr_GLog   : 'a gexpr -> 'a gexpr
-val destr_GTMult : 'a gexpr -> 'a gexpr * 'a gexpr
+val destr_GTMult : 'a gexpr -> ('a gexpr) list
 val destr_GTExp  : 'a gexpr -> 'a gexpr * 'a gexpr
 val destr_GTLog  : 'a gexpr -> 'a gexpr
 val destr_FOpp   : 'a gexpr -> 'a gexpr
@@ -146,11 +146,11 @@ val mk_Z      : Lenvar.id -> expr
 val mk_B      : bool -> expr
 val mk_True   : expr
 val mk_False  : expr
-val mk_GMult  : expr -> expr -> expr
+val mk_GMult  : expr list -> expr
 val mk_GExp   : expr -> expr -> expr
 val mk_GLog   : expr -> expr
 val mk_EMap   : expr -> expr -> expr
-val mk_GTMult : expr -> expr -> expr
+val mk_GTMult : expr list -> expr
 val mk_GTExp  : expr -> expr -> expr
 val mk_GTLog  : expr -> expr
 val mk_FOpp   : expr -> expr
@@ -186,11 +186,11 @@ module EConstructors :
     val mk_B      : bool -> eexpr
     val mk_True   : eexpr
     val mk_False  : eexpr
-    val mk_GMult  : eexpr -> eexpr -> eexpr
+    val mk_GMult  : eexpr list -> eexpr
     val mk_GExp   : eexpr -> eexpr -> eexpr
     val mk_GLog   : eexpr -> eexpr
     val mk_EMap   : eexpr -> eexpr -> eexpr
-    val mk_GTMult : eexpr -> eexpr -> eexpr
+    val mk_GTMult : eexpr list -> eexpr
     val mk_GTExp  : eexpr -> eexpr -> eexpr
     val mk_GTLog  : eexpr -> eexpr
     val mk_FOpp   : eexpr -> eexpr

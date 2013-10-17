@@ -98,8 +98,8 @@ let expr_of_parse_expr ht pe0 =
         let e2 = go e2 in
         (match e1.E.e_ty.T.ty_node with
          | T.Fq -> E.mk_FMult [e1;e2]
-         | T.G  -> E.mk_GMult e1 e2
-         | T.GT -> E.mk_GTMult e1 e2
+         | T.G  -> E.mk_GMult [e1;e2]
+         | T.GT -> E.mk_GTMult [e1;e2]
          | _    -> failwith "type error")
   in go pe0
 
