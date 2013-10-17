@@ -12,7 +12,7 @@ prove
     b <-$ Bool;
     (m0,m1) <- A2(g^c, g^d, g^h);
     let mb = (b?m0:m1);
-    b' <- A3(mb * e(g,g)^((c*d)*e), g^e, g^(e*(d*i' + h))) with
+    b' <- A3(mb * e(g,g)^(c*d*e), g^e, g^(e*(d*i' + h))) with
       Kg(i) = [ (g^(c*d + r*(d*i + h)), g^r) | not (i=i'), r <-$ Fq]
   ] : b = b'.  print_goals : start.
 
