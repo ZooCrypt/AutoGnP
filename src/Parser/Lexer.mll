@@ -49,6 +49,7 @@ rule lex = parse
   | "rindep" { RINDEP }
   | "rrandom_oracle" { RRANDOM_ORACLE }
   | "rbad"           { RBAD }
+  | "rctxt_ev"       { RCTXT_EV }
   | "in"    { IN }
   | "L_"    { LIST }
   | ['1'-'9']['0'-'9']* as s { INT(int_of_string(s)) }

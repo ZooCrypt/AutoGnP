@@ -15,6 +15,30 @@ let handle_tactic ps tac jus =
     let vs = List.map (fun s -> mk_V (Ht.find ps.ps_vars s)) is in
     apply_rule (rnorm_unknown vs) ps
 
+  | Rctxt_ev (sv,e) ->
+    let ev =
+      match ps.ps_goals with
+      | Some(ju::_) -> ju.Game.ju_ev 
+      | _ -> failwith "rctxt_ev: no goal" in
+    let ty = 
+      if Expr.is_Eq ev then (fst (Expr.destr_Eq ev)).Expr.e_ty
+      else if Expr.is_ElemH ev then
+        let (e1,_,_) = Expr.destr_ElemH ev in e1.Expr.e_ty 
+      else failwith "rctxt_ev: bad event" in
+    let v1 = create_var false ps sv ty in
+    let e1 = expr_of_parse_expr ps e in
+    let c = v1, e1 in
+    let ev = 
+      if Expr.is_Eq ev then
+        let (e1,e2) = Expr.destr_Eq ev in
+        Expr.mk_Eq (Expr.inst_ctxt c e1) (Expr.inst_ctxt c e2) 
+      else if Expr.is_ElemH ev then
+        let (e1,e2,h) = Expr.destr_ElemH ev in
+        Expr.mk_ElemH (Expr.inst_ctxt c e1) (Expr.inst_ctxt c e2) h 
+      else failwith "rctxt_ev: bad event"
+    in
+    apply_rule (rctxt_ev ev c) ps
+
   | Rindep -> apply_rule rrandom_indep ps
 
   | Rswap(i,j) -> apply_rule (rswap i j) ps
