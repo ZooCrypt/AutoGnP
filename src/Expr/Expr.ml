@@ -345,7 +345,7 @@ let notsep above = above <> Top && above <> PrefixApp && above <> Tup
 let rec pp_exp_p above fmt e =
   match e.e_node with
   | V(v)       -> 
-    Format.fprintf fmt "%a" Vsym.pp v (*Id.tag v.Vsym.id*)
+    Format.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id)
   | H(h,e)     -> 
     Format.fprintf fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
   | Tuple(es)  -> 
@@ -419,7 +419,7 @@ and pp_nop_p above fmt (op,es) =
     pp_maybe_paren p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es in
   match op with
   | FPlus  -> pp_nary FPlus " + "   (notsep above)
-  | Xor    -> pp_nary Xor   " (+) " (notsep above)
+  | Xor    -> pp_nary Xor   " ++ " (notsep above)
   | Land   -> pp_nary Land  " /\\ " (notsep above)
   | FMult  ->
     let p = 
