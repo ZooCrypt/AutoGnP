@@ -78,6 +78,7 @@
 %token DOT
 %token PRINTGOALS
 %token RNORM
+%token RNORM_UNKNOWN
 %token RRANDOM
 %token RRANDOM_ORACLE
 %token RSWAP
@@ -86,6 +87,7 @@
 %token RDDH
 %token RINDEP
 %token RBAD
+%token RLET_ABSTRACT
 
 /************************************************************************/
 /* Production types */
@@ -284,11 +286,14 @@ instr :
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }
 | RNORM DOT { Apply(Rnorm) }
+| RNORM_UNKNOWN DOT { Apply(Rnorm_unknown([])) }
+| RNORM_UNKNOWN is = idlist DOT { Apply(Rnorm_unknown(is)) }
 | RINDEP DOT { Apply(Rindep) }
 | RSWAP i = INT j =int DOT { Apply(Rswap(i-1,j)) }
 | RBDDH s = ID DOT { Apply(Rbddh(s)) }
 | RDDH s = ID DOT { Apply(Rddh(s)) }
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? DOT { Apply(Requiv(gd,e)) }
+| RLET_ABSTRACT i = INT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RRANDOM i = INT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT { Apply(Rrandom(i-1,i1,e1,i2,e2)) }
 | RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN
                  LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT

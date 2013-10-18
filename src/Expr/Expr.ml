@@ -26,11 +26,9 @@ let cnst_hash = function
 
 (* operators with fixed arity *)
 type op =
-    GMult  (* multiplication in G *)
-  | GExp   (* exponentiation in source group *)
+    GExp   (* exponentiation in source group *)
   | GLog   (* discrete logarithm in source group *)
   | EMap   (* bilinear map *)
-  | GTMult (* multiplication in GT *)
   | GTExp  (* exponentiation in target group *)
   | GTLog  (* discrete logarithm in target group *)
   | FOpp   (* additive inverse in Fq *)
@@ -42,20 +40,18 @@ type op =
   | Ifte   (* if then else *)
 
 let op_hash = function
-    GMult  -> 1
-  | GExp   -> 2
-  | GLog   -> 3
-  | EMap   -> 4
-  | GTMult -> 5
-  | GTExp  -> 6
-  | GTLog  -> 7
-  | FOpp   -> 8
-  | FMinus -> 9
-  | FInv   -> 10
-  | FDiv   -> 11
-  | Eq     -> 12
-  | Not    -> 13
-  | Ifte   -> 14
+    GExp   -> 1
+  | GLog   -> 2
+  | EMap   -> 3
+  | GTExp  -> 4
+  | GTLog  -> 5
+  | FOpp   -> 6
+  | FMinus -> 7
+  | FInv   -> 8
+  | FDiv   -> 9
+  | Eq     -> 10
+  | Not    -> 11
+  | Ifte   -> 12
 
 (* associative operators with variable arity *)
 type naryop =
@@ -63,12 +59,16 @@ type naryop =
   | FMult  (* multiplication in Fq *)
   | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
+  | GMult  (* multiplication in G *)
+  | GTMult (* multiplication in GT *)
 
 let naryop_hash = function
     FPlus  -> 3
   | FMult  -> 4
   | Xor    -> 5
   | Land   -> 6
+  | GMult  -> 7
+  | GTMult -> 8
 
 type 'a gexpr = {
   e_node : 'a gexpr_node;
@@ -259,13 +259,13 @@ let destr_App_bop s o e =
    | App(o',[e1;e2]) when o = o' -> (e1,e2)
    | _ -> raise (Destr_failure s)
 
-let destr_Narry s o e =
+let destr_Nary s o e =
   match e.e_node with
   | Nary(o',es) when o = o' -> es 
   | _ -> raise (Destr_failure s)
 
-let destr_GMult  e = destr_App_bop "GMult"  GMult e
-let destr_GTMult e = destr_App_bop "GTMult" GTMult e
+let destr_GMult  e = destr_Nary "GMult"  GMult e
+let destr_GTMult e = destr_Nary "GTMult" GTMult e
 
 let destr_GExp   e = destr_App_bop "GExp"  GExp e
 let destr_GTExp  e = destr_App_bop "GTExp" GTExp e
@@ -277,13 +277,13 @@ let destr_FOpp   e = destr_App_uop "FOpp"   FOpp e
 let destr_FMinus e = destr_App_bop "FMinus" FMinus e
 let destr_FInv   e = destr_App_uop "FInv"   FInv e
 let destr_FDiv   e = destr_App_bop "FDiv"   FDiv e 
-let destr_FPlus  e = destr_Narry   "FPlus"  FPlus e
-let destr_FMult  e = destr_Narry   "FMult"  FMult e
+let destr_FPlus  e = destr_Nary   "FPlus"  FPlus e
+let destr_FMult  e = destr_Nary   "FMult"  FMult e
 
 let destr_Eq     e = destr_App_bop "Eq"   Eq e 
 let destr_Not    e = destr_App_uop "Not"  Not e
-let destr_Xor    e = destr_Narry   "Xor"  Xor e 
-let destr_Land   e = destr_Narry   "Land" Land e
+let destr_Xor    e = destr_Nary   "Xor"  Xor e 
+let destr_Land   e = destr_Nary   "Land" Land e
 let destr_Ifte   e = 
   match e.e_node with 
   | App(Eq,[a;b;c]) -> (a,b,c) 
@@ -292,6 +292,7 @@ let destr_ElemH  e =
   match e.e_node with
   | ElemH(e1,e2,vh) -> e1,e2,vh
   | _ -> raise (Destr_failure "ElemH")
+
 (* ----------------------------------------------------------------------- *)
 (** {4 Pretty printing} *)
 
@@ -376,17 +377,11 @@ and pp_op_p above fmt (op, es) =
   let pp_prefix op before after a =
     Format.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after in
   match op, es with
-  | GMult,  [a;b] -> 
-    pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1)) 
-      GMult " * " a b
   | GExp,   [a;b] -> 
-    pp_bin (notsep above && above<>Infix(GMult,0) && above<>Infix(GMult,1))
+    pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult))
       GExp "^" a b
-  | GTMult, [a;b] -> 
-    pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) 
-      GTMult " * " a b
   | GTExp,  [a;b] -> 
-    pp_bin (notsep above && above<>Infix(GTMult,0) && above<>Infix(GTMult,1)) 
+    pp_bin (notsep above && above<>NInfix(GTMult) && above<>NInfix(GTMult)) 
       GTExp "^" a b
   | FDiv,   [a;b] -> 
     pp_bin (notsep above) FDiv "/" a b
@@ -418,9 +413,11 @@ and pp_nop_p above fmt (op,es) =
   let pp_nary op ops p =
     pp_maybe_paren p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es in
   match op with
-  | FPlus  -> pp_nary FPlus " + "   (notsep above)
-  | Xor    -> pp_nary Xor   " ++ " (notsep above)
-  | Land   -> pp_nary Land  " /\\ " (notsep above)
+  | GMult  -> pp_nary GMult  " * "   (notsep above) 
+  | GTMult -> pp_nary GTMult " * "   (notsep above) 
+  | FPlus  -> pp_nary FPlus  " + "   (notsep above)
+  | Xor    -> pp_nary Xor    " ++ " (notsep above)
+  | Land   -> pp_nary Land   " /\\ " (notsep above)
   | FMult  ->
     let p = 
       match above with
@@ -482,11 +479,11 @@ sig
   val mk_True  : t gexpr
   val mk_False : t gexpr
 
-  val mk_GMult : t gexpr -> t gexpr -> t gexpr
+  val mk_GMult : t gexpr list -> t gexpr
   val mk_GExp : t gexpr -> t gexpr -> t gexpr
   val mk_GLog : t gexpr -> t gexpr
   val mk_EMap : t gexpr -> t gexpr -> t gexpr
-  val mk_GTMult : t gexpr -> t gexpr -> t gexpr
+  val mk_GTMult : t gexpr list -> t gexpr
   val mk_GTExp : t gexpr -> t gexpr -> t gexpr
   val mk_GTLog : t gexpr -> t gexpr
   val mk_FOpp : t gexpr -> t gexpr
@@ -551,11 +548,6 @@ struct
 
   let mk_App o es ty = E.mk (App(o,es)) ty
 
-  let mk_GMult a b =
-    ensure_ty_equal a.e_ty ty_G a None "mk_GMult";
-    ensure_ty_equal b.e_ty ty_G b None "mk_GMult";
-    mk_App GMult [a;b] ty_G
-
   let mk_GExp a b =
     ensure_ty_equal a.e_ty ty_G a None "mk_GExp";
     ensure_ty_equal b.e_ty ty_Fq b None "mk_GExp";
@@ -569,11 +561,6 @@ struct
     ensure_ty_equal a.e_ty ty_G a None "mk_EMap";
     ensure_ty_equal b.e_ty ty_G b None "mk_EMap";
     mk_App EMap [a;b] ty_GT
-
-  let mk_GTMult a b =
-    ensure_ty_equal a.e_ty ty_GT a None "mk_GTMult";
-    ensure_ty_equal b.e_ty ty_GT b None "mk_GTMult";
-    mk_App GTMult [a;b] ty_GT
 
   let mk_GTExp a b =
     ensure_ty_equal a.e_ty ty_GT a None "mk_GTExp";
@@ -630,6 +617,8 @@ struct
                | _ -> failwith "mk_Xor: expected bitstring argument")
     | _ -> failwith "mk_Xor: expected non-empty list"
   let mk_Land es = mk_nary "mk_FMult" Land es ty_Bool
+  let mk_GMult es = mk_nary "mk_GMult" GMult es ty_G
+  let mk_GTMult es = mk_nary "mk_GTMult" GTMult es ty_GT
 
   let mk_GTGen = mk_EMap mk_GGen mk_GGen
 
@@ -751,7 +740,7 @@ let e_replace e1 e2 =
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
 
-
+let se_of_list = List.fold_left (fun s e -> Se.add e s) Se.empty
 
 
 

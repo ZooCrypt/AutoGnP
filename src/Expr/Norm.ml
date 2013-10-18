@@ -41,13 +41,13 @@ let mk_proj_simpl i e =
 
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
-  | GMult | GExp | GLog 
-  | EMap | GTMult | GTExp | GTLog 
+  | GExp | GLog 
+  | EMap | GTExp | GTLog 
   | Eq | Ifte | Not -> false 
 
 let is_field_nop = function
   | FPlus | FMult -> true
-  | Xor | Land    -> false
+  | Xor | Land | GMult | GTMult -> false
 
 let rec mk_simpl_op op l =
   match op, l with
@@ -67,16 +67,6 @@ let rec mk_simpl_op op l =
     let p2 = destr_gexp g2 in
     let p = norm_field_expr (mk_FMult [p1; p2]) in
     mk_gtexp p
-  | GMult, [e1;e2] ->
-    let p1 = destr_gexp e1 in
-    let p2 = destr_gexp e2 in
-    let p = norm_field_expr (mk_FPlus [p1; p2]) in
-    mk_gexp p 
-  | GTMult, [e1;e2] ->
-    let p1 = destr_gtexp e1 in
-    let p2 = destr_gtexp e2 in
-    let p = norm_field_expr (mk_FPlus [p1; p2]) in
-    mk_gtexp p
   | Eq, [e1;e2] -> 
     if e_equal e1 e2 then mk_True else mk_Eq e1 e2
   | Ifte, [e1;e2;e3] ->
@@ -88,8 +78,8 @@ let rec mk_simpl_op op l =
     if is_True e then mk_False
     else if is_False e then mk_True
     else mk_Not e
-  | (        GExp   | GLog  | GMult
-    | EMap | GTExp  | GTLog | GTMult
+  | (        GExp   | GLog  
+    | EMap | GTExp  | GTLog
     | FOpp | FMinus | FInv  | FDiv 
     | Eq   | Ifte   | Not)           , _ -> assert false
 
@@ -98,6 +88,14 @@ and mk_simpl_nop op l =
   match op with
   | FPlus  | FMult  ->
     assert false (* norm_expr_field should be called instead *)
+  | GMult ->
+    let l = List.map destr_gexp l in
+    let p = norm_field_expr (mk_FPlus l) in
+    mk_gexp p
+  | GTMult ->
+    let l = List.map destr_gtexp l in
+    let p = norm_field_expr (mk_FPlus l) in
+    mk_gtexp p
   | Xor -> 
     let l = List.flatten (List.map destr_xor l) in
     let l = List.sort e_compare l in
@@ -165,25 +163,22 @@ and norm_field_expr e =
     | _ -> norm_expr e in
   S.norm before e 
 
-let norm_subst s e =
-  let e = e_subst s e in
-  norm_expr e
-
-let rec abbrev_ggen e = 
+let rec abbrev_ggen e =
+  let e = e_sub_map abbrev_ggen e in
   match e.e_node with
   | App(GExp,[a;b]) ->
-    if e_equal a mk_GGen then
+    if e_equal a mk_GGen then (
       if e_equal b mk_FOne then mk_GGen
       else if is_GLog b then destr_GLog b
-      else e_sub_map abbrev_ggen e
-    else e_sub_map abbrev_ggen e
+      else e)
+    else e
   | App(GTExp,[a;b]) ->
-    if e_equal a mk_GTGen then
+    if e_equal a mk_GTGen then (
       if e_equal b mk_FOne then mk_GTGen
       else if is_GTLog b then destr_GTLog b
-      else e_sub_map abbrev_ggen e
-    else e_sub_map abbrev_ggen e
-  | _ -> e_sub_map abbrev_ggen e
+      else e)
+    else e
+  | _ -> e
 
 (* use norm_expr to check equality modulo equational theory *)
 let e_equalmod e e' = e_equal (norm_expr e) (norm_expr e')

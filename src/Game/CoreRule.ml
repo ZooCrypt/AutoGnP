@@ -2,7 +2,7 @@ open Util
 open Type
 open Expr
 open Game
-
+open Wf
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Rules and tactic language} *)
@@ -12,7 +12,7 @@ open Game
 let apply rule goals = match goals with
   | g::gs ->
       let gs' = rule g in
-      List.iter Wf.wf_ju gs';
+      List.iter wf_ju gs';
       gs' @ gs
   | _ -> failwith "there are no goals"
 
@@ -86,7 +86,7 @@ let ensure_bijection c1 c2 v =
    forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x.  *)
 let rrandom p c1 c2 ju =
   match get_ju_ctxt ju p with
-  | GSamp(vs,((t,[]) as d)), (rhd, tl, ev) ->
+  | GSamp(vs,((t,[]) as d)), juc ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
     let vs' = Vsym.mk ((Id.name vs.Vsym.id)^"%") t in
@@ -94,13 +94,20 @@ let rrandom p c1 c2 ju =
                  GLet(vs', inst_ctxt c1 (mk_V vs)) ]
     in
     let subst e = e_replace v (mk_V vs') e in
-    [ set_ju_ctxt cmds (rhd, map_gdef_exp subst tl, subst ev) ]
+    let wfs = wf_gdef juc.juc_left in
+    wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    let juc = { juc with
+                juc_right = map_gdef_exp subst juc.juc_right;
+                juc_ev = subst juc.juc_ev }
+    in
+    [ set_ju_ctxt cmds juc ]
   | _ -> failwith "random: position given is not a sampling"
 
 (* random in oracle *)
 let rrandom_oracle p c1 c2 ju =
   match get_ju_octxt ju p with
-  | LSamp(vs,((t,[]) as d)), (((rhd,tl), (o,ovs,oe), octxt), gctxt) ->
+  | LSamp(vs,((t,[]) as d)), juoc ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
     let vs' = Vsym.mk ((Id.name vs.Vsym.id)^"%") t in
@@ -108,7 +115,17 @@ let rrandom_oracle p c1 c2 ju =
                  LLet(vs', inst_ctxt c1 (mk_V vs)) ]
     in
     let subst e = e_replace v (mk_V vs') e in
-    [ set_ju_octxt cmds (((rhd,List.map (map_lcmd_exp subst) tl), (o,ovs,subst oe), octxt), gctxt) ]
+    (* ensure both contexts well-defined *)
+    let wfs = wf_gdef juoc.juoc_juc.juc_left in
+    let wfs = ensure_varnames_fresh wfs juoc.juoc_oargs in
+    let wfs = wf_lcmds wfs juoc.juoc_cleft in
+    wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    let juoc = { juoc with
+                 juoc_return = subst juoc.juoc_return;
+                 juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright }
+    in
+    [ set_ju_octxt cmds juoc ]
   | _ -> failwith "random: position given is not a sampling"
 
 
@@ -131,7 +148,7 @@ let check_swap read write i c =
 let swap i delta ju = 
   if delta = 0 then ju
   else
-    let i,(hd,tl,e) = get_ju_ctxt ju i in
+    let i,{juc_left=hd; juc_right=tl; juc_ev=e} = get_ju_ctxt ju i in
     let c1,c2,c3 = 
       if delta < 0 then 
         let hhd, thd = cut_n (-delta) hd in
@@ -143,25 +160,25 @@ let swap i delta ju =
     if is_call i && has_call c2 then
       failwith "swap : can not swap";
     let c2,c3 = if delta > 0 then c2, i::c3 else i::c2, c3 in
-    set_ju_ctxt c2 (c1,c3,e)
+    set_ju_ctxt c2 {juc_left=c1; juc_right=c3; juc_ev=e}
 
 let rswap i delta ju = [swap i delta ju]
 
 let swap_oracle i delta ju = 
   if delta = 0 then ju
   else
-    let i,(((hd,tl), odecl, call), ctxt) = get_ju_octxt ju i in
+    let i, juoc = get_ju_octxt ju i in
     let c1,c2,c3 = 
       if delta < 0 then
-        let hhd,thd = cut_n delta hd in
-        thd,hhd,tl
+        let hhd,thd = cut_n delta juoc.juoc_cleft in
+        thd,hhd,juoc.juoc_cleft
       else 
-        let htl, ttl = cut_n delta tl in
-        hd, List.rev htl, ttl in
+        let htl, ttl = cut_n delta juoc.juoc_cright in
+        juoc.juoc_cright, List.rev htl, ttl in
     check_swap read_lcmds write_lcmds i c2;
     let c2, c3 = 
       if delta > 0 then c2, i::c3 else i::c2, c3 in
-    set_ju_octxt c2 (((c1,c3),odecl,call),ctxt)
+    set_ju_octxt c2 { juoc with juoc_cleft = c1; juoc_cright = c3 }
 
 let rswap_oracle i delta ju =
   [swap_oracle i delta ju]

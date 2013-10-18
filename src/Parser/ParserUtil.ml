@@ -153,8 +153,8 @@ let expr_of_parse_expr ps pe0 =
       let e2 = go e2 in
       (match e1.E.e_ty.T.ty_node with
       | T.Fq -> E.mk_FMult [e1;e2]
-      | T.G  -> E.mk_GMult e1 e2
-      | T.GT -> E.mk_GTMult e1 e2
+      | T.G  -> E.mk_GMult [e1;e2]
+      | T.GT -> E.mk_GTMult [e1;e2]
       | _    -> failwith "type error")
   in go pe0
 
@@ -184,12 +184,14 @@ type gdef = gcmd list
 
 type tactic =
     Rnorm
+  | Rnorm_unknown of string list
   | Rswap of int * int
   | Rrandom of int * string * parse_expr * string * parse_expr
   | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr
   | Requiv of gdef * parse_expr option
   | Rbddh of string
   | Rddh of string
+  | Rlet_abstract of int * string * parse_expr
   | Rindep
   | Rbad of int 
 
