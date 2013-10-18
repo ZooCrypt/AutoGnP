@@ -136,6 +136,7 @@ type tactic =
   | Requiv of gdef
   | Rbddh of string
   | Rddh of string
+  | Rlet_abstract of int * string * parse_expr
   | Rindep
 
 type instr =

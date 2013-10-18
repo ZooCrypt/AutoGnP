@@ -37,6 +37,7 @@ rule lex = parse
   | "print_goals" { PRINTGOALS }
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm" { RNORM }
+  | "rlet_abstract"  { RLET_ABSTRACT }
   | "with"  { WITH }
   | "rrandom" { RRANDOM }
   | "rswap" { RSWAP }

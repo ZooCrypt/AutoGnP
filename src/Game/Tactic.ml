@@ -33,6 +33,11 @@ let handle_tactic ps tac jus =
       let v = create_var false ps s Type.mk_Fq in
       apply_rule (rddh v) ps
 
+  | Rlet_abstract(i,sv,e) ->
+      let e = expr_of_parse_expr ps.ps_vars e in
+      let v = create_var false ps sv e.Expr.e_ty in
+      apply_rule (rlet_abstract i v e) ps
+
   | Rrandom(i,sv1,e1,sv2,e2) ->
       let ty =
         (match ps.ps_goals with

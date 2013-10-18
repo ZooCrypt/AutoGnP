@@ -82,6 +82,7 @@
 %token RBDDH
 %token RDDH
 %token RINDEP
+%token RLET_ABSTRACT
 
 /************************************************************************/
 /* Production types */
@@ -268,6 +269,7 @@ instr :
 | RBDDH s = ID DOT { Apply(Rbddh(s)) }
 | RDDH s = ID DOT { Apply(Rddh(s)) }
 | REQUIV LBRACKET gd = gdef0 RBRACKET DOT { Apply(Requiv(gd)) }
+| RLET_ABSTRACT i = INT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RRANDOM i = INT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT { Apply(Rrandom(i-1,i1,e1,i2,e2)) }
 | RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN
                  LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT

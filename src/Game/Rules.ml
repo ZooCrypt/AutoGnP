@@ -45,7 +45,7 @@ let simp_exp e unknown =
       (match a.e_node with
        | Nary(FPlus,es) -> go es (Some b)
        | _ -> ([a,None],Some b) )
-  | _ -> ([e, None], None)
+  | _ -> ([split_unknown e ], None)
 
 let rewrite_exps unknown e0 =
   let rec go e =
@@ -84,3 +84,19 @@ let rnorm_unknown unknown ju =
   let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
   let new_ju = map_ju_exp norm ju in
   rconv new_ju ju
+
+(* FIXME: does not work for first line *)
+let rlet_abstract p vs e ju =
+  match get_ju_ctxt ju p with
+  | cmd, juc ->
+    let v = mk_V vs in
+    let cmds = cmd::[GLet(vs, e)] in
+    (* try both the given expression and the normalized given expression *)
+    let subst a = e_replace (norm_expr e) v (e_replace e v a) in
+    let juc = { juc with
+                juc_right = map_gdef_exp subst juc.juc_right;
+                juc_ev = subst juc.juc_ev }
+    in
+    rconv (set_ju_ctxt cmds juc) ju
+
+
