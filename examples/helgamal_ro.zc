@@ -30,22 +30,19 @@ print_goals : after_random2.
 
 rswap 3 3. rindep. 
 
-(*rrandom 7 (x -> x ++ mb) (x -> x ++ mb).*) rnorm.
+rnorm.
 print_goals : bounding_bad.
 rswap 4 -2.
 print_goals : after_swap.
 
-requiv
-  [ sk <-$ Fq;
-    y  <-$ Fq;
-    let gsk  = g^sk;
-    let gx  = g ^ sk ;
-    let gy   = g^y;
-    let gsky = g^(sk * y);
-    (m0,m1) <- A1(gsk);
-    b <-$ Bool;
-    he <-$ BS_ k;
-    b' <- A2 (gy, (b?m0:m1) ++ he)
-  ] : (gsky in [ x | x <- L_ H ]). 
+rlet_abstract 2 gsk (g^sk).
+rlet_abstract 3 gy (g^y).
+rlet_abstract 4 gsky (g^(sk*y)).
+print_goals : after_rlet.
 
+rddh u.
+rnorm.
+rswap 3 4.
+print_goals : after_ddh.
 
+rindep.

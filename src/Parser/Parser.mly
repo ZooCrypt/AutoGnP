@@ -88,7 +88,7 @@
 %token RINDEP
 %token RBAD
 %token RLET_ABSTRACT
-
+%token RCTXT_EV
 /************************************************************************/
 /* Production types */
 
@@ -298,6 +298,7 @@ instr :
 | RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN
                  LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT
                  { Apply(Rrandom_oracle(i-1,j-1,k-1,i1,e1,i2,e2)) }
+
 | RBAD i=INT DOT { Apply(Rbad (i-1)) }
 
 theory :

@@ -186,6 +186,7 @@ type tactic =
     Rnorm
   | Rnorm_unknown of string list
   | Rswap of int * int
+  | Rctxt_ev of string * parse_expr
   | Rrandom of int * string * parse_expr * string * parse_expr
   | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr
   | Requiv of gdef * parse_expr option

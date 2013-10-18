@@ -62,7 +62,7 @@ let rctxt_ev ev c ju =
       let (e1,e2) = destr_Eq ev1 in
       mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
     else if is_ElemH ev1 then
-      let (e1,e2,h) = destr_ElemH ev in
+      let (e1,e2,h) = destr_ElemH ev1 in
       mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
     else failwith "rctxt_ev: bad event"
   in
