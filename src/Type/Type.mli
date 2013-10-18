@@ -4,12 +4,14 @@
 (* length variables for bitstrings *)
 module Lenvar : IdType.ID
 
+(* identifier for different groups *)
+module Groupvar : IdType.ID
+
 type 'a gty = { ty_node : 'a gty_node; ty_tag : int; }
 and 'a gty_node =
     BS of 'a Lenvar.gid
   | Bool
-  | G
-  | GT
+  | G of 'a Groupvar.gid
   | Fq
   | Prod of 'a gty list
 
@@ -29,8 +31,7 @@ module Hty : Hashtbl.S with type key = ty
 val mk_ty : IdType.internal gty_node -> Hsty.t
 
 val mk_BS : Lenvar.id -> ty
-val mk_G : ty
-val mk_GT : ty
+val mk_G : Groupvar.id -> ty
 val mk_Fq : ty
 val mk_Bool : ty
 val mk_Prod : ty list -> ty
