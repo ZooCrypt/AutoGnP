@@ -111,7 +111,7 @@ let handle_tactic ps tac jus =
       | Some(ju::_) ->
         (match Game.get_ju_gcmd ju i with
          | Game.GLet(_,e') when is_H e' ->
-           let h,e = destr_H e' in
+           let _,e = destr_H e' in
            e.e_ty
          | _ -> assert false)
       | _ -> assert false
@@ -125,9 +125,8 @@ let pp_goals fmt gs =
   | Some [] -> Format.printf "No remaining goals, proof completed.@\n"
   | Some jus ->
     let pp_goal i ju =
-      Format.fprintf fmt "goal %i:@\n%a@\n@\n" i Game.pp_ju ju in
+      Format.fprintf fmt "goal %i:@\n%a@\n@\n" (i + 1) Game.pp_ju ju in
     List.iteri pp_goal jus 
-      
 
 let handle_instr ps instr =
   match instr with

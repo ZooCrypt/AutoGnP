@@ -21,7 +21,9 @@ let delay goals = match goals with
   | []    -> []
 
 (* ----------------------------------------------------------------------- *)
-(** {2 Low level rule} *)
+(** {2 Low level rules} *)
+
+(** Helper functions *)
 
 let assert_no_occur vs ju s =
   assert_msg (not (Se.mem (mk_V vs) (ju_vars ju)))
@@ -34,17 +36,8 @@ let check_conv ju1 ju2 =
   ju_equal (norm_ju ju1) (norm_ju ju2) 
 
 let rconv new_ju1 ju1 = 
-
-(*  Format.printf "%a@." pp_gdef (snd (Util.cut_n 6 new_ju1.ju_gdef)); *)
-(*  Format.printf "%a@." pp_gdef (snd (Util.cut_n 6 ju1.ju_gdef)); *)
-(*  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
-  Format.printf "new_ju = %a@." pp_ju new_ju1; *)
   let ju = norm_ju ju1 in
   let new_ju = norm_ju new_ju1 in
-(*  Format.printf "Check conv@.ju = %a@." pp_ju ju1; 
-  Format.printf "new_ju = %a@." pp_ju new_ju1; 
-  Format.printf "norm ju = %a@." pp_ju ju;
-  Format.printf "norm new_ju = %a@." pp_ju new_ju; *)
   if not (ju_equal ju new_ju) then
     (  
       Format.printf "ju = %a@.new_ju = %a@." 
@@ -58,7 +51,7 @@ let rconv new_ju1 ju1 =
       failwith "rconv: not convertible");
   [new_ju1]
 
-(** Applying context on ev *)
+(* Applying context to ev *)
 let rctxt_ev ev c ju = 
   let new_ju = {ju with ju_ev = ev} in
   let ev1 = ju.ju_ev in
@@ -76,19 +69,20 @@ let rctxt_ev ev c ju =
     failwith "rctxt_ev: bad context";
   [new_ju]
 
-(** random rule *)
+(** random rules *)
 
 let ensure_bijection c1 c2 v =
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
           Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
   then failwith "random: contexts not bijective"
 
-(* 'random p c1 c2' takes a position p and two contexts. It first
+(* 'random p c1 c2 vslet' takes a position p, two contexts. and a
+   variable symbol for the new let-bound variable. It first
    ensures that there is a random sampling 'x <-$ d' at position p.
-   For now, its not excepted. Otherwise we have to apply c1/c2 to
-   the excepted values.
-   Then it checks that under the inequalities that hold at position p,
-   forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x.  *)
+   For now, excepted distributions are not allowed.
+   Then it checks that c1 and c2 are well-formed for at position p
+   (taking inequalities that are checked beforehand into account)
+   and that 'forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x'.  *)
 let rrandom p c1 c2 vslet ju =
   assert_no_occur vslet ju "rrandom";
   match get_ju_ctxt ju p with
@@ -110,7 +104,7 @@ let rrandom p c1 c2 vslet ju =
     [ set_ju_ctxt cmds juc ]
   | _ -> failwith "random: position given is not a sampling"
 
-(* random in oracle *)
+(* random rule in oracle *)
 let rrandom_oracle p c1 c2 vslet ju =
   assert_no_occur vslet ju "rrandom_oracle";
   match get_ju_octxt ju p with
@@ -127,7 +121,6 @@ let rrandom_oracle p c1 c2 vslet ju =
     let wfs = wf_lcmds wfs (List.rev juoc.juoc_cleft) in
     wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
-
     let subst e = e_replace v (mk_V vslet) e in
     let juoc = { juoc with
                  juoc_return = subst juoc.juoc_return;
@@ -137,7 +130,7 @@ let rrandom_oracle p c1 c2 vslet ju =
   | _ -> failwith "random: position given is not a sampling"
 
 
-(** Swapping instruction *)
+(** Swapping instructions *)
 
 let disjoint s1 s2 = 
   Se.is_empty (Se.inter s1 s2)
@@ -209,8 +202,9 @@ let rrandom_indep ju =
   | _ -> failwith "can not apply rrandom_indep"
     
 
-(** DDH hypothesis *)
+(** Decisional reducions *)
 
+(* decisional diffie-hellman *)
 let check_ddh a b ex ey ez c ev =
  let a = mk_V a in
  let b = mk_V b in
@@ -237,24 +231,8 @@ let rddh vsc ju =
         i1 :: i2:: GSamp(vsc,(mk_Fq,[])) :: 
           i3 :: i4 :: GLet(z,mk_GExp mk_GGen vc) :: c }]
   | _ -> failwith "can not apply ddh"
-
-(* Bad rule, random oracle *)
-let rbad p vsx ju =
-  assert_no_occur vsx ju "rbad";
-  match get_ju_ctxt ju p with
-  | GLet(vs,e'), ctxt when is_H e' ->
-    let h,e = destr_H e' in
-    (* TODO CHECK THAT h is only used here *)
-    let i = [GSamp(vs,(e'.e_ty,[]))] in
-    let ju1 = set_ju_ctxt i ctxt in
-    let vx = mk_V vsx in
-    let ev = mk_ElemH e vx [vsx,h] in
-    let ju2 = { ju1 with ju_ev = ev } in
-    [ju1;ju2]
-  | _ -> 
-    failwith "can not apply bad rule"
     
-(* Bilinear decisional diffie-helman *)
+(* Bilinear decisional diffie-hellman *)
 let check_bddh a b c ex ey ez eU _C ev =
  let a = mk_V a in
  let b = mk_V b in
@@ -286,3 +264,22 @@ let rbddh vsu ju =
         i1 :: i2:: i3 :: GSamp(vsu,(mk_Fq,[])) :: 
           i4 :: i5 :: i6 :: GLet(_U,mk_GTExp mk_GTGen vu) :: _C }]
   | _ -> failwith "can not apply bddh"
+
+(** Rules for random oracles *)
+
+(* Bad rule, random oracle *)
+let rbad p vsx ju =
+  assert_no_occur vsx ju "rbad";
+  match get_ju_ctxt ju p with
+  | GLet(vs,e'), ctxt when is_H e' ->
+    let h,e = destr_H e' in
+    (* TODO CHECK THAT h is only used here *)
+    let i = [GSamp(vs,(e'.e_ty,[]))] in
+    let ju1 = set_ju_ctxt i ctxt in
+    let vx = mk_V vsx in
+    let ev = mk_ElemH e vx [vsx,h] in
+    let ju2 = { ju1 with ju_ev = ev } in
+    [ju1;ju2]
+  | _ -> 
+    failwith "can not apply bad rule"
+

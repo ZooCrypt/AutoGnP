@@ -332,7 +332,7 @@ let pp_maybe c tx pp fmt x =
   pp_if c (tx pp) pp fmt x
 
 let pp_enclose ~pre ~post pp fmt x =
-  Format.fprintf fmt "%(%)%a%(%)" pre pp x post
+  F.fprintf fmt "%(%)%a%(%)" pre pp x post
 
 let pp_paren pp fmt x =
   pp_enclose ~pre:"(" ~post:")" pp fmt x
@@ -346,22 +346,22 @@ let notsep above = above <> Top && above <> PrefixApp && above <> Tup
 let rec pp_exp_p above fmt e =
   match e.e_node with
   | V(v)       -> 
-    Format.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id)
-    (* Format.fprintf fmt "%a" Vsym.pp v *)
+    (* F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
+    F.fprintf fmt "%a" Vsym.pp v
   | H(h,e)     -> 
-    Format.fprintf fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
+    F.fprintf fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
   | Tuple(es)  -> 
     let pp fmt = 
-      Format.fprintf fmt "@[<hov>%a@]" (pp_list ",@ " (pp_exp_p Tup)) in
+      F.fprintf fmt "@[<hov>%a@]" (pp_list ",@ " (pp_exp_p Tup)) in
     pp_maybe_paren (above <> PrefixApp) pp fmt es
   | Proj(i,e)  -> 
-    Format.fprintf fmt "pi_%i(%a)" i (pp_exp_p PrefixApp) e
+    F.fprintf fmt "pi_%i(%a)" i (pp_exp_p PrefixApp) e
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op_p above fmt (o,es) 
   | Nary(o,es) -> pp_nop_p above fmt (o,es)
   | ElemH(e1,e2,h) ->
     let pp fmt () = 
-      Format.fprintf fmt "@[<hov 2>%a in@ [%a |@ %a]@]"
+      F.fprintf fmt "@[<hov 2>%a in@ [%a |@ %a]@]"
         (pp_exp_p Top) e1 (pp_exp_p Top) e2 
         (pp_list ",@ " (fun fmt (v,h) ->
           F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h in
@@ -370,13 +370,13 @@ let rec pp_exp_p above fmt e =
 and pp_op_p above fmt (op, es) =
   let pp_bin p op ops a b =
     let pp fmt () = 
-      Format.fprintf fmt "@[<hov>%a %s@ %a@]"
+      F.fprintf fmt "@[<hov>%a %s@ %a@]"
         (pp_exp_p (Infix(op,0))) a ops
         (pp_exp_p (Infix(op,1))) b in
     pp_maybe_paren p pp fmt () in
 
   let pp_prefix op before after a =
-    Format.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after in
+    F.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after in
   match op, es with
   | GExp,   [a;b] -> 
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult))
@@ -402,11 +402,11 @@ and pp_op_p above fmt (op, es) =
     pp_prefix Not   "not "  ""    a
   | EMap,   [a;b] ->
     let ppe i = pp_exp_p (Infix(EMap,i)) in
-    Format.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
+    F.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
   | Ifte, [a;b;d] ->
     let ppe i = pp_exp_p (Infix(Ifte,i)) in
     let pp fmt () = 
-      Format.fprintf fmt "@[%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d in
+      F.fprintf fmt "@[%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d in
     pp_maybe_paren (notsep above) pp fmt () 
   | _             -> failwith "pp_op: invalid expression"
 

@@ -238,11 +238,6 @@ let is_call = function
 
 let has_call c = List.exists is_call c
 
-(* smart constructor for judgments *)
-let mk_ju gd ev =
-  (* FIXME: check that fvars(ev) \subseteq bindings(gd) *)
-  { ju_gdef = gd; ju_ev = ev }
-
 type gcmd_pos = int
 
 type odef_pos = (int * int)
@@ -371,6 +366,10 @@ let ju_equal ju1 ju2 =
   gcs_equal ju1.ju_gdef ju2.ju_gdef &&
     e_equal ju1.ju_ev ju2.ju_ev
 
+let ju_vars ju =
+  let vs = ref Se.empty in
+  iter_ju_exp (fun e -> vs := Se.union !vs (e_vars e)) ju;
+  !vs
 
 (* ----------------------------------------------------------------------- *)
 (** {7 Normalization } *) 
@@ -425,8 +424,3 @@ let norm_ju ?norm:(nf=Norm.norm_expr) ju =
   let g,s = norm_gdef ~norm:nf ju.ju_gdef in
   { ju_gdef = g;
     ju_ev = nf (e_subst s ju.ju_ev) }
-
-let ju_vars ju =
-  let vs = ref Se.empty in
-  iter_ju_exp (fun e -> vs := Se.union !vs (e_vars e)) ju;
-  !vs

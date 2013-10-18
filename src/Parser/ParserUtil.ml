@@ -5,6 +5,8 @@ module E = Expr
 module Ht = Hashtbl
 module G = Game
 
+(* ----------------------------------------------------------------------- *)
+(** {1 Types for parsed types, expressions, and games } *)
 
 type parse_ty =
   | BS of string
@@ -35,6 +37,26 @@ type parse_expr =
   | Land  of parse_expr * parse_expr
   | Xor   of parse_expr * parse_expr
   | ElemH of parse_expr * parse_expr * (string * string) list
+
+type lcmd =
+    LLet   of string * parse_expr
+  | LBind  of string list * string
+  | LSamp  of string * parse_ty * parse_expr list
+  | LGuard of parse_expr
+
+type lcomp = lcmd list * parse_expr
+
+type odef = string * string list * lcomp
+
+type gcmd =
+    GLet  of string * parse_expr
+  | GSamp of string * parse_ty * parse_expr list
+  | GCall of string list * string * parse_expr * odef list
+
+type gdef = gcmd list
+
+(* ----------------------------------------------------------------------- *)
+(** {2 Conversion functions for parser-types } *)
 
 type proofstate =
   { ps_tvars   : (string, T.Lenvar.id) Ht.t; 
@@ -76,15 +98,11 @@ let mk_Tuple es =
   | _ -> E.mk_Tuple es
 
 let create_var reuse ps s ty =
-  (* Format.printf "query for %s\n%!" s;  *)
   if Ht.mem ps.ps_vars s then (
-    if reuse then (
-      (* Format.printf "reuse %a\n%!" Vsym.pp (Ht.find ps.ps_vars s);  *)
-      Ht.find ps.ps_vars s
-    ) else failwith (Format.sprintf "Variable %s reused" s)
+    if reuse then Ht.find ps.ps_vars s
+    else failwith (Format.sprintf "Variable %s reused" s)
   ) else (
     let v = Vsym.mk s ty in
-    (* Format.printf "create %a\n%!" Vsym.pp v; *)
     Ht.add ps.ps_vars s v;
     v
   )
@@ -158,55 +176,6 @@ let expr_of_parse_expr ps pe0 =
       | _    -> failwith "type error")
   in go pe0
 
-type lcmd =
-    LLet   of string * parse_expr
-      (* let x = e *)
-  | LBind  of string list * string
-      (* (x1,..,xk) <- L_h *)
-  | LSamp  of string * parse_ty * parse_expr list
-      (* x <-$ t \ e1,..,ek *)
-  | LGuard of parse_expr
-      (* e *)
-
-type lcomp = lcmd list * parse_expr
-
-type odef =
-  string * string list * lcomp
-  (* o(x) = [ e | m ], get types from osym decl *)
-
-type gcmd =
-    GLet  of string * parse_expr
-  | GSamp of string * parse_ty * parse_expr list
-  | GCall of string list * string * parse_expr * odef list
-
-(* game definition *)
-type gdef = gcmd list
-
-type tactic =
-    Rnorm
-  | Rnorm_unknown of string list
-  | Rswap of int * int
-
-  | Rctxt_ev of string * parse_expr
-  | Rrandom of int * string * parse_expr * string * parse_expr * string
-  | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr * string
-  | Requiv of gdef * parse_expr option
-  | Rbddh of string
-  | Rddh of string
-  | Rlet_abstract of int * string * parse_expr
-  | Rindep
-  | Rbad of int * string
-
-type instr =
-  | RODecl of string * parse_ty * parse_ty
-  | ODecl  of string * parse_ty * parse_ty
-  | ADecl  of string * parse_ty * parse_ty
-  | Judgment of gdef * parse_expr
-  | PrintGoals of string
-  | Apply of tactic
-
-type theory = instr list
-
 let lcmd_of_parse_lcmd reuse ps lcmd =
   match lcmd with
   | LLet(s,e) ->
@@ -278,3 +247,30 @@ let ju_of_parse_ju reuse ps gd e =
              Game.ju_ev = expr_of_parse_expr ps e } in
   Wf.wf_ju ju;
   ju
+
+(* ----------------------------------------------------------------------- *)
+(** {3 Types for parsed proof scripts and tactics} *)
+
+type tactic =
+    Rnorm
+  | Rnorm_unknown of string list
+  | Rswap of int * int
+  | Rctxt_ev of string * parse_expr
+  | Rrandom of int * string * parse_expr * string * parse_expr * string
+  | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr * string
+  | Requiv of gdef * parse_expr option
+  | Rbddh of string
+  | Rddh of string
+  | Rlet_abstract of int * string * parse_expr
+  | Rindep
+  | Rbad of int * string
+
+type instr =
+  | RODecl of string * parse_ty * parse_ty
+  | ODecl  of string * parse_ty * parse_ty
+  | ADecl  of string * parse_ty * parse_ty
+  | Judgment of gdef * parse_expr
+  | PrintGoals of string
+  | Apply of tactic
+
+type theory = instr list
