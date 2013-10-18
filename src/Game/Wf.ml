@@ -111,7 +111,8 @@ let rec wf_exp wfs e0 =
         assert (ty_equal (mk_Prod tys) e.e_ty);
         mk_Prod tys
       | V v    ->
-        assert (Vsym.S.mem v wfs.wf_bvars);
+        if not (Vsym.S.mem v wfs.wf_bvars)
+          then failwith (fsprintf "Variable undefined %a" Vsym.pp v |> fsget);
         assert (ty_equal v.Vsym.ty e.e_ty);
         v.Vsym.ty
       | Nary(op,es) ->
