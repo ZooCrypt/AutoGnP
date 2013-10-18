@@ -270,8 +270,9 @@ let gcmd_of_parse_gcmd reuse ps gc =
 let gdef_of_parse_gdef reuse ps gd =
   List.map (fun gc -> gcmd_of_parse_gcmd reuse ps gc) gd
 
-(* check well-formed *)
 let ju_of_parse_ju reuse ps gd e =
   let gd = gdef_of_parse_gdef reuse ps gd in
-  { Game.ju_gdef = gd; 
-    Game.ju_ev = expr_of_parse_expr ps e }
+  let ju = { Game.ju_gdef = gd; 
+             Game.ju_ev = expr_of_parse_expr ps e } in
+  Wf.wf_ju ju;
+  ju
