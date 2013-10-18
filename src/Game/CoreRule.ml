@@ -214,6 +214,21 @@ let rddh vc ju =
 
 
 
+(* Bad rule, random oracle *)
+let rbad p ju = 
+  match get_ju_ctxt ju p with
+  | GLet(vs,e'), ctxt when is_H e' ->
+    let h,e = destr_H e' in
+    (* TODO CHECK THAT h is only used here *)
+    let i = [GSamp(vs,(e'.e_ty,[]))] in
+    let ju1 = set_ju_ctxt i ctxt in
+    let x = Vsym.mk "x" e.e_ty in
+    let ev = mk_ElemH e (mk_V x) [x,h] in
+    let ju2 = { ju1 with ju_ev = ev } in
+    [ju1;ju2]
+  | _ -> 
+    failwith "can not apply bad rule"
+    
 (* Bilinear decisional diffie-helman *)
 let check_bddh a b c ex ey ez eU _C ev =
  let a = mk_V a in

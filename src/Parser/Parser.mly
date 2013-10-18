@@ -7,6 +7,7 @@
 
 /************************************************************************/
 /* Tokens for types */
+%token IN
 %token TBS
 %token TBOOL
 %token TG
@@ -23,6 +24,8 @@
 %token <string> ID
 %token PLUS
 %left PLUS
+%token XOR
+%left XOR
 
 %token MINUS
 %left MINUS
@@ -70,6 +73,7 @@
 %token TO
 %token ADVERSARY
 %token ORACLE
+%token RANDOM
 %token PROVE
 %token DOT
 %token PRINTGOALS
@@ -81,6 +85,7 @@
 %token RBDDH
 %token RDDH
 %token RINDEP
+%token RBAD
 
 /************************************************************************/
 /* Production types */
@@ -141,12 +146,15 @@ expr :
 | e = expr0 EOF { e }
 
 expr0 :
+| e1 = expr0 IN LBRACKET e2=expr0 MID bd=hbindings RBRACKET
+     { ElemH(e1,e2,bd) }
 | e1 = expr1 EQUAL e2 = expr1 { Eq(e1,e2) }
 | e1 = expr1 QUESTION e2 = expr1 COLON e3 = expr1 { Ifte(e1, e2, e3) }
 | e = expr1 { e }
 
 expr1 :
 | e1 = expr1 PLUS e2 = expr1 { Plus(e1, e2) }
+| e1 = expr1 XOR e2 = expr1  { Xor (e1, e2) }
 | e = expr2 { e }
 
 expr2:
@@ -180,15 +188,22 @@ expr6 :
 | GEN    { Cnst(Expr.GGen) }
 | TRUE   { Cnst(Expr.B true) }
 | FALSE  { Cnst(Expr.B false) }
-| s = ID LPAREN l = exprlist0 RPAREN { SApp(s,l) }
+| s = AID LPAREN l = exprlist0 RPAREN { SApp(s,l) }
 | MINUS e1 = expr6 { Opp(e1) }
 | NOT e = expr6 { Not(e) }
 | EMAP e1 = expr0 COMMA e2 = expr0 RPAREN { EMap(e1,e2) }
 | LOG LPAREN e1 = expr0 RPAREN { Log(e1) }
 | LPAREN e = expr0 RPAREN {e}
 | LPAREN e = expr0 COMMA l = exprlist0 RPAREN { Tuple(e::l) }
+;
 
-
+hbinding:
+| x=ID LEFTARROW LIST h=AID {x,h}
+;
+hbindings:
+| b=hbinding { [b] }
+| b=hbinding COMMA bs= hbindings { b::bs }
+;
 /************************************************************************/
 /* List comprehensions */
 /* FIXME: handle shift-reduce conflict */
@@ -253,22 +268,32 @@ gdef :
 /************************************************************************/
 /* instructions and theory */
 
+int:
+| i=INT {i}
+| MINUS i=INT {-i}
+;
+
+event:
+| COLON e = expr0 { e }
+;
 instr :
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ODecl(i,t1,t2) }
-| PROVE  LBRACKET g = gdef0 RBRACKET COLON e  = expr0 DOT { Judgment(g,e) }
+| RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 DOT { RODecl(i,t1,t2) }
+| PROVE  LBRACKET g = gdef0 RBRACKET e=event DOT { Judgment(g,e) }
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }
 | RNORM DOT { Apply(Rnorm) }
 | RINDEP DOT { Apply(Rindep) }
-| RSWAP i = INT j = INT DOT { Apply(Rswap(i-1,j)) }
+| RSWAP i = INT j =int DOT { Apply(Rswap(i-1,j)) }
 | RBDDH s = ID DOT { Apply(Rbddh(s)) }
 | RDDH s = ID DOT { Apply(Rddh(s)) }
-| REQUIV LBRACKET gd = gdef0 RBRACKET DOT { Apply(Requiv(gd)) }
+| REQUIV LBRACKET gd = gdef0 RBRACKET e=event? DOT { Apply(Requiv(gd,e)) }
 | RRANDOM i = INT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT { Apply(Rrandom(i-1,i1,e1,i2,e2)) }
 | RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN
                  LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN DOT
                  { Apply(Rrandom_oracle(i-1,j-1,k-1,i1,e1,i2,e2)) }
+| RBAD i=INT DOT { Apply(Rbad (i-1)) }
 
 theory :
 | i = instr EOF { [i] }

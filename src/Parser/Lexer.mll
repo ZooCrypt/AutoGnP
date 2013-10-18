@@ -18,6 +18,7 @@ rule lex = parse
   | "("     { LPAREN }
   | ")"     { RPAREN }
   | "+"     { PLUS }
+  | "++"    { XOR }
   | "-"     { MINUS }  
   | "*"     { STAR }
   | "BS_"   { TBS }
@@ -33,6 +34,7 @@ rule lex = parse
   | "let"   { LET }
   | "adversary" { ADVERSARY }
   | "oracle" { ORACLE }
+  | "random" { RANDOM }
   | "prove" { PROVE }
   | "print_goals" { PRINTGOALS }
   | "rnorm" { RNORM }
@@ -44,12 +46,15 @@ rule lex = parse
   | "rddh" { RDDH }
   | "rindep" { RINDEP }
   | "rrandom_oracle" { RRANDOM_ORACLE }
+  | "rbad"           { RBAD }
+  | "in"    { IN }
+  | "L_"    { LIST }
   | ['1'-'9']['0'-'9']* as s { INT(int_of_string(s)) }
   | ['k']['0'-'9']* as s { LV_ID s }
-  | ['a'-'f' 'h'-'j' 'm'-'v' 'x'-'z']
+  | ['a'-'z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
     as s { ID s }
-  | ['A'-'E' 'H'-'Z']
+  | ['A'-'Z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
     as s { AID s }
   | ":"     { COLON }
@@ -61,7 +66,6 @@ rule lex = parse
   | "^"     { CARET }
   | "/"     { SLASH }
   | "/\\"   { LAND }
-  | "L_"    { LIST }
   | "<-"    { LEFTARROW }
   | "<-$"   { SAMP }
   | "\\"    { BACKSLASH }

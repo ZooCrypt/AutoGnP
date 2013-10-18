@@ -11,13 +11,18 @@ let handle_tactic ps tac jus =
 
   | Rswap(i,j) -> apply_rule (rswap i j) ps
 
-  | Requiv(gd) ->
-      let gd = gdef_of_parse_gdef true ps gd in (* reuse variables from previous games *)
-      let ju = (match jus with
-                | ju::_ -> ju
-                | _ -> assert false)
-      in
-      apply_rule (rconv { Game.ju_gdef = gd; Game.ju_ev = ju.Game.ju_ev }) ps
+  | Requiv(gd,ev) ->
+      let gd = gdef_of_parse_gdef true ps gd in 
+             (* reuse variables from previous games *)
+      let ju = 
+        match jus with
+        | ju::_ -> ju
+        | _ -> assert false in
+      let ev = 
+        match ev with
+        | None -> ju.Game.ju_ev
+        | Some e -> expr_of_parse_expr ps e in
+      apply_rule (rconv { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
 
   | Rbddh(s) ->
       let v = create_var false ps s Type.mk_Fq in
@@ -37,10 +42,10 @@ let handle_tactic ps tac jus =
          | _ -> assert false)
       in
       let v1 = create_var false ps sv1 ty in
-      let e1 = expr_of_parse_expr ps.ps_vars e1 in
+      let e1 = expr_of_parse_expr ps e1 in
       Ht.remove ps.ps_vars sv1;
       let v2 = create_var false ps sv2 ty in
-      let e2 = expr_of_parse_expr ps.ps_vars e2 in
+      let e2 = expr_of_parse_expr ps e2 in
       Ht.remove ps.ps_vars sv2;
       apply_rule (rrandom i (v1,e1) (v2,e2)) ps
 
@@ -54,12 +59,14 @@ let handle_tactic ps tac jus =
          | _ -> assert false)
       in
       let v1 = create_var false ps sv1 ty in
-      let e1 = expr_of_parse_expr ps.ps_vars e1 in
+      let e1 = expr_of_parse_expr ps e1 in
       Ht.remove ps.ps_vars sv1;
       let v2 = create_var false ps sv2 ty in
-      let e2 = expr_of_parse_expr ps.ps_vars e2 in
+      let e2 = expr_of_parse_expr ps e2 in
       Ht.remove ps.ps_vars sv2;
       apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2)) ps
+  | Rbad i ->
+    apply_rule (rbad i) ps 
 
 let pp_goals fmt gs = 
   match gs with
@@ -74,24 +81,34 @@ let pp_goals fmt gs =
 let handle_instr ps instr =
   match instr with
   | Apply(tac) ->
-      (match ps.ps_goals with
-       | Some(jus) ->
-           handle_tactic ps tac jus
-       | None -> assert false)
+    begin match ps.ps_goals with
+    | Some(jus) -> handle_tactic ps tac jus
+    | None -> assert false
+    end
   | PrintGoals(s) ->
-      Format.printf "@[<v>proof state %s:@\n%a@." s pp_goals ps.ps_goals;
-      ps
+    Format.printf "@[<v>proof state %s:@\n%a@." s pp_goals ps.ps_goals;
+    ps
+  | RODecl(s,t1,t2) ->
+    if Ht.mem ps.ps_rodecls s then
+      failwith "random oracle with same name already declared.";
+    Ht.add ps.ps_rodecls s
+      (Hsym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
+    ps
   | ODecl(s,t1,t2) ->
-      if Ht.mem ps.ps_odecls s then failwith "oracle with same name already declared."
-      else Ht.add ps.ps_odecls s (Osym.mk s (ty_of_parse_ty t1) (ty_of_parse_ty t2));
-      ps
+      if Ht.mem ps.ps_odecls s then 
+        failwith "oracle with same name already declared.";
+    Ht.add ps.ps_odecls s 
+      (Osym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
+    ps
   | ADecl(s,t1,t2) ->
-      if Ht.mem ps.ps_adecls s then failwith "adversary with same name already declared."
-      else Ht.add ps.ps_adecls s (Asym.mk s (ty_of_parse_ty t1) (ty_of_parse_ty t2));
-      ps
+    if Ht.mem ps.ps_adecls s then 
+      failwith "adversary with same name already declared.";
+    Ht.add ps.ps_adecls s 
+      (Asym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
+    ps
   | Judgment(gd, e) ->
-      let ju = ju_of_parse_ju false ps gd e in
-      { ps with ps_goals = Some([ju]) }
+    let ju = ju_of_parse_ju false ps gd e in
+    { ps with ps_goals = Some([ju]) }
 
 let eval_theory s =
   let pt = Parse.theory s in

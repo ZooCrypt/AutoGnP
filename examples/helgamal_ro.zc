@@ -1,0 +1,50 @@
+adversary A1 : G -> (BS_ k * BS_ k).
+adversary A2 : (G * BS_ k) -> Bool.
+random oracle H : G -> BS_ k.
+
+
+prove
+  [ sk <-$ Fq;
+    let pk = g ^ sk;
+    (m0,m1) <- A1(pk);
+    b <-$ Bool;
+    let mb = (b?m0:m1);
+    y <-$ Fq;
+    let he = H(pk ^ y);
+    let c  = (g ^ y, he ++ mb);
+    b' <- A2(c)
+  ] : b = b'.  
+
+print_goals : start.
+
+rbad 7 .
+
+print_goals : after_bad.
+
+rrandom 7 (x -> x ++ mb) (x -> x ++ mb).
+
+rnorm.
+
+print_goals : after_random.
+
+rswap 3 3. rindep. 
+
+(*rrandom 7 (x -> x ++ mb) (x -> x ++ mb).*) rnorm.
+print_goals : bounding_bad.
+rswap 4 -2.
+print_goals : after_swap.
+
+requiv
+  [ sk <-$ Fq;
+    y  <-$ Fq;
+    let gsk  = g^sk;
+    let gx  = g ^ sk ;
+    let gy   = g^y;
+    let gsky = g^(sk * y);
+    (m0,m1) <- A1(gsk);
+    b <-$ Bool;
+    he <-$ BS_ k;
+    b' <- A2 (gy, (b?m0:m1) ++ he)
+  ] : (gsky in [ x | x <- L_ H ]). 
+
+

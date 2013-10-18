@@ -37,4 +37,4 @@ let mk name dom codom =
 let mke name i dom codom = 
   { id = Id.mke name i; dom = dom; codom = codom }
 
-let pp fmt hs = Id.pp fmt hs.id
+let pp fmt hs = Format.fprintf fmt "%s" (Id.name hs.id)
