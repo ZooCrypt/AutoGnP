@@ -16,12 +16,9 @@ type cnst =
 
 val cnst_hash : cnst -> int
 
-type op =
+type 'a gop =
     GExp
-  | GLog
-  | EMap
-  | GTExp
-  | GTLog
+  | GLog of 'a Groupvar.gid
   | FOpp
   | FMinus
   | FInv
@@ -29,6 +26,10 @@ type op =
   | Eq
   | Not
   | Ifte
+  | EMap of 'a Esym.gt
+
+type op = IdType.internal gop
+type eop = IdType.exported gop
 
 val op_hash : op -> int
 
@@ -38,7 +39,6 @@ type naryop =
   | Xor
   | Land
   | GMult
-  | GTMult
 
 val naryop_hash : naryop -> int
 
@@ -49,7 +49,7 @@ and 'a gexpr_node =
   | Tuple of 'a gexpr list
   | Proj of int * 'a gexpr
   | Cnst of cnst
-  | App of op * 'a gexpr list
+  | App of 'a gop * 'a gexpr list
   | Nary of naryop * 'a gexpr list
   | ElemH of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
 
@@ -88,14 +88,12 @@ val is_Cnst : cnst -> 'a gexpr -> bool
 val is_True : 'a gexpr -> bool
 val is_False : 'a gexpr -> bool
 val is_GGen : 'a gexpr -> bool
-val is_GTGen : 'a gexpr -> bool
+val is_GLog : 'a gexpr -> bool
 val is_some_App : 'a gexpr -> bool
-val is_App : op -> 'a gexpr -> bool
+val is_App : 'a gop -> 'a gexpr -> bool
 val is_some_Nary : 'a gexpr -> bool
 val is_Nary : naryop -> 'a gexpr -> bool
 val is_ElemH : 'a gexpr -> bool
-val is_GLog : 'a gexpr -> bool
-val is_GTLog : 'a gexpr -> bool
 val is_Eq    : 'a gexpr -> bool
 
 (* ----------------------------------------------------------------------- *)
@@ -108,13 +106,11 @@ val destr_H      : 'a gexpr -> 'a Hsym.gt * 'a gexpr
 val destr_Tuple  : 'a gexpr -> 'a gexpr list
 val destr_Proj   : 'a gexpr -> int * 'a gexpr
 val destr_Cnst   : 'a gexpr -> cnst
-val destr_App    : 'a gexpr -> op * 'a gexpr list
+val destr_App    : 'a gexpr -> 'a gop * 'a gexpr list
 val destr_GMult  : 'a gexpr -> ('a gexpr) list
 val destr_GExp   : 'a gexpr -> 'a gexpr * 'a gexpr
 val destr_GLog   : 'a gexpr -> 'a gexpr
-val destr_GTMult : 'a gexpr -> ('a gexpr) list
-val destr_GTExp  : 'a gexpr -> 'a gexpr * 'a gexpr
-val destr_GTLog  : 'a gexpr -> 'a gexpr
+val destr_EMap   : 'a gexpr -> 'a Esym.gt * 'a gexpr * 'a gexpr
 val destr_FOpp   : 'a gexpr -> 'a gexpr
 val destr_FMinus : 'a gexpr -> 'a gexpr * 'a gexpr
 val destr_FInv   : 'a gexpr -> 'a gexpr
@@ -138,8 +134,7 @@ val mk_H      : Hsym.t -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
 val mk_ElemH  : expr -> expr -> (Vsym.t * Hsym.t) list -> expr
-val mk_GGen   : expr
-val mk_GTGen  : expr
+val mk_GGen   : Groupvar.id -> expr
 val mk_FZ     : expr
 val mk_FOne   : expr
 val mk_Z      : Lenvar.id -> expr
@@ -149,10 +144,7 @@ val mk_False  : expr
 val mk_GMult  : expr list -> expr
 val mk_GExp   : expr -> expr -> expr
 val mk_GLog   : expr -> expr
-val mk_EMap   : expr -> expr -> expr
-val mk_GTMult : expr list -> expr
-val mk_GTExp  : expr -> expr -> expr
-val mk_GTLog  : expr -> expr
+val mk_EMap   : Esym.t -> expr -> expr -> expr
 val mk_FOpp   : expr -> expr
 val mk_FMinus : expr -> expr -> expr
 val mk_FInv   : expr -> expr
@@ -178,8 +170,7 @@ module EConstructors :
     val mk_Tuple  : eexpr list -> eexpr
     val mk_Proj   : int -> eexpr -> eexpr
     val mk_ElemH  : eexpr -> eexpr -> (Vsym.et * Hsym.et) list -> eexpr
-    val mk_GGen   : eexpr
-    val mk_GTGen  : eexpr
+    val mk_GGen   : Groupvar.eid -> eexpr
     val mk_FZ     : eexpr
     val mk_FOne   : eexpr
     val mk_Z      : t Type.Lenvar.gid -> eexpr
@@ -189,10 +180,7 @@ module EConstructors :
     val mk_GMult  : eexpr list -> eexpr
     val mk_GExp   : eexpr -> eexpr -> eexpr
     val mk_GLog   : eexpr -> eexpr
-    val mk_EMap   : eexpr -> eexpr -> eexpr
-    val mk_GTMult : eexpr list -> eexpr
-    val mk_GTExp  : eexpr -> eexpr -> eexpr
-    val mk_GTLog  : eexpr -> eexpr
+    val mk_EMap   : Esym.et -> eexpr -> eexpr -> eexpr
     val mk_FOpp   : eexpr -> eexpr
     val mk_FMinus : eexpr -> eexpr -> eexpr
     val mk_FInv   : eexpr -> eexpr
@@ -210,7 +198,7 @@ module EConstructors :
 (** {5 Pretty printing} *)
 val pp_cnst : formatter -> cnst -> 'a Type.gty -> unit
 val pp_exp  : formatter -> 'a gexpr -> unit
-val pp_op   : formatter -> op * 'a gexpr list -> unit
+val pp_op   : formatter -> 'a gop * 'a gexpr list -> unit
 val pp_nop  : formatter -> naryop * 'a gexpr list -> unit
 
 val pp_exp_tnp  : formatter -> 'a gexpr -> unit

@@ -144,6 +144,12 @@ let handle_instr ps instr =
     Ht.add ps.ps_rodecls s
       (Hsym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     ps
+  | EMDecl(s,g1,g2,g3) ->
+    if Ht.mem ps.ps_emdecls s then
+      failwith "bilinear map with same name already declared.";
+    Ht.add ps.ps_emdecls s
+      (Esym.mk s (create_groupvar ps g1) (create_groupvar ps g2) (create_groupvar ps g3));
+    ps
   | ODecl(s,t1,t2) ->
       if Ht.mem ps.ps_odecls s then 
         failwith "oracle with same name already declared.";

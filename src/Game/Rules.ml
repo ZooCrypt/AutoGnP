@@ -23,7 +23,7 @@ let simp_exp e unknown =
   let norm_mult e = norm_expr (mk_FMult e) in
   let norm_fopp e = norm_expr (mk_FOpp e) in
   let rec split_unknown e =
-    let is_unknown e = is_GLog e || is_GTLog e || Se.mem e unknown in
+    let is_unknown e = is_GLog e || Se.mem e unknown in
     match e.e_node with
     | Nary(FMult,es) ->
       (match List.partition is_unknown es with
@@ -51,27 +51,23 @@ let rewrite_exps unknown e0 =
   let rec go e =
     let e = e_sub_map go e in
     match e.e_node with
-    | App((GExp | GTExp),[a;b]) ->
-      assert (e_equal a mk_GGen || e_equal a mk_GTGen);
-      let (exp,mult,gen) =
-        if e_equal a mk_GGen
-          then (mk_GExp,mk_GMult,a)
-          else (mk_GTExp,mk_GTMult,a)
-      in
+    | App(GExp,[a;b]) ->
+      assert (is_GGen a);
+      let gen = a in
       let (ies,ce) = simp_exp b unknown in
       let expio ie moe = match moe with
-        | Some oe -> exp (exp gen ie) oe
-        | None    -> exp gen ie
+        | Some oe -> mk_GExp (mk_GExp gen ie) oe
+        | None    -> mk_GExp gen ie
       in
       let a =
         match ies with
         | []       -> gen
         | [ie,moe] -> expio ie moe
-        | ies      -> mult (List.map (fun (ie,moe) -> expio ie moe) ies)
+        | ies      -> mk_GMult (List.map (fun (ie,moe) -> expio ie moe) ies)
       in
       (match ce with
        | None    -> a
-       | Some oe -> exp a (mk_FInv oe))
+       | Some oe -> mk_GExp a (mk_FInv oe))
     | _ -> e
   in
   go e0

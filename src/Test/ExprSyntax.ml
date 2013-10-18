@@ -3,7 +3,6 @@ open Util
 
 let g = mk_GGen
 let (^:) a b = mk_GExp a b
-let (^^:) a b = mk_GTExp a b
 
 let pi(i,e) = mk_Proj i e
 
@@ -24,8 +23,7 @@ let (-:) = mk_FMinus
 let (+:) a b = mk_FPlus [a;b]
 let ( *:) a b = mk_FMult [a;b]
 
-let ( **: ) a b = mk_GMult a b
-let ( &:) a b = mk_GTMult a b
+let ( **: ) a b = mk_GMult [a;b]
 
 let ifte a b c = mk_Ifte a b c
 

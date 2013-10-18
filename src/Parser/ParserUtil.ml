@@ -11,21 +11,24 @@ module G = Game
 type parse_ty =
   | BS of string
   | Bool
-  | G
-  | GT
+  | G of string
   | Fq
   | Prod of parse_ty list
 
 type parse_expr =
   | V     of string
   | SApp  of string * parse_expr list
+  | HApp  of string * parse_expr list
   | Tuple of parse_expr list
   | Proj  of int * parse_expr
-  | Cnst  of Expr.cnst
+  | CB    of bool
+  | CZ    of string
+  | CGen  of string
+  | CFZ
+  | CFOne
   | Mult  of parse_expr * parse_expr
   | Plus  of parse_expr * parse_expr
   | Exp   of parse_expr * parse_expr
-  | EMap  of parse_expr * parse_expr
   | Log   of parse_expr
   | Opp   of parse_expr
   | Minus of parse_expr * parse_expr
@@ -60,37 +63,46 @@ type gdef = gcmd list
 
 type proofstate =
   { ps_tvars   : (string, T.Lenvar.id) Ht.t; 
+    ps_gvars   : (string, T.Groupvar.id) Ht.t; 
     ps_rodecls : (string, Hsym.t) Ht.t;
     ps_odecls  : (string,Osym.t) Ht.t;
     ps_adecls  : (string,Asym.t) Ht.t;
+    ps_emdecls : (string,Esym.t) Ht.t;
     ps_vars    : (string,Vsym.t) Ht.t;
     ps_goals   : (G.judgment list) option
   }
 
 let mk_ps () =
   { ps_tvars   = Ht.create 20;
+    ps_gvars   = Ht.create 20;
     ps_rodecls = Ht.create 20;
     ps_odecls  = Ht.create 20; 
     ps_adecls  = Ht.create 20;
+    ps_emdecls = Ht.create 20;
     ps_vars    = Ht.create 20; 
     ps_goals   = None }
 
+let create_lenvar ps s =
+  try Ht.find ps.ps_tvars s 
+  with Not_found ->
+    let lv = T.Lenvar.mk s in
+    Ht.add ps.ps_tvars s lv;
+    lv
+
+let create_groupvar ps s =
+  try Ht.find ps.ps_gvars s 
+  with Not_found ->
+    let gv = T.Groupvar.mk s in
+    Ht.add ps.ps_gvars s gv;
+    gv
+
 let rec ty_of_parse_ty ps pty =
   match pty with
-  | BS(s) ->
-    let lv =
-      try Ht.find ps.ps_tvars s 
-      with Not_found ->
-        let lv = T.Lenvar.mk s in
-        Ht.add ps.ps_tvars s lv;
-        lv in
-    T.mk_BS(lv)
-  | Bool -> T.mk_Bool
-  | G -> T.mk_G
-  | GT -> T.mk_GT
-  | Fq -> T.mk_Fq
-  | Prod(pts) ->
-    T.mk_Prod (List.map (ty_of_parse_ty ps) pts)
+  | BS(s)     -> T.mk_BS(create_lenvar ps s)
+  | Bool      -> T.mk_Bool
+  | G(s)      -> T.mk_G(create_groupvar ps s)
+  | Fq        -> T.mk_Fq
+  | Prod(pts) -> T.mk_Prod (List.map (ty_of_parse_ty ps) pts)
       
 let mk_Tuple es = 
   match es with
@@ -131,18 +143,24 @@ let expr_of_parse_expr ps pe0 =
       let lH = bind_of_parse_bind ps lH in
       let e2 = go e2 in
       E.mk_ElemH e1 e2 lH
-    | SApp(s,es)   -> 
-      let h = 
-        try Ht.find ps.ps_rodecls s with Not_found ->
-          failwith (Format.sprintf "undefined random oracle %s" s) in
+    | HApp(s,es) when Ht.mem ps.ps_rodecls s -> 
+      let h = Ht.find ps.ps_rodecls s in
       let es = mk_Tuple (List.map go es) in
       E.mk_H h es
-    | Cnst(E.FOne) -> E.mk_FOne
-    | Cnst(E.FZ)   -> E.mk_FZ
-    | Cnst(E.GGen) -> E.mk_GGen  
-    | Cnst(E.Z)    -> failwith "not implemented"
-    | Cnst(E.B b)  -> E.mk_B b
-    | EMap(e1,e2)  -> E.mk_EMap (go e1) (go e2)
+    | HApp(s,_) ->
+      failwith (Format.sprintf "undefined hash symbol %s" s)
+    | SApp(s,[a;b]) when Ht.mem ps.ps_emdecls s -> 
+      let es = Ht.find ps.ps_emdecls s in
+      E.mk_EMap es (go a) (go b)
+    | SApp(s,_) when Ht.mem ps.ps_emdecls s ->
+      failwith (Format.sprintf "bilinear map %s expects two arguments" s)
+    | SApp(s,_) ->
+      failwith (Format.sprintf "undefined function symbol %s" s)
+    | CFOne        -> E.mk_FOne
+    | CFZ          -> E.mk_FZ
+    | CGen(s)      -> E.mk_GGen (create_groupvar ps s)
+    | CZ(s)        -> E.mk_Z (create_lenvar ps s)
+    | CB b         -> E.mk_B b
     | Plus(e1,e2)  -> E.mk_FPlus [go e1; go e2]
     | Minus(e1,e2) -> E.mk_FMinus (go e1) (go e2)
     | Div(e1,e2)   -> E.mk_FDiv (go e1) (go e2)
@@ -155,24 +173,17 @@ let expr_of_parse_expr ps pe0 =
     | Not(e)       -> E.mk_Not (go e)    
     | Log(e)   -> 
       let e = go e in
-      (match e.E.e_ty.T.ty_node with
-      | T.G  -> E.mk_GLog e
-      | T.GT -> E.mk_GTLog e
-      | _    -> failwith "type error")
+      E.mk_GLog e
     | Exp(e1,e2)  ->
       let e1 = go e1 in
       let e2 = go e2 in
-      (match e1.E.e_ty.T.ty_node with
-      | T.G  -> E.mk_GExp e1 e2
-      | T.GT -> E.mk_GTExp e1 e2
-      | _    -> failwith "type error")
+      E.mk_GExp e1 e2
     | Mult(e1,e2)  ->
       let e1 = go e1 in
       let e2 = go e2 in
       (match e1.E.e_ty.T.ty_node with
       | T.Fq -> E.mk_FMult [e1;e2]
-      | T.G  -> E.mk_GMult [e1;e2]
-      | T.GT -> E.mk_GTMult [e1;e2]
+      | T.G _ -> E.mk_GMult [e1;e2]
       | _    -> failwith "type error")
   in go pe0
 
@@ -267,6 +278,7 @@ type tactic =
 
 type instr =
   | RODecl of string * parse_ty * parse_ty
+  | EMDecl of string * string * string * string
   | ODecl  of string * parse_ty * parse_ty
   | ADecl  of string * parse_ty * parse_ty
   | Judgment of gdef * parse_expr

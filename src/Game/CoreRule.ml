@@ -209,11 +209,13 @@ let check_ddh a b ex ey ez c ev =
  let a = mk_V a in
  let b = mk_V b in
  let r = Se.union (read_gcmds c) (e_vars ev) in
+ let gv = destr_G ez.e_ty in
+ let gen = mk_GGen gv in
  ty_equal a.e_ty mk_Fq &&
    ty_equal b.e_ty mk_Fq &&
-   e_equal ex (mk_GExp mk_GGen a) &&
-   e_equal ey (mk_GExp mk_GGen b) &&
-   e_equal ez (mk_GExp mk_GGen (mk_FMult [a;b])) &&
+   e_equal ex (mk_GExp gen a) &&
+   e_equal ey (mk_GExp gen b) &&
+   e_equal ez (mk_GExp gen (mk_FMult [a;b])) &&
    not (Se.mem a r) && not (Se.mem b r) &&
    not (has_log_gcmds c) && not (has_log ev) 
 
@@ -229,24 +231,28 @@ let rddh vsc ju =
          check_ddh a b ex ey ez c ju.ju_ev ->
     [{ju with ju_gdef =
         i1 :: i2:: GSamp(vsc,(mk_Fq,[])) :: 
-          i3 :: i4 :: GLet(z,mk_GExp mk_GGen vc) :: c }]
+          i3 :: i4 :: GLet(z,mk_GExp (mk_GGen (destr_G ez.e_ty)) vc) :: c }]
   | _ -> failwith "can not apply ddh"
     
 (* Bilinear decisional diffie-hellman *)
 let check_bddh a b c ex ey ez eU _C ev =
- let a = mk_V a in
- let b = mk_V b in
- let c = mk_V c in
- let r = Se.union (read_gcmds _C) (e_vars ev) in
- ty_equal a.e_ty mk_Fq &&
-   ty_equal b.e_ty mk_Fq &&
-   ty_equal c.e_ty mk_Fq &&
-   e_equal ex (mk_GExp mk_GGen a) &&
-   e_equal ey (mk_GExp mk_GGen b) &&
-   e_equal ez (mk_GExp mk_GGen c) &&
-   e_equal eU (mk_GTExp mk_GTGen (mk_FMult [mk_FMult [a;b]; c])) &&
-   not (Se.mem a r) && not (Se.mem b r) && not (Se.mem c r) &&
-   not (has_log_gcmds _C) && not (has_log ev) 
+  let a = mk_V a in
+  let b = mk_V b in
+  let c = mk_V c in
+  let r = Se.union (read_gcmds _C) (e_vars ev) in
+  let eU1,_ = destr_GExp eU in
+  let es,_,_ = destr_EMap eU1 in
+  let gen = mk_GGen es.Esym.source1 in
+  Groupvar.equal es.Esym.source1 es.Esym.source2 &&
+    ty_equal a.e_ty mk_Fq &&
+    ty_equal b.e_ty mk_Fq &&
+    ty_equal c.e_ty mk_Fq &&
+    e_equal ex (mk_GExp gen a) &&
+    e_equal ey (mk_GExp gen b) &&
+    e_equal ez (mk_GExp gen c) &&
+    e_equal eU (mk_GExp (mk_EMap es gen gen) (mk_FMult [mk_FMult [a;b]; c])) &&
+    not (Se.mem a r) && not (Se.mem b r) && not (Se.mem c r) &&
+    not (has_log_gcmds _C) && not (has_log ev)
 
 let rbddh vsu ju =
   assert_no_occur vsu ju "rbddh";
@@ -262,7 +268,7 @@ let rbddh vsu ju =
          check_bddh a b c ex ey ez eU _C ju.ju_ev ->
     [{ju with ju_gdef =
         i1 :: i2:: i3 :: GSamp(vsu,(mk_Fq,[])) :: 
-          i4 :: i5 :: i6 :: GLet(_U,mk_GTExp mk_GTGen vu) :: _C }]
+          i4 :: i5 :: i6 :: GLet(_U,mk_GExp (mk_GGen (destr_G eU.e_ty)) vu) :: _C }]
   | _ -> failwith "can not apply bddh"
 
 (** Rules for random oracles *)

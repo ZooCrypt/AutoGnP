@@ -66,6 +66,14 @@ let mk_Bool = mk_ty Bool
 
 let mk_Prod tys = mk_ty (Prod tys)
 
+let is_G ty = match ty.ty_node with
+  | G _ -> true
+  | _ -> false
+
+let destr_G ty = match ty.ty_node with
+  | G(gv) -> gv
+  | _     -> assert false
+
 (* ----------------------------------------------------------------------- *)
 
 let rec ty_export ty =

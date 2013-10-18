@@ -41,33 +41,34 @@ let ty_prod vs =
 let ty_of_cnst c ty =
   let ty' =
     match c with
-    | B _   -> mk_Bool
-    | GGen  -> mk_G
-    | Z     -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
-    | FZ    -> mk_Fq
-    | FOne  -> mk_Fq
+    | B _     -> mk_Bool
+    | GGen -> (match ty.ty_node with G _ -> ty | _ -> assert false)
+    | Z    -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
+    | FZ   -> mk_Fq
+    | FOne -> mk_Fq
   in assert(ty_equal ty' ty); ty
 
 let ty_of_nop ty = function
   | Land  -> mk_Bool
   | Xor   -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
   | (FMult | FPlus) -> mk_Fq
-  | GMult  -> mk_G
-  | GTMult -> mk_GT
+  | GMult  -> (match ty.ty_node with G _ -> ty | _ -> assert false)
 
 let ty_of_op ty argtys o =
+  let ensure_ty_G ty = match ty.ty_node with
+    | G gv -> gv
+    | _ -> assert false
+  in
   match o with
-  | GExp   -> ([mk_G;mk_Fq],mk_G,[])
-  | GLog   -> ([mk_G],mk_Fq,[])
-  | GTExp  -> ([mk_GT;mk_Fq],mk_GT,[])
-  | GTLog  -> ([mk_GT],mk_Fq,[])
-  | EMap   -> ([mk_G;mk_G],mk_GT,[])
-  | FMinus -> ([mk_Fq;mk_Fq],mk_Fq,[])
-  | FOpp   -> ([mk_Fq],mk_Fq,[])
-  | FInv   -> ([mk_Fq],mk_Fq,[0]) (* argument 0 must be nonzero *)
-  | FDiv   -> ([mk_Fq; mk_Fq],mk_Fq,[1]) (* argument 1 must be nonzero *)
-  | Not    -> ([mk_Bool],mk_Bool,[])
-  | Ifte   -> ([mk_Bool;ty;ty],ty,[])
+  | GExp     -> let gv = ensure_ty_G ty in ([mk_G gv;mk_Fq],mk_G gv,[])
+  | GLog(gv) -> ([mk_G gv],mk_Fq,[])
+  | EMap(es) -> ([mk_G (es.Esym.source1); mk_G (es.Esym.source1)], mk_G (es.Esym.target),[])
+  | FMinus   -> ([mk_Fq;mk_Fq],mk_Fq,[])
+  | FOpp     -> ([mk_Fq],mk_Fq,[])
+  | FInv     -> ([mk_Fq],mk_Fq,[0]) (* argument 0 must be nonzero *)
+  | FDiv     -> ([mk_Fq; mk_Fq],mk_Fq,[1]) (* argument 1 must be nonzero *)
+  | Not      -> ([mk_Bool],mk_Bool,[])
+  | Ifte     -> ([mk_Bool;ty;ty],ty,[])
      (* we ignore these inequality constraints, maybe restrict first
         argument of if to boolean variable *)
   | Eq     -> (match argtys with

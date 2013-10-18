@@ -11,7 +11,7 @@ let name i = i.name_
 let tag i = i.tag_
 
 let pp fmt i =
-  if i.tag_ = 0 then
+  if true || i.tag_ = 0 then
     Format.fprintf fmt "%s" i.name_
   else
     Format.fprintf fmt "%s.%i" i.name_ i.tag_

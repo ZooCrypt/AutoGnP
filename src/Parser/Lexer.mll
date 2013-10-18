@@ -21,11 +21,13 @@ rule lex = parse
   | "++"    { XOR }
   | "-"     { MINUS }  
   | "*"     { STAR }
-  | "BS_"   { TBS }
-  | "Bool"  { TBOOL }
-  | "g"     { GEN }
-  | "G"     { TG }
-  | "GT"    { TGT }
+  | "BS_"(['a'-'z']['0'-'9']* as s) { TBS(s) }
+  | "0_"(['a'-'z']['0'-'9']* as s) { ZBS(s) }
+  | "Bool" { TBOOL }
+  | "g" { GEN("") }
+  | "g_"(['a'-'z']['0'-'9']* as s) { GEN(s) }
+  | "G" { TG("") }
+  | "G_"(['a'-'z']['0'-'9']* as s) { TG(s) } 
   | "Fq"    { TFQ }
   | "not"   { NOT }
   | "log"   { LOG }
@@ -35,6 +37,8 @@ rule lex = parse
   | "adversary" { ADVERSARY }
   | "oracle" { ORACLE }
   | "random" { RANDOM }
+  | "bilinear" { BILINEAR }
+  | "map" { MAP }
   | "prove" { PROVE }
   | "print_goals" { PRINTGOALS }
   | "rnorm_unknown" { RNORM_UNKNOWN }
@@ -53,7 +57,6 @@ rule lex = parse
   | "in"    { IN }
   | "L_"    { LIST }
   | ['1'-'9']['0'-'9']* as s { INT(int_of_string(s)) }
-  | ['k']['0'-'9']* as s { LV_ID s }
   | ['a'-'z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
     as s { ID s }
@@ -64,7 +67,6 @@ rule lex = parse
   | ";"     { SEMICOLON }
   | "()"    { UNIT }
   | "?"     { QUESTION }
-  | "e("    { EMAP }
   | ","     { COMMA }
   | "^"     { CARET }
   | "/"     { SLASH }

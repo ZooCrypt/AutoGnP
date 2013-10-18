@@ -36,6 +36,9 @@ val mk_Fq : ty
 val mk_Bool : ty
 val mk_Prod : ty list -> ty
 
+val is_G : 'a gty -> bool
+val destr_G : 'a gty -> 'a Groupvar.gid
+
 (** The interface ensures that all values of type {!ety} have tag [-1],
     i.e., structural equality ignores the tag. *)
 type ety = IdType.exported gty

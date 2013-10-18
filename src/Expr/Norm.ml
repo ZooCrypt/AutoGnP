@@ -3,18 +3,17 @@ open Expr
 
 module S = Singular
 
-let mk_gexp p = mk_GExp mk_GGen p
+let mk_gexp gv p = mk_GExp (mk_GGen gv) p
 
-let mk_gtexp p = mk_GTExp mk_GTGen p
-
-let destr_gexp g = 
+let destr_gexp gv g = 
   let (g1,p) = try destr_GExp g with _ -> 
     Format.printf "destr_gexp %a@." pp_exp g;
     assert false
   in
-  assert (e_equal g1 mk_GGen);
+  assert (e_equal g1 (mk_GGen gv));
   p
 
+(*
 let destr_gtexp g = 
   let (g1,p) = try destr_GTExp g with _ ->
     Format.printf "destr_gexp %a@." pp_exp g;
@@ -22,14 +21,14 @@ let destr_gtexp g =
   in
   assert (e_equal g1 mk_GTGen);
   p
+*)
 
 let destr_xor e = 
   match e.e_node with Nary(Xor, l) -> l | _ -> [e]
 
 let norm_ggt e =   
   match e.e_ty.ty_node with
-  | G -> mk_gexp (mk_GLog e)   (* g ^ (log x) *)
-  | GT -> mk_gtexp (mk_GTLog e) (* e(g,g) (tlog x) *)
+  | G gv -> mk_gexp gv (mk_GLog e)   (* g ^ (log x) *)
   | Fq | Bool | BS _ -> e
   | Prod _ -> e
 
@@ -41,32 +40,27 @@ let mk_proj_simpl i e =
 
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
-  | GExp | GLog 
-  | EMap | GTExp | GTLog 
+  | GExp | GLog _ | EMap _
   | Eq | Ifte | Not -> false 
 
 let is_field_nop = function
   | FPlus | FMult -> true
-  | Xor | Land | GMult | GTMult -> false
+  | Xor | Land | GMult -> false
 
 let rec mk_simpl_op op l =
   match op, l with
   | GExp, [g1;p1] ->
     (* g1 is necessary of the form g ^ a *)
-    let a = destr_gexp g1 in
+    let gv = destr_G g1.e_ty in
+    let a = destr_gexp gv g1 in
     let p = norm_field_expr (mk_FMult [a; p1]) in
-    mk_gexp p
-  | GLog, [g1] -> destr_gexp g1 
-  | GTExp, [g1;p1] ->
-    let a = destr_gtexp g1 in
-    let p = norm_field_expr (mk_FMult[a; p1]) in
-    mk_gtexp p
-  | GTLog, [g1] -> destr_gtexp g1
-  | EMap, [g1;g2] -> (* e(g^a,g^b) -> e(g,g)^ab *)
-    let p1 = destr_gexp g1 in
-    let p2 = destr_gexp g2 in
+    mk_gexp gv p
+  | GLog gv, [g1] -> destr_gexp gv g1 
+  | EMap es, [g1;g2] -> (* e(g^a,g^b) -> e(g,g)^ab *)
+    let p1 = destr_gexp es.Esym.source1 g1 in
+    let p2 = destr_gexp es.Esym.source2 g2 in
     let p = norm_field_expr (mk_FMult [p1; p2]) in
-    mk_gtexp p
+    mk_gexp es.Esym.target p
   | Eq, [e1;e2] -> 
     if e_equal e1 e2 then mk_True else mk_Eq e1 e2
   | Ifte, [e1;e2;e3] ->
@@ -78,9 +72,8 @@ let rec mk_simpl_op op l =
     if is_True e then mk_False
     else if is_False e then mk_True
     else mk_Not e
-  | (        GExp   | GLog  
-    | EMap | GTExp  | GTLog
-    | FOpp | FMinus | FInv  | FDiv 
+  | (        GExp   | GLog _ | EMap _
+    | FOpp | FMinus | FInv   | FDiv 
     | Eq   | Ifte   | Not)           , _ -> assert false
 
 and mk_simpl_nop op l =
@@ -89,13 +82,10 @@ and mk_simpl_nop op l =
   | FPlus  | FMult  ->
     assert false (* norm_expr_field should be called instead *)
   | GMult ->
-    let l = List.map destr_gexp l in
+    let gv = match l with e::_ -> destr_G e.e_ty | _ -> assert false in
+    let l = List.map (destr_gexp gv) l in
     let p = norm_field_expr (mk_FPlus l) in
-    mk_gexp p
-  | GTMult ->
-    let l = List.map destr_gtexp l in
-    let p = norm_field_expr (mk_FPlus l) in
-    mk_gtexp p
+    mk_gexp gv p
   | Xor -> 
     let l = List.flatten (List.map destr_xor l) in
     let l = List.sort e_compare l in
@@ -129,7 +119,7 @@ and mk_simpl_nop op l =
 and norm_expr e = 
   match e.e_node with
   | V _ -> norm_ggt e 
-  | Cnst GGen ->  mk_gexp mk_FOne
+  | Cnst GGen ->  mk_gexp (destr_G e.e_ty) mk_FOne
   | Cnst _ -> e
   | H(h,e) -> norm_ggt (mk_H h (norm_expr e))
   | Tuple l -> mk_Tuple (List.map norm_expr l)
@@ -154,12 +144,9 @@ and norm_field_expr e =
     | App (FOpp,[_]) | App (FInv,[_])
     | App (FMinus,[_;_]) | App (FDiv,[_;_])
     | Nary (FPlus, _) | Nary (FMult, _)  -> e
-    | App(GLog, [e]) -> 
+    | App(GLog gv, [e]) -> 
       let e = norm_expr e in
-      (try destr_gexp e with _ -> assert false)
-    | App(GTLog, [e]) -> 
-      let e = norm_expr e in
-      (try destr_gtexp e with _ -> assert false)
+      (try destr_gexp gv e with _ -> assert false)
     | _ -> norm_expr e in
   S.norm before e 
 
@@ -167,15 +154,9 @@ let rec abbrev_ggen e =
   let e = e_sub_map abbrev_ggen e in
   match e.e_node with
   | App(GExp,[a;b]) ->
-    if e_equal a mk_GGen then (
-      if e_equal b mk_FOne then mk_GGen
-      else if is_GLog b then destr_GLog b
-      else e)
-    else e
-  | App(GTExp,[a;b]) ->
-    if e_equal a mk_GTGen then (
-      if e_equal b mk_FOne then mk_GTGen
-      else if is_GTLog b then destr_GTLog b
+    if is_GGen a then (
+       if e_equal b mk_FOne then a
+       else if is_GLog b then destr_GLog b
       else e)
     else e
   | _ -> e

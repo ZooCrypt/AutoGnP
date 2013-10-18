@@ -8,16 +8,14 @@
 /************************************************************************/
 /* Tokens for types */
 %token IN
-%token TBS
+%token <string> TBS
 %token TBOOL
-%token TG
-%token TGT
+%token <string> TG
 %token TFQ
 %token STAR
 %left  STAR
 %token LPAREN
 %token RPAREN
-%token <string> LV_ID /* always k<int> */
 
 /************************************************************************/
 /* Tokens for expressions */
@@ -46,10 +44,10 @@
 
 %token COMMA
 
-%token GEN
-%token EMAP
+%token <string> GEN
 %token UNIT
 %token LOG
+%token <string> ZBS
 
 /************************************************************************/
 /* Tokens for games */
@@ -74,6 +72,8 @@
 %token ADVERSARY
 %token ORACLE
 %token RANDOM
+%token BILINEAR
+%token MAP
 %token PROVE
 %token DOT
 %token PRINTGOALS
@@ -89,6 +89,8 @@
 %token RBAD
 %token RLET_ABSTRACT
 %token RCTXT_EV
+
+
 /************************************************************************/
 /* Production types */
 
@@ -127,10 +129,9 @@ typ :
 | t=typ0 EOF { t }
 
 typ0 :
-| TBS s=LV_ID { BS(s) }
+| i = TBS { BS(i) }
 | TBOOL { Bool }
-| TG { G }
-| TGT { GT }
+| i = TG { G(i) }
 | TFQ { Fq }
 | UNIT { Prod([]) }
 | LPAREN l = typlist0 RPAREN { Prod(l) }
@@ -184,16 +185,17 @@ expr6 :
 | s = ID { V(s) }
 | UNIT   { Tuple [] }
 | i = INT
-  { Cnst( if i = 1 then Expr.FOne
-          else if i = 0 then Expr.FZ
-          else failwith "only 0/1 allowed in expressions" ) }
-| GEN    { Cnst(Expr.GGen) }
-| TRUE   { Cnst(Expr.B true) }
-| FALSE  { Cnst(Expr.B false) }
-| s = AID LPAREN l = exprlist0 RPAREN { SApp(s,l) }
+  { if i = 1 then CFOne
+    else if i = 0 then CFZ
+    else failwith "only 0/1 allowed in expressions" }
+| i = GEN { CGen(i) }
+| i = ZBS  { CZ(i) }
+| TRUE    { CB(true) }
+| FALSE   { CB(false) }
+| s = AID LPAREN l = exprlist0 RPAREN { HApp(s,l) }
+| s = ID LPAREN l = exprlist0 RPAREN { SApp(s,l) }
 | MINUS e1 = expr6 { Opp(e1) }
 | NOT e = expr6 { Not(e) }
-| EMAP e1 = expr0 COMMA e2 = expr0 RPAREN { EMap(e1,e2) }
 | LOG LPAREN e1 = expr0 RPAREN { Log(e1) }
 | LPAREN e = expr0 RPAREN {e}
 | LPAREN e = expr0 COMMA l = exprlist0 RPAREN { Tuple(e::l) }
@@ -282,6 +284,7 @@ instr :
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ODecl(i,t1,t2) }
 | RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 DOT { RODecl(i,t1,t2) }
+| BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG DOT { EMDecl(i,g1,g2,g3) }
 | PROVE  LBRACKET g = gdef0 RBRACKET e=event DOT { Judgment(g,e) }
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }

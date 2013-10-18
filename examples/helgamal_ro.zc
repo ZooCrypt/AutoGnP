@@ -1,6 +1,6 @@
-adversary A1 : G -> (BS_ k * BS_ k).
-adversary A2 : (G * BS_ k) -> Bool.
-random oracle H : G -> BS_ k.
+adversary A1 : G -> (BS_k * BS_k).
+adversary A2 : (G * BS_k) -> Bool.
+random oracle H : G -> BS_k.
 
 
 prove

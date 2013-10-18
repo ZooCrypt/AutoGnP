@@ -1,7 +1,8 @@
 adversary A1 : () -> Fq.
-adversary A2 : (G * G * G) -> (GT * GT).
-adversary A3 : (GT * G * G) -> Bool.
+adversary A2 : (G * G * G) -> (G_t * G_t).
+adversary A3 : (G_t * G * G) -> Bool.
 oracle Kg : Fq -> (G * G).
+bilinear map e : G * G -> G_t.
 
 prove
   [ i' <- A1();
