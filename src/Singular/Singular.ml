@@ -1,7 +1,6 @@
 open Expr
 open Poly
 open SingLexer
-open Util
 
 module F = Format
 
@@ -34,10 +33,6 @@ let rec rename hr = function
   | SPlus(e1,e2) -> SPlus (rename hr e1, rename hr e2)
   | SMult(e1,e2) -> SMult (rename hr e1, rename hr e2)
 
-let norm_i = ref 0
-
-let trace = ref []
-
 let abstract_non_field before e0 =
   let c = ref 0 in
   let he = He.create 17 in
@@ -69,10 +64,6 @@ let abstract_non_field before e0 =
   let hv = Hashtbl.create 17 in
   let c = ref 0 in
   List.iter (fun e -> let i = !c in incr c;
-                      trace := (!norm_i, true,
-                                (if is_GTLog e then (fsprintf "%a" pp_exp e |> fsget) else ""),
-                                i, e.e_tag,
-                                if is_GTLog e then true else false)::!trace;
                       Hashtbl.add hr (He.find he e) i;
                       Hashtbl.add hv i e) binding;
   (rename hr se, !c, hv)
@@ -158,16 +149,7 @@ let call_singular cmd linenum =
         o)
   in loop [] linenum
 
-let print_trace () =
-  List.iter (fun (i,binding,s,j,tag,islog) ->
-               if not binding then
-                 Format.fprintf Format.err_formatter "%i: output%s\n%!" i s
-               else
-                 Format.fprintf Format.err_formatter "%i: binding %i |-> %b,%i,%s\n%!" i j islog tag s)
-            (List.rev !trace)
-
 let norm before e =
-  incr norm_i;
   let (se,c,hv) = abstract_non_field before e in
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
@@ -180,8 +162,6 @@ let norm before e =
   let import s = term_of_poly hv (parse_poly s) in
   match call_singular cmd 3 with
   | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
-      trace := (!norm_i,false, String.copy snum, 0,0,false) :: !trace;
-
       let num   = import snum  in
       let denom = import sdenom in
       (* F.printf "num: %a\ndenom: %a\n" pp_exp num pp_exp denom; *)
