@@ -1,6 +1,8 @@
 open ParserUtil
 open CoreRule
 open Rules
+open Expr
+open Type
 
 module Ht = Hashtbl
 
@@ -10,8 +12,8 @@ let handle_tactic ps tac jus =
   | Rnorm -> apply_rule rnorm ps
 
   | Rnorm_unknown(is) ->
-      let vs = List.map (fun s -> Expr.mk_V (Ht.find ps.ps_vars s)) is in
-      apply_rule (rnorm_unknown vs) ps
+    let vs = List.map (fun s -> mk_V (Ht.find ps.ps_vars s)) is in
+    apply_rule (rnorm_unknown vs) ps
 
   | Rctxt_ev (sv,e) ->
     let ev =
@@ -42,66 +44,80 @@ let handle_tactic ps tac jus =
   | Rswap(i,j) -> apply_rule (rswap i j) ps
 
   | Requiv(gd,ev) ->
-      let gd = gdef_of_parse_gdef true ps gd in 
-             (* reuse variables from previous games *)
-      let ju = 
-        match jus with
-        | ju::_ -> ju
-        | _ -> assert false in
-      let ev = 
-        match ev with
-        | None -> ju.Game.ju_ev
-        | Some e -> expr_of_parse_expr ps e in
-      apply_rule (rconv { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
+    let gd = gdef_of_parse_gdef true ps gd in 
+           (* reuse variables from previous games *)
+    let ju = 
+      match jus with
+      | ju::_ -> ju
+      | _ -> assert false in
+    let ev = 
+      match ev with
+      | None -> ju.Game.ju_ev
+      | Some e -> expr_of_parse_expr ps e in
+    apply_rule (rconv { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
 
   | Rbddh(s) ->
-      let v = create_var false ps s Type.mk_Fq in
-      apply_rule (rbddh v) ps
+    let v = create_var false ps s mk_Fq in
+    apply_rule (rbddh v) ps
 
   | Rddh(s) ->
-      let v = create_var false ps s Type.mk_Fq in
-      apply_rule (rddh v) ps
+    let v = create_var false ps s mk_Fq in
+    apply_rule (rddh v) ps
 
   | Rlet_abstract(i,sv,e) ->
-      let e = expr_of_parse_expr ps e in
-      let v = create_var false ps sv e.Expr.e_ty in
-      apply_rule (rlet_abstract i v e) ps
+    let e = expr_of_parse_expr ps e in
+    let v = create_var false ps sv e.e_ty in
+    apply_rule (rlet_abstract i v e) ps
 
-  | Rrandom(i,sv1,e1,sv2,e2) ->
-      let ty =
-        (match ps.ps_goals with
-         | Some(ju::_) ->
-             (match Game.get_ju_gcmd ju i with
-              | Game.GSamp(v,_) -> v.Vsym.ty
-              | _ -> assert false)
-         | _ -> assert false)
-      in
-      let v1 = create_var false ps sv1 ty in
-      let e1 = expr_of_parse_expr ps e1 in
-      Ht.remove ps.ps_vars sv1;
-      let v2 = create_var false ps sv2 ty in
-      let e2 = expr_of_parse_expr ps e2 in
-      Ht.remove ps.ps_vars sv2;
-      apply_rule (rrandom i (v1,e1) (v2,e2)) ps
+  | Rrandom(i,sv1,e1,sv2,e2,svlet) ->
+    let ty =
+      match ps.ps_goals with
+      | Some(ju::_) ->
+          (match Game.get_ju_gcmd ju i with
+           | Game.GSamp(v,_) -> v.Vsym.ty
+           | _ -> assert false)
+      | _ -> assert false
+    in
+    let v1 = create_var false ps sv1 ty in
+    let e1 = expr_of_parse_expr ps e1 in
+    Ht.remove ps.ps_vars sv1;
+    let v2 = create_var false ps sv2 ty in
+    let e2 = expr_of_parse_expr ps e2 in
+    Ht.remove ps.ps_vars sv2;
+    let vlet = create_var false ps svlet ty in
+    apply_rule (rrandom i (v1,e1) (v2,e2) vlet) ps
 
-  | Rrandom_oracle(i,j,k,sv1,e1,sv2,e2) ->
-      let ty =
-        (match ps.ps_goals with
-         | Some(ju::_) ->
-             (match Game.get_ju_lcmd ju (i,j,k) with
-              | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
-              | _ -> assert false)
+  | Rrandom_oracle(i,j,k,sv1,e1,sv2,e2,svlet) ->
+    let ty =
+      match ps.ps_goals with
+      | Some(ju::_) ->
+        (match Game.get_ju_lcmd ju (i,j,k) with
+         | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
          | _ -> assert false)
-      in
-      let v1 = create_var false ps sv1 ty in
-      let e1 = expr_of_parse_expr ps e1 in
-      Ht.remove ps.ps_vars sv1;
-      let v2 = create_var false ps sv2 ty in
-      let e2 = expr_of_parse_expr ps e2 in
-      Ht.remove ps.ps_vars sv2;
-      apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2)) ps
-  | Rbad i ->
-    apply_rule (rbad i) ps 
+      | _ -> assert false
+    in
+    let v1 = create_var false ps sv1 ty in
+    let e1 = expr_of_parse_expr ps e1 in
+    Ht.remove ps.ps_vars sv1;
+    let v2 = create_var false ps sv2 ty in
+    let e2 = expr_of_parse_expr ps e2 in
+    Ht.remove ps.ps_vars sv2;
+    let vlet = create_var false ps svlet ty in
+    apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2) vlet) ps
+
+  | Rbad(i,sx) ->
+    let ty =
+      match ps.ps_goals with
+      | Some(ju::_) ->
+        (match Game.get_ju_gcmd ju i with
+         | Game.GLet(_,e') when is_H e' ->
+           let h,e = destr_H e' in
+           e.e_ty
+         | _ -> assert false)
+      | _ -> assert false
+    in
+    let vx = create_var false ps sx ty in
+    apply_rule (rbad i vx) ps 
 
 let pp_goals fmt gs = 
   match gs with

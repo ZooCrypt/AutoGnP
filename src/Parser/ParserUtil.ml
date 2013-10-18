@@ -76,10 +76,10 @@ let mk_Tuple es =
   | _ -> E.mk_Tuple es
 
 let create_var reuse ps s ty =
-  Format.printf "query for %s\n%!" s; 
+  (* Format.printf "query for %s\n%!" s;  *)
   if Ht.mem ps.ps_vars s then (
     if reuse then (
-      Format.printf "reuse %a\n%!" Vsym.pp (Ht.find ps.ps_vars s); 
+      (* Format.printf "reuse %a\n%!" Vsym.pp (Ht.find ps.ps_vars s);  *)
       Ht.find ps.ps_vars s
     ) else failwith (Format.sprintf "Variable %s reused" s)
   ) else (
@@ -186,15 +186,16 @@ type tactic =
     Rnorm
   | Rnorm_unknown of string list
   | Rswap of int * int
+
   | Rctxt_ev of string * parse_expr
-  | Rrandom of int * string * parse_expr * string * parse_expr
-  | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr
+  | Rrandom of int * string * parse_expr * string * parse_expr * string
+  | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr * string
   | Requiv of gdef * parse_expr option
   | Rbddh of string
   | Rddh of string
   | Rlet_abstract of int * string * parse_expr
   | Rindep
-  | Rbad of int 
+  | Rbad of int * string
 
 type instr =
   | RODecl of string * parse_ty * parse_ty
@@ -273,5 +274,7 @@ let gdef_of_parse_gdef reuse ps gd =
 
 let ju_of_parse_ju reuse ps gd e =
   let gd = gdef_of_parse_gdef reuse ps gd in
-  { Game.ju_gdef = gd; 
-    Game.ju_ev = expr_of_parse_expr ps e }
+  let ju = { Game.ju_gdef = gd; 
+             Game.ju_ev = expr_of_parse_expr ps e } in
+  Wf.wf_ju ju;
+  ju

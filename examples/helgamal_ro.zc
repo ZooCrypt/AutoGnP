@@ -17,11 +17,11 @@ prove
 
 print_goals : start.
 
-rbad 7 .
+rbad 7 x.
 
 print_goals : after_bad.
 
-rrandom 7 (x -> x ++ mb) (x -> x ++ mb).
+rrandom 7 (v -> v ++ mb) (v -> v ++ mb) z1.
 print_goals : after_random1.
 
 rnorm.

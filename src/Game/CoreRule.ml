@@ -23,6 +23,11 @@ let delay goals = match goals with
 (* ----------------------------------------------------------------------- *)
 (** {2 Low level rule} *)
 
+let assert_no_occur vs ju s =
+  assert_msg (not (Se.mem (mk_V vs) (ju_vars ju)))
+    (fsprintf "%s: variable %a occurs in judgment\n %a"
+        s Vsym.pp vs pp_ju ju |> fsget)
+
 (** Conversion *)
 
 let check_conv ju1 ju2 = 
@@ -84,19 +89,20 @@ let ensure_bijection c1 c2 v =
    the excepted values.
    Then it checks that under the inequalities that hold at position p,
    forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x.  *)
-let rrandom p c1 c2 ju =
+let rrandom p c1 c2 vslet ju =
+  assert_no_occur vslet ju "rrandom";
   match get_ju_ctxt ju p with
   | GSamp(vs,((t,[]) as d)), juc ->
+    assert (ty_equal vslet.Vsym.ty t);
     let v = mk_V vs in
-    ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
-    let vs' = Vsym.mk ((Id.name vs.Vsym.id)^"%") t in
+    ensure_bijection c1 c2 v;
     let cmds = [ GSamp(vs,d);
-                 GLet(vs', inst_ctxt c1 (mk_V vs)) ]
+                 GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
-    let subst e = e_replace v (mk_V vs') e in
     let wfs = wf_gdef (List.rev juc.juc_left) in
     wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    let subst e = e_replace v (mk_V vslet) e in
     let juc = { juc with
                 juc_right = map_gdef_exp subst juc.juc_right;
                 juc_ev = subst juc.juc_ev }
@@ -105,22 +111,24 @@ let rrandom p c1 c2 ju =
   | _ -> failwith "random: position given is not a sampling"
 
 (* random in oracle *)
-let rrandom_oracle p c1 c2 ju =
+let rrandom_oracle p c1 c2 vslet ju =
+  assert_no_occur vslet ju "rrandom_oracle";
   match get_ju_octxt ju p with
   | LSamp(vs,((t,[]) as d)), juoc ->
+    assert (ty_equal vslet.Vsym.ty t);
     let v = mk_V vs in
-    ensure_bijection c1 c2 v; (* FIXME: check that both contexts well-defined at given position *)
-    let vs' = Vsym.mk ((Id.name vs.Vsym.id)^"%") t in
+    ensure_bijection c1 c2 v;
     let cmds = [ LSamp(vs,d);
-                 LLet(vs', inst_ctxt c1 (mk_V vs)) ]
+                 LLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
-    let subst e = e_replace v (mk_V vs') e in
     (* ensure both contexts well-defined *)
     let wfs = wf_gdef (List.rev juoc.juoc_juc.juc_left) in
     let wfs = ensure_varnames_fresh wfs juoc.juoc_oargs in
     let wfs = wf_lcmds wfs (List.rev juoc.juoc_cleft) in
     wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
+
+    let subst e = e_replace v (mk_V vslet) e in
     let juoc = { juoc with
                  juoc_return = subst juoc.juoc_return;
                  juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright }
@@ -215,7 +223,9 @@ let check_ddh a b ex ey ez c ev =
    not (Se.mem a r) && not (Se.mem b r) &&
    not (has_log_gcmds c) && not (has_log ev) 
 
-let rddh vc ju = 
+let rddh vsc ju =
+  assert_no_occur vsc ju "rddh";
+  let vc = mk_V vsc in
   match ju.ju_gdef with
   | (GSamp(a,(_ta,[])) as i1) ::
     (GSamp(b,(_tb,[])) as i2) ::
@@ -223,24 +233,22 @@ let rddh vc ju =
     (GLet (_y,ey) as i4) ::
      GLet (z,ez) :: c when
          check_ddh a b ex ey ez c ju.ju_ev ->
-    (* let vc = Vsym.mk vc mk_Fq in *)
     [{ju with ju_gdef =
-        i1 :: i2:: GSamp(vc,(mk_Fq,[])) :: 
-          i3 :: i4 :: GLet(z,mk_GExp mk_GGen (mk_V vc)) :: c }]
+        i1 :: i2:: GSamp(vsc,(mk_Fq,[])) :: 
+          i3 :: i4 :: GLet(z,mk_GExp mk_GGen vc) :: c }]
   | _ -> failwith "can not apply ddh"
 
-
-
 (* Bad rule, random oracle *)
-let rbad p ju = 
+let rbad p vsx ju =
+  assert_no_occur vsx ju "rbad";
   match get_ju_ctxt ju p with
   | GLet(vs,e'), ctxt when is_H e' ->
     let h,e = destr_H e' in
     (* TODO CHECK THAT h is only used here *)
     let i = [GSamp(vs,(e'.e_ty,[]))] in
     let ju1 = set_ju_ctxt i ctxt in
-    let x = Vsym.mk "x" e.e_ty in
-    let ev = mk_ElemH e (mk_V x) [x,h] in
+    let vx = mk_V vsx in
+    let ev = mk_ElemH e vx [vsx,h] in
     let ju2 = { ju1 with ju_ev = ev } in
     [ju1;ju2]
   | _ -> 
@@ -262,7 +270,9 @@ let check_bddh a b c ex ey ez eU _C ev =
    not (Se.mem a r) && not (Se.mem b r) && not (Se.mem c r) &&
    not (has_log_gcmds _C) && not (has_log ev) 
 
-let rbddh vu ju =
+let rbddh vsu ju =
+  assert_no_occur vsu ju "rbddh";
+  let vu = mk_V vsu in
   match ju.ju_gdef with
   | (GSamp(a,(_ta,[])) as i1) ::
     (GSamp(b,(_tb,[])) as i2) ::
@@ -272,8 +282,7 @@ let rbddh vu ju =
     (GLet (_z,ez) as i6)::
     GLet (_U,eU) ::_C when
          check_bddh a b c ex ey ez eU _C ju.ju_ev ->
-    (* let vu = Vsym.mk vu mk_Fq in *)
     [{ju with ju_gdef =
-        i1 :: i2:: i3 :: GSamp(vu,(mk_Fq,[])) :: 
-          i4 :: i5 :: i6 :: GLet(_U,mk_GTExp mk_GTGen (mk_V vu)) :: _C }]
+        i1 :: i2:: i3 :: GSamp(vsu,(mk_Fq,[])) :: 
+          i4 :: i5 :: i6 :: GLet(_U,mk_GTExp mk_GTGen vu) :: _C }]
   | _ -> failwith "can not apply bddh"

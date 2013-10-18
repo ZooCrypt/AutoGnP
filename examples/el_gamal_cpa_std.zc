@@ -15,7 +15,7 @@ prove
  rlet_abstract 3 xx (g^x).
  rlet_abstract 4 xax (g^(a*x)).  print_goals : after_let.
  rddh c. rnorm. rswap 3 2. print_goals : after_ddh.
- rrandom 5 (u -> u - log(b?m0:m1)) (u -> u + log(b?m0:m1)).
+ rrandom 5 (u -> u - log(b?m0:m1)) (u -> u + log(b?m0:m1)) z1.
  rnorm. print_goals : after_random.
  rswap 4 2.  print_goals : after_swap.
  rindep.  print_goals : finished.
