@@ -426,4 +426,7 @@ let norm_ju ?norm:(nf=Norm.norm_expr) ju =
   { ju_gdef = g;
     ju_ev = nf (e_subst s ju.ju_ev) }
 
-  
+let ju_vars ju =
+  let vs = ref Se.empty in
+  iter_ju_exp (fun e -> vs := Se.union !vs (e_vars e)) ju;
+  !vs

@@ -148,3 +148,6 @@ let input_file file_name =
   let lines = go [] in
   let _ = close_in_noerr in_channel in
   String.concat "\n" (List.rev lines)
+
+let assert_msg b m =
+  if not b then failwith m

@@ -119,3 +119,5 @@ val pp_list_c : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list 
 val pp_list_s : Format.formatter -> string list -> unit
 
 val input_file : string -> string
+
+val assert_msg : bool -> string -> unit

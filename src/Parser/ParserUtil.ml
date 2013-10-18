@@ -186,14 +186,14 @@ type tactic =
     Rnorm
   | Rnorm_unknown of string list
   | Rswap of int * int
-  | Rrandom of int * string * parse_expr * string * parse_expr
-  | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr
+  | Rrandom of int * string * parse_expr * string * parse_expr * string
+  | Rrandom_oracle of int * int * int * string * parse_expr * string * parse_expr * string
   | Requiv of gdef * parse_expr option
   | Rbddh of string
   | Rddh of string
   | Rlet_abstract of int * string * parse_expr
   | Rindep
-  | Rbad of int 
+  | Rbad of int * string
 
 type instr =
   | RODecl of string * parse_ty * parse_ty
@@ -270,6 +270,7 @@ let gcmd_of_parse_gcmd reuse ps gc =
 let gdef_of_parse_gdef reuse ps gd =
   List.map (fun gc -> gcmd_of_parse_gcmd reuse ps gc) gd
 
+(* check well-formed *)
 let ju_of_parse_ju reuse ps gd e =
   let gd = gdef_of_parse_gdef reuse ps gd in
   { Game.ju_gdef = gd; 

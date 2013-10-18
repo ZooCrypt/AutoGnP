@@ -17,10 +17,10 @@ prove
   ] : b = b'.  print_goals : start.
 
   rnorm.  print_goals : after_norm.
-  rrandom 5 (x -> x - d*i') (x -> x + d* i').
-  rnorm.  print_goals : after_random.
+  rrandom 5 (x -> x - d*i') (x -> x + d* i') z.
+  rnorm. print_goals : after_random.
   rrandom_oracle (8,1,2) (x -> (x - c) / (i -i'))
-                         (x -> x * (i - i') + c).
+                         (x -> x * (i - i') + c) zz.
   rnorm.  print_goals : after_random_oracle.
   rswap 1 3.  print_goals : swap_1_1.
   rnorm_unknown (c,d,e).  print_goals : norm_uk.
@@ -29,6 +29,6 @@ prove
   rlet_abstract 5 xe (g ^ e).  print_goals : applet3.
   rlet_abstract 6 t (e(g,g)^(c*d*e)). print_goals : applet4.
   rbddh u. rnorm. rswap 4 4.  print_goals : after_rbddh.
-  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)).
+  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)) zzz.
   rnorm. rswap 6 3.  print_goals : after_random.
   rindep.  print_goals : after_indep.
