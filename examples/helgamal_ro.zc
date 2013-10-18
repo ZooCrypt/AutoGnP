@@ -45,4 +45,10 @@ rnorm.
 rswap 3 4.
 print_goals : after_ddh.
 
+rctxt_ev (v -> log(v)).
+rnorm.
+
+print_goals : after_ev.
 rindep.
+
+print_goals : after_end.

@@ -301,7 +301,8 @@ instr :
                  i3 = ID DOT
                  { Apply(Rrandom_oracle(i-1,j-1,k-1,i1,e1,i2,e2,i3)) }
 | RBAD i=INT s = ID DOT { Apply(Rbad (i-1,s)) }
-
+| RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN  DOT
+   { Apply(Rctxt_ev(i1,e1)) }
 
 theory :
 | i = instr EOF { [i] }

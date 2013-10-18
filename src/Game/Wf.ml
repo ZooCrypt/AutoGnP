@@ -94,7 +94,7 @@ let rec wf_exp wfs e0 =
         assert (ty_equal mk_Bool e.e_ty);
         mk_Bool
       | H(h,e1) ->
-        ignore (go e);
+        ignore (go e1);
         assert (ty_equal h.Hsym.dom e1.e_ty);
         assert (ty_equal h.Hsym.codom e.e_ty);
         h.Hsym.codom
