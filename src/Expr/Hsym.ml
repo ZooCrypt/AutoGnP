@@ -19,8 +19,7 @@ let export hs = {
 }
 
 let hash hs = Id.hash hs.id 
-let equal : t -> t -> bool = (==)
-let compare (x : t) (y : t) = hash x - hash y
+let equal hs1 hs2 = Id.equal hs1.id hs2.id
 
 module Hs = StructMake (struct
   type t = internal gt
@@ -31,7 +30,7 @@ module M = Hs.M
 module S = Hs.S
 module H = Hs.H
 
-let mk name dom codom = 
+let mk name dom codom =
   { id = Id.mk name; dom = dom; codom = codom }
 
 let mke name i dom codom = 

@@ -8,7 +8,6 @@ type et = exported gt
 val export : t -> et
 val hash : t -> int
 val equal : t -> t -> bool
-val compare : t -> t -> int
 val mk : string -> ty -> ty -> t
 val mke : string -> int -> ety -> ety -> et
 val pp : Format.formatter -> 'a gt -> unit
