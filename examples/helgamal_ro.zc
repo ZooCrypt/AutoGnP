@@ -22,10 +22,11 @@ rbad 7 .
 print_goals : after_bad.
 
 rrandom 7 (x -> x ++ mb) (x -> x ++ mb).
+print_goals : after_random1.
 
 rnorm.
 
-print_goals : after_random.
+print_goals : after_random2.
 
 rswap 3 3. rindep. 
 

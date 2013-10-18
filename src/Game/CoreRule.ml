@@ -94,7 +94,7 @@ let rrandom p c1 c2 ju =
                  GLet(vs', inst_ctxt c1 (mk_V vs)) ]
     in
     let subst e = e_replace v (mk_V vs') e in
-    let wfs = wf_gdef juc.juc_left in
+    let wfs = wf_gdef (List.rev juc.juc_left) in
     wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let juc = { juc with
@@ -116,9 +116,9 @@ let rrandom_oracle p c1 c2 ju =
     in
     let subst e = e_replace v (mk_V vs') e in
     (* ensure both contexts well-defined *)
-    let wfs = wf_gdef juoc.juoc_juc.juc_left in
+    let wfs = wf_gdef (List.rev juoc.juoc_juc.juc_left) in
     let wfs = ensure_varnames_fresh wfs juoc.juoc_oargs in
-    let wfs = wf_lcmds wfs juoc.juoc_cleft in
+    let wfs = wf_lcmds wfs (List.rev juoc.juoc_cleft) in
     wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let juoc = { juoc with
