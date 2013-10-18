@@ -76,10 +76,10 @@ let mk_Tuple es =
   | _ -> E.mk_Tuple es
 
 let create_var reuse ps s ty =
-  Format.printf "query for %s\n%!" s; 
+  (* Format.printf "query for %s\n%!" s;  *)
   if Ht.mem ps.ps_vars s then (
     if reuse then (
-      Format.printf "reuse %a\n%!" Vsym.pp (Ht.find ps.ps_vars s); 
+      (* Format.printf "reuse %a\n%!" Vsym.pp (Ht.find ps.ps_vars s);  *)
       Ht.find ps.ps_vars s
     ) else failwith (Format.sprintf "Variable %s reused" s)
   ) else (
