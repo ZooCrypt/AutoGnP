@@ -51,14 +51,14 @@ let op_hash = function
   | EMap(es) ->  Hashcons.combine 10 (Esym.hash es)
 
 (* associative operators with variable arity *)
-type naryop =
+type nop =
     FPlus  (* plus in Fq *)
   | FMult  (* multiplication in Fq *)
   | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
   | GMult  (* multiplication in G (type defines group) *)
 
-let naryop_hash = function
+let nop_hash = function
     FPlus  -> 1
   | FMult  -> 2
   | Xor    -> 3
@@ -77,7 +77,7 @@ and 'a gexpr_node =
   | Proj  of int * 'a gexpr             (* projection *)
   | Cnst  of cnst                       (* constants *)
   | App   of 'a gop * 'a gexpr list     (* fixed arity operators *)
-  | Nary  of naryop * 'a gexpr list     (* variable arity AC operators *)
+  | Nary  of nop * 'a gexpr list     (* variable arity AC operators *)
   | ElemH of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
           (* ElemH(e1,e2,[(x1,L_Hh1)...]:
               e1 in [e2 | x1 <- L_Hh1, ....) *)
@@ -123,7 +123,7 @@ module Hse = Hashcons.Make (struct
     | Proj(i,e)  -> Hashcons.combine i (e_hash e)
     | Cnst(c)    -> cnst_hash c
     | App(o,es)  -> Hashcons.combine_list e_hash (op_hash o) es
-    | Nary(o,es) -> Hashcons.combine_list e_hash (naryop_hash o) es
+    | Nary(o,es) -> Hashcons.combine_list e_hash (nop_hash o) es
     | ElemH(e1,e2,vh) -> 
         Hashcons.combine_list 
           (fun (v,h) -> Hashcons.combine (Vsym.hash v) (Hsym.hash h))
@@ -226,15 +226,38 @@ let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
 let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
 
+let is_FDiv e = is_App FDiv e
+
+let is_FOpp e = is_App FOpp e
+
 let is_some_Nary e = match e.e_node with Nary _ -> true | _ -> false
 
 let is_Nary o e = match e.e_node with Nary(o',_) -> o' = o | _ -> false
+
+let is_FPlus e = is_Nary FPlus e
+
+let is_FMult e = is_Nary FMult e
 
 let is_ElemH e = match e.e_node with ElemH _ -> true | _ -> false
 
 let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
 let is_Eq e = is_App Eq e
+
+let is_field_op = function
+  | FOpp | FMinus | FInv | FDiv -> true
+  | GExp | GLog _ | EMap _
+  | Eq | Ifte | Not -> false 
+
+let is_field_nop = function
+  | FPlus | FMult -> true
+  | Xor | Land | GMult -> false
+
+let is_field_exp e = match e.e_node with
+  | Cnst(FNat _) -> true
+  | App(o,_)     -> is_field_op o
+  | Nary(o,_)    -> is_field_nop o
+  | _            -> false
 
 (* ----------------------------------------------------------------------- *)
 (** {3 Pretty printing} *)
@@ -263,7 +286,7 @@ type 'a above =
     PrefixApp (* prefix function application: hash, emap, ... *)
   | Top
   | Infix  of 'a gop * int (* infix operator, i-th argument *)
-  | NInfix of naryop   (* nary infix operator *)
+  | NInfix of nop (* nary infix operator *)
   | Tup
 
 (* Generic function for printing *)

@@ -32,14 +32,14 @@ type eop = IdType.exported gop
 
 val op_hash : op -> int
 
-type naryop =
+type nop =
     FPlus
   | FMult
   | Xor
   | Land
   | GMult
 
-val naryop_hash : naryop -> int
+val nop_hash : nop -> int
 
 type 'a gexpr = { e_node : 'a gexpr_node; e_ty : 'a Type.gty; e_tag : int; }
 and 'a gexpr_node =
@@ -49,7 +49,7 @@ and 'a gexpr_node =
   | Proj of int * 'a gexpr
   | Cnst of cnst
   | App of 'a gop * 'a gexpr list
-  | Nary of naryop * 'a gexpr list
+  | Nary of nop * 'a gexpr list
   | ElemH of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
 
 type expr = IdType.internal gexpr
@@ -93,10 +93,18 @@ val is_GGen : 'a gexpr -> bool
 val is_GLog : 'a gexpr -> bool
 val is_some_App : 'a gexpr -> bool
 val is_App : 'a gop -> 'a gexpr -> bool
+val is_FDiv : 'a gexpr -> bool
+val is_FOpp : 'a gexpr -> bool
 val is_some_Nary : 'a gexpr -> bool
-val is_Nary : naryop -> 'a gexpr -> bool
+val is_Nary : nop -> 'a gexpr -> bool
+val is_FPlus : 'a gexpr -> bool
+val is_FMult : 'a gexpr -> bool
 val is_ElemH : 'a gexpr -> bool
 val is_Eq    : 'a gexpr -> bool
+val is_field_op : 'a gop -> bool
+val is_field_nop : nop -> bool
+val is_field_exp : 'a gexpr -> bool
+
 
 (* ----------------------------------------------------------------------- *)
 (** {3 Destructor functions} *)
@@ -204,7 +212,7 @@ module EConstructors :
 val pp_cnst : formatter -> cnst -> 'a Type.gty -> unit
 val pp_exp  : formatter -> 'a gexpr -> unit
 val pp_op   : formatter -> 'a gop * 'a gexpr list -> unit
-val pp_nop  : formatter -> naryop * 'a gexpr list -> unit
+val pp_nop  : formatter -> nop * 'a gexpr list -> unit
 
 val pp_exp_tnp  : formatter -> 'a gexpr -> unit
 

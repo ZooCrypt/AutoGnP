@@ -13,16 +13,6 @@ let destr_gexp gv g =
   assert (e_equal g1 (mk_GGen gv));
   p
 
-(*
-let destr_gtexp g = 
-  let (g1,p) = try destr_GTExp g with _ ->
-    Format.printf "destr_gexp %a@." pp_exp g;
-    assert false
-  in
-  assert (e_equal g1 mk_GTGen);
-  p
-*)
-
 let destr_xor e = 
   match e.e_node with Nary(Xor, l) -> l | _ -> [e]
 
@@ -37,15 +27,6 @@ let mk_proj_simpl i e =
   | Tuple es -> 
     (try List.nth es i with Invalid_argument _ -> assert false)
   | _ -> mk_Proj i e
-
-let is_field_op = function
-  | FOpp | FMinus | FInv | FDiv -> true
-  | GExp | GLog _ | EMap _
-  | Eq | Ifte | Not -> false 
-
-let is_field_nop = function
-  | FPlus | FMult -> true
-  | Xor | Land | GMult -> false
 
 let rec mk_simpl_op op l =
   match op, l with
