@@ -42,10 +42,9 @@ let ty_of_cnst c ty =
   let ty' =
     match c with
     | B _     -> mk_Bool
-    | GGen -> (match ty.ty_node with G _ -> ty | _ -> assert false)
-    | Z    -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
-    | FZ   -> mk_Fq
-    | FOne -> mk_Fq
+    | GGen    -> (match ty.ty_node with G _ -> ty | _ -> assert false)
+    | Z       -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
+    | FNat(_) -> mk_Fq
   in assert(ty_equal ty' ty); ty
 
 let ty_of_nop ty = function

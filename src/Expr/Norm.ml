@@ -140,7 +140,7 @@ and norm_expr e =
 and norm_field_expr e = 
   let before e = 
     match e.e_node with
-    | Cnst FOne | Cnst FZ
+    | Cnst (FNat _)
     | App (FOpp,[_]) | App (FInv,[_])
     | App (FMinus,[_;_]) | App (FDiv,[_;_])
     | Nary (FPlus, _) | Nary (FMult, _)  -> e

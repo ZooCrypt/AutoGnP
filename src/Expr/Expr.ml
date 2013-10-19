@@ -11,17 +11,15 @@ type 'a proj_type = 'a gty * 'a gty * 'a gty
 
 (* constants *)
 type cnst =
-    GGen      (* generator of G (type defines group) *)
-  | FZ        (* 0 in Fq *)
-  | Z         (* 0 bitstring (typ defines length) *)
-  | FOne      (* 1 in Fq *)
-  | B of bool (* boolean value *)
+    GGen        (* generator of G (type defines group) *)
+  | FNat of int (* Natural number in field, always >= 0 *)
+  | Z           (* 0 bitstring (typ defines length) *)
+  | B of bool   (* boolean value *)
 
 let cnst_hash = function
-  | GGen -> 1
-  | FZ   -> 2
-  | Z    -> 3
-  | FOne -> 4
+  | GGen   -> 1
+  | FNat n -> Hashcons.combine 2 n
+  | Z      -> 3
   | B b  -> if b then 5 else 6
 
 (* operators with fixed arity *)
@@ -51,7 +49,6 @@ let op_hash = function
   | Not      -> 8
   | Ifte     -> 9
   | EMap(es) ->  Hashcons.combine 10 (Esym.hash es)
-
 
 (* associative operators with variable arity *)
 type naryop =
@@ -211,6 +208,12 @@ let is_Proj e = match e.e_node with Proj _ -> true | _ ->  false
 
 let is_some_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
 
+let is_FNat e = match e.e_node with Cnst (FNat _) -> true | _ -> false
+
+let is_FOne e = match e.e_node with Cnst (FNat 1) -> true | _ -> false
+
+let is_FZ e = match e.e_node with Cnst (FNat 0) -> true | _ -> false
+
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
 let is_True e = is_Cnst (B true) e
@@ -238,13 +241,12 @@ let is_Eq e = is_App Eq e
 
 let pp_cnst fmt c ty =
   match c with
-  | GGen -> if Groupvar.name (destr_G ty) <> ""
-            then F.fprintf fmt "g_%a" Groupvar.pp (destr_G ty)
-            else F.fprintf fmt "g"
-  | FZ   -> F.fprintf fmt "0"
-  | Z    -> F.fprintf fmt "0%%%a" pp_ty ty
-  | FOne -> F.fprintf fmt "1"
-  | B b  -> F.fprintf fmt "%b" b
+  | GGen   -> if Groupvar.name (destr_G ty) <> ""
+              then F.fprintf fmt "g_%a" Groupvar.pp (destr_G ty)
+              else F.fprintf fmt "g"
+  | FNat n -> F.fprintf fmt "%i" n
+  | Z      -> F.fprintf fmt "0%%%a" pp_ty ty
+  | B b    -> F.fprintf fmt "%b" b
 
 (* The term   *
              / \
@@ -388,6 +390,11 @@ let destr_Proj e =
 let destr_Cnst e = 
   match e.e_node with Cnst(c) -> (c) | _ -> raise (Destr_failure "Cnst")
 
+let destr_FNat e =
+  match e.e_node with
+  | Cnst (FNat n) -> n
+  | _ -> raise (Destr_failure "FNat")
+
 let destr_App e =
   match e.e_node with App(o,es) -> (o,es) | _ -> raise (Destr_failure "App")
 
@@ -479,6 +486,7 @@ sig
   val mk_ElemH : t gexpr -> t gexpr -> (t Vsym.gt * t Hsym.gt) list -> t gexpr
   
   val mk_GGen  : t Groupvar.gid -> t gexpr
+  val mk_FNat  : int -> t gexpr
   val mk_FZ    : t gexpr
   val mk_FOne  : t gexpr
   val mk_Z     : t Lenvar.gid -> t gexpr
@@ -547,8 +555,9 @@ struct
   let mk_Cnst c ty = E.mk (Cnst c) ty
 
   let mk_GGen gv = mk_Cnst GGen (ty_G gv)
-  let mk_FZ = mk_Cnst FZ ty_Fq
-  let mk_FOne = mk_Cnst FOne ty_Fq
+  let mk_FNat n = assert (n >= 0); mk_Cnst (FNat n) ty_Fq
+  let mk_FOne = mk_Cnst (FNat 1) ty_Fq
+  let mk_FZ = mk_Cnst (FNat 0) ty_Fq
   let mk_Z lv = mk_Cnst Z (ty_BS lv)
   let mk_B  b = mk_Cnst (B b) ty_Bool
   let mk_True = mk_B true

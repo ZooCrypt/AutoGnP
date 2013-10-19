@@ -63,7 +63,7 @@
 %token LIST
 %token WITH
 %token <string> AID
-%token <int> INT
+%token <int> NAT
 
 /************************************************************************/
 /* Tokens for theories */
@@ -184,10 +184,7 @@ exprlist0 :
 expr6 :
 | s = ID { V(s) }
 | UNIT   { Tuple [] }
-| i = INT
-  { if i = 1 then CFOne
-    else if i = 0 then CFZ
-    else failwith "only 0/1 allowed in expressions" }
+| i = NAT { CFNat i }
 | i = GEN { CGen(i) }
 | i = ZBS  { CZ(i) }
 | TRUE    { CB(true) }
@@ -273,8 +270,8 @@ gdef :
 /* instructions and theory */
 
 int:
-| i=INT {i}
-| MINUS i=INT {-i}
+| i=NAT {i}
+| MINUS i=NAT {-i}
 ;
 
 event:
@@ -292,18 +289,18 @@ instr :
 | RNORM_UNKNOWN DOT { Apply(Rnorm_unknown([])) }
 | RNORM_UNKNOWN is = idlist DOT { Apply(Rnorm_unknown(is)) }
 | RINDEP DOT { Apply(Rindep) }
-| RSWAP i = INT j =int DOT { Apply(Rswap(i-1,j)) }
+| RSWAP i = NAT j =int DOT { Apply(Rswap(i-1,j)) }
 | RBDDH s = ID DOT { Apply(Rbddh(s)) }
 | RDDH s = ID DOT { Apply(Rddh(s)) }
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? DOT { Apply(Requiv(gd,e)) }
-| RLET_ABSTRACT i = INT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
-| RRANDOM i = INT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN
+| RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
+| RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN
           i3 = ID DOT { Apply(Rrandom(i-1,i1,e1,i2,e2,i3)) }
-| RRANDOM_ORACLE LPAREN i = INT COMMA j = INT COMMA k = INT RPAREN
+| RRANDOM_ORACLE LPAREN i = NAT COMMA j = NAT COMMA k = NAT RPAREN
                  LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN
                  i3 = ID DOT
                  { Apply(Rrandom_oracle(i-1,j-1,k-1,i1,e1,i2,e2,i3)) }
-| RBAD i=INT s = ID DOT { Apply(Rbad (i-1,s)) }
+| RBAD i=NAT s = ID DOT { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN  DOT
    { Apply(Rctxt_ev(i1,e1)) }
 

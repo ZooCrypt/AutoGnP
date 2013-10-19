@@ -9,9 +9,8 @@ type 'a proj_type = 'a Type.gty * 'a Type.gty * 'a Type.gty
 
 type cnst =
     GGen
-  | FZ
+  | FNat of int
   | Z
-  | FOne
   | B of bool
 
 val cnst_hash : cnst -> int
@@ -85,6 +84,9 @@ val is_Tuple : 'a gexpr -> bool
 val is_Proj : 'a gexpr -> bool
 val is_some_Cnst : 'a gexpr -> bool
 val is_Cnst : cnst -> 'a gexpr -> bool
+val is_FNat : 'a gexpr -> bool
+val is_FOne : 'a gexpr -> bool
+val is_FZ : 'a gexpr -> bool
 val is_True : 'a gexpr -> bool
 val is_False : 'a gexpr -> bool
 val is_GGen : 'a gexpr -> bool
@@ -106,6 +108,7 @@ val destr_H      : 'a gexpr -> 'a Hsym.gt * 'a gexpr
 val destr_Tuple  : 'a gexpr -> 'a gexpr list
 val destr_Proj   : 'a gexpr -> int * 'a gexpr
 val destr_Cnst   : 'a gexpr -> cnst
+val destr_FNat   : 'a gexpr -> int
 val destr_App    : 'a gexpr -> 'a gop * 'a gexpr list
 val destr_GMult  : 'a gexpr -> ('a gexpr) list
 val destr_GExp   : 'a gexpr -> 'a gexpr * 'a gexpr
@@ -135,8 +138,9 @@ val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
 val mk_ElemH  : expr -> expr -> (Vsym.t * Hsym.t) list -> expr
 val mk_GGen   : Groupvar.id -> expr
-val mk_FZ     : expr
+val mk_FNat   : int -> expr
 val mk_FOne   : expr
+val mk_FZ     : expr
 val mk_Z      : Lenvar.id -> expr
 val mk_B      : bool -> expr
 val mk_True   : expr
@@ -171,8 +175,9 @@ module EConstructors :
     val mk_Proj   : int -> eexpr -> eexpr
     val mk_ElemH  : eexpr -> eexpr -> (Vsym.et * Hsym.et) list -> eexpr
     val mk_GGen   : Groupvar.eid -> eexpr
-    val mk_FZ     : eexpr
+    val mk_FNat   : int -> eexpr
     val mk_FOne   : eexpr
+    val mk_FZ     : eexpr
     val mk_Z      : t Type.Lenvar.gid -> eexpr
     val mk_B      : bool -> eexpr
     val mk_True   : eexpr

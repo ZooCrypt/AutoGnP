@@ -17,32 +17,15 @@ let terms_of_monom (m : 'a monom) =
   let l = List.fold_left go [] m in
   List.sort e_compare l 
 
-(* TODO move this *)
-let mk_FTwo = mk_FPlus [mk_FOne; mk_FOne]
-
-let rec of_pos_int n =
-  if n <= 1 then mk_FOne 
-  else 
-    let q = n lsr 1 in
-    let r = n mod 2 in
-    let tq = mk_FMult [mk_FTwo; of_pos_int q] in
-    if r = 1 then mk_FPlus [tq; mk_FOne]
-    else tq 
-
-let of_int n =
-  if n = 0 then mk_FZ
-  else if n > 0 then of_pos_int n
-  else mk_FOpp (of_pos_int (-n))
-
 let term_of_poly p =
   let summand (i,m) = match i, terms_of_monom m with
-    | _,[]  -> of_int i
+    | _,[]   -> mk_FNat i
     | 1,mes  -> mk_FMult mes
     | -1,mes -> mk_FOpp (mk_FMult mes)
     | _,mes -> 
-      assert (i <> 0);
-      if i > 0 then mk_FMult (of_pos_int i    :: mes)
-      else mk_FOpp (mk_FMult (of_pos_int (-i) :: mes))        
+      assert (i <> 0 && i <> 1 && i <> -1);
+      if i > 0 then mk_FMult (mk_FNat i    :: mes)
+      else mk_FOpp (mk_FMult (mk_FNat (-i) :: mes))        
   in
   let s = List.map summand p in
   mk_FPlus (List.sort e_compare s)

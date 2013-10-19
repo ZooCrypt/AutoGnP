@@ -24,8 +24,7 @@ type parse_expr =
   | CB    of bool
   | CZ    of string
   | CGen  of string
-  | CFZ
-  | CFOne
+  | CFNat of int
   | Mult  of parse_expr * parse_expr
   | Plus  of parse_expr * parse_expr
   | Exp   of parse_expr * parse_expr
@@ -156,8 +155,7 @@ let expr_of_parse_expr ps pe0 =
       failwith (Format.sprintf "bilinear map %s expects two arguments" s)
     | SApp(s,_) ->
       failwith (Format.sprintf "undefined function symbol %s" s)
-    | CFOne        -> E.mk_FOne
-    | CFZ          -> E.mk_FZ
+    | CFNat(i)     -> E.mk_FNat i
     | CGen(s)      -> E.mk_GGen (create_groupvar ps s)
     | CZ(s)        -> E.mk_Z (create_lenvar ps s)
     | CB b         -> E.mk_B b

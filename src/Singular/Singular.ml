@@ -7,9 +7,8 @@ module Ht = Hashtbl
 
 (* Singular field expression *)
 type fexp =
-    V of int
-  | SOne
-  | SZ
+    SV of int
+  | SNat of int
   | SOpp of fexp
   | SInv of fexp
   | SPlus of fexp * fexp
@@ -17,9 +16,8 @@ type fexp =
 
 (* pretty-printer function for already abstracted field expression *)
 let rec string_of_fexp e = match e with
-  | V i        -> F.sprintf "x%i" i
-  | SOne       -> "1"
-  | SZ         -> "0"
+  | SV i       -> F.sprintf "x%i" i
+  | SNat(n)    -> F.sprintf "%i" n
   | SOpp(a)    -> F.sprintf "-(%s)" (string_of_fexp a)
   | SInv(a)    -> F.sprintf "1/(%s)" (string_of_fexp a)
   | SPlus(a,b) -> F.sprintf "(%s + %s)" (string_of_fexp a) (string_of_fexp b)
@@ -27,8 +25,8 @@ let rec string_of_fexp e = match e with
 
 (* Abstraction of 'Expr.expr' to sfexp *)
 let rec rename hr = function 
-  | V i -> V (Hashtbl.find hr i)
-  | (SOne | SZ) as e -> e
+  | SV i -> SV (Hashtbl.find hr i)
+  | (SNat _) as e -> e
   | SOpp e -> SOpp (rename hr e)
   | SInv e -> SInv (rename hr e)
   | SPlus(e1,e2) -> SPlus (rename hr e1, rename hr e2)
@@ -47,8 +45,7 @@ let abstract_non_field before e0 =
   let rec go e = 
     let e = before e in
     match e.e_node with
-    | Cnst FOne           -> SOne
-    | Cnst FZ             -> SZ
+    | Cnst (FNat n)       -> SNat n
     | App (FOpp,[a])      -> SOpp(go a)
     | App (FInv,[a])      -> SInv(go a)
     | App (FMinus,[a;b])  -> SPlus(go a, SOpp (go b))
@@ -57,7 +54,7 @@ let abstract_non_field before e0 =
       List.fold_left (fun acc e -> SPlus(acc, go e)) (go a) es
     | Nary (FMult, a::es) -> 
       List.fold_left (fun acc e -> SMult(acc, go e)) (go a) es
-    | _ -> V (lookup e)
+    | _ -> SV (lookup e)
   in
   let se = go e0 in
   let binding = List.sort e_compare (He.fold (fun e _ l -> e::l) he []) in
@@ -150,8 +147,7 @@ let call_singular cmd linenum =
         o)
   in loop [] linenum
 
-let norm before e =
-  let (se,c,hv) = abstract_non_field before e in
+let norm_singular se c hv =
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
   let cmd = F.sprintf "ring R = (0,%s),(a),dp;\n\
@@ -174,3 +170,18 @@ let norm before e =
   | repls ->
       failwith (F.sprintf "Singular.norm: unexpected result %s\n"
                   (String.concat "\n" repls))
+
+let norm before e =
+  let (se,c,hv) = abstract_non_field before e in
+  (* handle some simple special cases
+     without calling Singular *)
+  match se with
+  | SV i         -> Ht.find hv i
+  | SNat n       -> mk_FNat n
+  | SOpp(SNat n) -> mk_FOpp (mk_FNat n)
+  | SOpp(SV i)   -> mk_FOpp (Ht.find hv i)
+  | SMult(SNat 1, SV i)
+  | SMult(SV i, SNat 1) -> Ht.find hv i
+  | SMult(SNat i, SNat j) -> mk_FNat (i * j)
+  | SMult(SV i, SV j) -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
+  | _ -> norm_singular se c hv

@@ -56,7 +56,7 @@ rule lex = parse
   | "rctxt_ev"       { RCTXT_EV }
   | "in"    { IN }
   | "L_"    { LIST }
-  | ['1'-'9']['0'-'9']* as s { INT(int_of_string(s)) }
+  | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
     as s { ID s }
