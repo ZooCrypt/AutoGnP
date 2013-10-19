@@ -3,6 +3,7 @@ open Poly
 open SingLexer
 
 module F = Format
+module Ht = Hashtbl
 
 (* Singular field expression *)
 type fexp =
@@ -158,8 +159,11 @@ let norm before e =
                       var_string
                       (string_of_fexp se)
   in
-  Gc.compact (); (* note that if this is commented out, Test_Proof_BB1.ml fails *)
-  let import s = term_of_poly hv (parse_poly s) in
+  let import s =
+    term_of_poly (map_poly (fun i -> try Ht.find hv i
+                                     with Not_found -> failwith "invalid variable returned by Singular")
+                 (parse_poly s))
+  in
   match call_singular cmd 3 with
   | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
       let num   = import snum  in

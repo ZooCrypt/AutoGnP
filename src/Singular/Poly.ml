@@ -5,21 +5,22 @@ open Util
 module F = Format
 
 type var = int
-type monom = (var * int) list (* m_i = x_i^j_i *)
+type 'a monom = ('a * int) list (* m_i = x_i^j_i *)
 type coeff = int
-type poly = (coeff * monom) list (* a_1 * m_1 + .. + a_k * m_k *)
+type 'a poly = (coeff * 'a monom) list (* a_1 * m_1 + .. + a_k * m_k *)
 
-let terms_of_monom hv (m : monom) =
-  let go acc (i,k) =
-    let e = try Hashtbl.find hv i with Not_found -> assert false in
-    replicate_r acc k e in 
+let map_poly f p =
+  List.map (fun (c,m) -> (c, List.map (fun (x,e) -> (f x,e)) m)) p
+
+let terms_of_monom (m : 'a monom) =
+  let go acc (x,k) = replicate_r acc k x in 
   let l = List.fold_left go [] m in
   List.sort e_compare l 
 
 (* TODO move this *)
 let mk_FTwo = mk_FPlus [mk_FOne; mk_FOne]
 
-let rec of_pos_int n = 
+let rec of_pos_int n =
   if n <= 1 then mk_FOne 
   else 
     let q = n lsr 1 in
@@ -28,13 +29,13 @@ let rec of_pos_int n =
     if r = 1 then mk_FPlus [tq; mk_FOne]
     else tq 
 
-let of_int n = 
+let of_int n =
   if n = 0 then mk_FZ
   else if n > 0 then of_pos_int n
   else mk_FOpp (of_pos_int (-n))
 
-let term_of_poly hv p =
-  let summand (i,m) = match i, terms_of_monom hv m with
+let term_of_poly p =
+  let summand (i,m) = match i, terms_of_monom m with
     | _,[]  -> of_int i
     | 1,mes  -> mk_FMult mes
     | -1,mes -> mk_FOpp (mk_FMult mes)
@@ -45,6 +46,10 @@ let term_of_poly hv p =
   in
   let s = List.map summand p in
   mk_FPlus (List.sort e_compare s)
+
+(* takes a term in normal form and returns the corresponding polynomial 
+   fails if given term is not in normal-form *)
+let poly_of_term _ = failwith "not implemented"
 
 (* for debugging only *)
 
