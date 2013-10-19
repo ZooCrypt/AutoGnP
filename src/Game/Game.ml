@@ -366,6 +366,11 @@ let ju_equal ju1 ju2 =
   gcs_equal ju1.ju_gdef ju2.ju_gdef &&
     e_equal ju1.ju_ev ju2.ju_ev
 
+let gdef_vars ju =
+  let vs = ref Se.empty in
+  iter_gdef_exp (fun e -> vs := Se.union !vs (e_vars e)) ju;
+  !vs
+
 let ju_vars ju =
   let vs = ref Se.empty in
   iter_ju_exp (fun e -> vs := Se.union !vs (e_vars e)) ju;

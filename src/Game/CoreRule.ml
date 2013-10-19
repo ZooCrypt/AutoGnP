@@ -3,6 +3,7 @@ open Type
 open Expr
 open Game
 open Wf
+open Assumption
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Rules and tactic language} *)
@@ -202,7 +203,7 @@ let rrandom_indep ju =
   | _ -> failwith "can not apply rrandom_indep"
     
 
-(** Decisional reducions *)
+(** Reduction to decisional assumptions *)
 
 (* decisional diffie-hellman *)
 let check_ddh a b ex ey ez c ev =
@@ -270,6 +271,59 @@ let rbddh vsu ju =
         i1 :: i2:: i3 :: GSamp(vsu,(mk_Fq,[])) :: 
           i4 :: i5 :: i6 :: GLet(_U,mk_GExp (mk_GGen (destr_G eU.e_ty)) vu) :: _C }]
   | _ -> failwith "can not apply bddh"
+
+let ddh_assm =
+  let gn = Groupvar.mk "1" in
+  let tG = mk_G gn in
+  let va = Vsym.mk "a" mk_Fq in
+  let vb = Vsym.mk "b" mk_Fq in
+  let vc = Vsym.mk "c" mk_Fq in
+  let vga = Vsym.mk "ga" tG in
+  let vgb = Vsym.mk "gb" tG in
+  let vt  = Vsym.mk "t"  tG in
+  let prefix =
+    [ GSamp(va,(mk_Fq,[]));
+      GSamp(vb,(mk_Fq,[]));
+      GLet(vga,mk_GExp (mk_GGen gn) (mk_V va));
+      GLet(vgb,mk_GExp (mk_GGen gn) (mk_V vb)) ]
+  in
+  let prefix1 = prefix @
+    [GLet(vt, mk_GExp (mk_GGen gn) (mk_FMult [mk_V va; mk_V vb]))]
+  in
+  let prefix2 = prefix @
+    [ GSamp(vc,(mk_Fq,[]));
+      GLet(vt, mk_GExp (mk_GGen gn) (mk_V vc))]
+  in
+  let pvars =
+    List.fold_left (fun acc x -> Vsym.S.add x acc)
+      Vsym.S.empty [va; vb; vc]
+  in
+  mk_ad prefix1 prefix2 pvars
+
+(* 'rassm_decision assm substv substgv ju'
+   takes a decisional assumption 'assm', a
+   bijection 'substv' mapping the variables in
+   'assm' to some other set of variables, and a
+   bijection 'substv' mapping the group variables
+   of 'assm' to some other set of variables.
+   Then:
+   1. Apply 'subst' to 'assm'
+   2. If prefix of 'ju.ju_gdef' is equal to
+      'assm.ad_prefix1' and none of the variables
+      in 'ad_privvars' occur in the remainder of
+      'ju.ju_gdef', replace the prefix by
+      'assm.ad_prefix2'.
+*)
+let rassm_decision _subst _assm _ju =
+  failwith "not implemented yet"
+
+(* FIXME: Move to Rules.ml.
+   Return bijection from variables in
+   assm to subset of variables in ju.ju_gdef
+   (+ freshvars) and bijection from groupvars
+   in assm to groupvars in ju.ju_gdef. *)
+let unify_assm _assm _ju _freshvars =
+   failwith "not implemented"
 
 (** Rules for random oracles *)
 
