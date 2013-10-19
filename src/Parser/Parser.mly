@@ -257,7 +257,7 @@ gcmd :
 | i = ID SAMP t = typ0                          { GSamp(i,t,[]) }
 
 gcmdlist0 :
-| c = gcmd { [c] }
+| c = gcmd SEMICOLON { [c] }
 | c = gcmd SEMICOLON cs = gcmdlist0 { c::cs }
 
 gdef0 :

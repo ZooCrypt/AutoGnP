@@ -12,7 +12,7 @@ prove
     y <-$ Fq;
     let he = H(pk ^ y);
     let c  = (g ^ y, he ++ mb);
-    b' <- A2(c)
+    b' <- A2(c);
   ] : b = b'.  
 
 print_goals : start.

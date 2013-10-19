@@ -1,0 +1,32 @@
+adversary A1 : () -> Fq.
+adversary A2 : (G * G * G_s * G_s * G_t) -> (G_t * G_t).
+adversary A3 : (G_t * G * G) -> Bool.
+oracle Kg1 : Fq -> (G_s * G_s).
+oracle Kg2 : Fq -> (G_s * G_s).
+bilinear map e : G * G_s -> G_t.
+
+prove
+  [ i' <- A1();
+    alpha <-$ Fq;
+    beta  <-$ Fq;
+    delta <-$ Fq;
+    let g1  = g^alpha;
+    let h1  = g^delta;
+    let g1' = g_s^alpha;
+    let h1' = g_s^delta;
+    let g0' = g_s^(alpha*beta);
+    let v = e(g,g0');
+    (m0,m1) <- A2(g1,h1,g1',h1',v) with
+      Kg1(i1) = [ (g0'*(g1'^i1*h1')^r1, g_s^r1)
+                | not (i1 = i'), r1 <-$ Fq ];
+    b <-$ Bool;
+    let mb = b?m0:m1;
+    s <-$ Fq;
+    let c1 = mb*v^s;
+    let c2 = g^s;
+    let c3 = (g1^i'*h1)^s;
+    b' <- A3(c1, c2, c3) with
+      Kg2(i2) = [ (g0'*(g1'^i2*h1')^r2, g_s^r2)
+                | not (i2 = i'), r2 <-$ Fq ];
+  ] : b = b'.  print_goals : start.
+  rnorm.  print_goals : correct.

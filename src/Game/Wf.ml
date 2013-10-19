@@ -61,7 +61,7 @@ let ty_of_op ty argtys o =
   match o with
   | GExp     -> let gv = ensure_ty_G ty in ([mk_G gv;mk_Fq],mk_G gv,[])
   | GLog(gv) -> ([mk_G gv],mk_Fq,[])
-  | EMap(es) -> ([mk_G (es.Esym.source1); mk_G (es.Esym.source1)], mk_G (es.Esym.target),[])
+  | EMap(es) -> ([mk_G (es.Esym.source1); mk_G (es.Esym.source2)], mk_G (es.Esym.target),[])
   | FMinus   -> ([mk_Fq;mk_Fq],mk_Fq,[])
   | FOpp     -> ([mk_Fq],mk_Fq,[])
   | FInv     -> ([mk_Fq],mk_Fq,[0]) (* argument 0 must be nonzero *)
