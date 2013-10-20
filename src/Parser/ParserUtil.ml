@@ -81,6 +81,11 @@ let mk_ps () =
     ps_vars    = Ht.create 20; 
     ps_goals   = None }
 
+let ps_resetvars ps =
+  { ps with
+    ps_vars    = Ht.create 20;
+    ps_goals   = None }
+
 let create_lenvar ps s =
   try Ht.find ps.ps_tvars s 
   with Not_found ->
@@ -262,6 +267,7 @@ let ju_of_parse_ju reuse ps gd e =
 
 type tactic =
     Rnorm
+  | Rnorm_nounfold    
   | Rnorm_unknown of string list
   | Rswap of int * int
   | Rctxt_ev of string * parse_expr
@@ -271,6 +277,7 @@ type tactic =
   | Rbddh of string
   | Rddh of string
   | Rlet_abstract of int * string * parse_expr
+  | Rlet_unfold of int
   | Rindep
   | Rbad of int * string
 

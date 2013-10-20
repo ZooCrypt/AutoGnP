@@ -95,4 +95,13 @@ let rlet_abstract p vs e ju =
     in
     rconv (set_ju_ctxt cmds juc) ju
 
-
+let rlet_unfold p ju =
+  match get_ju_ctxt ju p with
+  | GLet(vs,e), juc ->
+    let subst a = e_replace (mk_V vs) e a in
+    let juc = { juc with
+                juc_right = map_gdef_exp subst juc.juc_right;
+                juc_ev = subst juc.juc_ev }
+    in
+    rconv (set_ju_ctxt [] juc) ju
+  | _ -> assert false

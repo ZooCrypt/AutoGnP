@@ -79,6 +79,7 @@
 %token PRINTGOALS
 %token RNORM
 %token RNORM_UNKNOWN
+%token RNORM_NOUNFOLD
 %token RRANDOM
 %token RRANDOM_ORACLE
 %token RSWAP
@@ -88,6 +89,7 @@
 %token RINDEP
 %token RBAD
 %token RLET_ABSTRACT
+%token RLET_UNFOLD
 %token RCTXT_EV
 
 
@@ -286,6 +288,7 @@ instr :
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }
 | RNORM DOT { Apply(Rnorm) }
+| RNORM_NOUNFOLD DOT { Apply(Rnorm_nounfold) }
 | RNORM_UNKNOWN DOT { Apply(Rnorm_unknown([])) }
 | RNORM_UNKNOWN is = idlist DOT { Apply(Rnorm_unknown(is)) }
 | RINDEP DOT { Apply(Rindep) }
@@ -294,6 +297,7 @@ instr :
 | RDDH s = ID DOT { Apply(Rddh(s)) }
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? DOT { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
+| RLET_UNFOLD i = NAT DOT { Apply(Rlet_unfold(i-1)) }
 | RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN
           i3 = ID DOT { Apply(Rrandom(i-1,i1,e1,i2,e2,i3)) }
 | RRANDOM_ORACLE LPAREN i = NAT COMMA j = NAT COMMA k = NAT RPAREN

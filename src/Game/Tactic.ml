@@ -11,6 +11,8 @@ let handle_tactic ps tac jus =
   match tac with
   | Rnorm -> apply_rule rnorm ps
 
+  | Rnorm_nounfold ->
+    apply_rule rnorm_nounfold ps
   | Rnorm_unknown(is) ->
     let vs = List.map (fun s -> mk_V (Ht.find ps.ps_vars s)) is in
     apply_rule (rnorm_unknown vs) ps
@@ -68,6 +70,9 @@ let handle_tactic ps tac jus =
     let e = expr_of_parse_expr ps e in
     let v = create_var false ps sv e.e_ty in
     apply_rule (rlet_abstract i v e) ps
+
+  | Rlet_unfold(i) ->
+    apply_rule (rlet_unfold i) ps
 
   | Rrandom(i,sv1,e1,sv2,e2,svlet) ->
     let ty =
@@ -163,6 +168,7 @@ let handle_instr ps instr =
       (Asym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     ps
   | Judgment(gd, e) ->
+    let ps = ps_resetvars ps in
     let ju = ju_of_parse_ju false ps gd e in
     { ps with ps_goals = Some([ju]) }
 

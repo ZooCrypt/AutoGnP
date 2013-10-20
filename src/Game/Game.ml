@@ -49,7 +49,7 @@ type judgment = { ju_gdef : gdef; ju_ev : ev }
 let pp_distr fmt (ty,es) = 
   match es with
   | [] -> pp_ty fmt ty
-  | _  -> F.fprintf fmt "@[<hov 2>%a \\@ {@[<hov 0>%a]}@]" pp_ty ty
+  | _  -> F.fprintf fmt "@[<hov 2>%a \\ {@[<hov 0>%a}@]@]" pp_ty ty
             (pp_list "," pp_exp) es
 
 (*let pp_v fmt v = F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
