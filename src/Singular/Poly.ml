@@ -73,7 +73,32 @@ let term_of_poly p =
 
 (* takes a term in normal form and returns the corresponding polynomial 
    fails if given term is not in normal-form *)
-let poly_of_term _ = failwith "not implemented"
+let polys_of_field_expr e =
+  let rec conv_fe0 e =
+    if is_FPlus e
+    then List.map conv_mon (destr_FPlus e)
+    else [ conv_mon e ]
+  and conv_mon e =
+    if is_FOpp e
+    then conv_mon0 (fun x -> - x) (destr_FOpp e)
+    else conv_mon0 (fun x -> x) e
+  and conv_mon0 minv e =
+    if is_FMult e then
+      (match destr_FMult e with
+       | x::xs ->
+           (match x.e_node with
+            | Cnst(FNat n) -> (minv n, xs)
+            | _ -> (minv 1, x::xs))
+       | _ -> assert false)
+    else
+      (match e.e_node with
+       | Cnst(FNat n) -> (minv n, [])
+       | _            -> (minv 1, [e]))
+  in
+  if is_FDiv e then
+    let (e1,e2) = destr_FDiv e in
+    (conv_fe0 e1, Some(conv_fe0 e2))
+  else (conv_fe0 e, None)
 
 (* for debugging only *)
 

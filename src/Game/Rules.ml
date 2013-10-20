@@ -18,10 +18,10 @@ let runfold_only ju =
   let new_ju = norm_ju ~norm:(fun x -> x) ju in
   rconv new_ju ju
 
-(* reponent rewriting *)
+(* exponent rewriting *)
 let simp_exp e unknown =
-  let norm_mult e = norm_expr (mk_FMult e) in
-  let norm_fopp e = norm_expr (mk_FOpp e) in
+  let norm_mult es = mk_FMult (List.sort e_compare es) in
+  let norm_fopp e  = mk_FOpp e in
   let rec split_unknown e =
     let is_unknown e = is_GLog e || Se.mem e unknown in
     match e.e_node with
