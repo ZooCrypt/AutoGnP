@@ -51,13 +51,13 @@ type 'a poly = (coeff * 'a monom) list (* a_1 * m_1 + .. + a_k * m_k *)
 let map_poly f p =
   List.map (fun (c,m) -> (c, List.map (fun (x,e) -> (f x,e)) m)) p
 
-let terms_of_monom (m : 'a monom) =
+let exps_of_monom (m : 'a monom) =
   let go acc (x,k) = replicate_r acc k x in 
   let l = List.fold_left go [] m in
   List.sort e_compare l 
 
-let term_of_poly p =
-  let summand (i,m) = match i, terms_of_monom m with
+let exp_of_poly p =
+  let summand (i,m) = match i, exps_of_monom m with
     | _,[]   -> if i < 0 then mk_FOpp (mk_FNat (-i)) else mk_FNat i
     | 1,mes  -> mk_FMult mes
     | -1,mes -> mk_FOpp (mk_FMult mes)
@@ -83,22 +83,24 @@ let polys_of_field_expr e =
     then conv_mon0 (fun x -> - x) (destr_FOpp e)
     else conv_mon0 (fun x -> x) e
   and conv_mon0 minv e =
+    let add_exponents es = List.map (fun e -> (e,1)) es in
     if is_FMult e then
       (match destr_FMult e with
        | x::xs ->
            (match x.e_node with
-            | Cnst(FNat n) -> (minv n, xs)
-            | _ -> (minv 1, x::xs))
+            | Cnst(FNat n) -> (minv n, add_exponents xs)
+            | _ -> (minv 1, add_exponents (x::xs)))
        | _ -> assert false)
     else
       (match e.e_node with
        | Cnst(FNat n) -> (minv n, [])
-       | _            -> (minv 1, [e]))
+       | _            -> (minv 1, add_exponents [e]))
   in
   if is_FDiv e then
     let (e1,e2) = destr_FDiv e in
     (conv_fe0 e1, Some(conv_fe0 e2))
   else (conv_fe0 e, None)
+
 
 (* for debugging only *)
 
@@ -116,3 +118,13 @@ let string_of_poly p =
                                    (if i = 1 then "" else string_of_int i)
                                    ^(string_of_monom m)) p)
 
+
+let factor_out a p =
+  lefts_rights
+    (List.map
+      (fun (c,es) ->
+         match List.partition (fun (e,_) -> e_equal e a) es with
+         | ([(_,1)],others) -> Left(c,others)
+         | ([],others)      -> Right(c,others)
+         | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a |> fsget))
+      p)

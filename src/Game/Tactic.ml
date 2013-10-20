@@ -3,8 +3,20 @@ open CoreRule
 open Rules
 open Expr
 open Type
+open Util
 
 module Ht = Hashtbl
+
+let invert_ctxt (v,e) =
+  match Poly.polys_of_field_expr (Singular.norm (fun x -> x) e) with
+  | (nom, None) ->
+    (* v = v' * g + h => v' = (v - h) / g *)
+    let (g,h) = Poly.factor_out (mk_V v) nom in
+    let e' = mk_FDiv (mk_FMinus (mk_V v) (Poly.exp_of_poly h))
+                     (Poly.exp_of_poly g)
+    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
+  | _ ->
+    failwith "invert does not support non-trivial denominators in contexts"
 
 let handle_tactic ps tac jus =
   let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in
@@ -74,7 +86,7 @@ let handle_tactic ps tac jus =
   | Rlet_unfold(i) ->
     apply_rule (rlet_unfold i) ps
 
-  | Rrandom(i,sv1,e1,sv2,e2,svlet) ->
+  | Rrandom(i,mctxt1,sv2,e2,svlet) ->
     let ty =
       match ps.ps_goals with
       | Some(ju::_) ->
@@ -83,16 +95,24 @@ let handle_tactic ps tac jus =
            | _ -> assert false)
       | _ -> assert false
     in
-    let v1 = create_var false ps sv1 ty in
-    let e1 = expr_of_parse_expr ps e1 in
-    Ht.remove ps.ps_vars sv1;
     let v2 = create_var false ps sv2 ty in
     let e2 = expr_of_parse_expr ps e2 in
     Ht.remove ps.ps_vars sv2;
+    let (v1,e1) = match mctxt1 with
+      | Some(sv1,e1) ->
+        let v1 = create_var false ps sv1 ty in
+        let e1 = expr_of_parse_expr ps e1 in
+        Ht.remove ps.ps_vars sv1;
+        (v1,e1)
+      | None when ty_equal ty mk_Fq ->
+        invert_ctxt (v2,e2)
+      | None ->
+        failwith "invert only implemented for Fq"
+    in
     let vlet = create_var false ps svlet ty in
     apply_rule (rrandom i (v1,e1) (v2,e2) vlet) ps
 
-  | Rrandom_oracle(i,j,k,sv1,e1,sv2,e2,svlet) ->
+  | Rrandom_oracle(i,j,k,mctxt1,sv2,e2,svlet) ->
     let ty =
       match ps.ps_goals with
       | Some(ju::_) ->
@@ -101,12 +121,20 @@ let handle_tactic ps tac jus =
          | _ -> assert false)
       | _ -> assert false
     in
-    let v1 = create_var false ps sv1 ty in
-    let e1 = expr_of_parse_expr ps e1 in
-    Ht.remove ps.ps_vars sv1;
     let v2 = create_var false ps sv2 ty in
     let e2 = expr_of_parse_expr ps e2 in
     Ht.remove ps.ps_vars sv2;
+    let (v1,e1) = match mctxt1 with
+      | Some(sv1,e1) ->
+        let v1 = create_var false ps sv1 ty in
+        let e1 = expr_of_parse_expr ps e1 in
+        Ht.remove ps.ps_vars sv1;
+        (v1,e1)
+      | None when ty_equal ty mk_Fq ->
+        invert_ctxt (v2,e2)
+      | None ->
+        failwith "invert only implemented for Fq"
+    in
     let vlet = create_var false ps svlet ty in
     apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2) vlet) ps
 

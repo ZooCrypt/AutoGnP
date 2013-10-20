@@ -91,6 +91,7 @@
 %token RLET_ABSTRACT
 %token RLET_UNFOLD
 %token RCTXT_EV
+%token UNDERSCORE
 
 
 /************************************************************************/
@@ -298,12 +299,22 @@ instr :
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? DOT { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT DOT { Apply(Rlet_unfold(i-1)) }
-| RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN
-          i3 = ID DOT { Apply(Rrandom(i-1,i1,e1,i2,e2,i3)) }
+| RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN
+                  LPAREN i2 = ID TO e2 = expr0 RPAREN
+                  i3 = ID DOT { Apply(Rrandom(i-1,Some(i1,e1),i2,e2,i3)) }
+| RRANDOM i = NAT UNDERSCORE
+                  LPAREN i2 = ID TO e2 = expr0 RPAREN
+                  i3 = ID DOT { Apply(Rrandom(i-1,None,i2,e2,i3)) }
 | RRANDOM_ORACLE LPAREN i = NAT COMMA j = NAT COMMA k = NAT RPAREN
-                 LPAREN i1 = ID TO e1 = expr0 RPAREN LPAREN i2 = ID TO e2 = expr0 RPAREN
+                 LPAREN i1 = ID TO e1 = expr0 RPAREN
+                 LPAREN i2 = ID TO e2 = expr0 RPAREN
                  i3 = ID DOT
-                 { Apply(Rrandom_oracle(i-1,j-1,k-1,i1,e1,i2,e2,i3)) }
+                 { Apply(Rrandom_oracle(i-1,j-1,k-1,Some(i1,e1),i2,e2,i3)) }
+| RRANDOM_ORACLE LPAREN i = NAT COMMA j = NAT COMMA k = NAT RPAREN
+                 UNDERSCORE
+                 LPAREN i2 = ID TO e2 = expr0 RPAREN
+                 i3 = ID DOT
+                 { Apply(Rrandom_oracle(i-1,j-1,k-1,None,i2,e2,i3)) }
 | RBAD i=NAT s = ID DOT { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN  DOT
    { Apply(Rctxt_ev(i1,e1)) }

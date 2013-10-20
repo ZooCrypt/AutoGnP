@@ -82,6 +82,7 @@ rule lex = parse
   | "|"     { MID }
   | "->"    { TO }
   | "."     { DOT }
+  | "_"     { UNDERSCORE }
 
 (*  | "{"     { LBRACE } *)
 (*  | "}"     { RBRACE } *)

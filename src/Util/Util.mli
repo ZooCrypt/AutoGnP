@@ -121,3 +121,12 @@ val pp_list_s : Format.formatter -> string list -> unit
 val input_file : string -> string
 
 val assert_msg : bool -> string -> unit
+
+type ('a,'b) either = Left of 'a | Right of 'b
+
+val lefts : (('a,'b) either) list -> 'a list
+
+val rights : (('a,'b) either) list -> 'b list
+
+val lefts_rights : (('a,'b) either) list -> ('a list * 'b list)
+

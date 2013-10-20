@@ -124,10 +124,12 @@ let rec wf_exp wfs e0 =
       | App(op,es) ->
         let (tys,rty,nz) = ty_of_op e.e_ty (List.map (fun e -> e.e_ty) es) op in
         assert (list_eq_for_all2 ty_equal tys (List.map go es));
-        assert (List.for_all
+        assert_msg (List.for_all
                   (fun i -> Se.mem (norm_expr (List.nth es i)) wfs.wf_nzero
                          || Se.mem (norm_expr (mk_FOpp (List.nth es i))) wfs.wf_nzero)
-                  nz);
+                  nz)
+          (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp)
+            (List.map (fun i -> List.nth es i) nz) |> fsget);
         assert (ty_equal rty e.e_ty);
         rty
     in ty

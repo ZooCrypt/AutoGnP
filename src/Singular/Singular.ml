@@ -156,9 +156,9 @@ let norm_singular se c hv =
                       (string_of_fexp se)
   in
   let import s =
-    term_of_poly (map_poly (fun i -> try Ht.find hv i
+    exp_of_poly (map_poly (fun i -> try Ht.find hv i
                                      with Not_found -> failwith "invalid variable returned by Singular")
-                 (parse_poly s))
+                (parse_poly s))
   in
   match call_singular cmd 3 with
   | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)

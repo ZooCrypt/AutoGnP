@@ -151,3 +151,26 @@ let input_file file_name =
 
 let assert_msg b m =
   if not b then failwith m
+
+type ('a,'b) either = Left of 'a | Right of 'b
+
+let lefts l =
+  let rec go acc xs = match xs with
+    | Left(x)::xs  -> go (x::acc) xs
+    | Right(_)::xs -> go acc      xs
+    | [] -> List.rev acc
+  in go [] l
+
+let rights l =
+  let rec go acc xs = match xs with
+    | Left(_)::xs  -> go acc      xs
+    | Right(x)::xs -> go (x::acc) xs
+    | [] -> List.rev acc
+  in go [] l
+
+let lefts_rights l =
+  let rec go lacc racc xs = match xs with
+    | Left(x)::xs  -> go (x::lacc) racc      xs
+    | Right(x)::xs -> go lacc      (x::racc) xs
+    | [] -> (List.rev lacc, List.rev racc)
+  in go [] [] l

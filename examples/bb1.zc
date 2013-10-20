@@ -24,13 +24,11 @@ prove
   ] : b = b'.  print_goals : start.
 
   rnorm.  rswap 7 -3.  print_goals : after_norm.
-  rrandom 5 (x -> x - d*i') (x -> x + d* i') z.
+  rrandom 5 _ (x -> x + d * i') z.
   rnorm. print_goals : after_random.
-  rrandom_oracle (6,1,2) (x -> (x - c) / (i1 -i'))
-                         (x -> x * (i1 - i') + c) zz.
+  rrandom_oracle (6,1,2) _ (x -> x * (i1 - i') + c) zz.
   rnorm.  print_goals : after_random_Kg1.
-  rrandom_oracle (8,1,2) (x -> (x - c) / (i2 -i'))
-                         (x -> x * (i2 - i') + c) zzz.
+  rrandom_oracle (8,1,2) _ (x -> x * (i2 - i') + c) zzz.
   rnorm.  print_goals : after_random_Kg2.
   rswap 1 3.  print_goals : swap_1_1.
   rnorm_unknown (c,d,e).  print_goals : norm_uk.
