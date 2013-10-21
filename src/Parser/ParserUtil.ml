@@ -64,10 +64,11 @@ type proofstate =
   { ps_tvars   : (string, T.Lenvar.id) Ht.t; 
     ps_gvars   : (string, T.Groupvar.id) Ht.t; 
     ps_rodecls : (string, Hsym.t) Ht.t;
-    ps_odecls  : (string,Osym.t) Ht.t;
-    ps_adecls  : (string,Asym.t) Ht.t;
-    ps_emdecls : (string,Esym.t) Ht.t;
-    ps_vars    : (string,Vsym.t) Ht.t;
+    ps_odecls  : (string, Osym.t) Ht.t;
+    ps_adecls  : (string, Asym.t) Ht.t;
+    ps_emdecls : (string, Esym.t) Ht.t;
+    ps_assm    : (string, Assumption.assumption_decision) Ht.t;
+    ps_vars    : (string, Vsym.t) Ht.t;
     ps_goals   : (G.judgment list) option
   }
 
@@ -78,6 +79,7 @@ let mk_ps () =
     ps_odecls  = Ht.create 20; 
     ps_adecls  = Ht.create 20;
     ps_emdecls = Ht.create 20;
+    ps_assm    = Ht.create 5;
     ps_vars    = Ht.create 20; 
     ps_goals   = None }
 
@@ -276,18 +278,20 @@ type tactic =
   | Requiv of gdef * parse_expr option
   | Rbddh of string
   | Rddh of string
+  | Rassm of [`LtoR | `RtoL] * string * string list
   | Rlet_abstract of int * string * parse_expr
   | Rlet_unfold of int
   | Rindep
   | Rbad of int * string
 
 type instr =
-  | RODecl of string * parse_ty * parse_ty
-  | EMDecl of string * string * string * string
-  | ODecl  of string * parse_ty * parse_ty
-  | ADecl  of string * parse_ty * parse_ty
-  | Judgment of gdef * parse_expr
+  | RODecl     of string * parse_ty * parse_ty
+  | EMDecl     of string * string * string * string
+  | ODecl      of string * parse_ty * parse_ty
+  | ADecl      of string * parse_ty * parse_ty
+  | AssmDec    of string * gdef * gdef * string list
+  | Judgment   of gdef * parse_expr
   | PrintGoals of string
-  | Apply of tactic
+  | Apply      of tactic
 
 type theory = instr list

@@ -209,6 +209,9 @@ let write_gcmd = function
 
 let write_gcmds c = fold_union write_gcmd c
 
+let read_ju ju = 
+  Se.union (read_gcmds ju.ju_gdef) (e_vars ju.ju_ev)
+
 let has_log_distr (_,es) = List.exists has_log es
   
 let has_log_lcmd = function
@@ -449,3 +452,31 @@ let norm_ju ?norm:(nf=Norm.norm_expr) ju =
   let g,s = norm_gdef ~norm:nf ju.ju_gdef in
   { ju_gdef = g;
     ju_ev = nf (e_subst s ju.ju_ev) }
+
+
+(* Variable renaming *)
+
+let subst_v_e tov = 
+  let aux e = match e.e_node with V v -> mk_V (tov v) | _ -> raise Not_found in
+  e_map_top aux
+
+let subst_v_lc tov = function
+  | LLet (v, e) -> LLet(tov v, subst_v_e tov e)
+  | LBind (vs,lh) -> LBind (List.map tov vs, lh)
+  | LSamp(v,d) -> LSamp(tov v, map_distr_exp (subst_v_e tov) d)
+  | LGuard e -> LGuard (subst_v_e tov e)
+
+let subst_v_odef tov (o,vs,lc,e) =
+  let vs = List.map tov vs in
+  let lc = List.map (subst_v_lc tov) lc in
+  let e = subst_v_e tov e in
+  (o, vs, lc, e)
+
+let subst_v_gc tov = function
+  | GLet(v,e) -> GLet(tov v, subst_v_e tov e)
+  | GSamp(v, d) -> GSamp(tov v, map_distr_exp (subst_v_e tov) d)
+  | GCall(vs, asym, e, odefs) ->
+    GCall(List.map tov vs, asym, subst_v_e tov e,
+          List.map (subst_v_odef tov) odefs)
+  
+let subst_v_gdef tov = List.map (subst_v_gc tov)

@@ -91,6 +91,19 @@ let handle_tactic ps tac jus =
     let v = create_var false ps s mk_Fq in
     apply_rule (rddh v) ps
 
+  | Rassm(dir, s,xs) ->
+    let assm = 
+      try Ht.find ps.ps_assm s 
+      with Not_found -> failwith ("error no assumption "^s) in
+    let needed = Assumption.needed_var dir assm in
+    if List.length needed <> List.length xs then
+      failwith "Bad number of variables";
+    let subst = 
+      List.fold_left2 (fun s v x -> 
+        let v' = create_var true ps x v.Vsym.ty in
+        Vsym.M.add v v' s) Vsym.M.empty needed xs in
+    apply_rule (Rules.rassm dir assm subst) ps
+
   | Rlet_abstract(i,sv,e) ->
     let e = expr_of_parse_expr ps e in
     let v = create_var false ps sv e.e_ty in
@@ -208,6 +221,19 @@ let handle_instr ps instr =
     Ht.add ps.ps_adecls s 
       (Asym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     ps
+  | AssmDec(s,g0,g1,priv) ->
+    let ps' = ps_resetvars ps in
+    let g0 = gdef_of_parse_gdef true ps' g0 in
+    let g1 = gdef_of_parse_gdef true ps' g1 in
+    let priv = List.fold_left (fun s x -> 
+      try Vsym.S.add (Ht.find ps'.ps_vars x) s
+      with Not_found -> failwith ("unknown variable "^x))
+      Vsym.S.empty priv in
+    if Ht.mem ps.ps_assm s then
+      failwith "assumption with the same name already exists";
+    Ht.add ps.ps_assm s (Assumption.mk_ad g0 g1 priv);
+    ps
+    
   | Judgment(gd, e) ->
     let ps = ps_resetvars ps in
     let ju = ju_of_parse_ju false ps gd e in

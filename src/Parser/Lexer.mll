@@ -36,6 +36,7 @@ rule lex = parse
   | "let"   { LET }
   | "adversary" { ADVERSARY }
   | "oracle" { ORACLE }
+  | "assumption" { ASSUMPTION }
   | "random" { RANDOM }
   | "bilinear" { BILINEAR }
   | "map" { MAP }

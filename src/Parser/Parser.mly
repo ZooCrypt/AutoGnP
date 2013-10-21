@@ -71,6 +71,7 @@
 %token TO
 %token ADVERSARY
 %token ORACLE
+%token ASSUMPTION
 %token RANDOM
 %token BILINEAR
 %token MAP
@@ -280,11 +281,20 @@ int:
 event:
 | COLON e = expr0 { e }
 ;
+
+dir:
+| LEFTARROW { `RtoL }
+| TO        { `LtoR }
+;
+
 instr :
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ODecl(i,t1,t2) }
 | RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 DOT { RODecl(i,t1,t2) }
 | BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG DOT { EMDecl(i,g1,g2,g3) }
+| ASSUMPTION i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
+   p=ID* DOT
+    { AssmDec(i,g0,g1,p) }
 | PROVE  LBRACKET g = gdef0 RBRACKET e=event DOT { Judgment(g,e) }
 | PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
 | PRINTGOALS DOT { PrintGoals("") }
@@ -296,6 +306,7 @@ instr :
 | RSWAP i = NAT j =int DOT { Apply(Rswap(i-1,j)) }
 | RBDDH s = ID DOT { Apply(Rbddh(s)) }
 | RDDH s = ID DOT { Apply(Rddh(s)) }
+| ASSUMPTION d=dir s=ID xs=ID* DOT { Apply (Rassm(d,s,xs))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? DOT { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT DOT { Apply(Rlet_unfold(i-1)) }

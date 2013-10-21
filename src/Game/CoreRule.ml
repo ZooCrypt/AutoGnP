@@ -314,8 +314,28 @@ let ddh_assm =
       'ju.ju_gdef', replace the prefix by
       'assm.ad_prefix2'.
 *)
-let rassm_decision _subst _assm _ju =
-  failwith "not implemented yet"
+
+type dir = [`RtoL | `LtoR]
+
+let rassm_decision (dir : dir) subst assm ju =
+  let assm = Assumption.subst subst assm in
+  let c,c' = 
+    if dir = `LtoR then assm.ad_prefix1,assm.ad_prefix2 
+    else assm.ad_prefix2,assm.ad_prefix1 in
+  let cju = Util.take (List.length c) ju.ju_gdef in
+  if not (gcs_equal c cju) then 
+    failwith "Can not match the dicisional assumption";
+  let tl = Util.drop (List.length c) ju.ju_gdef in
+  let ju' = { ju with ju_gdef = tl } in
+  let read = read_ju ju' in
+  let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
+  let diff = Se.inter priv read in
+  if not (Se.is_empty diff) then
+    failwith "Do not respect the private variable";
+  if not (is_ppt_ju ju') then
+    failwith "Do not respect the computational assumption";
+  [{ ju with ju_gdef = c' @ tl }]
+
 
 (* FIXME: Move to Rules.ml.
    Return bijection from variables in

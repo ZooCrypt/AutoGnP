@@ -105,3 +105,19 @@ let rlet_unfold p ju =
     in
     rconv (set_ju_ctxt [] juc) ju
   | _ -> assert false
+
+
+let rassm dir assm subst ju =
+  let c = 
+    if dir = `LtoR then assm.Assumption.ad_prefix1 
+    else assm.Assumption.ad_prefix1 in
+  let jc = Util.take (List.length c) ju.ju_gdef in
+  let subst = 
+    List.fold_left2 (fun s i1 i2 ->
+      match i1, i2 with
+      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
+        when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
+        Vsym.M.add x1 x2 s
+      | _ -> failwith "rassm : can not infer subtitution")
+      subst c jc in
+  rassm_decision dir subst assm ju
