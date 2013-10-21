@@ -8,6 +8,12 @@ open Util
 module Ht = Hashtbl
 
 let invert_ctxt (v,e) =
+  let hole_occurs p =
+    List.exists
+      (fun (_,m) ->
+         List.exists (fun (e,_) -> Se.mem (mk_V v) (e_vars e)) m)
+      p
+  in
   match Poly.polys_of_field_expr (Singular.norm (fun x -> x) e) with
   | (nom, None) ->
     (* v = v' * g + h => v' = (v - h) / g *)
@@ -15,8 +21,15 @@ let invert_ctxt (v,e) =
     let e' = mk_FDiv (mk_FMinus (mk_V v) (Poly.exp_of_poly h))
                      (Poly.exp_of_poly g)
     in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
-  | _ ->
-    failwith "invert does not support non-trivial denominators in contexts"
+  | (nom, Some(denom)) when not (hole_occurs denom) ->
+    (* v = (v' * g + h) / denom => v' = (v * denom - h) / g *)
+    let (g,h) = Poly.factor_out (mk_V v) nom in
+    let e' = mk_FDiv
+               (mk_FMinus (mk_FMult [mk_V v; Poly.exp_of_poly denom]) (Poly.exp_of_poly h))
+               (Poly.exp_of_poly g)
+    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
+  | (_nom, Some(_denom)) ->
+    failwith "invert does not support denominators with hole-occurences in contexts"
 
 let handle_tactic ps tac jus =
   let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in

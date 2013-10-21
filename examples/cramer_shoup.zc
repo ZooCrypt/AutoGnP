@@ -234,7 +234,7 @@ adversary A3 : () -> (G * G * G *G).
         /\ (bd = (ba^(x1+H(ba,ba',bc)*y1) * ba'^(x2+H(ba,ba',bc)*y2))).
     print_goals : goal_2_.
     
-    (* we rewrite the expressions a bit in the decryption to reuse other exponents *)
+    (* we rewrite the expressions in the decryption a bit to reuse other exponents *)
     requiv
     [ w  <-$ Fq;
       u <-$ Fq;
@@ -269,84 +269,93 @@ adversary A3 : () -> (G * G * G *G).
     rswap 4 11.
     rrandom 15 _ (y -> y*v + x1*u + -(w*y*u) + -(w*y2*u*H(sa, sa', sc)) + y2*v*H(sa, sa',sc) + y1*u*H(sa, sa', sc))
                uuuuuu.
-    rlet_unfold 16. rnorm_nounfold. print_goals : aads.
-(*
+    rlet_unfold 16. rnorm_nounfold. rswap 5 13.
+    rlet_abstract 17 hs (H(sa, sa', sc)).
+    rlet_abstract 18 hb (H(ba, ba', bc)).
+    rlet_abstract 19 la (log(ba)).
+    rlet_abstract 20 la' (log(ba')).
+    print_goals : aads.
+    rnorm_nounfold.
+    rlet_abstract 22 mz
+    ((   u*w*w*y2*la*hs
+        - (u*w*w*y2*la*hb)
+        - (u*w*y2*la'*hs)
+        + u*w*y2*la'*hb
+        - (u*w*y1*la*hs)
+        + u*w*y1*la*hb
+        + u*x1*la'
+        + u*y1*la'*hs
+        + w*x2*la
+        - (w*y2*v*la*hs)
+        + w*y2*v*la*hb
+        - (x2*la')
+        - (x1*v*la) 
+        + y2*v*la'*hs
+        - (y2*v*la'*hb)
+        - (y1*v*la*hb))
+     / (u*w + -v)).
+    print_goals : try_TRYIT.
+    rrandom 22 _
+    (r ->
+      (   u*w*w*r*la*hs
+        - (u*w*w*r*la*hb)
+        - (u*w*r*la'*hs)
+        + u*w*r*la'*hb
+        - (u*w*y1*la*hs)
+        + u*w*y1*la*hb
+        + u*x1*la'
+        + u*y1*la'*hs
+        + w*x2*la
+        - (w*r*v*la*hs)
+        + w*r*v*la*hb
+        - (x2*la')
+        - (x1*v*la) 
+        + r*v*la'*hs
+        - (r*v*la'*hb)
+        - (y1*v*la*hb))
+     / (u*w + -v)) muu.
+     rnorm.
+     print_goals : aadsd.
+     (* cannot prove that
+          u*w*w*hs*la + -(u*w*w*hb*la) + -(u*w*hs*la') + u*w*hb*la' + -(w*v*hs*la) + w*v*hb*la + v*hs*la' + -(v*hb*la')
+        nonzero
+        
+        > ring R = (0,u,v,w,hs,hb,la,la'),(a),dp;
+        > number f = u*w*w*hs*la + -(u*w*w*hb*la) + -(u*w*hs*la') + u*w*hb*la' + -(w*v*hs*la) + w*v*hb*la + v*hs*la' + -(v*hb*la');
+        > f / (u*w - v);
+        (w*hs*la-w*hb*la-hs*la'+hb*la')
+        > f / (u*w - v*v);
+        (u*w^2*hs*la-u*w^2*hb*la-u*w*hs*la'+u*w*hb*la'-v*w*hs*la+v*w*hb*la+v*hs*la'-v*hb*la')/(u*w-v^2)
+        > f / (u*w - v);
+        (w*hs*la-w*hb*la-hs*la'+hb*la')
+        > f / ((u*w - v)*(hb - hs));
+        (-w*la+la')
+        > f / ((u*w - v)*(hb - hs)*(la'-w*la));
+        1
 
-log(bd) =
-(   
-y2*H(sa, sa', sc)
-   (
-    u*w*w*log(ba)
- -  u*w*w*log(ba)
- -  u*w*log(ba') 
- +  u*w*log(ba') 
- -  w*v*log(ba)  
- +  w*v*log(ba)  
- +  v*log(ba')   
- -  v*log(ba')
- )
+        We could try trial division for all non-zeroness assumptions, i.e., divide and check if denominator
+        of result is 1.
+        For this, we need factored/atomic inequality constraints (note that f*g <> 0 <=> (f <> 0 \/ g <> 0), so they
+        should be factored usually).
+    *)
 
- -  u*w*y1*log(ba)  *H(sa, sa', sc)
- +  u*w*y1*log(ba)  *H(ba, ba', bc)
- +  u*y1*log(ba')   *H(sa, sa', sc)
- -  y1*v*log(ba)    *H(ba, ba', bc)
- +  w*x2*log(ba)
- +  u*x1*log(ba') 
- -  x2*log(ba')
- -  x1*v*log(ba)
-) / (u*w + -v)
+    (*
+-(x1*v*la)
++ u*x1*la'
++ -(x2*la')
++ u*w*w*y2*hs*la
++ -(u*w*w*y2*hb*la)
++ -(u*w*y2*hs*la')
++ u*w*y2*hb*la'
++ -(u*w*y1*hs*la)
++ u*w*y1*hb*la
++ u*y1*hs*la'
++ -(w*y2*v*hs*la)
++ w*y2*v*hb*la
++ y2*v*hs*la'
++ -(y2*v*hb*la')
++ -(y1*v*hb*la))
+
+(-(u*w*w*y2*la*hb) + u*w*y2*la'*hb + u*w*y1*la*hb + u*x1*la' + w*y2*v*la*hb + -(x2*la') + -(x1*v*la) + -(y2*v*la'*hb) + -(y1*v*la*hb) + u*w*w*y2*la*hs + -(u*w*y2*la'*hs) + -(u*w*y1*la*hs) + u*y1*la'*hs + -(w*y2*v*la*hs) + y2*v*la'*hs)
+
 *)
-
-    (* We want to apply the random rule to make
-         log(ba)*x1  + log(ba)*H(ba,ba',bc)*y1 + log(ba')*x2 + log(ba')*H(ba,ba',bc)*y2
-       uniform independent of all other samplings since this allows us to directly bound the
-       probability of the event using rindep.
-       There are four random variables x1,x2,y1,y2 and they also occur in these other
-       exponents:
-       x1 + w*x2
-       y1 + w*y2
-       u*x1 + v*x2
-
-       we therefore have to solve (using Hb = H(ba,ba',bc), Hs = H(sa,sa',sc),la = log(ba), and la' = log(ba')
-
-       x1   x2      y1    y2      |
-       ---------------------------|
-
-       1    w       0      0      |  1  0  0  0  --| *(-u) -- *(-la)
-       u    v       u*Hs   v*Hs   |  0  0  1  0 <--| +      |
-       0    0       1      w      |  0  1  0  0             | 
-       la   la'     la*Hb  la'*Hb |  0  0  0  1 <------------ +
-
-       1   w          0     0      |  1    0  0  0
-       0   v-uw       u*Hs  v*Hs   |  -u   0  1  0 <- * 1/(v-uw)       
-       0   0          1     w      |  0    1  0  0
-       0   la'-w*la   la*Hb la'*Hb |  -la  0  0  1
-
-       1   w          0            0           |  1         0  0        0 
-       0   1          u*Hs/(v-uw)  v*Hs/(v-uw) |  -u/(v-uw) 0  1/(v-uw) 0 <---------------|+
-       0   0          1            w           |  0         1  0        0 --| *(-la*Hb) --|*(-u*Hs/(v-uw)
-       0   la'-w*la   la*Hb        la'*Hb      |  -la       0  0        1 <-|+
-
-       1   w          0    0              |  1         0             0        0 
-       0   1          0    Hs             |  -u/(v-uw) -u*Hs/(v-uw)  1/(v-uw) 0 --| * (w*la -la')
-       0   0          1    w              |  0         1             0        0   |   
-       0   la'-w*la   0    (la'-w*la)*Hb  |  -la       -la*Hb        0        1 <-- +
-
-       1   w   0  0                   |  1                         0                              0                    0 
-       0   1   0  Hs                  |  -u/(v-uw)                 -u*Hs/(v-uw)                   1/(v-uw)             0
-       0   0   1  w                   |  0                         1                              0                    0       
-       0   0   0  (la'-w*la)*(Hb-Hs)  |  -la -u/(v-uw)*(w*la -la') -la*Hb-u*Hs/(v-uw)*(w*la -la') 1/(v-uw)*(w*la -la') 1
-
-       write some code to perform matrix manipulations:
-       1. start with initial matrix
-       2. pivot 1,1
-       3. pivot 3,3
-       4. pivot 2,2
-       5. pivot 4,4
-
-       solve_matrix ((1,w,0,0),(u,v,u*Hs,v*Hs),(0,0,1,w),(la,la',la,Hb,la',Hb)) ((1,1),(3,3),(2,2),(4,4)).
-
-       Idea:
-       First handle x1 + w*x2, then y1 + w y2.
-*)
-
