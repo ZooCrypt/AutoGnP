@@ -279,6 +279,8 @@ val e_vars : expr -> Se.t
 val se_of_list : expr list -> Se.t
 
 val has_log : expr -> bool
+val is_ppt : expr -> bool
+
 
 type ctxt = Vsym.t * expr
 val inst_ctxt : ctxt -> expr -> expr

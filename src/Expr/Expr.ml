@@ -757,6 +757,9 @@ let e_vars = e_find_all is_V
 
 let has_log e = e_exists (fun e -> is_GLog e) e
 
+(* TODO : FIXME did we need more ? *)
+let is_ppt e = not (has_log e)
+
 let e_map f = 
   let tbl = He.create 103 in
   let rec aux e = 
@@ -772,7 +775,7 @@ let e_map_top f =
   let tbl = He.create 103 in
   let rec aux e = 
     try He.find tbl e 
-    with _ ->
+    with Not_found ->
       let e' = try check_fun f e with Not_found -> sub_map aux e in
       He.add tbl e e';
       e' in

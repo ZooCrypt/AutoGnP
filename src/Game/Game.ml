@@ -228,6 +228,26 @@ let has_log_gcmd = function
 
 let has_log_gcmds c = List.exists has_log_gcmd c
 
+let is_ppt_distr (_,es) = List.for_all is_ppt es
+  
+let is_ppt_lcmd = function
+  | LLet(_,e) | LGuard e -> is_ppt e
+  | LBind _ -> true
+  | LSamp(_,d) -> is_ppt_distr d
+
+let is_ppt_lcmds c = List.for_all is_ppt_lcmd c
+
+let is_ppt_o (_,_,c,e) = is_ppt e && is_ppt_lcmds c
+
+let is_ppt_gcmd = function
+  | GLet(_,e) -> is_ppt e
+  | GSamp(_,d) -> is_ppt_distr d
+  | GCall(_,_,e,os) ->
+    is_ppt e || List.for_all is_ppt_o os 
+
+let is_ppt_gcmds c = List.for_all is_ppt_gcmd c
+
+let is_ppt_ju ju = is_ppt_gcmds ju.ju_gdef && is_ppt ju.ju_ev 
 (* ----------------------------------------------------------------------- *)
 (** {5 Helper functions for rules } *)
 
