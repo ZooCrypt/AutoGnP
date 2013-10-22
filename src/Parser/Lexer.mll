@@ -47,15 +47,14 @@ rule lex = parse
   | "radd_test" { RADD_TEST }
   | "rnorm_nounfold" { RNORM_NOUNFOLD }  
   | "rlet_abstract"  { RLET_ABSTRACT }
-  | "rlet_unfold"  { RLET_UNFOLD }  
+  | "rlet_unfold"  { RLET_UNFOLD }
+  | "rrewrite_oracle"  { RREWRITE_ORACLE }  
   | "with"  { WITH }
   | "rexcept" { REXCEPT }
   | "rexcept_oracle" { REXCEPT_ORACLE }  
   | "rrandom" { RRANDOM }
   | "rswap" { RSWAP }
   | "requiv" { REQUIV }
-  | "rbddh" { RBDDH }
-  | "rddh" { RDDH }
   | "rindep" { RINDEP }
   | "rrandom_oracle" { RRANDOM_ORACLE }
   | "rbad"           { RBAD }

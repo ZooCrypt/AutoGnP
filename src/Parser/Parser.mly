@@ -85,8 +85,6 @@
 %token RRANDOM_ORACLE
 %token RSWAP
 %token REQUIV
-%token RBDDH
-%token RDDH
 %token RINDEP
 %token RBAD
 %token RLET_ABSTRACT
@@ -95,6 +93,7 @@
 %token REXCEPT
 %token RADD_TEST
 %token REXCEPT_ORACLE
+%token RREWRITE_ORACLE
 %token UNDERSCORE
 
 
@@ -286,8 +285,8 @@ event:
 ;
 
 dir:
-| LEFTARROW { `RtoL }
-| TO        { `LtoR }
+| LEFTARROW { Util.RightToLeft }
+| TO        { Util.LeftToRight }
 ;
 
 opos:
@@ -310,8 +309,6 @@ instr :
 | RNORM_UNKNOWN is = idlist { Apply(Rnorm_unknown(is)) }
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
-| RBDDH s = ID { Apply(Rbddh(s)) }
-| RDDH s = ID { Apply(Rddh(s)) }
 | ASSUMPTION d=dir s=ID xs=ID* { Apply (Rassm(d,s,xs))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
@@ -338,6 +335,7 @@ instr :
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
    { Apply(Rctxt_ev(i1,e1)) }
+| RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_oracle(op,d)) }
 
 theory :
 | i = instr DOT EOF { [i] }

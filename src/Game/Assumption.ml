@@ -1,6 +1,7 @@
 open Game
 open Expr
 open Wf
+open Util
 
 type assumption_decision =
   { ad_prefix1    : gdef;
@@ -38,7 +39,7 @@ let needed_var dir assm =
       se Vsym.S.empty in
   let w1 = toSym(write_gcmds assm.ad_prefix1) in
   let w2 = toSym(write_gcmds assm.ad_prefix2) in
-  if dir = `LtoR then Vsym.S.elements (Vsym.S.diff w2 w1)
+  if dir = LeftToRight then Vsym.S.elements (Vsym.S.diff w2 w1)
   else Vsym.S.elements (Vsym.S.diff w1 w2)
 
 let subst subst assm = 

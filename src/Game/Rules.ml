@@ -2,6 +2,7 @@ open Game
 open CoreRule
 open Expr
 open Norm
+open Util
 
 (* unfold all lets and norm *)
 let rnorm ju =
@@ -109,7 +110,7 @@ let rlet_unfold p ju =
 
 let rassm dir assm subst ju =
   let c = 
-    if dir = `LtoR then assm.Assumption.ad_prefix1 
+    if dir = LeftToRight then assm.Assumption.ad_prefix1 
     else assm.Assumption.ad_prefix1 in
   let jc = Util.take (List.length c) ju.ju_gdef in
   let subst = 

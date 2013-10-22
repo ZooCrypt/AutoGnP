@@ -1,5 +1,7 @@
 (** Types for parsing: Types and expressions *)
 
+open Util
+
 module T = Type
 module E = Expr
 module Ht = Hashtbl
@@ -197,14 +199,14 @@ let lcmd_of_parse_lcmd reuse ps lcmd =
   | LLet(s,e) ->
       let e = expr_of_parse_expr ps e in
       let v = create_var reuse ps s e.Expr.e_ty in
-      Game.LLet(v,e)
+      G.LLet(v,e)
   | LSamp(s,t,es) ->
       let t = ty_of_parse_ty ps t in
       let es = List.map (expr_of_parse_expr ps) es in
       let v = create_var reuse ps s t in
-      Game.LSamp(v,(t,es))
+      G.LSamp(v,(t,es))
   | LGuard(e) ->
-      Game.LGuard(expr_of_parse_expr ps e)
+      G.LGuard(expr_of_parse_expr ps e)
   | LBind(_) -> assert false (* not implemented yet *)
 
 let odef_of_parse_odef reuse ps (oname, vs, (m,e)) =
@@ -229,12 +231,12 @@ let gcmd_of_parse_gcmd reuse ps gc =
   | GLet(s,e) ->
       let e = expr_of_parse_expr ps e in
       let v = create_var reuse ps s e.Expr.e_ty in
-      Game.GLet(v,e)
+      G.GLet(v,e)
   | GSamp(s,t,es) ->
       let t = ty_of_parse_ty ps t in
       let es = List.map (expr_of_parse_expr ps) es in
       let v = create_var reuse ps s t in
-      Game.GSamp(v,(t,es))
+      G.GSamp(v,(t,es))
   | GCall(vs,aname,e,os) ->
       let asym = try Ht.find ps.ps_adecls aname
                  with Not_found -> failwith "adversary name not declared"
@@ -244,14 +246,14 @@ let gcmd_of_parse_gcmd reuse ps gc =
         failwith "adversary argument has wrong type";
       let os = List.map (odef_of_parse_odef reuse ps) os in
       (match asym.Asym.codom.Type.ty_node, vs with
-       | Type.Prod([]), [] -> Game.GCall([], asym, e, os)
+       | Type.Prod([]), [] -> G.GCall([], asym, e, os)
        | Type.Prod(ts), vs when List.length ts = List.length vs ->
            let vts = List.combine vs ts in
            let vs = List.map (fun (v,t) -> create_var reuse ps v t) vts in
-           Game.GCall(vs, asym, e, os)
+           G.GCall(vs, asym, e, os)
        | _, [v] ->
            let v = create_var reuse ps v asym.Asym.codom in
-           Game.GCall([v], asym, e, os)           
+           G.GCall([v], asym, e, os)           
        | _ -> assert false)
 
 let gdef_of_parse_gdef reuse ps gd =
@@ -259,8 +261,8 @@ let gdef_of_parse_gdef reuse ps gd =
 
 let ju_of_parse_ju reuse ps gd e =
   let gd = gdef_of_parse_gdef reuse ps gd in
-  let ju = { Game.ju_gdef = gd; 
-             Game.ju_ev = expr_of_parse_expr ps e } in
+  let ju = { G.ju_gdef = gd; 
+             G.ju_ev = expr_of_parse_expr ps e } in
   Wf.wf_ju ju;
   ju
 
@@ -274,18 +276,17 @@ type tactic =
   | Rswap of int * int
   | Rctxt_ev of string * parse_expr
   | Rrandom of int * (string * parse_expr) option * string * parse_expr * string
-  | Rrandom_oracle of (int * int * int) * (string * parse_expr) option * string * parse_expr * string
+  | Rrandom_oracle of G.ocmd_pos * (string * parse_expr) option * string * parse_expr * string
   | Requiv of gdef * parse_expr option
-  | Rbddh of string
-  | Rddh of string
-  | Rassm of [`LtoR | `RtoL] * string * string list
+  | Rassm of direction * string * string list
   | Rlet_abstract of int * string * parse_expr
   | Rlet_unfold of int
   | Rindep
   | Rbad of int * string
   | Rexcept of int * parse_expr list
-  | Rexcept_oracle of (int * int * int) * parse_expr list
-  | Radd_test of (int * int * int) * parse_expr * string * string list
+  | Rexcept_oracle of G.ocmd_pos * parse_expr list
+  | Radd_test of G.ocmd_pos * parse_expr * string * string list
+  | Rrewrite_oracle of G.ocmd_pos * direction
 
 type instr =
   | RODecl     of string * parse_ty * parse_ty

@@ -183,6 +183,25 @@ let radd_test p tnew asym fvs ju =
   | _ -> failwith "rexcept_oracle: position given is not a sampling"
 
 
+(** Rewriting oracles using tests *)
+
+let rrewrite_oracle op dir ju =
+  match get_ju_octxt ju op with
+  | LGuard(t) as lc, juoc ->
+    (* replace a by b *)
+    let (a,b) = match t.e_node with
+      | App(Eq,[u;v]) ->
+        if dir = LeftToRight then (u,v) else (v,u)
+      | _ -> assert false
+    in
+    let subst e = e_replace a b e in
+    let juoc = { juoc with
+                 juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright;
+                 juoc_return = subst juoc.juoc_return }
+    in
+    [ set_ju_octxt [lc] juoc ]
+  | _ -> assert false
+
 (** Swapping instructions *)
 
 let disjoint s1 s2 = 
@@ -253,113 +272,26 @@ let rrandom_indep ju =
   match List.rev ju.ju_gdef with
   | GSamp(r,_) :: _ when check_event r ju.ju_ev -> []
   | _ -> failwith "can not apply rrandom_indep"
-    
 
 (** Reduction to decisional assumptions *)
 
-(* decisional diffie-hellman *)
-(* This should be removed *)
-let check_ddh a b ex ey ez c ev =
- let a = mk_V a in
- let b = mk_V b in
- let r = Se.union (read_gcmds c) (e_vars ev) in
- let gv = destr_G ez.e_ty in
- let gen = mk_GGen gv in
- ty_equal a.e_ty mk_Fq &&
-   ty_equal b.e_ty mk_Fq &&
-   e_equal ex (mk_GExp gen a) &&
-   e_equal ey (mk_GExp gen b) &&
-   e_equal ez (mk_GExp gen (mk_FMult [a;b])) &&
-   not (Se.mem a r) && not (Se.mem b r) &&
-   not (has_log_gcmds c) && not (has_log ev) 
-
-let rddh vsc ju =
-  assert_no_occur vsc ju "rddh";
-  let vc = mk_V vsc in
-  match ju.ju_gdef with
-  | (GSamp(a,(_ta,[])) as i1) ::
-    (GSamp(b,(_tb,[])) as i2) ::
-    (GLet (_x,ex) as i3) ::
-    (GLet (_y,ey) as i4) ::
-     GLet (z,ez) :: c when
-         check_ddh a b ex ey ez c ju.ju_ev ->
-    [{ju with ju_gdef =
-        i1 :: i2:: GSamp(vsc,(mk_Fq,[])) :: 
-          i3 :: i4 :: GLet(z,mk_GExp (mk_GGen (destr_G ez.e_ty)) vc) :: c }]
-  | _ -> failwith "can not apply ddh"
-    
-(* This should be remove *)
-(* Bilinear decisional diffie-hellman *)
-let check_bddh a b c ex ey ez eU _C ev =
-  let a = mk_V a in
-  let b = mk_V b in
-  let c = mk_V c in
-  let r = Se.union (read_gcmds _C) (e_vars ev) in
-  let eU1,_ = destr_GExp eU in
-  let es,_,_ = destr_EMap eU1 in
-  let gen = mk_GGen es.Esym.source1 in
-  Groupvar.equal es.Esym.source1 es.Esym.source2 &&
-    ty_equal a.e_ty mk_Fq &&
-    ty_equal b.e_ty mk_Fq &&
-    ty_equal c.e_ty mk_Fq &&
-    e_equal ex (mk_GExp gen a) &&
-    e_equal ey (mk_GExp gen b) &&
-    e_equal ez (mk_GExp gen c) &&
-    e_equal eU (mk_GExp (mk_EMap es gen gen) (mk_FMult [mk_FMult [a;b]; c])) &&
-    not (Se.mem a r) && not (Se.mem b r) && not (Se.mem c r) &&
-    not (has_log_gcmds _C) && not (has_log ev)
-
-let rbddh vsu ju =
-  assert_no_occur vsu ju "rbddh";
-  let vu = mk_V vsu in
-  match ju.ju_gdef with
-  | (GSamp(a,(_ta,[])) as i1) ::
-    (GSamp(b,(_tb,[])) as i2) ::
-    (GSamp(c,(_tc,[])) as i3) ::
-    (GLet (_x,ex) as i4) ::
-    (GLet (_y,ey) as i5) ::
-    (GLet (_z,ez) as i6)::
-    GLet (_U,eU) ::_C when
-         check_bddh a b c ex ey ez eU _C ju.ju_ev ->
-    [{ju with ju_gdef =
-        i1 :: i2:: i3 :: GSamp(vsu,(mk_Fq,[])) :: 
-          i4 :: i5 :: i6 :: GLet(_U,mk_GExp (mk_GGen (destr_G eU.e_ty)) vu) :: _C }]
-  | _ -> failwith "can not apply bddh"
-
-(* 'rassm_decision assm substv substgv ju'
-   takes a decisional assumption 'assm', a
-   bijection 'substv' mapping the variables in
-   'assm' to some other set of variables, and a
-   bijection 'substv' mapping the group variables
-   of 'assm' to some other set of variables.
-   Then:
-   1. Apply 'subst' to 'assm'
-   2. If prefix of 'ju.ju_gdef' is equal to
-      'assm.ad_prefix1' and none of the variables
-      in 'ad_privvars' occur in the remainder of
-      'ju.ju_gdef', replace the prefix by
-      'assm.ad_prefix2'.
-*)
-
-type dir = [`RtoL | `LtoR]
-
-let rassm_decision (dir : dir) subst assm ju =
+let rassm_decision dir subst assm ju =
   let assm = Assumption.subst subst assm in
   let c,c' = 
-    if dir = `LtoR then assm.ad_prefix1,assm.ad_prefix2 
+    if dir = LeftToRight then assm.ad_prefix1,assm.ad_prefix2 
     else assm.ad_prefix2,assm.ad_prefix1 in
   let cju = Util.take (List.length c) ju.ju_gdef in
   if not (gcs_equal c cju) then 
-    failwith "Can not match the dicisional assumption";
+    failwith "Can not match the decisional assumption";
   let tl = Util.drop (List.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
   let read = read_ju ju' in
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
   let diff = Se.inter priv read in
   if not (Se.is_empty diff) then
-    failwith "Do not respect the private variable";
+    failwith "Does not respect the private variables";
   if not (is_ppt_ju ju') then
-    failwith "Do not respect the computational assumption";
+    failwith "Does not respect the computational assumption (game and event ppt)";
   [{ ju with ju_gdef = c' @ tl }]
 
 (** Rules for random oracles *)

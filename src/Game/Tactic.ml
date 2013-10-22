@@ -81,14 +81,6 @@ let handle_tactic ps tac jus =
       | Some e -> expr_of_parse_expr ps e in
     apply_rule (rconv { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
 
-  | Rbddh(s) ->
-    let v = create_var false ps s mk_Fq in
-    apply_rule (rbddh v) ps
-
-  | Rddh(s) ->
-    let v = create_var false ps s mk_Fq in
-    apply_rule (rddh v) ps
-
   | Rassm(dir,s,xs) ->
     let assm = 
       try Ht.find ps.ps_assm s 
@@ -174,6 +166,9 @@ let handle_tactic ps tac jus =
   | Rexcept_oracle(op,es) ->
     let es = List.map (expr_of_parse_expr ps) es in
     apply_rule (rexcept_oracle op es) ps
+   
+  | Rrewrite_oracle(op,dir) ->
+    apply_rule (rrewrite_oracle op dir) ps
 
   | Radd_test(op,t,aname,fvs) ->
     let t = expr_of_parse_expr ps t in
