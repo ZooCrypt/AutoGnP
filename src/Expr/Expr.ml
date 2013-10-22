@@ -480,12 +480,14 @@ module type GexprBuild = sig
   type t
   val mk : t gexpr_node -> t gty -> t gexpr
   val ty_equal : t gty -> t gty -> bool
+  val comp : t gexpr -> t gexpr -> int
   val mk_ty : t gty_node -> t gty
 end
 
 module ExprBuild : GexprBuild with type t = internal = struct
   type t = internal
   let mk = mk_e
+  let comp = e_compare
   let ty_equal = Type.ty_equal
   let mk_ty =  mk_ty
 end
@@ -493,6 +495,7 @@ end
 module EexprBuild : GexprBuild with type t = exported = struct
   type t = exported
   let mk = mk_ee
+  let comp = compare
   let ty_equal = (=)
   let mk_ty = mk_ety
 end
@@ -639,26 +642,37 @@ struct
     ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
     mk_App Ifte [a;b;c] b.e_ty
 
-  let mk_nary s o es ty =
+
+  let rec flatten nop es =
+    let go e = match e.e_node with
+      | Nary(nop1, es1) when nop1 = nop ->
+        flatten nop es1
+      | _ -> [ e ]
+    in
+    List.concat (List.map go es)
+
+  let mk_nary s sort o es ty =
+    let es = flatten o es in
+    let es = if sort then List.sort E.comp es else es in
     match es with
     | []  -> failwith (F.sprintf "%s: empty list given" s);
     | [a] -> a
     | _   -> List.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
              E.mk (Nary(o,es)) ty
 
-  let mk_FPlus es = mk_nary "mk_FPlus" FPlus es ty_Fq 
-  let mk_FMult es = mk_nary "mk_FMult" FMult es ty_Fq
+  let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es ty_Fq 
+  let mk_FMult es = mk_nary "mk_FMult" true FMult es ty_Fq
   let mk_Xor es = match es with
     | e::_ -> (match e.e_ty.ty_node with
-               | BS _ -> mk_nary "mk_Xor" Xor es e.e_ty
+               | BS _ -> mk_nary "mk_Xor" true Xor es e.e_ty
                | _ -> failwith "mk_Xor: expected bitstring argument")
     | _ -> failwith "mk_Xor: expected non-empty list"
-  let mk_Land es = mk_nary "mk_FMult" Land es ty_Bool
+  let mk_Land es = mk_nary "mk_FMult" false Land es ty_Bool
   let mk_GMult es =
     match es with
     | e::_ ->
         (match e.e_ty.ty_node with
-         | G gv -> mk_nary "mk_GMult" GMult es (ty_G gv)
+         | G gv -> mk_nary "mk_GMult" true GMult es (ty_G gv)
          | _ -> assert false)
     | _ -> assert false
 

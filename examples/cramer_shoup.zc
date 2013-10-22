@@ -275,7 +275,6 @@ adversary A3 : () -> (G * G * G *G).
     rlet_abstract 19 la (log(ba)).
     rlet_abstract 20 la' (log(ba')).
     print_goals : aads.
-    rnorm_nounfold.
     rlet_abstract 22 mz
     ((   u*w*w*y2*la*hs
         - (u*w*w*y2*la*hb)
