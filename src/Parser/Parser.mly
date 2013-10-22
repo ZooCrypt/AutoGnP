@@ -93,6 +93,7 @@
 %token RLET_UNFOLD
 %token RCTXT_EV
 %token REXCEPT
+%token RADD_TEST
 %token REXCEPT_ORACLE
 %token UNDERSCORE
 
@@ -293,50 +294,51 @@ opos:
 | LPAREN i = NAT COMMA j = NAT COMMA k = NAT RPAREN { (i-1,j-1,k-1) }
 
 instr :
-| ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ADecl(i,t1,t2) }
-| ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 DOT { ODecl(i,t1,t2) }
-| RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 DOT { RODecl(i,t1,t2) }
-| BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG DOT { EMDecl(i,g1,g2,g3) }
+| ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 { ADecl(i,t1,t2) }
+| ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 { ODecl(i,t1,t2) }
+| RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,t1,t2) }
+| BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG { EMDecl(i,g1,g2,g3) }
 | ASSUMPTION i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
-   p=ID* DOT
+   p=ID*
     { AssmDec(i,g0,g1,p) }
-| PROVE  LBRACKET g = gdef0 RBRACKET e=event DOT { Judgment(g,e) }
-| PRINTGOALS COLON i = ID DOT { PrintGoals(i) }
-| PRINTGOALS DOT { PrintGoals("") }
-| RNORM DOT { Apply(Rnorm) }
-| RNORM_NOUNFOLD DOT { Apply(Rnorm_nounfold) }
-| RNORM_UNKNOWN DOT { Apply(Rnorm_unknown([])) }
-| RNORM_UNKNOWN is = idlist DOT { Apply(Rnorm_unknown(is)) }
-| RINDEP DOT { Apply(Rindep) }
-| RSWAP i = NAT j =int DOT { Apply(Rswap(i-1,j)) }
-| RBDDH s = ID DOT { Apply(Rbddh(s)) }
-| RDDH s = ID DOT { Apply(Rddh(s)) }
-| ASSUMPTION d=dir s=ID xs=ID* DOT { Apply (Rassm(d,s,xs))}
-| REQUIV LBRACKET gd = gdef0 RBRACKET e=event? DOT { Apply(Requiv(gd,e)) }
-| RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 DOT { Apply(Rlet_abstract(i-1,i1,e1)) }
-| RLET_UNFOLD i = NAT DOT { Apply(Rlet_unfold(i-1)) }
-| REXCEPT i = NAT es = expr0* DOT { Apply(Rexcept(i-1,es)) }
-| REXCEPT_ORACLE op = opos es = expr0* DOT { Apply(Rexcept_oracle(op,es)) }
+| PROVE  LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
+| PRINTGOALS COLON i = ID { PrintGoals(i) }
+| PRINTGOALS { PrintGoals("") }
+| RNORM { Apply(Rnorm) }
+| RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
+| RNORM_UNKNOWN { Apply(Rnorm_unknown([])) }
+| RNORM_UNKNOWN is = idlist { Apply(Rnorm_unknown(is)) }
+| RINDEP { Apply(Rindep) }
+| RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
+| RBDDH s = ID { Apply(Rbddh(s)) }
+| RDDH s = ID { Apply(Rddh(s)) }
+| ASSUMPTION d=dir s=ID xs=ID* { Apply (Rassm(d,s,xs))}
+| REQUIV LBRACKET gd = gdef0 RBRACKET e=event? { Apply(Requiv(gd,e)) }
+| RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
+| RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
+| RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }
+| REXCEPT i = NAT es = expr0* { Apply(Rexcept(i-1,es)) }
+| REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_oracle(op,es)) }
 | RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN
                   LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  i3 = ID DOT { Apply(Rrandom(i-1,Some(i1,e1),i2,e2,i3)) }
+                  i3 = ID { Apply(Rrandom(i-1,Some(i1,e1),i2,e2,i3)) }
 | RRANDOM i = NAT UNDERSCORE
                   LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  i3 = ID DOT { Apply(Rrandom(i-1,None,i2,e2,i3)) }
+                  i3 = ID { Apply(Rrandom(i-1,None,i2,e2,i3)) }
 | RRANDOM_ORACLE op = opos
                  LPAREN i1 = ID TO e1 = expr0 RPAREN
                  LPAREN i2 = ID TO e2 = expr0 RPAREN
-                 i3 = ID DOT
+                 i3 = ID
                  { Apply(Rrandom_oracle(op,Some(i1,e1),i2,e2,i3)) }
 | RRANDOM_ORACLE op = opos
                  UNDERSCORE
                  LPAREN i2 = ID TO e2 = expr0 RPAREN
-                 i3 = ID DOT
+                 i3 = ID
                  { Apply(Rrandom_oracle(op,None,i2,e2,i3)) }
-| RBAD i=NAT s = ID DOT { Apply(Rbad (i-1,s)) }
-| RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN  DOT
+| RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
+| RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
    { Apply(Rctxt_ev(i1,e1)) }
 
 theory :
-| i = instr EOF { [i] }
-| i = instr t = theory { i::t }
+| i = instr DOT EOF { [i] }
+| i = instr DOT t = theory { i::t }

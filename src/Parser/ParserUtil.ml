@@ -285,6 +285,7 @@ type tactic =
   | Rbad of int * string
   | Rexcept of int * parse_expr list
   | Rexcept_oracle of (int * int * int) * parse_expr list
+  | Radd_test of (int * int * int) * parse_expr * string * string list
 
 type instr =
   | RODecl     of string * parse_ty * parse_ty

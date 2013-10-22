@@ -69,5 +69,9 @@ Test_Proofsearch :
 zoocrypt :
 	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1.zc
 
+tests :
+	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./test/rules/ok/radd_test_01.zc
+
+
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@

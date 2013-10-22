@@ -33,6 +33,10 @@ let invert_ctxt (v,e) =
 
 let handle_tactic ps tac jus =
   let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in
+  let ju = match jus with
+    | ju::_ -> ju
+    | [] -> failwith "cannot apply tactic: there is no goal"
+  in
   match tac with
   | Rnorm -> apply_rule rnorm ps
 
@@ -44,10 +48,7 @@ let handle_tactic ps tac jus =
     apply_rule (rnorm_unknown vs) ps
 
   | Rctxt_ev (sv,e) ->
-    let ev =
-      match ps.ps_goals with
-      | Some(ju::_) -> ju.Game.ju_ev 
-      | _ -> failwith "rctxt_ev: no goal" in
+    let ev = ju.Game.ju_ev in
     let ty = 
       if Expr.is_Eq ev then (fst (Expr.destr_Eq ev)).Expr.e_ty
       else if Expr.is_ElemH ev then
@@ -73,11 +74,7 @@ let handle_tactic ps tac jus =
 
   | Requiv(gd,ev) ->
     let gd = gdef_of_parse_gdef true ps gd in 
-           (* reuse variables from previous games *)
-    let ju = 
-      match jus with
-      | ju::_ -> ju
-      | _ -> assert false in
+      (* reuse variables from previous games *)
     let ev = 
       match ev with
       | None -> ju.Game.ju_ev
@@ -92,7 +89,7 @@ let handle_tactic ps tac jus =
     let v = create_var false ps s mk_Fq in
     apply_rule (rddh v) ps
 
-  | Rassm(dir, s,xs) ->
+  | Rassm(dir,s,xs) ->
     let assm = 
       try Ht.find ps.ps_assm s 
       with Not_found -> failwith ("error no assumption "^s) in
@@ -115,11 +112,8 @@ let handle_tactic ps tac jus =
 
   | Rrandom(i,mctxt1,sv2,e2,svlet) ->
     let ty =
-      match ps.ps_goals with
-      | Some(ju::_) ->
-          (match Game.get_ju_gcmd ju i with
-           | Game.GSamp(v,_) -> v.Vsym.ty
-           | _ -> assert false)
+      match Game.get_ju_gcmd ju i with
+      | Game.GSamp(v,_) -> v.Vsym.ty
       | _ -> assert false
     in
     let v2 = create_var false ps sv2 ty in
@@ -141,11 +135,8 @@ let handle_tactic ps tac jus =
 
   | Rrandom_oracle((i,j,k),mctxt1,sv2,e2,svlet) ->
     let ty =
-      match ps.ps_goals with
-      | Some(ju::_) ->
-        (match Game.get_ju_lcmd ju (i,j,k) with
-         | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
-         | _ -> assert false)
+      match Game.get_ju_lcmd ju (i,j,k) with
+      | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
       | _ -> assert false
     in
     let v2 = create_var false ps sv2 ty in
@@ -167,13 +158,10 @@ let handle_tactic ps tac jus =
 
   | Rbad(i,sx) ->
     let ty =
-      match ps.ps_goals with
-      | Some(ju::_) ->
-        (match Game.get_ju_gcmd ju i with
-         | Game.GLet(_,e') when is_H e' ->
-           let _,e = destr_H e' in
-           e.e_ty
-         | _ -> assert false)
+      match Game.get_ju_gcmd ju i with
+      | Game.GLet(_,e') when is_H e' ->
+        let _,e = destr_H e' in
+        e.e_ty
       | _ -> assert false
     in
     let vx = create_var false ps sx ty in
@@ -187,6 +175,23 @@ let handle_tactic ps tac jus =
     let es = List.map (expr_of_parse_expr ps) es in
     apply_rule (rexcept_oracle op es) ps
 
+  | Radd_test(op,t,aname,fvs) ->
+    let t = expr_of_parse_expr ps t in
+    let _, juoc = Game.get_ju_octxt ju op in
+    let oty = juoc.Game.juoc_osym.Osym.dom in
+    let destr_prod ty = match oty.ty_node with
+      | Prod(tys) -> tys
+      | _ -> [ty]
+    in
+    assert_msg (not (Ht.mem ps.ps_adecls aname))
+      "radd_test: adversary with same name already declared";
+    let asym = Asym.mk aname (mk_Prod []) oty in
+    Ht.add ps.ps_adecls aname asym;
+    let tys = destr_prod  oty in
+    assert_msg (List.length fvs = List.length tys)
+      "number of given variables does not match type";
+    let fvs = List.map2 (fun v ty -> create_var false ps v ty) fvs tys in
+    apply_rule (radd_test op t asym fvs) ps
 
 let pp_goals fmt gs = 
   match gs with

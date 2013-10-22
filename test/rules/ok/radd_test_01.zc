@@ -1,0 +1,10 @@
+adversary A : () -> ().
+oracle O : Fq -> Fq.
+
+prove [
+  y <-$ Fq;
+  () <- A() with
+    O(x) = [ x | x = x, true ];
+] : y = y.
+radd_test (2,1,2) (x = y) A1 x'.
+print_goals : added_test.

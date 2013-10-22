@@ -44,6 +44,7 @@ rule lex = parse
   | "print_goals" { PRINTGOALS }
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm" { RNORM }
+  | "radd_test" { RADD_TEST }
   | "rnorm_nounfold" { RNORM_NOUNFOLD }  
   | "rlet_abstract"  { RLET_ABSTRACT }
   | "rlet_unfold"  { RLET_UNFOLD }  

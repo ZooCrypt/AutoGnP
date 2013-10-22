@@ -144,6 +144,45 @@ let rexcept_oracle p es  ju =
     [ set_ju_octxt [ LSamp(vs,(t,es)) ] juoc ]
   | _ -> failwith "rexcept_oracle: position given is not a sampling"
 
+(** Up-to bad: adding a new test to oracle *)
+
+(* We get tow new judgments for G : E after
+   applying 'radd_test (i,j,k) t' vz A':
+   G' : E (where the test t' is added to the oracle)
+   and
+   G'_{1..i}; vz <- A() : t /\ t'
+   (where t is the test in the oracle *)
+let radd_test p tnew asym fvs ju =
+  match get_ju_octxt ju p with
+  | LGuard(t), juoc ->
+    assert (ty_equal tnew.e_ty  mk_Bool);
+    let destr_guard lcmd = match lcmd with
+      | LGuard(e) -> e
+      | _ ->
+        failwith
+          (fsprintf ("radd_test: new test cannot be insert after %a, "
+             ^^"preceeding commands must be tests")
+             pp_lcmd lcmd |> fsget)
+    in
+    let tests = List.map destr_guard (List.rev juoc.juoc_cleft) in
+    let subst = 
+      List.fold_left2
+        (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
+        Me.empty juoc.juoc_oargs fvs
+    in
+    [ set_ju_octxt [ LGuard(t); LGuard(tnew) ] juoc;
+      set_ju_octxt [ LGuard(t); LGuard(tnew) ]
+        { juoc with
+          juoc_juc =
+            { juoc.juoc_juc with
+              juc_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
+              juc_right = [ GCall(fvs,asym,mk_Tuple [],[]) ]
+            }
+        };
+    ]
+  | _ -> failwith "rexcept_oracle: position given is not a sampling"
+
+
 (** Swapping instructions *)
 
 let disjoint s1 s2 = 

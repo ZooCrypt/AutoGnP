@@ -1,0 +1,11 @@
+(* Our rule is not powerful enough yet
+   to handle this *)
+adversary A : () -> ().
+oracle O : Fq -> Fq.
+
+prove [
+  () <- A() with
+    O(x) = [ x | y <-$ Fq, true ];
+] : true.
+radd_test (1,1,2) (x = y) A1 x'.
+print_goals : excepted_sampling.
