@@ -38,6 +38,8 @@ clean:
 	ocamlbuild -clean
 	-@rm -rf tutor.docdir
 
+zoocrypt :
+	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1_asym.zc
 
 ##########################################################################
 # Used for development and testing
@@ -66,12 +68,11 @@ Test_Parser :
 Test_Proofsearch :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proofsearch.d.byte && ./Test_Proofsearch.d.byte
 
-zoocrypt :
-	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1.zc
-
 tests :
 	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./test/rules/ok/radd_test_01.zc
 
+macaulay:
+	m2 --no-tvalues --no-tty --no-prompts --silent ./scripts/test.m2
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@

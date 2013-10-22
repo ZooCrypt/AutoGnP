@@ -1,8 +1,6 @@
 open Type
 open Expr
 
-module S = Singular
-
 let mk_gexp gv p = mk_GExp (mk_GGen gv) p
 
 let destr_gexp gv g = 
@@ -129,7 +127,7 @@ and norm_field_expr e =
       let e = norm_expr e in
       (try destr_gexp gv e with _ -> assert false)
     | _ -> norm_expr e in
-  S.norm before e 
+  CAS.norm before e 
 
 let rec abbrev_ggen e =
   let e = e_sub_map abbrev_ggen e in

@@ -1,11 +1,11 @@
 open Expr
 open Poly
-open SingLexer
+open CASLexer
 
 module F = Format
 module Ht = Hashtbl
 
-(* Singular field expression *)
+(* field expression *)
 type fexp =
     SV of int
   | SNat of int
@@ -90,7 +90,7 @@ let lex_to_list lexer s =
     | t   -> t :: go ()
   in go ()
 
-(* Parse singular result into Poly.poly data type.
+(* Parse CAS result into Poly.poly data type.
    We don't have nesting, so we use a custom parser. *)
 let parse_poly s =
   let rec pterm toks poly coeff mon  = match toks with
@@ -100,7 +100,7 @@ let parse_poly s =
     | (VAR i)::rest               -> psep  rest poly coeff (mon@[(i,1)])
     | MINUS::rest                 -> pterm rest poly (coeff * (-1)) mon
     | _                           ->
-      failwith ("Singular.parse_poly: pmonom expected var or var^int, got "
+      failwith ("parse_poly: pmonom expected var or var^int, got "
                 ^ string_of_tokens toks)
   and psep toks poly coeff mon = match toks with
     | TIMES::rest -> pterm rest poly coeff mon
@@ -109,45 +109,49 @@ let parse_poly s =
     | CLOSE::[]   -> poly@[(coeff,mon)]
     | []          -> poly@[(coeff,mon)]
     | _           ->
-      failwith ("Singular.parse_poly: psep expected *, +, or ), got "
+      failwith ("parse_poly: psep expected *, +, or ), got "
                 ^ string_of_tokens toks)
-  in pterm (lex_to_list SingLexer.lex s) [] 1 []
+  in pterm (lex_to_list CASLexer.lex s) [] 1 []
 
 (** Abstraction of non-field expression with variables *)
 
-(** Using Singular to perform polynomial computations *)
+(** Using CAS to perform polynomial computations *)
 
-let singular_command = F.sprintf "Singular -q -t"
+type systems = Singular | Macaulay
 
-let singular_chans = ref None
+let ht_systems = Hashtbl.create 17
 
-let call_singular cmd linenum =
-  (* F.printf "singular command: `%s'\n\n" singular_command; *)
+let setup_systems =
+  [ (Singular,
+     ("Singular -q -t", Some("LIB \"poly.lib\"; ring R = (0,x0),(a),dp;")))
+  ; (Macaulay, ("m2 --no-tvalues --no-tty --no-prompts --silent", None)) ]
+
+let call_system sys cmd linenum =
   let (c_in, c_out) =
-    match !singular_chans with
-    | None ->
-        let cs = Unix.open_process singular_command in
-        output_string (snd cs) "LIB \"poly.lib\"; ring R = (0,x0),(a),dp;";
-        singular_chans := Some cs;
+    try Hashtbl.find ht_systems sys
+    with Not_found ->
+        let (command,setup) = List.assoc sys setup_systems in
+        let cs = Unix.open_process command in
+        (match setup with Some s -> output_string (snd cs) s | _ -> ());
+        Hashtbl.add ht_systems sys cs;
         cs
-    | Some cs -> cs
   in
   output_string c_out cmd;
-  (* F.printf "singular input: `%s' has been sent\n\n" cmd; *)
+  (* F.printf "input: `%s' has been sent\n\n" cmd; *)
   flush c_out;
   let rec loop o linenum =
     if linenum = 0 then o
     else (
       try
         let l = input_line c_in in
-        (* F.printf "singular output: `%s'\n" l; *)
+        (* F.printf "output: `%s'\n" l; *)
         loop (o @ [l]) (linenum - 1)
       with End_of_file ->
         ignore (Unix.close_process (c_in,c_out)); (* FIXME: close on exit *)
         o)
   in loop [] linenum
 
-let norm_singular se c hv =
+let _norm_singular se c hv =
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
   let cmd = F.sprintf "ring R = (0,%s),(a),dp;\n\
@@ -160,7 +164,7 @@ let norm_singular se c hv =
                                      with Not_found -> failwith "invalid variable returned by Singular")
                 (parse_poly s))
   in
-  match call_singular cmd 3 with
+  match call_system Singular cmd 3 with
   | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
       let num   = import snum  in
       let denom = import sdenom in
@@ -168,7 +172,34 @@ let norm_singular se c hv =
       if e_equal denom mk_FOne then num
       else mk_FDiv num denom
   | repls ->
-      failwith (F.sprintf "Singular.norm: unexpected result %s\n"
+      failwith (F.sprintf "norm_singular: unexpected result %s\n"
+                  (String.concat "\n" repls))
+
+let norm_macaulay se c hv =
+  let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
+  let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
+  let cmd = F.sprintf ("R = QQ[%s];"^^
+                       "use frac R;"^^
+                       "a = %s;\n"^^
+                       "<< toExternalString (numerator(a)) << \"\\n\";\n"^^
+                       "<< toExternalString (denominator(a)) << \"\\n\";\n")
+                      var_string
+                      (string_of_fexp se)
+  in
+  let import s =
+    exp_of_poly (map_poly (fun i -> try Ht.find hv i
+                                     with Not_found -> failwith "invalid variable returned by macaulay")
+                (parse_poly s))
+  in
+  match call_system Macaulay cmd 5 with
+  | [ _; _; snum; _; sdenom ] -> (* ring redeclared is first reply *)
+      let num   = import snum  in
+      let denom = import sdenom in
+      (* F.printf "num: %a\ndenom: %a\n" pp_exp num pp_exp denom; *)
+      if e_equal denom mk_FOne then num
+      else mk_FDiv num denom
+  | repls ->
+      failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
                   (String.concat "\n" repls))
 
 let norm before e =
@@ -184,4 +215,4 @@ let norm before e =
   | SMult(SV i, SNat 1) -> Ht.find hv i
   | SMult(SNat i, SNat j) -> mk_FNat (i * j)
   | SMult(SV i, SV j) -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
-  | _ -> norm_singular se c hv
+  | _ -> norm_macaulay se c hv

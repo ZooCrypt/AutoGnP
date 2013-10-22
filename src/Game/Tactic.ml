@@ -14,7 +14,7 @@ let invert_ctxt (v,e) =
          List.exists (fun (e,_) -> Se.mem (mk_V v) (e_vars e)) m)
       p
   in
-  match Poly.polys_of_field_expr (Singular.norm (fun x -> x) e) with
+  match Poly.polys_of_field_expr (CAS.norm (fun x -> x) e) with
   | (nom, None) ->
     (* v = v' * g + h => v' = (v - h) / g *)
     let (g,h) = Poly.factor_out (mk_V v) nom in
