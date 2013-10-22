@@ -48,6 +48,8 @@ rule lex = parse
   | "rlet_abstract"  { RLET_ABSTRACT }
   | "rlet_unfold"  { RLET_UNFOLD }  
   | "with"  { WITH }
+  | "rexcept" { REXCEPT }
+  | "rexcept_oracle" { REXCEPT_ORACLE }  
   | "rrandom" { RRANDOM }
   | "rswap" { RSWAP }
   | "requiv" { REQUIV }

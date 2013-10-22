@@ -130,6 +130,19 @@ let rrandom_oracle p c1 c2 vslet ju =
     [ set_ju_octxt cmds juoc ]
   | _ -> failwith "random: position given is not a sampling"
 
+(** Statistical distance *)
+
+let rexcept p es  ju =
+  match get_ju_ctxt ju p with
+  | GSamp(vs,(t,_es)), juc ->
+    [ set_ju_ctxt [ GSamp(vs,(t,es)) ] juc ]
+  | _ -> failwith "rexcept: position given is not a sampling"
+
+let rexcept_oracle p es  ju =
+  match get_ju_octxt ju p with
+  | LSamp(vs,(t,_es)), juoc ->
+    [ set_ju_octxt [ LSamp(vs,(t,es)) ] juoc ]
+  | _ -> failwith "rexcept_oracle: position given is not a sampling"
 
 (** Swapping instructions *)
 

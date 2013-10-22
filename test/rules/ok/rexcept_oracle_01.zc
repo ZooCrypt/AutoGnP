@@ -1,0 +1,9 @@
+adversary A : () -> ().
+oracle O : Fq -> Fq.
+
+prove [
+  () <- A() with
+    O(x) = [ y | y <-$ Fq ];
+] : true.
+rexcept_oracle (1,1,1) (x).
+print_goals : excepted_sampling.

@@ -38,6 +38,7 @@ let handle_tactic ps tac jus =
 
   | Rnorm_nounfold ->
     apply_rule rnorm_nounfold ps
+
   | Rnorm_unknown(is) ->
     let vs = List.map (fun s -> mk_V (Ht.find ps.ps_vars s)) is in
     apply_rule (rnorm_unknown vs) ps
@@ -138,7 +139,7 @@ let handle_tactic ps tac jus =
     let vlet = create_var false ps svlet ty in
     apply_rule (rrandom i (v1,e1) (v2,e2) vlet) ps
 
-  | Rrandom_oracle(i,j,k,mctxt1,sv2,e2,svlet) ->
+  | Rrandom_oracle((i,j,k),mctxt1,sv2,e2,svlet) ->
     let ty =
       match ps.ps_goals with
       | Some(ju::_) ->
@@ -176,7 +177,16 @@ let handle_tactic ps tac jus =
       | _ -> assert false
     in
     let vx = create_var false ps sx ty in
-    apply_rule (rbad i vx) ps 
+    apply_rule (rbad i vx) ps
+
+  | Rexcept(i,es) ->
+    let es = List.map (expr_of_parse_expr ps) es in
+    apply_rule (rexcept i es) ps
+
+  | Rexcept_oracle(op,es) ->
+    let es = List.map (expr_of_parse_expr ps) es in
+    apply_rule (rexcept_oracle op es) ps
+
 
 let pp_goals fmt gs = 
   match gs with

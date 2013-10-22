@@ -274,7 +274,7 @@ type tactic =
   | Rswap of int * int
   | Rctxt_ev of string * parse_expr
   | Rrandom of int * (string * parse_expr) option * string * parse_expr * string
-  | Rrandom_oracle of int * int * int * (string * parse_expr) option * string * parse_expr * string
+  | Rrandom_oracle of (int * int * int) * (string * parse_expr) option * string * parse_expr * string
   | Requiv of gdef * parse_expr option
   | Rbddh of string
   | Rddh of string
@@ -283,6 +283,8 @@ type tactic =
   | Rlet_unfold of int
   | Rindep
   | Rbad of int * string
+  | Rexcept of int * parse_expr list
+  | Rexcept_oracle of (int * int * int) * parse_expr list
 
 type instr =
   | RODecl     of string * parse_ty * parse_ty
