@@ -32,7 +32,7 @@ let rec rename hr = function
   | SPlus(e1,e2) -> SPlus (rename hr e1, rename hr e2)
   | SMult(e1,e2) -> SMult (rename hr e1, rename hr e2)
 
-let abstract_non_field before e0 =
+let abstract_non_field_multiple before es =
   let c = ref 0 in
   let he = He.create 17 in
   let lookup e =
@@ -56,7 +56,7 @@ let abstract_non_field before e0 =
       List.fold_left (fun acc e -> SMult(acc, go e)) (go a) es
     | _ -> SV (lookup e)
   in
-  let se = go e0 in
+  let ses = List.map go es in
   let binding = List.sort e_compare (He.fold (fun e _ l -> e::l) he []) in
   let hr = Hashtbl.create 17 in
   let hv = Hashtbl.create 17 in
@@ -64,7 +64,12 @@ let abstract_non_field before e0 =
   List.iter (fun e -> let i = !c in incr c;
                       Hashtbl.add hr (He.find he e) i;
                       Hashtbl.add hv i e) binding;
-  (rename hr se, !c, hv)
+  (List.map (rename hr) ses, !c, hv)
+
+let abstract_non_field before e =
+  match abstract_non_field_multiple before [e] with
+  | ([e],c,hv) -> (e,c,hv)
+  | _ -> assert false
 
 (** Parser for Singular Polynomials in Q[x1,..,xk] *)
 
@@ -151,6 +156,12 @@ let call_system sys cmd linenum =
         o)
   in loop [] linenum
 
+let import_string (caller : string) (s : string) (hv : (int, expr) Ht.t) =
+  exp_of_poly (map_poly (fun i -> try Ht.find hv i
+                                  with Not_found -> failwith ("invalid variable returned by "^caller))
+              (parse_poly s))
+  
+
 let _norm_singular se c hv =
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
@@ -159,15 +170,10 @@ let _norm_singular se c hv =
                       var_string
                       (string_of_fexp se)
   in
-  let import s =
-    exp_of_poly (map_poly (fun i -> try Ht.find hv i
-                                     with Not_found -> failwith "invalid variable returned by Singular")
-                (parse_poly s))
-  in
   match call_system Singular cmd 3 with
   | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
-      let num   = import snum  in
-      let denom = import sdenom in
+      let num   = import_string "norm_singular" snum  hv in
+      let denom = import_string "norm_singular" sdenom hv in
       (* F.printf "num: %a\ndenom: %a\n" pp_exp num pp_exp denom; *)
       if e_equal denom mk_FOne then num
       else mk_FDiv num denom
@@ -186,21 +192,38 @@ let norm_macaulay se c hv =
                       var_string
                       (string_of_fexp se)
   in
-  let import s =
-    exp_of_poly (map_poly (fun i -> try Ht.find hv i
-                                     with Not_found -> failwith "invalid variable returned by macaulay")
-                (parse_poly s))
-  in
   match call_system Macaulay cmd 5 with
-  | [ _; _; snum; _; sdenom ] -> (* ring redeclared is first reply *)
-      let num   = import snum  in
-      let denom = import sdenom in
-      (* F.printf "num: %a\ndenom: %a\n" pp_exp num pp_exp denom; *)
+  | [ _; _; snum; _; sdenom ] ->
+      let num   = import_string "norm_macaulay" snum hv in
+      let denom = import_string "norm_macaulay" sdenom hv in
       if e_equal denom mk_FOne then num
       else mk_FDiv num denom
   | repls ->
       failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
                   (String.concat "\n" repls))
+
+let mod_reduce a b =
+  let (sa,sb,c,hv) =
+    match abstract_non_field_multiple (fun x -> x) [a;b] with
+    | ([sa; sb],c,hv) -> (sa,sb,c,hv)
+    | _ -> assert false
+  in
+  let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
+  let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
+  let cmd = F.sprintf ("R = QQ[%s];"^^
+                       "use frac R;"^^
+                       "<< toExternalString(%s %% %s) << \"\\n\"\n")
+                      var_string
+                      (string_of_fexp sa)
+                      (string_of_fexp sb)
+  in
+  match call_system Macaulay cmd 2 with
+  | [ _; sremainder ] ->
+    import_string "mod_reduce" sremainder hv
+  | repls ->
+    failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
+               (String.concat "\n" repls))
+
 
 let norm before e =
   let (se,c,hv) = abstract_non_field before e in

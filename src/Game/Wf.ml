@@ -9,12 +9,12 @@ open Norm
 type wf_state =
   { wf_names : Sstring.t; (* used names for variables, adversaries, and oracles *)
     wf_bvars : Vsym.S.t; (* bound variables, never two vsyms with the same name *)
-    wf_nzero : Se.t } (* nonzero-assumptions for field-expressions *)
+    wf_nzero : expr } (* product of all nonzero-assumptions for field-expressions *)
 
 let mk_wfs () = {
     wf_names = Sstring.empty;
     wf_bvars = Vsym.S.empty;
-    wf_nzero = Se.empty
+    wf_nzero = mk_FOne 
   }
 
 let ensure_name_fresh wfs name =
@@ -76,7 +76,9 @@ let ty_of_op ty argtys o =
 
 let add_ineq wfs e1 e2 =
   match e1.e_ty.ty_node,e2.e_ty.ty_node with
-  | Fq, Fq -> { wfs with wf_nzero = Se.add (norm_expr (mk_FMinus e1 e2)) wfs.wf_nzero }
+  | Fq, Fq -> { wfs with
+                wf_nzero = mk_FMult [CAS.norm id (mk_FMinus e1 e2)
+                                    ; wfs.wf_nzero] }
   | _      -> wfs
 
 let rec wf_exp wfs e0 =
@@ -124,10 +126,9 @@ let rec wf_exp wfs e0 =
       | App(op,es) ->
         let (tys,rty,nz) = ty_of_op e.e_ty (List.map (fun e -> e.e_ty) es) op in
         assert (list_eq_for_all2 ty_equal tys (List.map go es));
-        assert_msg (List.for_all
-                  (fun i -> Se.mem (norm_expr (List.nth es i)) wfs.wf_nzero
-                         || Se.mem (norm_expr (mk_FOpp (List.nth es i))) wfs.wf_nzero)
-                  nz)
+        assert_msg
+          (List.for_all
+            (fun i -> is_FZ (CAS.mod_reduce wfs.wf_nzero (norm_expr (List.nth es i)))) nz)
           (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp)
             (List.map (fun i -> List.nth es i) nz) |> fsget);
         assert (ty_equal rty e.e_ty);
