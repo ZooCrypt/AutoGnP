@@ -176,3 +176,5 @@ let lefts_rights l =
   in go [] [] l
 
 type direction = LeftToRight | RightToLeft
+
+let id x = x
