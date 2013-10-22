@@ -39,11 +39,11 @@ prove
 
   rswap 15 -13.  print_goals : swap1.
 
-  rnorm. rnorm_unknown (u,w). print_goals : norm_uk1.
+  rnorm. rnorm_unknown u w. print_goals : norm_uk1.
   rlet_abstract 2 gw g^w. print_goals : alet1.
   rlet_abstract 3 gu g^u. print_goals : alet2.
   rlet_abstract 4 gwu g^(w*u). 
-  rddh v. print_goals : after_ddh.
+  assumption -> ddh v. print_goals : after_ddh.
   requiv
     [ w  <-$ Fq;
       u <-$ Fq;
