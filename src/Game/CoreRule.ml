@@ -206,6 +206,7 @@ let rrandom_indep ju =
 (** Reduction to decisional assumptions *)
 
 (* decisional diffie-hellman *)
+(* This should be removed *)
 let check_ddh a b ex ey ez c ev =
  let a = mk_V a in
  let b = mk_V b in
@@ -235,6 +236,7 @@ let rddh vsc ju =
           i3 :: i4 :: GLet(z,mk_GExp (mk_GGen (destr_G ez.e_ty)) vc) :: c }]
   | _ -> failwith "can not apply ddh"
     
+(* This should be remove *)
 (* Bilinear decisional diffie-hellman *)
 let check_bddh a b c ex ey ez eU _C ev =
   let a = mk_V a in
@@ -272,34 +274,6 @@ let rbddh vsu ju =
           i4 :: i5 :: i6 :: GLet(_U,mk_GExp (mk_GGen (destr_G eU.e_ty)) vu) :: _C }]
   | _ -> failwith "can not apply bddh"
 
-let ddh_assm =
-  let gn = Groupvar.mk "1" in
-  let tG = mk_G gn in
-  let va = Vsym.mk "a" mk_Fq in
-  let vb = Vsym.mk "b" mk_Fq in
-  let vc = Vsym.mk "c" mk_Fq in
-  let vga = Vsym.mk "ga" tG in
-  let vgb = Vsym.mk "gb" tG in
-  let vt  = Vsym.mk "t"  tG in
-  let prefix =
-    [ GSamp(va,(mk_Fq,[]));
-      GSamp(vb,(mk_Fq,[]));
-      GLet(vga,mk_GExp (mk_GGen gn) (mk_V va));
-      GLet(vgb,mk_GExp (mk_GGen gn) (mk_V vb)) ]
-  in
-  let prefix1 = prefix @
-    [GLet(vt, mk_GExp (mk_GGen gn) (mk_FMult [mk_V va; mk_V vb]))]
-  in
-  let prefix2 = prefix @
-    [ GSamp(vc,(mk_Fq,[]));
-      GLet(vt, mk_GExp (mk_GGen gn) (mk_V vc))]
-  in
-  let pvars =
-    List.fold_left (fun acc x -> Vsym.S.add x acc)
-      Vsym.S.empty [va; vb; vc]
-  in
-  mk_ad prefix1 prefix2 pvars
-
 (* 'rassm_decision assm substv substgv ju'
    takes a decisional assumption 'assm', a
    bijection 'substv' mapping the variables in
@@ -335,15 +309,6 @@ let rassm_decision (dir : dir) subst assm ju =
   if not (is_ppt_ju ju') then
     failwith "Do not respect the computational assumption";
   [{ ju with ju_gdef = c' @ tl }]
-
-
-(* FIXME: Move to Rules.ml.
-   Return bijection from variables in
-   assm to subset of variables in ju.ju_gdef
-   (+ freshvars) and bijection from groupvars
-   in assm to groupvars in ju.ju_gdef. *)
-let unify_assm _assm _ju _freshvars =
-   failwith "not implemented"
 
 (** Rules for random oracles *)
 
