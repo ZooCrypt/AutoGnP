@@ -142,14 +142,14 @@ let call_system sys cmd linenum =
         cs
   in
   output_string c_out cmd;
-  (* F.printf "input: `%s' has been sent\n\n" cmd; *)
+  (* F.printf "input: `%s' has been sent\n\n%!" cmd; *)
   flush c_out;
   let rec loop o linenum =
     if linenum = 0 then o
     else (
       try
         let l = input_line c_in in
-        (* F.printf "output: `%s'\n" l; *)
+        (* F.printf "output: `%s'\n%!" l; *)
         loop (o @ [l]) (linenum - 1)
       with End_of_file ->
         ignore (Unix.close_process (c_in,c_out)); (* FIXME: close on exit *)
@@ -212,7 +212,7 @@ let mod_reduce a b =
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
   let cmd = F.sprintf ("R = QQ[%s];"^^
                        "use frac R;"^^
-                       "<< toExternalString(%s %% %s) << \"\\n\"\n")
+                       "<< toExternalString(%s %% %s) << \"\\n\";\n")
                       var_string
                       (string_of_fexp sa)
                       (string_of_fexp sb)
