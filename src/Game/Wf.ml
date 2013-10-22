@@ -145,10 +145,10 @@ let wf_lcmds wfs0 odef0 =
       wf_exp wfs e;
       go wfs lcmds
     | LSamp(v,(t,es))::lcmds ->
-      let wfs = ensure_varname_fresh wfs v in
       assert (ty_equal v.Vsym.ty t &&
                 List.for_all (fun e -> ty_equal t e.e_ty) es);
       List.iter (wf_exp wfs) es;
+      let wfs = ensure_varname_fresh wfs v in
       let v = mk_V v in
       let wfs = List.fold_left (fun wfs e -> add_ineq wfs e v) wfs es in
       go wfs lcmds
