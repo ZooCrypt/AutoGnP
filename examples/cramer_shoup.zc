@@ -3,6 +3,12 @@ adversary A2 : (G * G * G * G) -> Bool.
 oracle Dec : (G * G * G * G) -> G.
 (* not really  a random oracle, change this later *)
 random oracle H : ( G * G * G) -> Fq.
+assumption ddh
+  [ x <-$ Fq; y <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
+    x y z.
 
 prove
   [ w  <-$ Fq;

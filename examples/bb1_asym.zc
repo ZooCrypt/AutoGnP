@@ -5,6 +5,17 @@ oracle Kg1 : Fq -> (G_s * G_s).
 oracle Kg2 : Fq -> (G_s * G_s).
 bilinear map e : G * G_s -> G_t.
 
+assumption bddh
+  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
+    let ga = g ^ a; let gc = g ^ c;
+    let ga' = g_s ^ a; let gb' = g_s ^ b;
+    let t = e(g,g_s)^(a*b*c); ]
+  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
+    let ga = g ^ a; let gc = g ^ c;
+    let ga' = g_s ^ a; let gb' = g_s ^ b;
+    d <-$ Fq; let t = e(g,g_s)^d; ]
+  a b c d.
+
 prove
   [ i' <- A1();
     alpha <-$ Fq;
@@ -29,4 +40,32 @@ prove
       Kg2(i2) = [ (g0'*(g1'^i2*h1')^r2, g_s^r2)
                 | not (i2 = i'), r2 <-$ Fq ];
   ] : b = b'.  print_goals : start.
-  rnorm.  print_goals : correct.
+  rnorm.  print_goals : start.
+
+  rnorm. rnorm_unknown alpha beta delta.
+  print_goals : after_norm.
+
+(*
+  rrandom 5 _ (x -> x + d * i') z.
+  rnorm. print_goals : after_random.
+
+  rrandom_oracle (6,1,2) _ (x -> x * (i1 - i') + c) zz.
+  rnorm.  print_goals : after_random_Kg1.
+
+  rrandom_oracle (8,1,2) _ (x -> x * (i2 - i') + c) zzz.
+  rnorm.  print_goals : after_random_Kg2.
+
+  rswap 1 3.  print_goals : swap_1_1.
+  rnorm_unknown (c,d,e).  print_goals : norm_uk.
+
+  rlet_abstract 3 xc (g ^ c).  print_goals : applet1.
+  rlet_abstract 4 xd (g ^ d).  print_goals : applet2.
+  rlet_abstract 5 xe (g ^ e).  print_goals : applet3.
+  rlet_abstract 6 t (e(g,g)^(c*d*e)). print_goals : applet4.
+
+  assumption -> bddh u. rnorm. rswap 4 4.  print_goals : after_rbddh.
+
+  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)) zzzz.
+  rnorm. rswap 7 2.  print_goals : after_random.
+
+  rindep.  print_goals : after_indep. *)

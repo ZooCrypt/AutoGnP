@@ -305,8 +305,7 @@ instr :
 | PRINTGOALS { PrintGoals("") }
 | RNORM { Apply(Rnorm) }
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
-| RNORM_UNKNOWN { Apply(Rnorm_unknown([])) }
-| RNORM_UNKNOWN is = idlist { Apply(Rnorm_unknown(is)) }
+| RNORM_UNKNOWN is = ID* { Apply(Rnorm_unknown(is)) }
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | ASSUMPTION d=dir s=ID xs=ID* { Apply (Rassm(d,s,xs))}

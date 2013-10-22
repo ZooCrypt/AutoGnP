@@ -1,5 +1,11 @@
 adversary A1 : G -> (G * G).
 adversary A2 : (G * G) -> Bool.
+assumption ddh
+  [ x <-$ Fq; y <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
+    x y z.
 
 prove
   [ a <-$ Fq;
@@ -10,11 +16,11 @@ prove
     b' <- A2(mb * g^(a*x), g^x);
   ] : b = b'.  print_goals : start.
  rnorm. print_goals : norm.
- rnorm_unknown (a,x).  print_goals : uk.
+ rnorm_unknown a x.  print_goals : uk.
  rlet_abstract 2 xa (g^a).
  rlet_abstract 3 xx (g^x).
  rlet_abstract 4 xax (g^(a*x)).  print_goals : after_let.
- rddh c. rnorm. rswap 3 2. print_goals : after_ddh.
+ assumption -> ddh c. rnorm. rswap 3 2. print_goals : after_ddh.
  rrandom 5 _ (u -> u + log(b?m0:m1)) z1.
  rnorm. print_goals : after_random.
  rswap 4 2.  print_goals : after_swap.
