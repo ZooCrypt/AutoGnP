@@ -102,7 +102,7 @@ let pp_igcmd fmt (i,gc) =
   Format.fprintf fmt "@[%i: %a@]" i pp_gcmd gc 
 
 let pp_gdef fmt gd =
-  pp_list ";@," pp_igcmd fmt (num_list gd)
+  pp_list ";@." pp_igcmd fmt (num_list gd)
 
 let pp_ju fmt ju =
   F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
@@ -298,8 +298,8 @@ type ju_octxt =
   { juoc_asym : Asym.t;
     juoc_avars : Vsym.t list;
     juoc_aarg : expr;
-    juoc_oright : odef list;
     juoc_oleft : odef list;
+    juoc_oright : odef list;    
     juoc_osym : Osym.t;
     juoc_oargs: Vsym.t list;
     juoc_return : expr;

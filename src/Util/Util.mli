@@ -130,3 +130,6 @@ val rights : (('a,'b) either) list -> 'b list
 
 val lefts_rights : (('a,'b) either) list -> ('a list * 'b list)
 
+type direction = LeftToRight | RightToLeft
+
+val id : 'a -> 'a

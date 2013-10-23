@@ -12,27 +12,27 @@ module type S =
     type t
     val hashcons : t -> t
     val iter : (t -> unit) -> unit
-    val stats : unit -> int * int * int * int * int * int
-    val clear : unit -> unit
+(*    val stats : unit -> int * int * int * int * int * int
+    val clear : unit -> unit *)
   end
 
 module Make(H : HashedType) : (S with type t = H.t) =
   struct
     type t = H.t
 
-(*    module WH = Hashtbl.Make (H) *)
-    module WH = Weak.Make(H) 
+    module WH = Hashtbl.Make (H)
+(*    module WH = Weak.Make(H) *)
 
     let next_tag = ref 0
 
     let htable = WH.create 5003
 
     let merge tbl d = 
-      WH.merge tbl d 
-(*      try WH.find tbl d 
+(*      WH.merge tbl d  *)
+      try WH.find tbl d 
       with Not_found ->
         WH.add tbl d d;
-        d *)
+        d 
 
     let hashcons d =
       let d = H.tag !next_tag d in
@@ -40,10 +40,10 @@ module Make(H : HashedType) : (S with type t = H.t) =
       if o == d then incr next_tag;
       o
 
-    let iter f = WH.iter f (*fun k _ -> f k*) htable
+    let iter f = WH.iter (fun k _ -> f k) htable
 
-    let stats () = WH.stats htable
-    let clear () = WH.clear htable
+(*    let stats () = WH.stats htable
+    let clear () = WH.clear htable *)
   end
 
 let combine acc n = n * 65599 + acc

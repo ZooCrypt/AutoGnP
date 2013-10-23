@@ -6,6 +6,6 @@ type assumption_decision = private
 
 val mk_ad : Game.gdef -> Game.gdef -> Vsym.S.t -> assumption_decision
 
-val needed_var : [`LtoR | `RtoL] -> assumption_decision -> Vsym.t list
+val needed_var : Util.direction  -> assumption_decision -> Vsym.t list
 
 val subst : Vsym.t Vsym.M.t -> assumption_decision -> assumption_decision

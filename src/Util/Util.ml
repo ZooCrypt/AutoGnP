@@ -174,3 +174,7 @@ let lefts_rights l =
     | Right(x)::xs -> go lacc      (x::racc) xs
     | [] -> (List.rev lacc, List.rev racc)
   in go [] [] l
+
+type direction = LeftToRight | RightToLeft
+
+let id x = x
