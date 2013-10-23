@@ -1,0 +1,10 @@
+(* resulting game is not well-formed (y not defined) *)
+adversary A : () -> ().
+oracle O : Fq -> Fq.
+
+prove [
+  y <-$ Fq;
+  z <-$ Fq;
+] : true.
+rexcept 2 y*z.
+print_goals : t1.

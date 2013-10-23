@@ -132,7 +132,7 @@ let rrandom_oracle p c1 c2 vslet ju =
 
 (** Statistical distance *)
 
-let rexcept p es  ju =
+let rexcept p es ju =
   match get_ju_ctxt ju p with
   | GSamp(vs,(t,_es)), juc ->
     [ set_ju_ctxt [ GSamp(vs,(t,es)) ] juc ]

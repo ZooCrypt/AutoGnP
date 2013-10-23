@@ -196,11 +196,11 @@ let wf_gdef gdef0 =
       wf_exp wfs e;
       go wfs gcmds
     | GSamp(v,(t,es))::gcmds ->
-      let wfs = ensure_varname_fresh wfs v in
       assert (ty_equal v.Vsym.ty t &&
                 List.for_all (fun e -> ty_equal t e.e_ty) es &&
                 (not (ty_equal t mk_Bool) || es = []));
       List.iter (wf_exp wfs) es;
+      let wfs = ensure_varname_fresh wfs v in
       let v = mk_V v in
       let wfs = List.fold_left (fun wfs e -> add_ineq wfs e v) wfs es in
       go wfs gcmds
