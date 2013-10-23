@@ -178,3 +178,10 @@ let lefts_rights l =
 type direction = LeftToRight | RightToLeft
 
 let id x = x
+
+let cat_Some l =
+  let rec go acc xs = match xs with
+    | Some(x)::xs  -> go (x::acc) xs
+    | None::xs     -> go acc      xs
+    | [] -> List.rev acc
+  in go [] l

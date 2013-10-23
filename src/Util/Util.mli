@@ -133,3 +133,5 @@ val lefts_rights : (('a,'b) either) list -> ('a list * 'b list)
 type direction = LeftToRight | RightToLeft
 
 val id : 'a -> 'a
+
+val cat_Some : 'a option list -> 'a list
