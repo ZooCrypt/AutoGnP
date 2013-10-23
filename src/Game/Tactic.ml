@@ -1,4 +1,3 @@
-open Inv
 open ParserUtil
 open CoreRule
 open Rules
@@ -72,6 +71,8 @@ let handle_tactic ps tac jus =
   | Rindep -> apply_rule rrandom_indep ps
 
   | Rswap(i,j) -> apply_rule (rswap i j) ps
+
+  | Rswap_oracle(op,j) -> apply_rule (rswap_oracle op j) ps
 
   | Requiv(gd,ev) ->
     let gd = gdef_of_parse_gdef true ps gd in 
@@ -205,6 +206,19 @@ let handle_instr ps instr =
     | Some(jus) -> handle_tactic ps tac jus
     | None -> assert false
     end
+
+  | Last ->
+    begin match ps.ps_goals with
+    | Some(ju::jus) -> { ps with ps_goals = Some(jus@[ju]) }
+    | _ -> assert false
+    end
+
+  | Admit ->
+    begin match ps.ps_goals with
+    | Some(_::jus) -> { ps with ps_goals = Some(jus) }
+    | _ -> assert false
+    end
+
   | PrintGoals(s) ->
     Format.printf "@[<v>proof state %s:@\n%a@." s pp_goals ps.ps_goals;
     ps

@@ -35,6 +35,8 @@ rule lex = parse
   | "false" { FALSE }
   | "let"   { LET }
   | "adversary" { ADVERSARY }
+  | "admit" { ADMIT }
+  | "last" { LAST }
   | "oracle" { ORACLE }
   | "assumption" { ASSUMPTION }
   | "random" { RANDOM }

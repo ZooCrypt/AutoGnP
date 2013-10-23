@@ -241,17 +241,17 @@ let swap_oracle i delta ju =
   if delta = 0 then ju
   else
     let i, juoc = get_ju_octxt ju i in
-    let c1,c2,c3 = 
+    let c1_rev,c2,c3 = 
       if delta < 0 then
-        let hhd,thd = cut_n delta juoc.juoc_cleft in
-        thd,hhd,juoc.juoc_cleft
-      else 
+        let hhd,thd = cut_n (-delta) juoc.juoc_cleft in
+        thd,hhd,juoc.juoc_cright
+      else
         let htl, ttl = cut_n delta juoc.juoc_cright in
-        juoc.juoc_cright, List.rev htl, ttl in
+        juoc.juoc_cleft, List.rev htl, ttl in
     check_swap read_lcmds write_lcmds i c2;
     let c2, c3 = 
       if delta > 0 then c2, i::c3 else i::c2, c3 in
-    set_ju_octxt c2 { juoc with juoc_cleft = c1; juoc_cright = c3 }
+    set_ju_octxt c2 { juoc with juoc_cleft = c1_rev; juoc_cright = c3 }
 
 let rswap_oracle i delta ju =
   [swap_oracle i delta ju]

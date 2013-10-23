@@ -95,7 +95,8 @@
 %token REXCEPT_ORACLE
 %token RREWRITE_ORACLE
 %token UNDERSCORE
-
+%token ADMIT
+%token LAST
 
 /************************************************************************/
 /* Production types */
@@ -293,6 +294,8 @@ opos:
 | LPAREN i = NAT COMMA j = NAT COMMA k = NAT RPAREN { (i-1,j-1,k-1) }
 
 instr :
+| ADMIT { Admit }
+| LAST { Last }
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 { ODecl(i,t1,t2) }
 | RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,t1,t2) }
@@ -308,6 +311,7 @@ instr :
 | RNORM_UNKNOWN is = ID* { Apply(Rnorm_unknown(is)) }
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
+| RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
 | ASSUMPTION d=dir s=ID xs=ID* { Apply (Rassm(d,s,xs))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }

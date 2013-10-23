@@ -274,6 +274,7 @@ type tactic =
   | Rnorm_nounfold    
   | Rnorm_unknown of string list
   | Rswap of int * int
+  | Rswap_oracle of G.ocmd_pos * int  
   | Rctxt_ev of string * parse_expr
   | Rrandom of int * (string * parse_expr) option * string * parse_expr * string
   | Rrandom_oracle of G.ocmd_pos * (string * parse_expr) option * string * parse_expr * string
@@ -297,5 +298,7 @@ type instr =
   | Judgment   of gdef * parse_expr
   | PrintGoals of string
   | Apply      of tactic
+  | Admit
+  | Last
 
 type theory = instr list
