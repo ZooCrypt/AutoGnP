@@ -7,6 +7,5 @@ prove [
     O(x) = [ y + x | x = y ];
 ] : y = y.
 rrewrite_oracle (2,1,1) ->.
-print_goals : t1.
 rrewrite_oracle (2,1,1) <-.
 print_goals : t2.

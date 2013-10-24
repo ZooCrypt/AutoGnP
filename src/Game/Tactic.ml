@@ -81,7 +81,7 @@ let handle_tactic ps tac jus =
       match ev with
       | None -> ju.Game.ju_ev
       | Some e -> expr_of_parse_expr ps e in
-    apply_rule (rconv { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
+    apply_rule (rconv true { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
 
   | Rassm(dir,s,xs) ->
     let assm = 

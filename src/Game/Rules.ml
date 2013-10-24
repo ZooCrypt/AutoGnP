@@ -7,17 +7,17 @@ open Util
 (* unfold all lets and norm *)
 let rnorm ju =
   let new_ju = norm_ju ~norm:norm_expr_def ju in
-  rconv new_ju ju
+  rconv true new_ju ju
 
 (* norm without unfolding *)
 let rnorm_nounfold ju = 
   let new_ju = map_ju_exp norm_expr_def ju in
-  rconv new_ju ju
+  rconv true new_ju ju
 
 (* unfold without norm *)
 let runfold_only ju = 
   let new_ju = norm_ju ~norm:(fun x -> x) ju in
-  rconv new_ju ju
+  rconv false new_ju ju
 
 (* exponent rewriting *)
 let simp_exp e unknown =
@@ -80,7 +80,7 @@ let rewrite_exps unknown e0 =
 let rnorm_unknown unknown ju =
   let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
   let new_ju = map_ju_exp norm ju in
-  rconv new_ju ju
+  rconv true new_ju ju
 
 (* FIXME: does not work for first line *)
 let rlet_abstract p vs e ju =
@@ -88,13 +88,13 @@ let rlet_abstract p vs e ju =
   | cmd, juc ->
     let v = mk_V vs in
     let cmds = cmd::[GLet(vs, e)] in
-    (* try both the given expression and the normalized given expression *)
-    let subst a = e_replace (norm_expr e) v (e_replace e v a) in
+    (* could also try to normalize given expression *)
+    let subst a = e_replace e v a in
     let juc = { juc with
                 juc_right = map_gdef_exp subst juc.juc_right;
                 juc_ev = subst juc.juc_ev }
     in
-    rconv (set_ju_ctxt cmds juc) ju
+    rconv false (set_ju_ctxt cmds juc) ju
 
 let rlet_unfold p ju =
   match get_ju_ctxt ju p with
@@ -104,7 +104,7 @@ let rlet_unfold p ju =
                 juc_right = map_gdef_exp subst juc.juc_right;
                 juc_ev = subst juc.juc_ev }
     in
-    rconv (set_ju_ctxt [] juc) ju
+    rconv false (set_ju_ctxt [] juc) ju
   | _ -> assert false
 
 

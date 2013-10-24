@@ -263,7 +263,7 @@ let ju_of_parse_ju reuse ps gd e =
   let gd = gdef_of_parse_gdef reuse ps gd in
   let ju = { G.ju_gdef = gd; 
              G.ju_ev = expr_of_parse_expr ps e } in
-  Wf.wf_ju ju;
+  Wf.wf_ju Wf.NoCheckDivZero ju;
   ju
 
 (* ----------------------------------------------------------------------- *)

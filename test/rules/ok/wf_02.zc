@@ -1,0 +1,7 @@
+(* We divide by zero, but it is allowed. *)
+
+prove [
+  a <-$ Fq;
+  b <-$ Fq \ (1/a);
+] : true.
+print_goals : t.

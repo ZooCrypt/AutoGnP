@@ -22,8 +22,8 @@ let mk_ad pref1 pref2 pvars =
   (* FIXME: check that groupvars(pref1) = groupvars(pref2) *)
   assert (check_nocall pref1);
   assert (check_nocall pref2);
-  ignore (wf_gdef pref1);
-  ignore (wf_gdef pref2);
+  ignore (wf_gdef NoCheckDivZero pref1);
+  ignore (wf_gdef NoCheckDivZero pref2);
   assert (Se.equal
            (Se.diff (gdef_vars pref1) pvarse)
            (Se.diff (gdef_vars pref2) pvarse));

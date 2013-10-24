@@ -13,7 +13,7 @@ open Assumption
 let apply rule goals = match goals with
   | g::gs ->
       let gs' = rule g in
-      List.iter wf_ju gs';
+      List.iter (wf_ju NoCheckDivZero) gs';
       gs' @ gs
   | _ -> failwith "there are no goals"
 
@@ -36,9 +36,16 @@ let assert_no_occur vs ju s =
 let check_conv ju1 ju2 = 
   ju_equal (norm_ju ju1) (norm_ju ju2) 
 
-let rconv new_ju1 ju1 = 
-  let ju = norm_ju ju1 in
-  let new_ju = norm_ju new_ju1 in
+let rconv do_norm_terms new_ju1 ju1 =
+  let (nf,ctype) =
+    if do_norm_terms
+    then (Norm.norm_expr,CheckDivZero)
+    else (id,NoCheckDivZero)
+  in
+  wf_ju ctype ju1;
+  wf_ju ctype new_ju1;
+  let ju = norm_ju ~norm:nf ju1 in
+  let new_ju = norm_ju ~norm:nf new_ju1 in
   if not (ju_equal ju new_ju) then
     (  
       Format.printf "ju = %a@.new_ju = %a@." 
@@ -65,6 +72,7 @@ let rctxt_ev ev c ju =
       mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
     else failwith "rctxt_ev: bad event"
   in
+  (* FIXME: perform context check directly, no check_conv *)
   let ju' = {ju with ju_ev = cev1} in
   if not (check_conv new_ju ju') then 
     failwith "rctxt_ev: bad context";
@@ -94,9 +102,9 @@ let rrandom p c1 c2 vslet ju =
     let cmds = [ GSamp(vs,d);
                  GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
-    let wfs = wf_gdef (List.rev juc.juc_left) in
-    wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
-    wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    let wfs = wf_gdef NoCheckDivZero (List.rev juc.juc_left) in
+    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let subst e = e_replace v (mk_V vslet) e in
     let juc = { juc with
                 juc_right = map_gdef_exp subst juc.juc_right;
@@ -117,11 +125,11 @@ let rrandom_oracle p c1 c2 vslet ju =
                  LLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
     (* ensure both contexts well-defined *)
-    let wfs = wf_gdef (List.rev juoc.juoc_juc.juc_left) in
+    let wfs = wf_gdef CheckDivZero (List.rev juoc.juoc_juc.juc_left) in
     let wfs = ensure_varnames_fresh wfs juoc.juoc_oargs in
-    let wfs = wf_lcmds wfs (List.rev juoc.juoc_cleft) in
-    wf_exp (ensure_varname_fresh wfs (fst c1)) (snd c1);
-    wf_exp (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    let wfs = wf_lcmds CheckDivZero wfs (List.rev juoc.juoc_cleft) in
+    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let subst e = e_replace v (mk_V vslet) e in
     let juoc = { juoc with
                  juoc_return = subst juoc.juoc_return;

@@ -6,6 +6,8 @@ open Type
 open Game
 open Norm
 
+type wf_check_type = CheckDivZero | NoCheckDivZero
+
 type wf_state =
   { wf_names : Sstring.t; (* used names for variables, adversaries, and oracles *)
     wf_bvars : Vsym.S.t; (* bound variables, never two vsyms with the same name *)
@@ -64,31 +66,65 @@ let ty_of_op ty argtys o =
   | EMap(es) -> ([mk_G (es.Esym.source1); mk_G (es.Esym.source2)], mk_G (es.Esym.target),[])
   | FMinus   -> ([mk_Fq;mk_Fq],mk_Fq,[])
   | FOpp     -> ([mk_Fq],mk_Fq,[])
-  | FInv     -> ([mk_Fq],mk_Fq,[0]) (* argument 0 must be nonzero *)
+  | FInv     -> ([mk_Fq],mk_Fq,[0])        (* argument 0 must be nonzero *)
   | FDiv     -> ([mk_Fq; mk_Fq],mk_Fq,[1]) (* argument 1 must be nonzero *)
   | Not      -> ([mk_Bool],mk_Bool,[])
   | Ifte     -> ([mk_Bool;ty;ty],ty,[])
      (* we ignore these inequality constraints, maybe restrict first
         argument of if to boolean variable *)
-  | Eq     -> (match argtys with
-               | [t1;t2] when ty_equal t1 t2 -> ([t1;t2],mk_Bool,[])
-               | _ -> assert false)
+  | Eq      -> (match argtys with
+                | [t1;t2] when ty_equal t1 t2 -> ([t1;t2],mk_Bool,[])
+                | _ -> assert false)
 
-let add_ineq wfs e1 e2 =
-  let mk_nzero a b =
-    let h = CAS.norm id (mk_FMinus a b) in
+let rec add_ineq ctype wfs e1 e2 =
+  try
+    if ctype = NoCheckDivZero then (
+      wf_exp CheckDivZero wfs e1;
+      wf_exp CheckDivZero wfs e2;
+    );
+    let e1 = norm_expr e1 in
+    let e2 = norm_expr e2 in
+    let mk_nzero a b =
+      let h =
+        match a.e_node, b.e_node with
+        | App(FDiv,[a1;a2]), App(FDiv,[b1;b2]) ->
+          norm_expr (mk_FMinus (mk_FMult [a1;b2]) (mk_FMult [b1;a2]))
+        | App(FDiv,[a1;a2]), _ ->
+          norm_expr (mk_FMinus a1 (mk_FMult [b;a2]))
+        | _, App(FDiv,[b1;b2]) ->
+          norm_expr (mk_FMinus b1 (mk_FMult [b2;a]))
+        | _ ->
+          norm_expr (mk_FMinus a b)
+      in
+      match wfs.wf_nzero with
+      | None    -> Some h
+      | Some nz -> Some (mk_FMult [ h; nz])
+    in
+    match e1.e_ty.ty_node,e2.e_ty.ty_node with
+    | Fq, Fq   -> { wfs with
+                    wf_nzero = mk_nzero e1 e2 }
+    | G _, G _ -> { wfs with
+                    wf_nzero = mk_nzero (mk_GLog e1) (mk_GLog e2) }
+    | _ -> wfs
+  with
+    (* we already checked well-formedness, at least with NoCheckDivZero *)
+    _ -> wfs
+
+and check_nonzero ctype wfs e =
+  if ctype = NoCheckDivZero then true
+  else
+    (* we know e itself is division-safe *)
     match wfs.wf_nzero with
-    | None    -> Some h
-    | Some nz -> Some (mk_FMult [ h; nz])
-  in
-  match e1.e_ty.ty_node,e2.e_ty.ty_node with
-  | Fq, Fq   -> { wfs with
-                  wf_nzero = mk_nzero e1 e2 }
-  | G _, G _ -> { wfs with
-                  wf_nzero = mk_nzero (mk_GLog e1) (mk_GLog e2) }
-  | _ -> wfs
+    | Some nz ->
+      let e = norm_expr e in
+      (* the normal form is either f/g or f for polynomials f,g *)
+      begin match e.e_node with
+      | App(FDiv, [a;_b]) -> CAS.mod_reduce nz a (* division-safe => b<>0 *)
+      | _                 -> CAS.mod_reduce nz e (* e is polynomial *)
+      end
+    | None    -> false
 
-let rec wf_exp wfs e0 =
+and wf_exp ctype wfs e0 =
   let rec go e =
     let ty =
       match e.e_node with
@@ -97,7 +133,7 @@ let rec wf_exp wfs e0 =
         assert (List.for_all
                   (fun (v,h) -> ty_equal v.Vsym.ty h.Hsym.dom) vhs);
         let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
-        wf_exp wfs e2;
+        wf_exp ctype wfs e2;
         ignore (go e1);
         assert (ty_equal e1.e_ty e2.e_ty);
         assert (ty_equal mk_Bool e.e_ty);
@@ -135,9 +171,7 @@ let rec wf_exp wfs e0 =
         assert (list_eq_for_all2 ty_equal tys (List.map go es));
         assert_msg
           (List.for_all
-            (fun i -> match wfs.wf_nzero with
-                      | Some nz -> CAS.mod_reduce nz (norm_expr (List.nth es i))
-                      | None    -> false) nz)
+            (fun i -> check_nonzero ctype wfs (List.nth es i)) nz)
           (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp)
             (List.map (fun i -> List.nth es i) nz) |> fsget);
         assert (ty_equal rty e.e_ty);
@@ -146,33 +180,33 @@ let rec wf_exp wfs e0 =
   in
   ignore (go e0); ()
 
-let wf_lcmds wfs0 odef0 =
+let wf_lcmds ctype wfs0 odef0 =
   let rec go wfs odef = match odef with
     | [] -> wfs
     | LLet(v,e)::lcmds ->
       let wfs = ensure_varname_fresh wfs v in
       assert (ty_equal v.Vsym.ty e.e_ty);
-      wf_exp wfs e;
+      wf_exp ctype wfs e;
       go wfs lcmds
     | LSamp(v,(t,es))::lcmds ->
       assert (ty_equal v.Vsym.ty t &&
                 List.for_all (fun e -> ty_equal t e.e_ty) es);
-      List.iter (wf_exp wfs) es;
+      List.iter (wf_exp ctype wfs) es;
       let wfs = ensure_varname_fresh wfs v in
       let v = mk_V v in
-      let wfs = List.fold_left (fun wfs e -> add_ineq wfs e v) wfs es in
+      let wfs = List.fold_left (fun wfs e -> add_ineq ctype wfs e v) wfs es in
       go wfs lcmds
     | LBind (vs,hsym)::lcmds -> 
       assert (ty_equal (ty_prod vs) hsym.Hsym.dom);
       go wfs lcmds
     | LGuard e::lcmds ->
       assert (ty_equal e.e_ty mk_Bool);
-      wf_exp wfs e;
+      wf_exp ctype wfs e;
       let wfs =
         match e.e_node with
         | App(Not,[eeq]) ->
             (match eeq.e_node with
-             | App(Eq,[e1;e2]) -> add_ineq wfs e1 e2
+             | App(Eq,[e1;e2]) -> add_ineq ctype wfs e1 e2
              | _ -> wfs)
         | _ -> wfs
       in
@@ -180,29 +214,29 @@ let wf_lcmds wfs0 odef0 =
   in
   go wfs0 odef0
 
-let wf_odef wfs (osym,vs,lcmds,e) =
+let wf_odef ctype wfs (osym,vs,lcmds,e) =
    assert (ty_equal osym.Osym.dom (ty_prod vs) &&
              ty_equal osym.Osym.codom e.e_ty);
    let wfs = ensure_varnames_fresh wfs vs in
-   let wfs = wf_lcmds wfs lcmds in
-   wf_exp wfs e
+   let wfs = wf_lcmds ctype wfs lcmds in
+   wf_exp ctype wfs e
 
-let wf_gdef gdef0 =
+let wf_gdef ctype gdef0 =
   let rec go wfs gdef = match gdef with
     | [] -> wfs
     | GLet(v,e)::gcmds ->
       let wfs = ensure_varname_fresh wfs v in
       assert (ty_equal v.Vsym.ty e.e_ty);
-      wf_exp wfs e;
+      wf_exp ctype wfs e;
       go wfs gcmds
     | GSamp(v,(t,es))::gcmds ->
       assert (ty_equal v.Vsym.ty t &&
                 List.for_all (fun e -> ty_equal t e.e_ty) es &&
                 (not (ty_equal t mk_Bool) || es = []));
-      List.iter (wf_exp wfs) es;
+      List.iter (wf_exp ctype wfs) es;
       let wfs = ensure_varname_fresh wfs v in
       let v = mk_V v in
-      let wfs = List.fold_left (fun wfs e -> add_ineq wfs e v) wfs es in
+      let wfs = List.fold_left (fun wfs e -> add_ineq ctype wfs e v) wfs es in
       go wfs gcmds
     | GCall(vs,asym,e,os)::gcmds ->
       let wfs = ensure_varnames_fresh wfs vs in
@@ -213,12 +247,12 @@ let wf_gdef gdef0 =
         ensure_names_fresh wfs
           (List.map (fun (osym,_,_,_) -> Id.name (osym.Osym.id)) os)
       in
-      List.iter (wf_odef wfs) os;
+      List.iter (wf_odef ctype wfs) os;
       go wfs gcmds
   in
   go (mk_wfs ()) gdef0
 
-let wf_ju ju =
-  let wfs = wf_gdef ju.ju_gdef in
+let wf_ju ctype ju =
+  let wfs = wf_gdef ctype ju.ju_gdef in
   assert (ty_equal mk_Bool ju.ju_ev.e_ty);
-  wf_exp wfs ju.ju_ev
+  wf_exp ctype wfs ju.ju_ev
