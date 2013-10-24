@@ -37,34 +37,138 @@ prove
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
   ] : b = b'. print_goals : start.
 
-  rswap 15 -13.  print_goals : swap1.
-
-  rnorm. rnorm_unknown u w. print_goals : norm_uk1.
-  rlet_abstract 2 gw g^w. print_goals : alet1.
-  rlet_abstract 3 gu g^u. print_goals : alet2.
+(* apply DDH
+     we try to bring the game into DDH-form for all pairs
+     of distinct random variables.
+     z1, z2, x1, x2, y1, y2 used in decryption as exponent
+     ==> only u,v work
+*)
+  rswap 15 -13.
+  rnorm. rnorm_unknown u w.
+  rlet_abstract 2 gw g^w.
+  rlet_abstract 3 gu g^u.
   rlet_abstract 4 gwu g^(w*u). 
-  assumption -> ddh v. print_goals : after_ddh.
-  requiv
-    [ w  <-$ Fq;
-      u <-$ Fq;
-      v <-$ Fq;
-      x1 <-$ Fq;
-      x2 <-$ Fq;
-      y1 <-$ Fq;
-      y2 <-$ Fq;
-      z1 <-$ Fq;
-      z2 <-$ Fq;
-      (m0,m1) <- A1(g^(x1+w*x2),g^(y1+w*y2),g^(z1+w*z2),g^w);
-      b <-$ Bool;
-      let mb = (b?m0:m1);
-      let sa  = g^u;
-      let sa' = g^v;
-      let sc  = mb * g^(u*z1 + v*z2);
-      let sd  = g^(u*x1 + v*x2) * g^(y1*u*H(sa,sa',sc) + y2*v*H(sa,sa',sc));
-      b' <- A2(sa,sa',sc,sd) with
-        Dec(a,a',c,d) =
-          [ c * (a^z1 * a'^z2)^(-1)
-          | not (a = sa), not(a' = sa'), not(c = sc), not(d = sd),
-            d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
-    ] : b = b'.  print_goals : equiv.
-    radd_test (17,1,5) (a^w  = a') A3 ba ba' bc bd. print_goals : added_test.
+  assumption -> ddh v. rnorm.
+
+(* Perform "safe" applications of the random rule from start-of-main
+   to end-of-main using the field-expression where the random
+   variable occurs first as bijection and computing the inverse.
+   Prefer applications where both contexts are division-free.
+*)
+  rswap 4 1. rrandom 5 _ (y -> w*x2 + y) l_x1. rnorm.
+  rswap 6 1. rrandom 7 _ (y -> w*y2 + y) l_y1. rnorm.
+  rswap 8 1. rrandom 9 _ (y -> w*z2 + y) l_z1. rnorm.
+  rswap 4 7. rswap 5 6. rswap 6 3.
+
+(* If we try to apply rrandom to z2, we notice that the inequality
+   'u*w <> v' is required. We therefore make the sampling of v
+   excepted.
+*)
+  rexcept 3 u*w.
+  rrandom 9 _ (y -> z1*u + y*v + log(b?m0:m1) - w*y*u) l_z2. rnorm.
+
+(* The two remaining random variables to which we could apply rrandom are x2 and y2:
+    x2 has coefficient (v - u*w), y2 has coefficient H(g^u, g^v, g^z2)*...,
+    in the first exponent, so we pick x2 since (v -u*w) is nonzero. *)
+  rswap 10 1.
+  rrandom 11 _ (y -> x1*u + y*v - w*y*u - w*y2*u*H(g^u,g^v,g^z2) +
+                     y1*u*H(g^u,g^v,g^z2) + y2*v*H(g^u,g^v,g^z2)) r_x2. rnorm.
+
+(* We notice that input to hash function is completely random now,
+   we can add a test to Dec because the bad case can be discharged
+   using TCR later on.
+*)
+  radd_test (12,1,4) (not (H(a,a',c) = H(g^u, g^v,g^z2))) A3 ba ba' bc bd.
+
+(* We first focus on the bad case:
+   For a reduction to TCR, we u,v,z2 must be uniformly sampled.
+   We therefore first remove the excepted distribution transformer from 
+   the sampling of v.
+*)
+  last.
+  print_goals : l1.
+  rexcept 3.
+  print_goals : l2.
+  rswap 2 -1.
+  print_goals : l3.
+  rswap 3 -1.
+  print_goals : l4.    
+  rswap 9 -6.
+  rlet_abstract 4 hin (g^u, g^v, g^z2).
+  print_goals : tcr_admit.
+  admit. (* this is TCR *)
+
+  (* There is still a problem because we use the plug-and-pray bad
+     rule, but want to use the list-rule here because we reduce
+     to a compute-assumption *)
+
+(* We now add the user-provided validity check "a^w = a'" in Dec.
+   Why now?
+   EITHER because we tried to add the test before every
+   earlier step and had to backtrack
+   OR because we are stuck now.
+*)
+  radd_test (12,1,6) (a^w  = a') A3' ga ga' gc gd.
+  rnorm.
+  print_goals : add_test.
+(*
+
+(* We have a test of the form "var = expr".
+   We always rewrite with such tests.
+*)
+  rrewrite_oracle (12,1,1) <-. rnorm.
+  rswap 8 4. rindep.
+
+(* We have a test of the form "var = expr".
+   We always rewrite with such tests.
+*)
+  rrewrite_oracle (12,1,1) <-. rnorm.
+(*
+    rrewrite_oracle (17,1,1) <-. rnorm_nounfold. (* print_goals : a2. *)
+    rswap 8 1. rrandom 9 _ (y -> w*z2 + y) zz. rlet_unfold 10. rnorm_nounfold. (* print_goals : a3. *)
+    rswap 8 4. rrandom 12 _ (y -> z1*u + y*v + log(mb) + -(w*y*u)) zzz. rlet_unfold 13. rnorm_nounfold. 
+      (* print_goals : a4. *)
+    rnorm. (* print_goals : a5. *)
+    rswap 10 2. rindep.  (* print_goals : a6. *)
+
+    (* bad case *)
+    rswap (17,1,6) -5. (* print_goals : a7. *)
+    rrewrite_oracle (17,1,1) <-. rnorm_nounfold. (* print_goals : a8. *)
+    rswap 4 1. rrandom 5 _ (y -> w*x2 + y) zzzz. rlet_unfold 6. rnorm_nounfold.
+    rswap 4 11.
+    rswap 5 1. rrandom 6 _ (y -> w*y2 + y) zzzzz. rlet_unfold 7. rnorm_nounfold.
+    rswap 5 10.
+    rswap 6 1. rrandom 7 _ (y -> w*z2 + y) z7. rlet_unfold 8. rnorm_nounfold. (* make this rrandom* *)
+    rswap 6 6. rrandom 12 _ (y -> z1*u + y*v + log(mb) + -(w*y*u)) z8. rlet_unfold 13. rnorm_nounfold.
+    print_goals : before_last_rand.
+    rswap 14 1.
+    rrandom 15 _
+      (y -> x1*u + y*v + y1*u*H(sa, sa', sc) + y2*v*H(sa, sa', sc) + -(w*y*u)
+      + -(w*y2*u*H(sa, sa', sc))) z9. rlet_unfold 16. rnorm_nounfold.
+    rswap 14 4.
+    rlet_abstract 17 hb H(ba, ba', bc).
+    rlet_abstract 17 hs H(sa, sa', sc).
+    rlet_abstract 17 l log(ba).
+    rlet_abstract 17 l' log(ba').
+    print_goals : before_a.
+    rrandom 22 _
+      (y -> (  w*x2*l
+             - w*w*y*u*l*hb
+             + w*y1*u*l*hb
+             + w*y*v*l*hb
+             + w*y*u*l'*hb
+             - y1*v*l*hb
+             - y*v*l'*hb
+             - x1*v*l
+             + x1*u*l'
+             - x2*l'
+             + w*w*y*u*hs*l
+             - w*y1*u*hs*l 
+             - w*y*v*hs*l
+             - w*y*u*hs*l'
+             + y1*u*hs*l'
+             + y*v*hs*l')
+          / (w*u + -v)) z10.
+    rlet_unfold 23. rnorm_nounfold.
+    *)
+    print_goals : aaaaa. *)
