@@ -213,15 +213,16 @@ let mod_reduce a b =
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
   let cmd = F.sprintf ("R = QQ[%s];"^^
-                       "use frac R;"^^
-                       "<< toExternalString(%s %% %s) << \"\\n\";\n")
+                       (* "use frac R;"^^ *)
+                       "<< toExternalString((%s %% %s) == 0) << \"\\n\";\n")
                       var_string
                       (string_of_fexp sa)
                       (string_of_fexp sb)
   in
   match call_system Macaulay cmd 2 with
   | [ _; sremainder ] ->
-    import_string "mod_reduce" sremainder hv
+    (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
+    (sremainder = "true")
   | repls ->
     failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
                (String.concat "\n" repls))

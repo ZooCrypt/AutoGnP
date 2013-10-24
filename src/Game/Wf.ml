@@ -136,7 +136,7 @@ let rec wf_exp wfs e0 =
         assert_msg
           (List.for_all
             (fun i -> match wfs.wf_nzero with
-                      | Some nz -> is_FZ (CAS.mod_reduce nz (norm_expr (List.nth es i)))
+                      | Some nz -> CAS.mod_reduce nz (norm_expr (List.nth es i))
                       | None    -> false) nz)
           (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp)
             (List.map (fun i -> List.nth es i) nz) |> fsget);
