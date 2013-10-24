@@ -7,9 +7,9 @@ bilinear map e : G * G -> G_t.
 
 assumption bddh
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
-    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; let t = e(g,g)^(a*b*c); ]
+    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; let t = g_t^(a*b*c); ]
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
-    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; d <-$ Fq; let t = e(g,g)^d; ]
+    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; d <-$ Fq; let t = g_t^d; ]
     a b c d.
 
 prove
@@ -47,7 +47,7 @@ prove
   rlet_abstract 3 xc (g ^ c).  print_goals : applet1.
   rlet_abstract 4 xd (g ^ d).  print_goals : applet2.
   rlet_abstract 5 xe (g ^ e).  print_goals : applet3.
-  rlet_abstract 6 t (e(g,g)^(c*d*e)). print_goals : applet4.
+  rlet_abstract 6 t (g_t^(c*d*e)). print_goals : applet4.
 
   assumption -> bddh u. rnorm. rswap 4 4.  print_goals : after_rbddh.
 
