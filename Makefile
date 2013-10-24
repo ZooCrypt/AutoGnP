@@ -71,6 +71,19 @@ Test_Proofsearch :
 tests :
 	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./test/rules/ok/radd_test_01.zc
 
+all-tests: zoocrypt
+	@echo "============ OK TESTS ==============="
+	@for file in test/rules/ok/*.zc; do\
+	   printf "File $$file:\n";\
+	   ./zoocrypt.native $$file;\
+	 done
+	@echo "============ FAILING TESTS ==============="
+	@for file in test/rules/fail/*.zc; do\
+	  printf "File $$file:\n";\
+	  ./zoocrypt.native $$file;\
+	   echo ;\
+	 done
+
 macaulay:
 	m2 --no-tvalues --no-tty --no-prompts --silent ./scripts/test.m2
 
