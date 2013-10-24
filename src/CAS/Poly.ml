@@ -35,8 +35,11 @@ and is_mon e =
 and is_mon0 e =
   if is_FMult e then
     (match destr_FMult e with
-     | x::xs -> (is_FNat x || not (is_field_exp x))
-                && List.for_all (fun x -> not (is_field_exp x)) xs
+     | _::_ as xs ->
+       let (ys,zs) = List.partition is_FNat xs in
+       (match ys with
+        | [_] | [] -> List.for_all (fun x -> not (is_field_exp x)) zs
+        | _::_::_ -> false)
      | _ -> false)
   else (is_FNat e || not (is_field_exp e))
 
@@ -68,6 +71,7 @@ let exp_of_poly p =
   in
   let s = List.map summand p in
   let e = mk_FPlus (List.sort e_compare s) in
+  if (not (is_norm_field_exp e)) then F.printf "ERROR: %a\n\n%!" pp_exp e;
   assert (is_norm_field_exp e);
   e
 
@@ -86,10 +90,16 @@ let polys_of_field_expr e =
     let add_exponents es = List.map (fun e -> (e,1)) es in
     if is_FMult e then
       (match destr_FMult e with
-       | x::xs ->
-           (match x.e_node with
-            | Cnst(FNat n) -> (minv n, add_exponents xs)
-            | _ -> (minv 1, add_exponents (x::xs)))
+       | _::_ as xs->
+           let (ys,zs) = List.partition is_FNat xs in
+           begin match ys with
+           | [x] ->
+               (match x.e_node with
+                | Cnst(FNat n) -> (minv n, add_exponents zs)
+                | _ -> assert false)
+           | [] -> (minv 1, add_exponents xs)
+           | _::_::_ -> assert false
+           end
        | _ -> assert false)
     else
       (match e.e_node with
