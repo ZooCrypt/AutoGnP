@@ -244,6 +244,7 @@ let wf_gdef ctype gdef0 =
       let wfs = ensure_varname_fresh wfs v in
       assert (ty_equal v.Vsym.ty e.e_ty);
       wf_exp ctype wfs e;
+      (* FIXME: account for binding in non-zero condition *)
       go wfs gcmds
     | GSamp(v,(t,es))::gcmds ->
       assert (ty_equal v.Vsym.ty t &&

@@ -1,0 +1,9 @@
+(* does not work yet *)
+prove [
+  x <-$ Fq;
+  y <-$ Fq;
+  z <-$ Fq;
+  let a = y;
+] : not (x = y) /\ ((x - y) / (x - a) = z).
+rnorm.
+print_goals : t2.
