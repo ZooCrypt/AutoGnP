@@ -1,0 +1,9 @@
+(* We divide by zero, it is allowed in the definition and we can
+   use rlet_unfold since it does not perform field-rewriting. *)
+
+prove [
+  x <-$ Fq;
+  y <-$ Fq;
+  z <-$ Fq;
+] : not ((x/x) = y) /\ (x = x).
+rnorm.

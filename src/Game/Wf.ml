@@ -9,8 +9,8 @@ open Norm
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
 type wf_state =
-  { wf_names : Sstring.t; (* used names for variables, adversaries, and oracles *)
-    wf_bvars : Vsym.S.t; (* bound variables, never two vsyms with the same name *)
+  { wf_names : Sstring.t;    (* used names for variables, adversaries, and oracles *)
+    wf_bvars : Vsym.S.t;     (* bound variables, never two vsyms with the same name *)
     wf_nzero : expr option } (* product of all nonzero-assumptions for field-expressions *)
 
 let mk_wfs () = {
@@ -161,6 +161,22 @@ and wf_exp ctype wfs e0 =
              Vsym.pp v pp_exp e0 |> fsget);
         assert (ty_equal v.Vsym.ty e.e_ty);
         v.Vsym.ty
+      | Nary(Land,es) ->
+        let is_InEq e =
+           if is_App Not e then is_App Eq (destr_Not e) else false
+        in
+        let destr_InEq e = destr_Eq (destr_Not e) in
+        assert (ty_equal mk_Bool e.e_ty);
+        let (ineqs,others) = List.partition is_InEq es in
+        assert (List.for_all (fun (e :expr) -> ty_equal mk_Bool (go e)) ineqs);
+        let wfs = List.fold_left (fun wfs e ->
+                                    let e1,e2 = destr_InEq e in
+                                    add_ineq ctype wfs e1 e2) wfs ineqs
+        in
+        assert (List.for_all (fun (e :expr) ->
+                                wf_exp ctype wfs e;
+                                ty_equal e.e_ty mk_Bool) others);
+        mk_Bool
       | Nary(op,es) ->
         let rty = ty_of_nop e.e_ty op in
         assert (List.for_all (fun (e :expr) -> ty_equal rty (go e)) es);
