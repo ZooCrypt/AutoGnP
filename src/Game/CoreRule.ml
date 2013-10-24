@@ -296,15 +296,20 @@ let rswap_oracle i delta ju =
  
 (** Random indep *)
 
-let check_event r ev = 
-  let r = mk_V r in
-  if is_Eq ev then
-    let e1, e2 = destr_Eq ev in
-    e_equal e1 r && not (Se.mem r (e_vars e2))
-  else if is_ElemH ev then
-    let e1,e2,_ = destr_ElemH ev in
-    e_equal e1 r && not (Se.mem r (e_vars e2))
-  else false
+let rec check_event r ev =
+  if is_Nary Land ev then
+    List.exists (check_event r) (destr_Land ev)
+  else
+    let r = mk_V r in
+    if is_Eq ev then
+      let e1, e2 = destr_Eq ev in
+      let test_eq e1 e2 =
+        e_equal e1 r && not (Se.mem r (e_vars e2))
+      in test_eq e1 e2 || test_eq e2 e1
+    else if is_ElemH ev then
+      let e1,e2,_ = destr_ElemH ev in
+      e_equal e1 r && not (Se.mem r (e_vars e2))
+    else false
 
 let rrandom_indep ju = 
   match List.rev ju.ju_gdef with
