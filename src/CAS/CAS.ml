@@ -131,7 +131,7 @@ let ht_systems = Ht.create 17
 
 let setup_systems =
   [ (Singular,
-     ("Singular -q -t", Some("LIB \"poly.lib\"; ring R = (0,x0),(a),dp;")))
+     ("Singular -q -t", Some("LIB \"poly.lib\"; ring R = (0,x0),(a),dp; number n = 0; poly f = 0; ideal I = 0;")))
   ; (Macaulay, ("m2 --no-tvalues --no-tty --no-prompts --silent", None)) ]
 
 let call_system sys cmd linenum =
@@ -159,31 +159,43 @@ let call_system sys cmd linenum =
         o)
   in loop [] linenum
 
-let import_string (caller : string) (s : string) (hv : (int, expr) Ht.t) =
+let import_poly (caller : string) poly (hv : (int, expr) Ht.t) =
   exp_of_poly (map_poly (fun i -> try Ht.find hv i
                                   with Not_found -> failwith ("invalid variable returned by "^caller))
-              (parse_poly s))
+               poly)
 
-let _norm_singular se c hv =
-  let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
-  let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
-  let cmd = F.sprintf "ring R = (0,%s),(a),dp;\n\
-                       number f = %s;\nnumerator(f);denominator(f);\n"
-                      var_string
-                      (string_of_fexp se)
+
+let ht_norm_singular = Ht.create 17
+
+let norm_singular se c hv =
+  let convert_polys (p1,p2) =
+    let num   = import_poly "norm_singular" p1 hv in
+    let denom = import_poly "norm_singular" p2 hv in
+    if e_equal denom mk_FOne then num
+    else mk_FDiv num denom
   in
-  match call_system Singular cmd 3 with
-  | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
-      let num   = import_string "norm_singular" snum  hv in
-      let denom = import_string "norm_singular" sdenom hv in
-      (* F.printf "num: %a\ndenom: %a\n" pp_exp num pp_exp denom; *)
-      if e_equal denom mk_FOne then num
-      else mk_FDiv num denom
-  | repls ->
+  try
+    convert_polys (Ht.find ht_norm_singular se)
+  with
+    Not_found ->
+    let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
+    let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
+    let cmd = F.sprintf "ring R = (0,%s),(a__________),dp;\n\
+                         number n = %s;\nnumerator(n);denominator(n);\n"
+                        var_string
+                        (string_of_fexp se)
+    in
+    match call_system Singular cmd 3 with
+    | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
+      let p1 = parse_poly snum in
+      let p2 = parse_poly sdenom in
+      Ht.add ht_norm_singular se (p1,p2);
+      convert_polys (p1,p2)
+    | repls ->
       failwith (F.sprintf "norm_singular: unexpected result %s\n"
                   (String.concat "\n" repls))
 
-let norm_macaulay se c hv =
+let _norm_macaulay se c hv =
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
   let cmd = F.sprintf ("R = QQ[%s];"^^
@@ -196,35 +208,76 @@ let norm_macaulay se c hv =
   in
   match call_system Macaulay cmd 5 with
   | [ _; _; snum; _; sdenom ] ->
-      let num   = import_string "norm_macaulay" snum hv in
-      let denom = import_string "norm_macaulay" sdenom hv in
+      let num   = import_poly "norm_macaulay" (parse_poly snum) hv in
+      let denom = import_poly "norm_macaulay" (parse_poly sdenom) hv in
       if e_equal denom mk_FOne then num
       else mk_FDiv num denom
   | repls ->
       failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
                   (String.concat "\n" repls))
 
-let mod_reduce a b =
+let ht_mod_reduce_macaulay = Ht.create 17
+
+let _mod_reduce_macaulay a b =
   let (sa,sb,c) =
     match abstract_non_field_multiple (fun x -> x) [a;b] with
     | ([sa; sb],c,_) -> (sa,sb,c)
     | _ -> assert false
   in
-  let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
-  let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
-  let cmd = F.sprintf ("R = QQ[%s];"^^
-                       "<< toExternalString((%s %% ideal(%s)) == 0) << \"\\n\";\n")
-                      var_string
-                      (string_of_fexp sa)
-                      (string_of_fexp sb)
+  try
+    Ht.find ht_mod_reduce_macaulay (sa,sb)
+  with
+    Not_found -> 
+    let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
+    let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
+    let cmd = F.sprintf ("R = QQ[%s];"^^
+                         "<< toExternalString((%s %% ideal(%s)) == 0) << \"\\n\";\n")
+                        var_string
+                        (string_of_fexp sa)
+                        (string_of_fexp sb)
+    in
+    match call_system Macaulay cmd 2 with
+    | [ _s1; sremainder ] ->
+      (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
+      let res = sremainder = "true" in
+      Ht.add ht_mod_reduce_macaulay (sa,sb) res;
+      res
+    | repls ->
+      failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
+                 (String.concat "\n" repls))
+
+let ht_mod_reduce_singular = Ht.create 17
+
+let mod_reduce_singular a b =
+  let (sa,sb,c) =
+    match abstract_non_field_multiple (fun x -> x) [a;b] with
+    | ([sa; sb],c,_) -> (sa,sb,c)
+    | _ -> assert false
   in
-  match call_system Macaulay cmd 2 with
-  | [ _s1; sremainder ] ->
-    (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
-    (sremainder = "true")
-  | repls ->
-    failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
-               (String.concat "\n" repls))
+  try
+    Ht.find ht_mod_reduce_singular (sa,sb)
+  with
+    Not_found -> 
+    let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
+    let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
+    let cmd = F.sprintf ("ring R = (0),(%s),dp;\n"^^
+                         "poly f = %s;\n ideal I = %s;\n (reduce(f,I) == 0);\n")
+                        var_string
+                        (string_of_fexp sa)
+                        (string_of_fexp sb)
+    in
+    match call_system Singular cmd 2 with
+    | [ _s1; sremainder ] ->
+      (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
+      let res = sremainder = "1" in
+      Ht.add ht_mod_reduce_singular (sa,sb) res;
+      res
+    | repls ->
+      failwith (F.sprintf "mod_reduce_singular: unexpected result %s\n"
+                 (String.concat "\n" repls))
+
+
+let mod_reduce = mod_reduce_singular
 
 let direct_subterms o s es = 
   let go acc e =
@@ -308,4 +361,4 @@ let norm before e =
   | SMult(SV i, SNat 1) -> Ht.find hv i
   | SMult(SNat i, SNat j) -> mk_FNat (i * j)
   | SMult(SV i, SV j) -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
-  | _ -> norm_macaulay se c hv
+  | _ -> norm_singular se c hv
