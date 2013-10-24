@@ -110,8 +110,6 @@ prove
 *)
   radd_test (12,1,6) (a^w  = a') A3' ga ga' gc gd.
   rnorm.
-  print_goals : add_test.
-(*
 
 (* We have a test of the form "var = expr".
    We always rewrite with such tests.
@@ -123,52 +121,20 @@ prove
    We always rewrite with such tests.
 *)
   rrewrite_oracle (12,1,1) <-. rnorm.
-(*
-    rrewrite_oracle (17,1,1) <-. rnorm_nounfold. (* print_goals : a2. *)
-    rswap 8 1. rrandom 9 _ (y -> w*z2 + y) zz. rlet_unfold 10. rnorm_nounfold. (* print_goals : a3. *)
-    rswap 8 4. rrandom 12 _ (y -> z1*u + y*v + log(mb) + -(w*y*u)) zzz. rlet_unfold 13. rnorm_nounfold. 
-      (* print_goals : a4. *)
-    rnorm. (* print_goals : a5. *)
-    rswap 10 2. rindep.  (* print_goals : a6. *)
-
-    (* bad case *)
-    rswap (17,1,6) -5. (* print_goals : a7. *)
-    rrewrite_oracle (17,1,1) <-. rnorm_nounfold. (* print_goals : a8. *)
-    rswap 4 1. rrandom 5 _ (y -> w*x2 + y) zzzz. rlet_unfold 6. rnorm_nounfold.
-    rswap 4 11.
-    rswap 5 1. rrandom 6 _ (y -> w*y2 + y) zzzzz. rlet_unfold 7. rnorm_nounfold.
-    rswap 5 10.
-    rswap 6 1. rrandom 7 _ (y -> w*z2 + y) z7. rlet_unfold 8. rnorm_nounfold. (* make this rrandom* *)
-    rswap 6 6. rrandom 12 _ (y -> z1*u + y*v + log(mb) + -(w*y*u)) z8. rlet_unfold 13. rnorm_nounfold.
-    print_goals : before_last_rand.
-    rswap 14 1.
-    rrandom 15 _
-      (y -> x1*u + y*v + y1*u*H(sa, sa', sc) + y2*v*H(sa, sa', sc) + -(w*y*u)
-      + -(w*y2*u*H(sa, sa', sc))) z9. rlet_unfold 16. rnorm_nounfold.
-    rswap 14 4.
-    rlet_abstract 17 hb H(ba, ba', bc).
-    rlet_abstract 17 hs H(sa, sa', sc).
-    rlet_abstract 17 l log(ba).
-    rlet_abstract 17 l' log(ba').
-    print_goals : before_a.
-    rrandom 22 _
-      (y -> (  w*x2*l
-             - w*w*y*u*l*hb
-             + w*y1*u*l*hb
-             + w*y*v*l*hb
-             + w*y*u*l'*hb
-             - y1*v*l*hb
-             - y*v*l'*hb
-             - x1*v*l
-             + x1*u*l'
-             - x2*l'
-             + w*w*y*u*hs*l
-             - w*y1*u*hs*l 
-             - w*y*v*hs*l
-             - w*y*u*hs*l'
-             + y1*u*hs*l'
-             + y*v*hs*l')
-          / (w*u + -v)) z10.
-    rlet_unfold 23. rnorm_nounfold.
-    *)
-    print_goals : aaaaa. *)
+  print_goals : before_let_abstract.
+  rlet_abstract 13 l log(ga).
+  rlet_abstract 13 hc H(g^u,g^v,g^z2).
+  rlet_abstract 13 hb H(ga, ga', gc).
+  rswap 10 6.
+  rctxt_ev
+    (q -> (log(q) * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
+           - x1*u*log(ga') - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*log(ga')*hc + (x2*log(ga')*2))
+          /
+          (-(w*w*u*l*hb) + w*u*log(ga')*hb + w*v*l*hb + -(v*log(ga')*hb) + w*w*u*l*hc +
+          -(w*u*log(ga')*hc) + -(w*v*l*hc) + v*log(ga')*hc))
+    6.
+  rlet_unfold 15.
+  print_goals : rewrite_bad.  
+  rnorm_nounfold.
+  rindep.
+  print_goals : after_indep.
