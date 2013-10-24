@@ -205,22 +205,21 @@ let norm_macaulay se c hv =
                   (String.concat "\n" repls))
 
 let mod_reduce a b =
-  let (sa,sb,c,hv) =
+  let (sa,sb,c) =
     match abstract_non_field_multiple (fun x -> x) [a;b] with
-    | ([sa; sb],c,hv) -> (sa,sb,c,hv)
+    | ([sa; sb],c,_) -> (sa,sb,c)
     | _ -> assert false
   in
   let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
   let var_string = String.concat "," (if vars = [] then ["x1"] else vars) in
   let cmd = F.sprintf ("R = QQ[%s];"^^
-                       (* "use frac R;"^^ *)
-                       "<< toExternalString((%s %% %s) == 0) << \"\\n\";\n")
+                       "<< toExternalString((%s %% ideal(%s)) == 0) << \"\\n\";\n")
                       var_string
                       (string_of_fexp sa)
                       (string_of_fexp sb)
   in
   match call_system Macaulay cmd 2 with
-  | [ _; sremainder ] ->
+  | [ _s1; sremainder ] ->
     (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
     (sremainder = "true")
   | repls ->
