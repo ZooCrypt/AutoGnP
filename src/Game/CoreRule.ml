@@ -170,8 +170,12 @@ let radd_test p tnew asym fvs ju =
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
         Me.empty juoc.juoc_oargs fvs
     in
-    [ set_ju_octxt [ LGuard(t); LGuard(tnew) ] juoc;
-      set_ju_octxt [ LGuard(t); LGuard(tnew) ]
+    let juoc =
+      { juoc with (* we add the new test first *)
+        juoc_cleft = juoc.juoc_cleft @ [ LGuard(tnew)] }
+    in
+    [ set_ju_octxt [ LGuard(t) ] juoc;
+      set_ju_octxt [ LGuard(t) ]
         { juoc with
           juoc_juc =
             { juoc.juoc_juc with
