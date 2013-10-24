@@ -667,7 +667,7 @@ struct
                | BS _ -> mk_nary "mk_Xor" true Xor es e.e_ty
                | _ -> failwith "mk_Xor: expected bitstring argument")
     | _ -> failwith "mk_Xor: expected non-empty list"
-  let mk_Land es = mk_nary "mk_FMult" false Land es ty_Bool
+  let mk_Land es = mk_nary "mk_Land" false Land es ty_Bool
   let mk_GMult es =
     match es with
     | e::_ ->

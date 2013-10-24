@@ -338,8 +338,10 @@ instr :
                  i3 = ID
                  { Apply(Rrandom_oracle(op,None,i2,e2,i3)) }
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
+| RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN j = NAT
+   { Apply(Rctxt_ev(i1,e1,j - 1)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
-   { Apply(Rctxt_ev(i1,e1)) }
+   { Apply(Rctxt_ev(i1,e1,0)) }
 | RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_oracle(op,d)) }
 
 theory :

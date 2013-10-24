@@ -60,6 +60,31 @@ let rconv do_norm_terms new_ju1 ju1 =
   [new_ju1]
 
 (* Applying context to ev *)
+let rctxt_ev (c : ctxt) (i : int) ju = 
+  let ev = ju.ju_ev in
+  let (left,b,right) = match ev.e_node with
+    | Nary(Land,es) when i < List.length es ->
+      (Util.take i es, List.nth es i, Util.drop (i+1) es)
+    | _ when i = 1 -> ([],ev,[])
+    | _ -> assert false
+  in
+  let b = 
+    if is_Eq b then
+      let (e1,e2) = destr_Eq b in
+      mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
+    else if is_ElemH b then
+      let (e1,e2,h) = destr_ElemH b in
+      mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
+    else failwith "rctxt_ev: bad event, expected equality or x in L"
+  in
+  let ev = mk_Land (left @ [b] @ right) in
+  let wfs = wf_gdef NoCheckDivZero (ju.ju_gdef) in
+  wf_exp CheckDivZero wfs ev;
+  let new_ju = {ju with ju_ev = ev} in
+  [new_ju]
+
+(*
+(* Applying context to ev *)
 let rctxt_ev ev c ju = 
   let new_ju = {ju with ju_ev = ev} in
   let ev1 = ju.ju_ev in
@@ -77,6 +102,7 @@ let rctxt_ev ev c ju =
   if not (check_conv new_ju ju') then 
     failwith "rctxt_ev: bad context";
   [new_ju]
+*)
 
 (** random rules *)
 

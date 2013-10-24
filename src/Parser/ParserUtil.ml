@@ -275,7 +275,7 @@ type tactic =
   | Rnorm_unknown of string list
   | Rswap of int * int
   | Rswap_oracle of G.ocmd_pos * int  
-  | Rctxt_ev of string * parse_expr
+  | Rctxt_ev of string * parse_expr * int
   | Rrandom of int * (string * parse_expr) option * string * parse_expr * string
   | Rrandom_oracle of G.ocmd_pos * (string * parse_expr) option * string * parse_expr * string
   | Requiv of gdef * parse_expr option

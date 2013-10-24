@@ -47,26 +47,36 @@ let handle_tactic ps tac jus =
     let vs = List.map (fun s -> mk_V (Ht.find ps.ps_vars s)) is in
     apply_rule (rnorm_unknown vs) ps
 
-  | Rctxt_ev (sv,e) ->
+  | Rctxt_ev (sv,e,j) ->
     let ev = ju.Game.ju_ev in
+    let b =
+      match ev.e_node with
+      | Nary(Land,es) when j < List.length es ->
+        List.nth es j
+      | _ when j = 0 -> ev
+      | _ -> failwith "rctxt_ev: bad index"
+    in
     let ty = 
-      if Expr.is_Eq ev then (fst (Expr.destr_Eq ev)).Expr.e_ty
-      else if Expr.is_ElemH ev then
-        let (e1,_,_) = Expr.destr_ElemH ev in e1.Expr.e_ty 
-      else failwith "rctxt_ev: bad event" in
+      if is_Eq b then (fst (destr_Eq b)).e_ty
+      else if is_ElemH b then
+        let (e1,_,_) = destr_ElemH b in e1.e_ty 
+      else failwith "rctxt_ev: bad event"
+    in
     let v1 = create_var false ps sv ty in
     let e1 = expr_of_parse_expr ps e in
     let c = v1, e1 in
-    let ev = 
-      if Expr.is_Eq ev then
-        let (e1,e2) = Expr.destr_Eq ev in
-        Expr.mk_Eq (Expr.inst_ctxt c e1) (Expr.inst_ctxt c e2) 
-      else if Expr.is_ElemH ev then
-        let (e1,e2,h) = Expr.destr_ElemH ev in
-        Expr.mk_ElemH (Expr.inst_ctxt c e1) (Expr.inst_ctxt c e2) h 
+(*    let ev = 
+      if is_Eq ev then
+        let (e1,e2) = destr_Eq ev in
+        mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
+      else if is_ElemH ev then
+        let (e1,e2,h) = destr_ElemH ev in
+        mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
       else failwith "rctxt_ev: bad event"
     in
-    apply_rule (rctxt_ev ev c) ps
+*)
+    Format.printf "Rctxt_ev with %i and %a\n%!" j pp_exp e1;
+    apply_rule (rctxt_ev c j) ps
 
   | Rindep -> apply_rule rrandom_indep ps
 
