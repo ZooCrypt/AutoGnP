@@ -78,6 +78,7 @@
 %token PROVE
 %token DOT
 %token PRINTGOALS
+%token PRINTGOAL
 %token RNORM
 %token RNORM_UNKNOWN
 %token RNORM_NOUNFOLD
@@ -305,6 +306,7 @@ instr :
     { AssmDec(i,g0,g1,p) }
 | PROVE  LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
 | PRINTGOALS COLON i = ID { PrintGoals(i) }
+| PRINTGOAL COLON i = ID { PrintGoal(i) }
 | PRINTGOALS { PrintGoals("") }
 | RNORM { Apply(Rnorm) }
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }

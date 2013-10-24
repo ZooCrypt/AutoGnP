@@ -44,6 +44,7 @@ rule lex = parse
   | "map" { MAP }
   | "prove" { PROVE }
   | "print_goals" { PRINTGOALS }
+  | "print_goal" { PRINTGOAL }  
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm" { RNORM }
   | "radd_test" { RADD_TEST }

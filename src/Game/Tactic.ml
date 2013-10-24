@@ -222,6 +222,11 @@ let handle_instr ps instr =
   | PrintGoals(s) ->
     Format.printf "@[<v>proof state %s:@\n%a@." s pp_goals ps.ps_goals;
     ps
+
+  | PrintGoal(s) ->
+    Format.printf "@[<v>current goal in state %s:@\n%a@." s pp_goals (Util.map_opt (Util.take 1) ps.ps_goals);
+    ps
+
   | RODecl(s,t1,t2) ->
     if Ht.mem ps.ps_rodecls s then
       failwith "random oracle with same name already declared.";
