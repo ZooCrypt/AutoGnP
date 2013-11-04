@@ -122,3 +122,42 @@ let rassm dir assm subst ju =
       | _ -> failwith "rassm : can not infer subtitution")
       subst c jc in
   rassm_decision dir subst assm ju
+
+
+let switch_eq e1 e2 = 
+  let x = Vsym.mk "x" e1.e_ty in
+  match e1.e_ty.ty_node with
+  | BS _ -> mk_Xor [mk_V x; e2]
+  | G  _ -> mk_FMinus (mk_GLog (mk_V x)) (mk_GLog e2)
+  | Fq   -> mk_FMinus (mk_V x) e2
+  | _    -> raise Not_found 
+            (* Can we perform recursive call for product ? *)
+            (* How to do with bool *)  
+
+let auto_indep ju =
+  let gs = apply rnorm ju in
+  let invert_eq vars r ev =
+    let re = mk_V r in
+    let (e1,e2) = destr_Eq ev in
+    if not (e_exists (e_equal re) e1) then raise Not_found;
+    let x, inve = switch_eq e1 e2 in
+    let y = Vsym.mk "y" e.e_ty in
+    let inv = Inv.invert (inve, inst_ctxt (x,inve) e1 :: vars) re in
+    (x, inv) in
+
+  let find_inverter r i ev =
+    if is_Eq ev then invert_eq r ev
+    else if is_ElemH ev then invert_ElemH r ev 
+    else raise Not_found in
+  
+      
+    match ev with
+    | 
+  let ju' = List.hd (rnorm ju) in
+  let can_swap
+  swap pos d;
+  context_select;
+
+let rrandom_indep ju =
+(*  try *) CoreRule.rrandom_indep ju 
+(*  with Failure _ -> auto_indep ju *)

@@ -3,8 +3,7 @@ open Expr
 
 exception Found of expr 
 
-let solve_xor _k _u = assert false
-let solve_Fq _k _u = assert false
+let solve_Fq _k _u = raise Not_found 
 
 let invert from to_ =
 
@@ -144,12 +143,12 @@ let invert from to_ =
       if Se.is_empty u then Hty.remove tytbl ty
       else
         let k = Se.elements k in
-        let k = ref (List.map (fun e -> e, get e) k) in
+        let k = ref (List.map (fun e -> get e, e) k) in
         Se.iter (fun u ->
           try 
-            let inv = solve_xor !k u in
+            let inv = CAS.solve_xor !k u in
             add u inv;
-            k := (u,inv) :: !k
+            k := (inv, u) :: !k
           with Not_found -> ()) u
     | Fq ->
       let k,u = Se.partition is_in s in
