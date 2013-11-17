@@ -126,8 +126,11 @@ prove
   rlet_abstract 13 hc H(g^u,g^v,g^z2).
   rlet_abstract 13 hb H(ga, ga', gc).
   rswap 10 6.
+  rctxt_ev (q -> log(q)) 6.
+  rnorm_nounfold.
+  print_goal : here.  
   rctxt_ev
-    (q -> (log(q) * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
+    (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
            - x1*u*log(ga') - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*log(ga')*hc + (x2*log(ga')*2))
           /
           (-(w*w*u*l*hb) + w*u*log(ga')*hb + w*v*l*hb + -(v*log(ga')*hb) + w*w*u*l*hc +
@@ -138,3 +141,13 @@ prove
   rnorm_nounfold.
   rindep.
   print_goals : after_indep.
+
+(*
+
+   known: w,u,v,x2,l,x1,l',y1,hb,hc
+        (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*l')
+           - x1*u*l' - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*l'*hc + (x2*l'*2))
+          /
+          (-(w*w*u*l*hb) + w*u*l'*hb + w*v*l*hb + -(v*l'*hb) + w*w*u*l*hc +
+          -(w*u*l'*hc) + -(w*v*l*hc) + v*l'*hc))
+*)
