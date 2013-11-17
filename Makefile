@@ -53,23 +53,8 @@ Test_Expr :
 Test_Singular :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Singular.d.byte && ./Test_Singular.d.byte
 
-Test_Proof_BB1 :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proof_BB1.d.byte && ./Test_Proof_BB1.d.byte
-
-Test_Wf :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Wf.d.byte && ./Test_Wf.d.byte
-
 Test_Pretty_Expr :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
-
-Test_Parser :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Parser.d.byte && ./Test_Parser.d.byte
-
-Test_Proofsearch :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proofsearch.d.byte && ./Test_Proofsearch.d.byte
-
-tests :
-	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./test/rules/ok/radd_test_01.zc
 
 all-tests: zoocrypt
 	@echo "============ OK TESTS ==============="
