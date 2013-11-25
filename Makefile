@@ -10,7 +10,7 @@ cur-dir := $(shell pwd)
 opam-root := $(shell opam config var root)
 
 
-all: zoocrypt
+all: wszoocrypt
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
@@ -32,7 +32,7 @@ update-toolchain:
 	$$(./scripts/activate-toolchain.sh) \
 	&& opam update  -y \
 	&& opam upgrade -y  \
-	&& opam install -y eliom ounit yojson menhir
+	&& opam install -y ounit yojson websocket
 
 clean:
 	ocamlbuild -clean
@@ -40,6 +40,9 @@ clean:
 
 zoocrypt :
 	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1_asym.zc
+
+wszoocrypt :
+	ocamlbuild $(OCAMLBUILDFLAGS) wszoocrypt.native 
 
 ##########################################################################
 # Used for development and testing

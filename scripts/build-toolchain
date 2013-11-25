@@ -65,7 +65,7 @@ EOF
 
 source "${OCONFIG}"
 
-opam install -v -y eliom ounit yojson menhir
+opam install -v -y ounit yojson menhir websocket
 
 # --------------------------------------------------------------------
 set +xe

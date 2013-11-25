@@ -1,12 +1,14 @@
 <src/Util> or <src/Type> or <src/Expr> or <src/Test> : include
 
-<src/Parser> or <src/CAS> or <src/Game> or <src/Main>: include
+<src/Parser> or <src/CAS> or <src/Game> or <src/Main> or <src/Websocket>: include
 
 <src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), thread
 
 <src/Main/zoocrypt.d.byte>: thread, package(unix)
 
 <src/Main/zoocrypt.native>: thread, package(unix)
+
+<src/Websocket/wszoocrypt.ml> or <src/Websocket/wszoocrypt.native>: thread, package(unix), package(websocket)
 
 <src/Logics/Cpa.cmo> or <src/Logics/Cpa.ml>: package(eliom.server),package(eliom),package(yojson),thread
 
