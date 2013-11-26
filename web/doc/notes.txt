@@ -1,0 +1,27 @@
+[ ] Extend zoocrypt to support REPL mode (should be easy).
+[ ] Get cohttp running and connect with zoocrypt.
+[ ] 
+
+Low:
+[ ] Create ACE syntax highlighting mode for zoocrypt.
+
+UI:
+- start websocket server on directory or file
+  - directory: display list of .zc files in current directory
+    - select file => show file and start PROOF-MODE
+    - new file: create file and start PROOF-MODE
+  - file: start PROOF-MODE
+
+PROOF-MODE:
+  <think about multiple users, concurrency and so on>
+  - save
+  - process-up-to: process file up-to given position and return proof state.
+ 
+ 
+How to handle read-only for a region in ACE?
+We remove the lock as soon as something changes.
+1. On successful processing, store position + content
+2. On change, check longest prefix that is still the
+   the same with previous locked content.
+    If not the whole locked text, search backward for
+    '.' revert to this proof-state.

@@ -1,0 +1,6 @@
+name: zoocrypt_gui
+description: Zoocrypt GUI
+dependencies:
+  ace:
+    path: ../imported/ace.dart
+  browser: any
