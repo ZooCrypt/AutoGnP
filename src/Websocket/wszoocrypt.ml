@@ -9,15 +9,39 @@ let (<&>) a b = Lwt.join [a;b]
 
 let theory_string = ref ""
 
-let ps = ref (ParserUtil.mk_ps ())
+(* FIXME: use map or hashtable
+   We use the reversed list of commands (without '.')
+   as the key for the corresponding proofstate.
+*)
+let ps_list = ref []
+
+let find_ps cmds =
+  let rec go handled_cmds rem_cmds =
+    try
+      (List.assoc handled_cmds !ps_list, rem_cmds)
+    with
+      Not_found ->
+        (match handled_cmds with
+         | [] -> (ParserUtil.mk_ps (), rem_cmds)
+         | last::before -> go before (last::rem_cmds))
+  in go cmds []
 
 let processFrame frame =
-  Lwt_io.printl (Frame.content frame) >>= fun () -> 
-  let i = Parse.instruction (Frame.content frame) in
-  ps := Tactic.handle_instr !ps i;
-  let res = fsprintf "@[<v>current goal:@\n%a@."
-              pp_goals (Util.map_opt (Util.take 1) (!ps).ps_goals)
-            |> fsget
+  let l = (Util.split (Frame.content frame) '.') |> List.rev |> List.tl in
+  let (ps, rem_cmds) = find_ps l in
+  Lwt_io.printl ("received: ``"^Frame.content frame^"''") >>= fun () -> 
+  Lwt_io.printl ("executing "^string_of_int (List.length rem_cmds)^" remaining commands") >>= fun () ->
+  let res =
+    try (let ps = List.fold_left
+                    (fun ps cmd ->
+                       handle_instr ps (Parse.instruction (cmd ^ ".")))
+                    ps rem_cmds
+         in
+         ps_list := (l,ps)::!ps_list;
+         fsprintf "@[<v>current goal:@\n%a@."
+           pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
+          |> fsget)
+    with Parse.ParseError s -> "parse error: "^s 
   in
   Lwt.return (Frame.of_string res)
 

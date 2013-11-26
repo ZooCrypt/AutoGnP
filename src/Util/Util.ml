@@ -185,3 +185,21 @@ let cat_Some l =
     | None::xs     -> go acc      xs
     | [] -> List.rev acc
   in go [] l
+
+let split s (sep : char) =
+  if s = "" then []
+  else
+    let rec go acc ofs =
+      if ofs >= 0 then (
+        try
+          let idx = String.rindex_from s ofs sep in
+          if idx = ofs
+          then go (""::acc) (idx - 1)
+          else
+            let token = String.sub s (idx + 1) (ofs - idx) in
+            go (token::acc) (idx - 1)
+        with Not_found ->
+          (String.sub s 0 (ofs + 1))::acc
+      ) else ""::acc
+    in
+    go [] (String.length s - 1)
