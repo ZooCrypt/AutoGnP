@@ -8,7 +8,7 @@
 
 <src/Main/zoocrypt.native>: thread, package(unix)
 
-<src/Websocket/wszoocrypt.ml> or <src/Websocket/wszoocrypt.native>: thread, package(unix), package(websocket)
+<src/Websocket/wszoocrypt.ml> or <src/Websocket/wszoocrypt.native>: thread, package(unix), package(websocket), package(yojson)
 
 <src/Logics/Cpa.cmo> or <src/Logics/Cpa.ml>: package(eliom.server),package(eliom),package(yojson),thread
 
