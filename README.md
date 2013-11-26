@@ -5,26 +5,17 @@ Note that on debian, the following packages must
 be installed:
   curl libssl-dev make libpcre3-dev m4
 
-Then, the webserver can be compiled with 'make'.
+Then, the websocket server can be compiled
+with 'make'.
 
 It is also possible to use a global Ocaml
-installation and install the libraries eliom,
-yojson, menhir, and ounit yourself, e.g., using the
-opam package package manager for OCaml
-(see http://opam.ocamlpro.com/).
-
-You also need an installation of macaulay2 [1] which
-is used for field simplification, solving of linear
-equations, and ideal computations.
-
-It is available on:
-  http://www.math.uiuc.edu/Macaulay2/Downloads/
-
-
-[1] http://www.math.uiuc.edu/Macaulay2/
-
-
-OUTDATED (for now, we only use macaulay2).
+installation and install the following libraries
+yourself, e.g., using the opam package package
+manager for OCaml (see http://opam.ocamlpro.com/):
+- ounit
+- yojson
+- websocket
+- ... (and their dependencies)
 
 You need an installation of singular [1] to use
 the field simplification.

@@ -149,6 +149,11 @@ let input_file file_name =
   let _ = close_in_noerr in_channel in
   String.concat "\n" (List.rev lines)
 
+let output_file file_name content =
+  let out_channel = open_out file_name in
+  output_string out_channel content;
+  close_out_noerr out_channel
+
 let assert_msg b m =
   if not b then failwith m
 
@@ -186,7 +191,7 @@ let cat_Some l =
     | [] -> List.rev acc
   in go [] l
 
-let split s (sep : char) =
+let splitn s sep =
   if s = "" then []
   else
     let rec go acc ofs =
@@ -203,3 +208,15 @@ let split s (sep : char) =
       ) else ""::acc
     in
     go [] (String.length s - 1)
+
+let split s sep =
+  match (try Some (String.index s sep) with Not_found -> None) with
+  | Some i ->
+      let a = String.sub s 0 i in
+      let b = if String.length s > i + 1
+              then String.sub s (i + 1) (String.length s - i - 1)
+              else ""
+      in
+      Some (a, b)
+  | None   -> None
+

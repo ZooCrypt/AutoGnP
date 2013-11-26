@@ -7,23 +7,11 @@ OCAMLBUILDFLAGS=-cflags "-w +a-e-9" -use-menhir -menhir "menhir -v" -classic-dis
 
 
 cur-dir := $(shell pwd)
-opam-root := $(shell opam config var root)
-
 
 all: wszoocrypt
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
-
-tutor-lib:
-	ocamlbuild $(OCAMLBUILDFLAGS) tutor.cma
-
-web:
-	ocamlbuild $(OCAMLBUILDFLAGS) tutor.cma
-	mkdir -p data/log/ocsigenserver
-	mkdir -p data/lib/ocsigenserver
-	mkdir -p data/ocsign/extensions/ocsidbm
-	sed -e "s,%%PREFIX%%,$(cur-dir)," -e "s,%%OPAM%%,$(opam-root)," etc/ocsigen.conf.in > etc/ocsigen.conf
 
 toolchain:
 	./scripts/build-toolchain
@@ -71,9 +59,6 @@ all-tests: zoocrypt
 	  ./zoocrypt.native $$file;\
 	   echo ;\
 	 done
-
-macaulay:
-	m2 --no-tvalues --no-tty --no-prompts --silent ./scripts/test.m2
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@

@@ -120,6 +120,8 @@ val pp_list_s : Format.formatter -> string list -> unit
 
 val input_file : string -> string
 
+val output_file : string -> string -> unit
+
 val assert_msg : bool -> string -> unit
 
 type ('a,'b) either = Left of 'a | Right of 'b
@@ -136,4 +138,6 @@ val id : 'a -> 'a
 
 val cat_Some : 'a option list -> 'a list
 
-val split : string -> char -> string list
+val splitn : string -> char -> string list
+
+val split : string -> char -> (string * string) option
