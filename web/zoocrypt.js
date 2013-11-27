@@ -1,13 +1,18 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
-var enable_debug = false;
+var enable_debug = true;
 
 function log(s) {
     if (enable_debug) {
         console.log(s);
     }
 }
-var webSocket = new WebSocket("ws://127.0.0.1:9999/");
+
+var wsServer = window.location.hostname ? window.location.hostname : "127.0.0.1";
+
+log(wsServer);
+
+var webSocket = new WebSocket("ws://" + wsServer + ":9999/");
 
 // editorProof has been processed up to this character
 var firstUnlocked = 0;
