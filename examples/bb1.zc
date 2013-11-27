@@ -28,20 +28,20 @@ prove
     b' <- A3(mb * e(pk1,pk2)^e, g^e, (pk2^i'*pk3)^e) with
       Kg2(i2) = [ (g^(c*d + r2*(d*i2 + h)), g^r2)
                 | not (i2=i'), r2 <-$ Fq];
-  ] : b = b'.  print_goals : start.
+  ] : b = b'.
 
-  rnorm.  rswap 7 -3.  print_goals : after_norm.
+  rnorm. rswap 7 -3.
 
   rrandom 5 _ (x -> x + d * i') z.
-  rnorm. print_goals : after_random.
+  rnorm.
 
   rrandom_oracle (6,1,2) _ (x -> x * (i1 - i') + c) zz.
-  rnorm.  print_goals : after_random_Kg1.
+  rnorm.
 
   rrandom_oracle (8,1,2) _ (x -> x * (i2 - i') + c) zzz.
-  rnorm.  print_goals : after_random_Kg2.
+  rnorm.
 
-  rswap 1 3.  print_goals : swap_1_1.
+  rswap 1 3.
   rnorm_unknown c d e.  print_goals : norm_uk.
 
   rlet_abstract 3 xc (g ^ c).  print_goals : applet1.
