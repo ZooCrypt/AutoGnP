@@ -116,4 +116,4 @@ let _ =
   print_endline "Open the following URL in your browser (websocket support required):\n";
   print_endline ("    file://"^Sys.getcwd ()^"/web/index.html\n\n");
   (if Sys.file_exists !ps_file then Lwt_io.printl ("File: " ^ !ps_file) else Lwt.return ()) >>= fun _ ->  
-  Lwt_main.run (run_server "localhost" "9999" >>= fun _ -> wait_forever ())
+  Lwt_main.run (run_server "37.139.2.96" "9999" >>= fun _ -> wait_forever ())
