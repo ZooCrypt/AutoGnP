@@ -1,4 +1,5 @@
 /// <reference path="ace.d.ts" />
+/// <reference path="jquery.d.ts" />
 
 var enable_debug = false;
 
@@ -52,6 +53,21 @@ editorProof.getSession().getDocument().on("change", function(ev) {
 var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
+
+
+// resize windows
+function resizeAce() : void {
+  $('#editor-proof').height($(window).height() - 50);
+  $('#editor-proof').width($(window).width()/2 - 50);
+
+  $('#editor-goal').height($(window).height() - 50);
+  $('#editor-goal').width($(window).width()/2 - 50);
+
+};
+//listen for changes
+$(window).resize(resizeAce);
+//set initially
+resizeAce();
 
 // send json request to zoocrypt websocket server
 function sendZoocrypt(m) {
