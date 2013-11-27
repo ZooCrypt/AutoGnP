@@ -53,6 +53,7 @@ var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
 
+// send json request to zoocrypt websocket server
 function sendZoocrypt(m) {
   webSocket.send(JSON.stringify(m));
 }

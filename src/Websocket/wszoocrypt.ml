@@ -17,6 +17,7 @@ let ps_list = ref []
 
 let ps_file = ref ""
 let disallow_save = ref false
+let server_name = ref "localhost"
 
 let find_ps cmds =
   let rec go handled_cmds rem_cmds =
@@ -108,7 +109,11 @@ let rec wait_forever () =
   Lwt_unix.sleep 1000.0 >>= wait_forever
 
 let _ =
-  let speclist = Arg.align [ ("-nosave", Arg.Set disallow_save, "allow to save file")] in
+  let speclist =
+    Arg.align
+      [ ("-nosave", Arg.Set disallow_save, "allow to save file");
+        ("-s", Arg.Set_string server_name, "bind to this servername (default: localhost)")]
+  in
   let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " <file>" in
   let parse_args s = if !ps_file = "" then ps_file := s else failwith "can only serve one file" in
   Arg.parse speclist parse_args usage_msg;
@@ -116,4 +121,4 @@ let _ =
   print_endline "Open the following URL in your browser (websocket support required):\n";
   print_endline ("    file://"^Sys.getcwd ()^"/web/index.html\n\n");
   (if Sys.file_exists !ps_file then Lwt_io.printl ("File: " ^ !ps_file) else Lwt.return ()) >>= fun _ ->  
-  Lwt_main.run (run_server "37.139.2.96" "9999" >>= fun _ -> wait_forever ())
+  Lwt_main.run (run_server !server_name "9999" >>= fun _ -> wait_forever ())

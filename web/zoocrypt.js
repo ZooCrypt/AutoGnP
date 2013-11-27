@@ -6,7 +6,7 @@ function log(s) {
         console.log(s);
     }
 }
-var webSocket = new WebSocket("ws://zoocrypt.beschmi.net:9999/");
+var webSocket = new WebSocket("ws://127.0.0.1:9999/");
 
 // editorProof has been processed up to this character
 var firstUnlocked = 0;
@@ -51,6 +51,7 @@ var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
 
+// send json request to zoocrypt websocket server
 function sendZoocrypt(m) {
     webSocket.send(JSON.stringify(m));
 }
