@@ -88,7 +88,9 @@ function evalLocked() {
     }
     ;
     lastMarker = editorProof.getSession().addMarker(new Range(0, 0, pos.row, pos.column), 'locked', 'word', false);
-    sendZoocrypt({ 'cmd': 'eval', 'arg': lockedText() });
+    if (lockedText() !== "") {
+        sendZoocrypt({ 'cmd': 'eval', 'arg': lockedText() });
+    }
 }
 
 function setFirstUnlocked(i) {

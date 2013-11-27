@@ -87,7 +87,9 @@ function evalLocked() {
   var Range = ace.require('ace/range').Range;
   if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); };
   lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'locked','word',false);
-  sendZoocrypt({'cmd':'eval','arg':lockedText()});
+  if (lockedText() !== "") {
+    sendZoocrypt({'cmd':'eval','arg':lockedText()});
+  }
 }
 
 function setFirstUnlocked(i : number) {
