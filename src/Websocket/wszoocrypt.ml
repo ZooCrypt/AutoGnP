@@ -16,6 +16,7 @@ let theory_string = ref ""
 let ps_list = ref []
 
 let ps_file = ref ""
+let disallow_save = ref false
 
 let find_ps cmds =
   let rec go handled_cmds rem_cmds =
@@ -34,8 +35,12 @@ let processUnknown s =
 
 let processSave content =
   Lwt_io.printl ("Save: ``"^content^"''") >>= fun () ->
-  if Sys.file_exists !ps_file then output_file !ps_file content else ();
-  Lwt.return (Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")])))
+  if (Sys.file_exists !ps_file && not !disallow_save) then (
+    output_file !ps_file content;
+    Lwt.return (Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")])))
+  ) else (
+    Lwt.return (Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")])))
+  )
 
 let processLoad () =
   Lwt_io.printl ("Loading") >>= fun () ->
@@ -103,12 +108,12 @@ let rec wait_forever () =
   Lwt_unix.sleep 1000.0 >>= wait_forever
 
 let _ =
-  let speclist = Arg.align [ ] in
+  let speclist = Arg.align [ ("-nosave", Arg.Set disallow_save, "allow to save file")] in
   let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " <file>" in
   let parse_args s = if !ps_file = "" then ps_file := s else failwith "can only serve one file" in
   Arg.parse speclist parse_args usage_msg;
   if !ps_file = "" then (print_endline usage_msg; exit 1);
   print_endline "Open the following URL in your browser (websocket support required):\n";
-  print_endline ("    file://"^Sys.getcwd ()^"/web/zoocrypt.html\n\n");
+  print_endline ("    file://"^Sys.getcwd ()^"/web/index.html\n\n");
   (if Sys.file_exists !ps_file then Lwt_io.printl ("File: " ^ !ps_file) else Lwt.return ()) >>= fun _ ->  
   Lwt_main.run (run_server "localhost" "9999" >>= fun _ -> wait_forever ())
