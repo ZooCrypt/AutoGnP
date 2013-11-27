@@ -59,8 +59,14 @@ let processEval proofscript =
                     ps rem_cmds
          in
          ps_list := (l,ps)::!ps_list;
-         let g = fsprintf "@[<v>current goal:@\n%a@."
-                   pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
+         let g = match ps.ps_goals with
+                 | None    -> "No proof started"
+                 | Some [] -> "No goals"
+                 | Some gs ->
+                   fsprintf "@[%a@.%s@]"
+                     pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
+                     (let rem = List.length gs - 1 in if rem = 0 then "" else
+                      string_of_int rem^" other goals")
                    |> fsget
          in `Assoc [("cmd", `String "setGoal"); ("arg", `String g)])
     with Parse.ParseError s ->
