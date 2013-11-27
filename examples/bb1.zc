@@ -42,16 +42,16 @@ prove
   rnorm.
 
   rswap 1 3.
-  rnorm_unknown c d e.  print_goals : norm_uk.
+  rnorm_unknown c d e.
 
-  rlet_abstract 3 xc (g ^ c).  print_goals : applet1.
-  rlet_abstract 4 xd (g ^ d).  print_goals : applet2.
-  rlet_abstract 5 xe (g ^ e).  print_goals : applet3.
-  rlet_abstract 6 t (g_t^(c*d*e)). print_goals : applet4.
+  rlet_abstract 3 xc (g ^ c).
+  rlet_abstract 4 xd (g ^ d).
+  rlet_abstract 5 xe (g ^ e).
+  rlet_abstract 6 t (g_t^(c*d*e)).
 
-  assumption -> bddh u. rnorm. rswap 4 4.  print_goals : after_rbddh.
+  assumption -> bddh u. rnorm. rswap 4 4.
 
   rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)) zzzz.
-  rnorm. rswap 7 2.  print_goals : after_random.
+  rnorm. rswap 7 2.
 
-  rindep.  print_goals : after_indep.
+  rindep.
