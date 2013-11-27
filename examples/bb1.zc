@@ -8,8 +8,8 @@ bilinear map e : G * G -> G_t.
 assumption bddh
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
     let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; let t = g_t^(a*b*c); ]
-  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
-    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; d <-$ Fq; let t = g_t^d; ]
+  [ a <-$ Fq; b <-$ Fq; c <-$ Fq; d <-$ Fq;
+    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; let t = g_t^d; ]
     a b c d.
 
 prove
