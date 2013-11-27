@@ -10,7 +10,7 @@ var webSocket = new WebSocket("ws://127.0.0.1:9999/");
 
 // editorProof has been processed up to this character
 var firstUnlocked = 0;
-var oldLockedText = "";
+var originalLockedText = "";
 
 function lockedText() {
     return editorProof.getValue().substring(0, firstUnlocked);
@@ -23,15 +23,17 @@ editorProof.focus();
 
 editorProof.getSession().getDocument().on("change", function (ev) {
     var lt = lockedText();
-    if (lt == oldLockedText) {
+    log("lt: ''" + lt + "''");
+    log("oldLt: ''" + originalLockedText + "''");
+    if (lt == originalLockedText) {
         // console.log("changed, but locked unchanged");
     } else {
         // console.log("locked changed");
         // search for the last dot that is the common prefix of
         // old and new content of locked region
         var lastDot = 0;
-        for (var i = 0; i < Math.min(lt.length, oldLockedText.length); i++) {
-            if (lt.charAt(i) !== oldLockedText.charAt(i)) {
+        for (var i = 0; i < Math.min(lt.length, originalLockedText.length); i++) {
+            if (lt.charAt(i) !== originalLockedText.charAt(i)) {
                 break;
             }
             if (lt.charAt(i) == '.') {
@@ -70,6 +72,7 @@ webSocket.onmessage = function (evt) {
     } else if (m.cmd == 'setProof') {
         editorProof.setValue(m.arg);
         editorProof.clearSelection();
+        editorProof.scrollPageUp();
     }
 };
 
@@ -89,8 +92,8 @@ function evalLocked() {
 }
 
 function setFirstUnlocked(i) {
-    oldLockedText = lockedText();
     firstUnlocked = i;
+    originalLockedText = lockedText();
 }
 
 function evalNext() {
