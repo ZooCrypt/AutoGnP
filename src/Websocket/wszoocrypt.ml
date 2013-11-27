@@ -97,10 +97,12 @@ let rec wait_forever () =
   Lwt_unix.sleep 1000.0 >>= wait_forever
 
 let _ =
-  let speclist = Arg.align
-    [ ("-f", Arg.Set_string ps_file, " Run server for given file") ]
-  in
-  let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " <options>\nOptions are:" in
-  Arg.parse speclist (fun _ -> ()) usage_msg;
+  let speclist = Arg.align [ ] in
+  let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " <file>" in
+  let parse_args s = if !ps_file = "" then ps_file := s else failwith "can only serve one file" in
+  Arg.parse speclist parse_args usage_msg;
+  if !ps_file = "" then (print_endline usage_msg; exit 1);
+  print_endline "Open the following URL in your browser (websocket support required):\n";
+  print_endline ("    file://"^Sys.getcwd ()^"/web/zoocrypt.html\n\n");
   (if Sys.file_exists !ps_file then Lwt_io.printl ("File: " ^ !ps_file) else Lwt.return ()) >>= fun _ ->  
   Lwt_main.run (run_server "localhost" "9999" >>= fun _ -> wait_forever ())
