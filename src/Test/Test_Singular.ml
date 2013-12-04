@@ -1,4 +1,4 @@
-open Singular
+open CAS
 open Expr
 open ExprSyntax
 open Type

@@ -1,1 +1,0 @@
-<html><body>You are being <a href="https://raw.github.com/angular-ui/bootstrap/gh-pages/ui-bootstrap-tpls-0.3.0.js">redirected</a>.</body></html>

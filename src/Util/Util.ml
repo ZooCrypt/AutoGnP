@@ -149,6 +149,11 @@ let input_file file_name =
   let _ = close_in_noerr in_channel in
   String.concat "\n" (List.rev lines)
 
+let output_file file_name content =
+  let out_channel = open_out file_name in
+  output_string out_channel content;
+  close_out_noerr out_channel
+
 let assert_msg b m =
   if not b then failwith m
 
@@ -185,3 +190,33 @@ let cat_Some l =
     | None::xs     -> go acc      xs
     | [] -> List.rev acc
   in go [] l
+
+let splitn s sep =
+  if s = "" then []
+  else
+    let rec go acc ofs =
+      if ofs >= 0 then (
+        try
+          let idx = String.rindex_from s ofs sep in
+          if idx = ofs
+          then go (""::acc) (idx - 1)
+          else
+            let token = String.sub s (idx + 1) (ofs - idx) in
+            go (token::acc) (idx - 1)
+        with Not_found ->
+          (String.sub s 0 (ofs + 1))::acc
+      ) else ""::acc
+    in
+    go [] (String.length s - 1)
+
+let split s sep =
+  match (try Some (String.index s sep) with Not_found -> None) with
+  | Some i ->
+      let a = String.sub s 0 i in
+      let b = if String.length s > i + 1
+              then String.sub s (i + 1) (String.length s - i - 1)
+              else ""
+      in
+      Some (a, b)
+  | None   -> None
+

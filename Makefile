@@ -7,23 +7,11 @@ OCAMLBUILDFLAGS=-cflags "-w +a-e-9" -use-menhir -menhir "menhir -v" -classic-dis
 
 
 cur-dir := $(shell pwd)
-opam-root := $(shell opam config var root)
 
-
-all: zoocrypt
+all: wszoocrypt
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
-
-tutor-lib:
-	ocamlbuild $(OCAMLBUILDFLAGS) tutor.cma
-
-web:
-	ocamlbuild $(OCAMLBUILDFLAGS) tutor.cma
-	mkdir -p data/log/ocsigenserver
-	mkdir -p data/lib/ocsigenserver
-	mkdir -p data/ocsign/extensions/ocsidbm
-	sed -e "s,%%PREFIX%%,$(cur-dir)," -e "s,%%OPAM%%,$(opam-root)," etc/ocsigen.conf.in > etc/ocsigen.conf
 
 toolchain:
 	./scripts/build-toolchain
@@ -32,7 +20,7 @@ update-toolchain:
 	$$(./scripts/activate-toolchain.sh) \
 	&& opam update  -y \
 	&& opam upgrade -y  \
-	&& opam install -y eliom ounit yojson menhir
+	&& opam install -y ounit yojson websocket
 
 clean:
 	ocamlbuild -clean
@@ -40,6 +28,9 @@ clean:
 
 zoocrypt :
 	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1_asym.zc
+
+wszoocrypt :
+	ocamlbuild $(OCAMLBUILDFLAGS) wszoocrypt.native 
 
 ##########################################################################
 # Used for development and testing
@@ -53,23 +44,8 @@ Test_Expr :
 Test_Singular :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Singular.d.byte && ./Test_Singular.d.byte
 
-Test_Proof_BB1 :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proof_BB1.d.byte && ./Test_Proof_BB1.d.byte
-
-Test_Wf :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Wf.d.byte && ./Test_Wf.d.byte
-
 Test_Pretty_Expr :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
-
-Test_Parser :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Parser.d.byte && ./Test_Parser.d.byte
-
-Test_Proofsearch :
-	ocamlbuild $(OCAMLBUILDFLAGS) Test_Proofsearch.d.byte && ./Test_Proofsearch.d.byte
-
-tests :
-	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./test/rules/ok/radd_test_01.zc
 
 all-tests: zoocrypt
 	@echo "============ OK TESTS ==============="
@@ -83,9 +59,6 @@ all-tests: zoocrypt
 	  ./zoocrypt.native $$file;\
 	   echo ;\
 	 done
-
-macaulay:
-	m2 --no-tvalues --no-tty --no-prompts --silent ./scripts/test.m2
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@

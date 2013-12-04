@@ -39,5 +39,9 @@ let odef = wrap_error (Parser.odef Lexer.lex)
 (** Parse game definition. *)
 let gdef = wrap_error (Parser.gdef Lexer.lex)
 
+
+(** Parse instruction definition. *)
+let instruction = wrap_error (Parser.instruction Lexer.lex)
+
 (** Parse theory definition. *)
 let theory = wrap_error (Parser.theory Lexer.lex)

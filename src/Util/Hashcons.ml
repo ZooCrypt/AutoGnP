@@ -12,8 +12,8 @@ module type S =
     type t
     val hashcons : t -> t
     val iter : (t -> unit) -> unit
-(*    val stats : unit -> int * int * int * int * int * int
-    val clear : unit -> unit *)
+(*  val stats : unit -> int * int * int * int * int * int *)
+    val clear : unit -> unit
   end
 
 module Make(H : HashedType) : (S with type t = H.t) =
@@ -42,8 +42,8 @@ module Make(H : HashedType) : (S with type t = H.t) =
 
     let iter f = WH.iter (fun k _ -> f k) htable
 
-(*    let stats () = WH.stats htable
-    let clear () = WH.clear htable *)
+(*  let stats () = WH.stats htable *)
+    let clear () = WH.clear htable 
   end
 
 let combine acc n = n * 65599 + acc
