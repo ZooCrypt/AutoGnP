@@ -1,4 +1,4 @@
-
+-include Makefile.local
 
 OCAMLBUILDFLAGS=-cflags "-w +a-e-9" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind
 
