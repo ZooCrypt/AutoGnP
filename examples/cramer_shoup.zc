@@ -81,7 +81,7 @@ prove
   radd_test (12,1,4) (not (H(a,a',c) = H(g^u, g^v,g^z2))) A3 ba ba' bc bd.
 
 (* We first focus on the bad case:
-   For a reduction to TCR, we u,v,z2 must be uniformly sampled.
+   For a reduction to TCR, the inputs u,v,z2 must be uniformly sampled.
    We therefore first remove the excepted distribution transformer from 
    the sampling of v.
 *)
