@@ -1,5 +1,8 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
+/* ******************************************************************/
+/* Debug logging                                                    */
+/* ******************************************************************/
 var enable_debug = true;
 
 function log(s) {
@@ -8,15 +11,28 @@ function log(s) {
     }
 }
 
+/* ******************************************************************/
+/* Websocket connection                                             */
+/* ******************************************************************/
 var wsServer = window.location.hostname ? window.location.hostname : "127.0.0.1";
-
-log(wsServer);
-
 var webSocket = new WebSocket("ws://" + wsServer + ":9999/");
 
+// send json request to zoocrypt websocket server
+function sendZoocrypt(m) {
+    webSocket.send(JSON.stringify(m));
+}
+
+/* ******************************************************************/
+/* Locking in proof editor                                          */
+/* ******************************************************************/
 // editorProof has been processed up to this character
 var firstUnlocked = 0;
+
+// the text from the timepoint where the locking was enabled
 var originalLockedText = "";
+
+// the last locking marker, used for removal
+var lastMarker;
 
 function lockedText() {
     return editorProof.getValue().substring(0, firstUnlocked);
@@ -29,8 +45,7 @@ editorProof.focus();
 
 editorProof.getSession().getDocument().on("change", function (ev) {
     var lt = lockedText();
-    log("lt: ''" + lt + "''");
-    log("oldLt: ''" + originalLockedText + "''");
+
     if (lt == originalLockedText) {
         // console.log("changed, but locked unchanged");
     } else {
@@ -53,17 +68,27 @@ editorProof.getSession().getDocument().on("change", function (ev) {
     }
 });
 
+/* ******************************************************************/
+/* Goal and message editor and resizing                             */
+/* ******************************************************************/
 var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
+
+var editorMessage = ace.edit("editor-message");
+editorMessage.setTheme("ace/theme/eclipse");
+editorMessage.setHighlightActiveLine(false);
 
 // resize windows
 function resizeAce() {
     $('#editor-proof').height($(window).height() - 50);
     $('#editor-proof').width($(window).width() / 2 - 50);
 
-    $('#editor-goal').height($(window).height() - 50);
+    $('#editor-goal').height(($(window).height() - 50) * 0.7);
     $('#editor-goal').width($(window).width() / 2 - 50);
+
+    $('#editor-message').height(($(window).height() - 50) * 0.3);
+    $('#editor-message').width($(window).width() / 2 - 50);
 }
 ;
 
@@ -73,11 +98,9 @@ $(window).resize(resizeAce);
 //set initially
 resizeAce();
 
-// send json request to zoocrypt websocket server
-function sendZoocrypt(m) {
-    webSocket.send(JSON.stringify(m));
-}
-
+/* ******************************************************************/
+/* Websocket event handling                                         */
+/* ******************************************************************/
 // Request proof script
 webSocket.onopen = function (evt) {
     sendZoocrypt({ 'cmd': 'load', 'arg': '' });
@@ -91,16 +114,24 @@ webSocket.onmessage = function (evt) {
     if (m.cmd == 'setGoal') {
         editorGoal.setValue(m.arg);
         editorGoal.clearSelection();
+        editorMessage.setValue("We just received a new goal.");
+        editorMessage.clearSelection();
         // answer for load
     } else if (m.cmd == 'setProof') {
         editorProof.setValue(m.arg);
         editorProof.clearSelection();
         editorProof.scrollPageUp();
+        editorMessage.setValue("We just set the proof!");
+        editorMessage.clearSelection();
+    } else if (m.cmd == "error") {
+        editorMessage.setValue("Error: " + m.arg);
+        editorMessage.clearSelection();
     }
 };
 
-var lastMarker;
-
+/* ******************************************************************/
+/* Evaluate parts of buffer                                         */
+/* ******************************************************************/
 function evalLocked() {
     var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked, 0);
     editorProof.moveCursorToPosition(pos);
@@ -139,7 +170,9 @@ function evalPrev() {
     evalLocked();
 }
 
-// Add commands bindings
+/* ******************************************************************/
+/* Add command bindings buffer                                      */
+/* ******************************************************************/
 editorProof.commands.addCommand({
     name: 'saveFile',
     bindKey: {

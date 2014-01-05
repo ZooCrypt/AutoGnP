@@ -209,6 +209,11 @@ let pp_goals fmt gs =
       Format.fprintf fmt "goal %i:@\n%a@\n@\n" (i + 1) Game.pp_ju ju in
     List.iteri pp_goal jus 
 
+(* FIXME: Define data type instead of raising exceptions and
+          printing information directly.
+          Then we can translate this data type to a JSON answer
+          that we sent over websocket or print to stderr and
+          exit in handle_theory *)
 let handle_instr ps instr =
   match instr with
   | Apply(tac) ->
@@ -243,24 +248,28 @@ let handle_instr ps instr =
     Ht.add ps.ps_rodecls s
       (Hsym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     ps
+
   | EMDecl(s,g1,g2,g3) ->
     if Ht.mem ps.ps_emdecls s then
       failwith "bilinear map with same name already declared.";
     Ht.add ps.ps_emdecls s
       (Esym.mk s (create_groupvar ps g1) (create_groupvar ps g2) (create_groupvar ps g3));
     ps
+
   | ODecl(s,t1,t2) ->
       if Ht.mem ps.ps_odecls s then 
         failwith "oracle with same name already declared.";
     Ht.add ps.ps_odecls s 
       (Osym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     ps
+
   | ADecl(s,t1,t2) ->
     if Ht.mem ps.ps_adecls s then 
       failwith "adversary with same name already declared.";
     Ht.add ps.ps_adecls s 
       (Asym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     ps
+
   | AssmDec(s,g0,g1,priv) ->
     let ps' = ps_resetvars ps in
     let g0 = gdef_of_parse_gdef true ps' g0 in
