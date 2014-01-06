@@ -108,17 +108,19 @@ editorMessage.setHighlightActiveLine(false);
 
 // resize windows
 function resizeAce() {
+    var hpadding = 75;
+    var vpadding = 75;
     var edit = $('#editor-proof');
-    edit.height($(window).height() - 50);
-    edit.width($(window).width() / 2 - 50);
+    edit.height($(window).height() - vpadding);
+    edit.width($(window).width() / 2 - hpadding);
 
     edit = $('#editor-goal');
-    edit.height(($(window).height() - 50) * 0.7);
-    edit.width($(window).width() / 2 - 50);
+    edit.height(($(window).height() - vpadding) * 0.7);
+    edit.width($(window).width() / 2 - hpadding);
 
     edit = $('#editor-message');
-    edit.height(($(window).height() - 50) * 0.3);
-    edit.width($(window).width() / 2 - 50);
+    edit.height(($(window).height() - vpadding) * 0.3);
+    edit.width($(window).width() / 2 - hpadding);
 }
 
 //listen for changes
