@@ -1,6 +1,8 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
 
+declare var ReconnectingWebSocket
+
 /* ******************************************************************/
 /* Debug logging                                                    */
 /* ******************************************************************/
@@ -16,11 +18,19 @@ function log(s) {
 /* Websocket connection                                             */
 /* ******************************************************************/
 var wsServer = window.location.hostname ? window.location.hostname : "127.0.0.1";
-var webSocket = new WebSocket("ws://" + wsServer + ":9999/");
+var webSocket = new ReconnectingWebSocket("ws://" + wsServer + ":9999/");
+var firstConnect = true;
+
+//webSocket.onclose = function(evt) {
+//  log("reconnecting to server");
+//  webSocket = new WebSocket("ws://" + wsServer + ":9999/");
+//};
 
 // send json request to zoocrypt websocket server
 function sendZoocrypt(m) {
-  webSocket.send(JSON.stringify(m));
+  if (webSocket) {
+    webSocket.send(JSON.stringify(m));
+  }
 }
 
 /* ******************************************************************/
@@ -33,7 +43,6 @@ var firstUnlocked : number  = 0;
 var originalLockedText : string = "";
 // the last locking marker, used for removal
 var lastMarker;
-
 
 function lockedText() : string {
   return editorProof.getValue().substring(0, firstUnlocked);
@@ -100,7 +109,7 @@ function markLocked(c) {
   var Range = ace.require('ace/range').Range;
   var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
   if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
-  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'locked','word',false);
+  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),c,'word',false);
 
 }
 
@@ -145,7 +154,10 @@ resizeAce();
 
 // Request proof script
 webSocket.onopen = function (evt) {
-  sendZoocrypt({'cmd':'load','arg':''});
+  if (firstConnect) {
+    sendZoocrypt({'cmd':'load','arg':''});
+  }
+  firstConnect = false;
 };
 
 interface Reply {
@@ -162,7 +174,7 @@ webSocket.onmessage = function (evt) {
   var m : Reply = JSON.parse(evt.data);
   // answer for eval
   if (m.cmd == 'setGoal') {
-    firstUnlocked = m.ok_upto;
+    setFirstUnlocked(m.ok_upto);
     markLocked('locked');
     editorGoal.setValue(m.arg);
     editorGoal.clearSelection();
@@ -179,6 +191,8 @@ webSocket.onmessage = function (evt) {
     editorProof.scrollPageUp();
     editorMessage.setValue("We just set the proof.");
     editorMessage.clearSelection();
+    var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
+    editorProof.moveCursorToPosition(pos);
   }
 };
 
@@ -194,6 +208,9 @@ function evalLocked() {
   markLocked('processing');
   if (lockedText() !== "") {
     sendZoocrypt({'cmd':'eval','arg':lockedText()});
+  } else {
+    editorGoal.setValue("");
+    editorMessage.setValue("");
   }
 }
 
@@ -203,6 +220,18 @@ function evalNext() {
     setFirstUnlocked(nextDot + 1);
     evalLocked();
   }
+}
+
+function evalCursor() {
+  var pos = editorProof.getCursorPosition();
+  var idx = editorProof.getSession().getDocument().positionToIndex(pos,0);
+  var prevDot = getPrevDot(idx+1);
+  if (prevDot == -1) {
+    setFirstUnlocked(0);
+  } else {
+    setFirstUnlocked(prevDot + 1);
+  }
+  evalLocked();
 }
 
 function evalPrev() {
@@ -232,10 +261,22 @@ editorProof.commands.addCommand({
 });
 
 editorProof.commands.addCommand({
-  name: 'evalNext',
+  name: 'evalCursor',
   bindKey: {
     win: 'Ctrl-Enter',
     mac: 'Ctrl-Enter',
+    sender: 'editor|cli'
+  },
+  exec: function(env, args, request) {
+    evalCursor();
+  }
+});
+
+editorProof.commands.addCommand({
+  name: 'evalNext',
+  bindKey: {
+    win: 'Ctrl-Space',
+    mac: 'Ctrl-Space',
     sender: 'editor|cli'
   },
   exec: function(env, args, request) {
