@@ -84,7 +84,7 @@ editorProof.renderer.setShowGutter(false);
 editorProof.setKeyboardHandler(emacs);
 editorProof.getSession().setTabSize(2);
 editorProof.getSession().setUseSoftTabs(true);
-
+editorProof.getSession().setMode("ace/mode/zoocrypt");
 editorProof.getSession().getDocument().on("change", function (ev) {
     var lt = lockedText();
     if (lt !== originalLockedText) {
