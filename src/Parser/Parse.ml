@@ -1,9 +1,7 @@
 (** Wrapper functions for parser with error handling. *)
 
 module S = String
-
-(** Parser error with explanation *)
-exception ParseError of string
+module PU = ParserUtil
 
 (** Convert lexer and parser errors to ParseError exception *)
 let wrap_error f s0 =
@@ -13,7 +11,7 @@ let wrap_error f s0 =
     f sbuf
   with
   | Lexer.Error msg ->
-      raise (ParseError (Printf.sprintf "%s%!" msg))
+      raise (PU.ParseError (Printf.sprintf "%s%!" msg))
   | Parser.Error ->
       let start = Lexing.lexeme_start sbuf in
       let err = Printf.sprintf
@@ -24,8 +22,8 @@ let wrap_error f s0 =
                   (if start >= S.length s then "" else (S.sub s start (S.length s - start)))
       in
       print_endline err;
-      raise (ParseError err)
-  | _ -> raise (ParseError "Unknown error while lexing/parsing.")
+      raise (PU.ParseError err)
+  | _ -> raise (PU.ParseError "Unknown error while lexing/parsing.")
 
 (** Parse type declaration. *)
 let ty = wrap_error (Parser.typ Lexer.lex)

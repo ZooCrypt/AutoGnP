@@ -50,32 +50,3 @@ let subst subst assm =
     ad_privvars = 
       Vsym.S.fold (fun x -> Vsym.S.add (subst_v x))
         assm.ad_privvars Vsym.S.empty }
-
-
-(*let ddh_assm =
-  let gn = Groupvar.mk "1" in
-  let tG = mk_G gn in
-  let va = Vsym.mk "a" mk_Fq in
-  let vb = Vsym.mk "b" mk_Fq in
-  let vc = Vsym.mk "c" mk_Fq in
-  let vga = Vsym.mk "ga" tG in
-  let vgb = Vsym.mk "gb" tG in
-  let vt  = Vsym.mk "t"  tG in
-  let prefix =
-    [ GSamp(va,(mk_Fq,[]));
-      GSamp(vb,(mk_Fq,[]));
-      GLet(vga,mk_GExp (mk_GGen gn) (mk_V va));
-      GLet(vgb,mk_GExp (mk_GGen gn) (mk_V vb)) ]
-  in
-  let prefix1 = prefix @
-    [GLet(vt, mk_GExp (mk_GGen gn) (mk_FMult [mk_V va; mk_V vb]))]
-  in
-  let prefix2 = prefix @
-    [ GSamp(vc,(mk_Fq,[]));
-      GLet(vt, mk_GExp (mk_GGen gn) (mk_V vc))]
-  in
-  let pvars =
-    List.fold_left (fun acc x -> Vsym.S.add x acc)
-      Vsym.S.empty [va; vb; vc]
-  in
-  mk_ad prefix1 prefix2 pvars*)

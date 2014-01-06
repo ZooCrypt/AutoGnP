@@ -1,5 +1,5 @@
 open Game
-open CoreRule
+open CoreRules
 open Expr
 open Norm
 open Util

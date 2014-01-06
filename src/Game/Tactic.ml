@@ -1,9 +1,10 @@
 open ParserUtil
-open CoreRule
+open CoreRules
 open Rules
 open Expr
 open Type
 open Util
+open Proofstate
 
 module Ht = Hashtbl
 
@@ -95,14 +96,14 @@ let handle_tactic ps tac jus =
 
   | Rassm(dir,s,xs) ->
     let assm = 
-      try Ht.find ps.ps_assm s 
+      try Ht.find ps.ps_assms s 
       with Not_found -> fail_cmd ("error no assumption "^s) in
     let needed = Assumption.needed_var dir assm in
     if List.length needed <> List.length xs then
       fail_cmd "Bad number of variables";
     let subst = 
       List.fold_left2 (fun s v x -> 
-        let v' = create_var true ps x v.Vsym.ty in
+        let v' = create_var_reuse ps x v.Vsym.ty in
         Vsym.M.add v v' s) Vsym.M.empty needed xs in
     apply_rule (Rules.rassm dir assm subst) ps
 
@@ -276,9 +277,9 @@ let handle_instr ps instr =
       try Vsym.S.add (Ht.find ps'.ps_vars x) s
       with Not_found -> fail_cmd ("unknown variable "^x))
       Vsym.S.empty priv in
-    if Ht.mem ps.ps_assm s then
+    if Ht.mem ps.ps_assms s then
       fail_cmd "assumption with the same name already exists";
-    Ht.add ps.ps_assm s (Assumption.mk_ad g0 g1 priv);
+    Ht.add ps.ps_assms s (Assumption.mk_ad g0 g1 priv);
     (ps, "Declared assumption.")
     
   | Judgment(gd, e) ->
