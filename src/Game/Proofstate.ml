@@ -25,6 +25,18 @@ let mk_ps () =
     ps_vars    = Ht.create 20; 
     ps_goals   = None }
 
+let ps_copy ps =
+  { ps with
+    ps_lvars   = Ht.copy ps.ps_lvars;
+    ps_gvars   = Ht.copy ps.ps_gvars;
+    ps_rodecls = Ht.copy ps.ps_rodecls;
+    ps_odecls  = Ht.copy ps.ps_odecls; 
+    ps_adecls  = Ht.copy ps.ps_adecls;
+    ps_emdecls = Ht.copy ps.ps_emdecls;
+    ps_assms   = Ht.copy ps.ps_assms;
+    ps_vars    = Ht.create 20;
+  }
+
 let ps_resetvars ps =
   { ps with
     ps_vars    = Ht.create 20;

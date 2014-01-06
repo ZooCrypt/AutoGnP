@@ -121,14 +121,14 @@ let handle_tactic ps tac jus =
       | Game.GSamp(v,_) -> v.Vsym.ty
       | _ -> assert false
     in
-    let v2 = create_var false ps sv2 ty in
-    let e2 = expr_of_parse_expr ps e2 in
-    Ht.remove ps.ps_vars sv2;
+    let ps' = ps_copy ps in
+    let v2 = create_var false ps' sv2 ty in
+    let e2 = expr_of_parse_expr ps' e2 in
     let (v1,e1) = match mctxt1 with
       | Some(sv1,e1) ->
-        let v1 = create_var false ps sv1 ty in
-        let e1 = expr_of_parse_expr ps e1 in
-        Ht.remove ps.ps_vars sv1;
+        let ps' = ps_copy ps in
+        let v1 = create_var false ps' sv1 ty in
+        let e1 = expr_of_parse_expr ps' e1 in
         (v1,e1)
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
@@ -144,14 +144,14 @@ let handle_tactic ps tac jus =
       | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
       | _ -> assert false
     in
-    let v2 = create_var false ps sv2 ty in
-    let e2 = expr_of_parse_expr ps e2 in
-    Ht.remove ps.ps_vars sv2;
+    let ps' = ps_copy ps in
+    let v2 = create_var false ps' sv2 ty in
+    let e2 = expr_of_parse_expr ps' e2 in
     let (v1,e1) = match mctxt1 with
       | Some(sv1,e1) ->
-        let v1 = create_var false ps sv1 ty in
-        let e1 = expr_of_parse_expr ps e1 in
-        Ht.remove ps.ps_vars sv1;
+        let ps' = ps_copy ps in
+        let v1 = create_var false ps' sv1 ty in
+        let e1 = expr_of_parse_expr ps' e1 in
         (v1,e1)
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
@@ -290,6 +290,7 @@ let handle_instr ps instr =
 let eval_theory s =
   let pt = Parse.theory s in
   List.fold_left (fun ps i ->
+                    let ps = ps_copy ps in
                     let (ps', s) = handle_instr ps i in
                     print_endline s;
                     ps')
