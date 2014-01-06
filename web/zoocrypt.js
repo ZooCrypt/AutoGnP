@@ -130,10 +130,10 @@ editorMessage.renderer.setShowGutter(false);
 
 // resize windows
 function resizeAce() {
-    var hpadding = 20;
+    var hpadding = 25;
     var vpadding = 75;
     var edit = $('#editor-proof');
-    edit.height($(window).height() - vpadding + 10);
+    edit.height($(window).height() - vpadding + 13);
     edit.width($(window).width() / 2 - hpadding);
 
     edit = $('#editor-goal');
