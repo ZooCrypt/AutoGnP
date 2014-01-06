@@ -35,7 +35,7 @@ prove
         [ c * (a^z1 * a'^z2)^(-1)
         | not (a = sa), not(a' = sa'), not(c = sc), not(d = sd),
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
-  ] : b = b'. print_goals : start.
+  ] : b = b'.
 
 (* apply DDH
      we try to bring the game into DDH-form for all pairs
@@ -86,16 +86,11 @@ prove
    the sampling of v.
 *)
   last.
-  print_goals : l1.
   rexcept 3.
-  print_goals : l2.
   rswap 2 -1.
-  print_goals : l3.
   rswap 3 -1.
-  print_goals : l4.    
   rswap 9 -6.
   rlet_abstract 4 hin (g^u, g^v, g^z2).
-  print_goals : tcr_admit.
   admit. (* this is TCR *)
 
   (* There is still a problem because we use the plug-and-pray bad
@@ -121,14 +116,12 @@ prove
    We always rewrite with such tests.
 *)
   rrewrite_oracle (12,1,1) <-. rnorm.
-  print_goals : before_let_abstract.
   rlet_abstract 13 l log(ga).
   rlet_abstract 13 hc H(g^u,g^v,g^z2).
   rlet_abstract 13 hb H(ga, ga', gc).
   rswap 10 6.
   rctxt_ev (q -> log(q)) 6.
   rnorm_nounfold.
-  print_goal : here.  
   rctxt_ev
     (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
            - x1*u*log(ga') - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*log(ga')*hc + (x2*log(ga')*2))
@@ -137,17 +130,5 @@ prove
           -(w*u*log(ga')*hc) + -(w*v*l*hc) + v*log(ga')*hc))
     6.
   rlet_unfold 15.
-  print_goals : rewrite_bad.  
   rnorm_nounfold.
   rindep.
-  print_goals : after_indep.
-
-(*
-
-   known: w,u,v,x2,l,x1,l',y1,hb,hc
-        (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*l')
-           - x1*u*l' - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*l'*hc + (x2*l'*2))
-          /
-          (-(w*w*u*l*hb) + w*u*l'*hb + w*v*l*hb + -(v*l'*hb) + w*w*u*l*hc +
-          -(w*u*l'*hc) + -(w*v*l*hc) + v*l'*hc))
-*)
