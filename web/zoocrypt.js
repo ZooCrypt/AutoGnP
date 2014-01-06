@@ -132,11 +132,11 @@ function resizeAce() {
     edit.width($(window).width() / 2 - hpadding);
 
     edit = $('#editor-goal');
-    edit.height(($(window).height() - vpadding) * 0.7);
+    edit.height(($(window).height() - vpadding) * 0.9);
     edit.width($(window).width() / 2 - hpadding);
 
     edit = $('#editor-message');
-    edit.height(($(window).height() - vpadding) * 0.3);
+    edit.height(($(window).height() - vpadding) * 0.1);
     edit.width($(window).width() / 2 - hpadding);
 }
 
