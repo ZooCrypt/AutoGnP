@@ -43,20 +43,22 @@ let in_comment s i =
 (** {Handlers for different commands} *)
 
 let process_unknown s =
-  Lwt_io.printl ("unknown command: ``"^s^"''") >>= fun () ->
+  F.printf "unknown command: %s\n%!" s;
   Lwt.return (Frame.of_string "Unknown command")
 
 let process_save content =
-  Lwt_io.printl ("Save: ``"^content^"''") >>= fun () ->
-  if (Sys.file_exists !ps_file && not !disallow_save) then (
-    output_file !ps_file content;
-    Lwt.return (Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")])))
-  ) else (
-    Lwt.return (Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")])))
+  F.printf "Save: %s\n%!" content;
+  Lwt.return (
+    if (Sys.file_exists !ps_file && not !disallow_save) then (
+      output_file !ps_file content;
+      Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
+    ) else (
+      Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
+    )
   )
 
 let process_load () =
-  Lwt_io.printl "Loading" >>= fun () ->
+  F.printf "Loading %s\n%!" !ps_file;
   let s = if Sys.file_exists !ps_file then input_file !ps_file
           else "(* Enter proof script below *)"
   in
@@ -64,32 +66,35 @@ let process_load () =
   Lwt.return (Frame.of_string (YS.to_string res))
 
 let process_eval proofscript = 
-  let l = (Util.splitn_by proofscript (fun s i -> s.[i] = '.' && not (in_comment s i)))
-          |> List.rev |> List.tl in
+  let l = Util.splitn_by proofscript
+            (fun s i -> s.[i] = '.' && not (in_comment s i))
+          |> List.rev |> List.tl
+  in
   let (ps, rem_cmds) = find_ps l in
-  Lwt_io.printl ("Eval: ``"^proofscript^"''") >>= fun () ->
-  (* Lwt.return (read_line ()) >>= fun _ -> *) (* uncomment for testing bad connection/slow eval *)
-  Lwt_io.printl ("executing "^string_of_int (List.length rem_cmds)^" remaining commands") >>= fun () ->
+  F.printf "Eval: ``%s''\n%!" proofscript;
+  F.printf "executing %i remaining commands\n%!" (List.length rem_cmds);
   let res =
     (* FIXME: handle errors better, still return the handled prefix *)
-    try (let ps = List.fold_left
-                    (fun ps cmd ->
-                       handle_instr ps (Parse.instruction (cmd ^ ".")))
-                    ps rem_cmds
-         in
-         ps_list := (l,ps)::!ps_list;
-         let g = match ps.ps_goals with
-                 | None    -> "No proof started"
-                 | Some [] -> "No goals"
-                 | Some gs ->
-                   fsprintf "@[%a@.%s@]"
-                     pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
-                     (let rem = List.length gs - 1 in if rem = 0 then "" else
-                      string_of_int rem^" other goals")
-                   |> fsget
-         in `Assoc [("cmd", `String "setGoal"); ("arg", `String g)])
+    try (
+      let ps = List.fold_left
+                 (fun ps cmd ->
+                    let (ps',_s) = handle_instr ps (Parse.instruction (cmd ^ "."))
+                    in ps')
+                 ps rem_cmds
+      in
+      ps_list := (l,ps)::!ps_list;
+      let g = match ps.ps_goals with
+              | None    -> "No proof started"
+              | Some [] -> "No goals"
+              | Some gs ->
+                fsprintf "@[%a@.%s@]"
+                  pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
+                    (let rem = List.length gs - 1 in if rem = 0 then "" else
+                    string_of_int rem^" other goals")
+                  |> fsget
+      in `Assoc [("cmd", `String "setGoal"); ("arg", `String g)])
     with Parse.ParseError s ->
-           `Assoc [("cmd", `String "error"); ("arg", `String (F.sprintf "parse error: %s" s))]
+      `Assoc [("cmd", `String "error"); ("arg", `String (F.sprintf "parse error: %s" s))]
   in
   Lwt.return (Frame.of_string (YS.to_string res))
 
@@ -98,7 +103,7 @@ let process_eval proofscript =
 
 let process_frame frame =
   let inp = Frame.content frame in
-  Lwt_io.printl ("Command: ``"^inp^"''") >>= fun () -> 
+  F.printf "Command: ``%s''\n%!" inp;
   match YS.from_string inp with
   | `Assoc l ->
      (try
