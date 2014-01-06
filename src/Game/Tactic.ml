@@ -211,6 +211,7 @@ let pp_goals fmt gs =
     List.iteri pp_goal jus 
 
 let handle_instr ps instr =
+  let ps = ps_copy ps in
   match instr with
   | RODecl(s,t1,t2) ->
     if Ht.mem ps.ps_rodecls s then
@@ -290,7 +291,6 @@ let handle_instr ps instr =
 let eval_theory s =
   let pt = Parse.theory s in
   List.fold_left (fun ps i ->
-                    let ps = ps_copy ps in
                     let (ps', s) = handle_instr ps i in
                     print_endline s;
                     ps')
