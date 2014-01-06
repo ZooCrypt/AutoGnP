@@ -96,6 +96,14 @@ editorProof.getSession().getDocument().on("change", function(ev) {
   }
 );
 
+function markLocked(c) {
+  var Range = ace.require('ace/range').Range;
+  var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
+  if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
+  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'locked','word',false);
+
+}
+
 /* ******************************************************************/
 /* Goal and message editor and resizing                             */
 /* ******************************************************************/
@@ -140,20 +148,29 @@ webSocket.onopen = function (evt) {
   sendZoocrypt({'cmd':'load','arg':''});
 };
 
+interface Reply {
+  err : string;
+  msgs : Array<string>;
+  arg : string;
+  cmd : string;
+  ok_upto : number;
+}
+
 // handle websocket answers
 webSocket.onmessage = function (evt) {
   log(evt.data);
-  var m = JSON.parse(evt.data);
+  var m : Reply = JSON.parse(evt.data);
   // answer for eval
   if (m.cmd == 'setGoal') {
-    // FIXME: advance cursor only if everything handled successfully
-    var Range = ace.require('ace/range').Range;
-    var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
-    if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
-    lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'locked','word',false);
+    firstUnlocked = m.ok_upto;
+    markLocked('locked');
     editorGoal.setValue(m.arg);
     editorGoal.clearSelection();
-    editorMessage.setValue("We just received a new goal.");
+    if (m.err) {
+      editorMessage.setValue(m.err);
+    } else {
+      editorMessage.setValue(m.msgs.length > 0 ? m.msgs[m.msgs.length - 1] : "No message received.");
+    }
     editorMessage.clearSelection();
   // answer for load
   } else if (m.cmd == 'setProof') {
@@ -161,9 +178,6 @@ webSocket.onmessage = function (evt) {
     editorProof.clearSelection();
     editorProof.scrollPageUp();
     editorMessage.setValue("We just set the proof.");
-    editorMessage.clearSelection();
-  } else if (m.cmd == "error") {
-    editorMessage.setValue("Error: "+ m.arg);
     editorMessage.clearSelection();
   }
 };
@@ -177,9 +191,7 @@ function evalLocked() {
   var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
   editorProof.moveCursorToPosition(pos);
   editorProof.clearSelection();
-  var Range = ace.require('ace/range').Range;
-  if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
-  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'processing','word',false);
+  markLocked('processing');
   if (lockedText() !== "") {
     sendZoocrypt({'cmd':'eval','arg':lockedText()});
   }

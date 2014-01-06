@@ -1,35 +1,18 @@
 open Websocket
 open Util
 open Tactic
-open ParserUtil
+open CoreRules
+open Proofstate
 
 module YS = Yojson.Safe
 module F = Format
+module PU = ParserUtil
 
 let (>>=) = Lwt.bind
-
-(* We use the reversed list of commands (without '.')
-   as the key for the corresponding proofstate. *)
-let ps_list = ref []
 
 let ps_file = ref ""
 let disallow_save = ref false
 let server_name = ref "localhost"
-
-(* 'find_ps cmds' searches for the longest suffix of
-   cmds for which there is a proofstate. The proofstate
-   is returned together with the list of unhandled
-   commands. *)
-let find_ps cmds =
-  let rec go handled_cmds rem_cmds =
-    try
-      (List.assoc handled_cmds !ps_list, rem_cmds)
-    with
-      Not_found ->
-        (match handled_cmds with
-         | [] -> (ParserUtil.mk_ps (), rem_cmds)
-         | last::before -> go before (last::rem_cmds))
-  in go cmds []
 
 let in_comment s i =
   let cstart = exc_to_opt (fun () -> string_rfind_from s "(*" i) in
@@ -38,6 +21,31 @@ let in_comment s i =
   | Some i, Some j -> i > j
   | Some _, None   -> true
   | _              -> false
+
+(* ----------------------------------------------------------------------- *)
+(** {Proofstate cache} *)
+
+(* We use the reversed list of commands (without '.')
+   as the key for the corresponding proofstate. *)
+let ps_cache = Hashtbl.create 10
+
+(* 'lookup_ps_cache cmds' searches for the longest suffix of
+   cmds for which there is a proofstate. The proofstate
+   is returned together with the list of unhandled
+   commands. *)
+let lookup_ps_cache cmds =
+  let rec go handled_cmds rem_cmds =
+    try
+      (Hashtbl.find ps_cache handled_cmds, List.rev handled_cmds, rem_cmds)
+    with
+      Not_found ->
+        (match handled_cmds with
+         | [] -> ((mk_ps (), []), List.rev handled_cmds, rem_cmds)
+         | last::before -> go before (last::rem_cmds))
+  in go (List.rev cmds) []
+
+let insert_ps_cache cmds (ps,msgs) =
+  Hashtbl.add ps_cache (List.rev cmds) (ps,msgs)
 
 (* ----------------------------------------------------------------------- *)
 (** {Handlers for different commands} *)
@@ -65,36 +73,56 @@ let process_load () =
   let res = `Assoc [("cmd", `String "setProof"); ("arg", `String s)] in
   Lwt.return (Frame.of_string (YS.to_string res))
 
-let process_eval proofscript = 
-  let l = Util.splitn_by proofscript
-            (fun s i -> s.[i] = '.' && not (in_comment s i))
-          |> List.rev |> List.tl
+let process_eval proofscript =
+  let proofscript = (* drop last '.' *)
+    let len = String.length proofscript in
+    String.sub proofscript 0 (if len > 0 then len - 1 else len)
   in
-  let (ps, rem_cmds) = find_ps l in
+  let l = Util.splitn_by proofscript (fun s i -> s.[i] = '.' && not (in_comment s i))
+  in
+  let ((ps0, msgs0), handled_cmds, rem_cmds) = lookup_ps_cache l in
   F.printf "Eval: ``%s''\n%!" proofscript;
   F.printf "executing %i remaining commands\n%!" (List.length rem_cmds);
+  let rhandled = ref handled_cmds in
+  let rps = ref ps0 in
+  let rmsgs = ref msgs0 in
+  (* handle the remaining commands, return the last message if ok
+     and the error and the position up to where processing was
+     successfull otherwise *)
+  let ok_upto () =
+    List.fold_left (fun acc l -> acc + 1 + String.length l) 0 !rhandled
+  in
   let res =
-    (* FIXME: handle errors better, still return the handled prefix *)
-    try (
-      let ps = List.fold_left
-                 (fun ps cmd ->
-                    let (ps',_s) = handle_instr ps (Parse.instruction (cmd ^ "."))
-                    in ps')
-                 ps rem_cmds
-      in
-      ps_list := (l,ps)::!ps_list;
-      let g = match ps.ps_goals with
-              | None    -> "No proof started"
-              | Some [] -> "No goals"
-              | Some gs ->
-                fsprintf "@[%a@.%s@]"
-                  pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
-                    (let rem = List.length gs - 1 in if rem = 0 then "" else
-                    string_of_int rem^" other goals")
-                  |> fsget
-      in `Assoc [("cmd", `String "setGoal"); ("arg", `String g)])
-    with Parse.ParseError s ->
-      `Assoc [("cmd", `String "error"); ("arg", `String (F.sprintf "parse error: %s" s))]
+    let error =
+      try 
+        List.iter
+          (fun cmd ->
+             let (ps, msg) = handle_instr !rps (Parse.instruction (cmd ^ ".")) in
+             rhandled := !rhandled @ [ cmd ]; rps := ps; rmsgs := !rmsgs @ [ msg ];
+             insert_ps_cache !rhandled (ps,!rmsgs))
+          rem_cmds;
+          `Null
+      with
+        | PU.ParseError s ->
+          `String (F.sprintf "parse error: %s" s)
+        | Invalid_cmd s ->
+          `String (F.sprintf "invalid command: %s" s)
+    in
+    let g =
+      match !rps.ps_goals with
+      | None    -> "No proof started"
+      | Some [] -> "No goals"
+      | Some gs ->
+        fsprintf "@[%a@.%s@]"
+          pp_goals (Util.map_opt (Util.take 1) !rps.ps_goals)
+          (let rem = List.length gs - 1 in if rem = 0 then "" else
+          string_of_int rem^" other goals")
+        |> fsget
+    in `Assoc [ ("cmd", `String "setGoal");
+                ("ok_upto", `Int (ok_upto ()));
+                ("err", error);
+                ("msgs", `List (List.map (fun s -> `String s) !rmsgs));
+                ("arg", `String g) ]
   in
   Lwt.return (Frame.of_string (YS.to_string res))
 
