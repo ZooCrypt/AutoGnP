@@ -8,6 +8,10 @@ open Proofstate
 
 module Ht = Hashtbl
 
+let fail_unless c s =
+  if not (c ()) then
+    fail_cmd s
+
 let create_var reuse ps s ty =
   match Proofstate.create_var reuse ps s ty with
   | None -> fail_cmd (F.sprintf "Variable %s already defined" s)
@@ -197,12 +201,12 @@ let handle_tactic ps tac jus =
       | Prod(tys) -> tys
       | _ -> [ty]
     in
-    assert_msg (not (Ht.mem ps.ps_adecls aname))
+    fail_unless (fun () -> not (Ht.mem ps.ps_adecls aname))
       "radd_test: adversary with same name already declared";
     let asym = Asym.mk aname (mk_Prod []) oty in
     Ht.add ps.ps_adecls aname asym;
     let tys = destr_prod  oty in
-    assert_msg (List.length fvs = List.length tys)
+    fail_unless (fun () -> List.length fvs = List.length tys)
       "number of given variables does not match type";
     let fvs = List.map2 (fun v ty -> create_var false ps v ty) fvs tys in
     apply_rule (radd_test op t asym fvs) ps

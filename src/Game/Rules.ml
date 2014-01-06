@@ -105,7 +105,7 @@ let rlet_unfold p ju =
                 juc_ev = subst juc.juc_ev }
     in
     rconv false (set_ju_ctxt [] juc) ju
-  | _ -> assert false
+  | _ -> fail_cmd "rlet_unfold: no let at given position"
 
 
 let rassm dir assm subst ju =

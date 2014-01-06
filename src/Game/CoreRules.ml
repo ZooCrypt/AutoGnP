@@ -30,7 +30,7 @@ let delay goals = match goals with
 
 (** Helper functions *)
 
-let assert_no_occur vs ju s =
+let fail_if_occur vs ju s =
   if (Se.mem (mk_V vs) (ju_vars ju)) then
     fail_cmd
       (fsprintf "%s: variable %a occurs in judgment\n %a"
@@ -124,7 +124,7 @@ let ensure_bijection c1 c2 v =
    (taking inequalities that are checked beforehand into account)
    and that 'forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x'.  *)
 let rrandom p c1 c2 vslet ju =
-  assert_no_occur vslet ju "rrandom";
+  fail_if_occur vslet ju "rrandom";
   match get_ju_ctxt ju p with
   | GSamp(vs,((t,[]) as d)), juc ->
     assert (ty_equal vslet.Vsym.ty t);
@@ -146,7 +146,7 @@ let rrandom p c1 c2 vslet ju =
 
 (* random rule in oracle *)
 let rrandom_oracle p c1 c2 vslet ju =
-  assert_no_occur vslet ju "rrandom_oracle";
+  fail_if_occur vslet ju "rrandom_oracle";
   match get_ju_octxt ju p with
   | LSamp(vs,((t,[]) as d)), juoc ->
     assert (ty_equal vslet.Vsym.ty t);
@@ -346,7 +346,7 @@ let rassm_decision dir subst assm ju =
 
 (* Bad rule, random oracle *)
 let rbad p vsx ju =
-  assert_no_occur vsx ju "rbad";
+  fail_if_occur vsx ju "rbad";
   match get_ju_ctxt ju p with
   | GLet(vs,e'), ctxt when is_H e' ->
     let h,e = destr_H e' in
