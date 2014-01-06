@@ -78,6 +78,7 @@ var editorProof = ace.edit("editor-proof");
 editorProof.setTheme("ace/theme/eclipse");
 editorProof.setHighlightActiveLine(false);
 editorProof.focus();
+editorProof.renderer.setShowGutter(false);
 
 editorProof.getSession().getDocument().on("change", function (ev) {
     var lt = lockedText();
@@ -115,17 +116,19 @@ function markLocked(c) {
 var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
+editorGoal.renderer.setShowGutter(false);
 
 var editorMessage = ace.edit("editor-message");
 editorMessage.setTheme("ace/theme/eclipse");
 editorMessage.setHighlightActiveLine(false);
+editorMessage.renderer.setShowGutter(false);
 
 // resize windows
 function resizeAce() {
-    var hpadding = 75;
+    var hpadding = 20;
     var vpadding = 75;
     var edit = $('#editor-proof');
-    edit.height($(window).height() - vpadding);
+    edit.height($(window).height() - vpadding + 10);
     edit.width($(window).width() / 2 - hpadding);
 
     edit = $('#editor-goal');
@@ -164,6 +167,8 @@ webSocket.onmessage = function (evt) {
         markLocked('locked');
         editorGoal.setValue(m.arg);
         editorGoal.clearSelection();
+        var pos = editorGoal.getSession().getDocument().indexToPosition(0, 0);
+        editorGoal.moveCursorToPosition(pos);
         if (m.err) {
             editorMessage.setValue(m.err);
         } else {
