@@ -6,6 +6,7 @@ open Proofstate
 module E = Expr
 module Ht = Hashtbl
 module G = Game
+module F = Format
 
 (** Parser error with explanation *)
 exception ParseError of string
@@ -86,7 +87,7 @@ let bind_of_parse_bind ps lH =
        let h = 
          try Ht.find ps.ps_rodecls h
          with Not_found ->
-           fail_parse (Format.sprintf "undefined random oracle %s" h)
+           fail_parse (F.sprintf "undefined random oracle %s" h)
        in
        let x = create_var_reuse ps s h.Hsym.dom in
        (x, h))
@@ -99,7 +100,7 @@ let expr_of_parse_expr ps pe0 =
       let v = 
         try Ht.find ps.ps_vars s
         with Not_found ->
-          fail_parse (Format.sprintf "undefined variable %s" s)
+          fail_parse (F.sprintf "undefined variable %s" s)
       in
       E.mk_V v
     | Tuple(es)    -> E.mk_Tuple (List.map go es)
@@ -114,14 +115,14 @@ let expr_of_parse_expr ps pe0 =
       let es = mk_Tuple (List.map go es) in
       E.mk_H h es
     | HApp(s,_) ->
-      fail_parse (Format.sprintf "undefined hash symbol %s" s)
+      fail_parse (F.sprintf "undefined hash symbol %s" s)
     | SApp(s,[a;b]) when Ht.mem ps.ps_emdecls s -> 
       let es = Ht.find ps.ps_emdecls s in
       E.mk_EMap es (go a) (go b)
     | SApp(s,_) when Ht.mem ps.ps_emdecls s ->
-      fail_parse (Format.sprintf "bilinear map %s expects two arguments" s)
+      fail_parse (F.sprintf "bilinear map %s expects two arguments" s)
     | SApp(s,_) ->
-      fail_parse (Format.sprintf "undefined function symbol %s" s)
+      fail_parse (F.sprintf "undefined function symbol %s" s)
     | CFNat(i)     -> E.mk_FNat i
     | CGen(s)      -> E.mk_GGen (create_groupvar ps s)
     | CZ(s)        -> E.mk_Z (create_lenvar ps s)

@@ -212,35 +212,6 @@ let pp_goals fmt gs =
 
 let handle_instr ps instr =
   match instr with
-  | Apply(tac) ->
-    begin match ps.ps_goals with (* FIXME: more message *)
-    | Some(jus) -> (handle_tactic ps tac jus, "Applied tactic.") 
-    | None -> fail_cmd "apply: no goals"
-    end
-
-  | Last ->
-    begin match ps.ps_goals with
-    | Some(ju::jus) -> ({ ps with ps_goals = Some(jus@[ju]) }, "Delayed current goal.")
-    | _ -> fail_cmd "last: no goals"
-    end
-
-  | Admit ->
-    begin match ps.ps_goals with
-    | Some(_::jus) -> ({ ps with ps_goals = Some(jus) }, "Admit goal.")
-    | _ -> fail_cmd "admit: no goals"
-    end
-
-  | PrintGoals(s) ->
-    let msg = fsprintf "@[<v>Proof state %s:@\n%a@." s pp_goals ps.ps_goals |> fsget in
-    (ps, msg)
-
-  | PrintGoal(s) ->
-    let msg = fsprintf "@[<v>Current goal in state %s:@\n%a@."
-                s pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
-              |> fsget
-    in
-    (ps, msg)
-
   | RODecl(s,t1,t2) ->
     if Ht.mem ps.ps_rodecls s then
       fail_cmd "Random oracle with same name already declared.";
@@ -287,11 +258,40 @@ let handle_instr ps instr =
     let ju = ju_of_parse_ju false ps gd e in
     ({ ps with ps_goals = Some([ju]) }, "Started proof of judgment.")
 
+  | Apply(tac) ->
+    begin match ps.ps_goals with (* FIXME: more message *)
+    | Some(jus) -> (handle_tactic ps tac jus, "Applied tactic.") 
+    | None -> fail_cmd "apply: no goals"
+    end
+
+  | Last ->
+    begin match ps.ps_goals with
+    | Some(ju::jus) -> ({ ps with ps_goals = Some(jus@[ju]) }, "Delayed current goal.")
+    | _ -> fail_cmd "last: no goals"
+    end
+
+  | Admit ->
+    begin match ps.ps_goals with
+    | Some(_::jus) -> ({ ps with ps_goals = Some(jus) }, "Admit goal.")
+    | _ -> fail_cmd "admit: no goals"
+    end
+
+  | PrintGoals(s) ->
+    let msg = fsprintf "@[<v>Proof state %s:@\n%a@." s pp_goals ps.ps_goals |> fsget in
+    (ps, msg)
+
+  | PrintGoal(s) ->
+    let msg = fsprintf "@[<v>Current goal in state %s:@\n%a@."
+                s pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
+              |> fsget
+    in
+    (ps, msg)
+
 let eval_theory s =
   let pt = Parse.theory s in
   List.fold_left (fun ps i ->
                     let (ps', s) = handle_instr ps i in
-                     print_endline s;
-                     ps')
+                    print_endline s;
+                    ps')
     (mk_ps ())
     pt
