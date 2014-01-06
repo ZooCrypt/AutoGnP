@@ -101,15 +101,18 @@ let bind_of_parse_bind ps lH =
 let expr_of_parse_expr ps pe0 =
   let rec go pe = 
     match pe with
-    | V(s)         -> 
+    | V(s) -> 
       let v = 
         try Ht.find ps.ps_vars s
         with Not_found ->
-          fail_parse (F.sprintf "undefined variable %s" s)
+          fail_parse (F.sprintf "undefined variable %s (not in %s)"
+                        s
+                        (String.concat ","
+                           (Ht.fold (fun v _ acc -> v::acc) (ps_copy ps).ps_vars [])))
       in
       E.mk_V v
-    | Tuple(es)    -> E.mk_Tuple (List.map go es)
-    | Proj(i,e)    -> E.mk_Proj i (go e)
+    | Tuple(es) -> E.mk_Tuple (List.map go es)
+    | Proj(i,e) -> E.mk_Proj i (go e)
     | ElemH(e1,e2,lH) -> 
       let e1 = go e1 in
       let lH = bind_of_parse_bind ps lH in
