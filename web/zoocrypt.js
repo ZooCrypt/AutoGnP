@@ -28,7 +28,7 @@ function sendZoocrypt(m) {
 // editorProof has been processed up to this character
 var firstUnlocked = 0;
 
-// the text from the timepoint where the locking was enabled
+// the text from the timepoint when the locking was enabled
 var originalLockedText = "";
 
 // the last locking marker, used for removal
@@ -38,6 +38,37 @@ function lockedText() {
     return editorProof.getValue().substring(0, firstUnlocked);
 }
 
+function setFirstUnlocked(i) {
+    firstUnlocked = i;
+    originalLockedText = lockedText();
+}
+
+function insideComment(t, pos) {
+    var cstart = t.lastIndexOf("(*", pos);
+    var cend = t.lastIndexOf("*)", pos);
+
+    // comment start and comment-start not followed by comment-end
+    return (cstart !== -1 && cstart > cend);
+}
+
+function getNextDot(from) {
+    var t = editorProof.getValue();
+    var n = t.indexOf(".", from);
+    if (n !== -1 && insideComment(t, n)) {
+        return getNextDot(n + 1);
+    }
+    return n;
+}
+
+function getPrevDot(from) {
+    var t = editorProof.getValue();
+    var n = t.lastIndexOf(".", Math.max(0, from - 2));
+    if (n !== -1 && insideComment(t, n)) {
+        return getPrevDot(n - 1);
+    }
+    return n;
+}
+
 var editorProof = ace.edit("editor-proof");
 editorProof.setTheme("ace/theme/eclipse");
 editorProof.setHighlightActiveLine(false);
@@ -45,11 +76,7 @@ editorProof.focus();
 
 editorProof.getSession().getDocument().on("change", function (ev) {
     var lt = lockedText();
-
-    if (lt == originalLockedText) {
-        // console.log("changed, but locked unchanged");
-    } else {
-        // console.log("locked changed");
+    if (lt !== originalLockedText) {
         // search for the last dot that is the common prefix of
         // old and new content of locked region
         var lastDot = 0;
@@ -57,7 +84,7 @@ editorProof.getSession().getDocument().on("change", function (ev) {
             if (lt.charAt(i) !== originalLockedText.charAt(i)) {
                 break;
             }
-            if (lt.charAt(i) == '.') {
+            if (lt.charAt(i) == '.' && !insideComment(lt, i)) {
                 lastDot = i;
             }
         }
@@ -81,16 +108,18 @@ editorMessage.setHighlightActiveLine(false);
 
 // resize windows
 function resizeAce() {
-    $('#editor-proof').height($(window).height() - 50);
-    $('#editor-proof').width($(window).width() / 2 - 50);
+    var edit = $('#editor-proof');
+    edit.height($(window).height() - 50);
+    edit.width($(window).width() / 2 - 50);
 
-    $('#editor-goal').height(($(window).height() - 50) * 0.7);
-    $('#editor-goal').width($(window).width() / 2 - 50);
+    edit = $('#editor-goal');
+    edit.height(($(window).height() - 50) * 0.7);
+    edit.width($(window).width() / 2 - 50);
 
-    $('#editor-message').height(($(window).height() - 50) * 0.3);
-    $('#editor-message').width($(window).width() / 2 - 50);
+    edit = $('#editor-message');
+    edit.height(($(window).height() - 50) * 0.3);
+    edit.width($(window).width() / 2 - 50);
 }
-;
 
 //listen for changes
 $(window).resize(resizeAce);
@@ -112,6 +141,13 @@ webSocket.onmessage = function (evt) {
     var m = JSON.parse(evt.data);
 
     if (m.cmd == 'setGoal') {
+        // FIXME: advance cursor only if everything handled successfully
+        var Range = ace.require('ace/range').Range;
+        var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked, 0);
+        if (lastMarker) {
+            editorProof.getSession().removeMarker(lastMarker);
+        }
+        lastMarker = editorProof.getSession().addMarker(new Range(0, 0, pos.row, pos.column), 'locked', 'word', false);
         editorGoal.setValue(m.arg);
         editorGoal.clearSelection();
         editorMessage.setValue("We just received a new goal.");
@@ -121,7 +157,7 @@ webSocket.onmessage = function (evt) {
         editorProof.setValue(m.arg);
         editorProof.clearSelection();
         editorProof.scrollPageUp();
-        editorMessage.setValue("We just set the proof!");
+        editorMessage.setValue("We just set the proof.");
         editorMessage.clearSelection();
     } else if (m.cmd == "error") {
         editorMessage.setValue("Error: " + m.arg);
@@ -140,20 +176,14 @@ function evalLocked() {
     if (lastMarker) {
         editorProof.getSession().removeMarker(lastMarker);
     }
-    ;
-    lastMarker = editorProof.getSession().addMarker(new Range(0, 0, pos.row, pos.column), 'locked', 'word', false);
+    lastMarker = editorProof.getSession().addMarker(new Range(0, 0, pos.row, pos.column), 'processing', 'word', false);
     if (lockedText() !== "") {
         sendZoocrypt({ 'cmd': 'eval', 'arg': lockedText() });
     }
 }
 
-function setFirstUnlocked(i) {
-    firstUnlocked = i;
-    originalLockedText = lockedText();
-}
-
 function evalNext() {
-    var nextDot = editorProof.getValue().indexOf(".", firstUnlocked);
+    var nextDot = getNextDot(firstUnlocked);
     if (nextDot > firstUnlocked) {
         setFirstUnlocked(nextDot + 1);
         evalLocked();
@@ -161,7 +191,7 @@ function evalNext() {
 }
 
 function evalPrev() {
-    var prevDot = editorProof.getValue().lastIndexOf(".", Math.max(0, firstUnlocked - 2));
+    var prevDot = getPrevDot(firstUnlocked);
     if (prevDot == -1) {
         setFirstUnlocked(0);
     } else {

@@ -29,7 +29,7 @@ function sendZoocrypt(m) {
 
 // editorProof has been processed up to this character
 var firstUnlocked : number  = 0;
-// the text from the timepoint where the locking was enabled
+// the text from the timepoint when the locking was enabled
 var originalLockedText : string = "";
 // the last locking marker, used for removal
 var lastMarker;
@@ -39,6 +39,36 @@ function lockedText() : string {
   return editorProof.getValue().substring(0, firstUnlocked);
 }
 
+function setFirstUnlocked(i : number) {
+  firstUnlocked = i;
+  originalLockedText = lockedText();
+}
+
+function insideComment(t : string, pos : number) {
+  var cstart : number = t.lastIndexOf("(*", pos);
+  var cend   : number = t.lastIndexOf("*)", pos);
+  // comment start and comment-start not followed by comment-end
+  return (cstart !== -1 && cstart > cend);
+}
+
+function getNextDot(from : number) {
+  var t : string = editorProof.getValue();
+  var n  : number = t.indexOf(".", from);
+  if (n !== -1 && insideComment(t,n)) {
+    return getNextDot(n+1);
+  }
+  return n;
+}
+
+function getPrevDot(from : number) {
+  var t : string = editorProof.getValue();
+  var n  : number = t.lastIndexOf(".", Math.max(0,from - 2));
+  if (n !== -1 && insideComment(t,n)) {
+    return getPrevDot(n-1);
+  }
+  return n;
+}
+
 var editorProof = ace.edit("editor-proof");
 editorProof.setTheme("ace/theme/eclipse");
 editorProof.setHighlightActiveLine(false);
@@ -46,12 +76,7 @@ editorProof.focus();
 
 editorProof.getSession().getDocument().on("change", function(ev) {
     var lt = lockedText();
-    //log("lt: ''" + lt + "''");
-    //log("oldLt: ''" + originalLockedText + "''");
-    if (lt == originalLockedText) {
-      // console.log("changed, but locked unchanged");
-    } else {
-      // console.log("locked changed");
+    if (lt !== originalLockedText) {
       // search for the last dot that is the common prefix of
       // old and new content of locked region
       var lastDot = 0;
@@ -59,7 +84,7 @@ editorProof.getSession().getDocument().on("change", function(ev) {
         if (lt.charAt(i) !== originalLockedText.charAt(i)) {
           break;
         }
-        if (lt.charAt(i) == '.') {
+        if (lt.charAt(i) == '.' && !insideComment(lt,i) ) {
           lastDot = i;
         }
       }
@@ -69,7 +94,7 @@ editorProof.getSession().getDocument().on("change", function(ev) {
       editorProof.moveCursorToPosition(pos);
     }
   }
-)
+);
 
 /* ******************************************************************/
 /* Goal and message editor and resizing                             */
@@ -85,16 +110,19 @@ editorMessage.setHighlightActiveLine(false);
 
 // resize windows
 function resizeAce() : void {
-  $('#editor-proof').height($(window).height() - 50);
-  $('#editor-proof').width($(window).width()/2 - 50);
+  var edit = $('#editor-proof');
+  edit.height($(window).height() - 50);
+  edit.width($(window).width()/2 - 50);
 
-  $('#editor-goal').height(($(window).height() - 50) * 0.7);
-  $('#editor-goal').width($(window).width()/2 - 50);
+  edit = $('#editor-goal');
+  edit.height(($(window).height() - 50) * 0.7);
+  edit.width($(window).width()/2 - 50);
 
-  $('#editor-message').height(($(window).height() - 50) * 0.3);
-  $('#editor-message').width($(window).width()/2 - 50);
+  edit = $('#editor-message');
+  edit.height(($(window).height() - 50) * 0.3);
+  edit.width($(window).width()/2 - 50);
+}
 
-};
 //listen for changes
 $(window).resize(resizeAce);
 //set initially
@@ -108,7 +136,7 @@ resizeAce();
 // Request proof script
 webSocket.onopen = function (evt) {
   sendZoocrypt({'cmd':'load','arg':''});
-}
+};
 
 // handle websocket answers
 webSocket.onmessage = function (evt) {
@@ -116,6 +144,11 @@ webSocket.onmessage = function (evt) {
   var m = JSON.parse(evt.data);
   // answer for eval
   if (m.cmd == 'setGoal') {
+    // FIXME: advance cursor only if everything handled successfully
+    var Range = ace.require('ace/range').Range;
+    var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
+    if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
+    lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'locked','word',false);
     editorGoal.setValue(m.arg);
     editorGoal.clearSelection();
     editorMessage.setValue("We just received a new goal.");
@@ -125,13 +158,13 @@ webSocket.onmessage = function (evt) {
     editorProof.setValue(m.arg);
     editorProof.clearSelection();
     editorProof.scrollPageUp();
-    editorMessage.setValue("We just set the proof!");
+    editorMessage.setValue("We just set the proof.");
     editorMessage.clearSelection();
   } else if (m.cmd == "error") {
     editorMessage.setValue("Error: "+ m.arg);
     editorMessage.clearSelection();
   }
-}
+};
 
 
 /* ******************************************************************/
@@ -143,20 +176,15 @@ function evalLocked() {
   editorProof.moveCursorToPosition(pos);
   editorProof.clearSelection();
   var Range = ace.require('ace/range').Range;
-  if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); };
-  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'locked','word',false);
+  if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
+  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'processing','word',false);
   if (lockedText() !== "") {
     sendZoocrypt({'cmd':'eval','arg':lockedText()});
   }
 }
 
-function setFirstUnlocked(i : number) {
-  firstUnlocked = i;
-  originalLockedText = lockedText();
-}
-
 function evalNext() {
-  var nextDot = editorProof.getValue().indexOf(".", firstUnlocked);
+  var nextDot = getNextDot(firstUnlocked);
   if (nextDot > firstUnlocked) {
     setFirstUnlocked(nextDot + 1);
     evalLocked();
@@ -164,7 +192,7 @@ function evalNext() {
 }
 
 function evalPrev() {
-  var prevDot = editorProof.getValue().lastIndexOf(".", Math.max(0,firstUnlocked - 2));
+  var prevDot = getPrevDot(firstUnlocked);
   if (prevDot == -1) {
     setFirstUnlocked(0);
   } else {

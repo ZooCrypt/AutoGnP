@@ -31,6 +31,14 @@ let find_ps cmds =
          | last::before -> go before (last::rem_cmds))
   in go cmds []
 
+let in_comment s i =
+  let cstart = exc_to_opt (fun () -> string_rfind_from s "(*" i) in
+  let cend   = exc_to_opt (fun () -> string_rfind_from s "*)" i) in
+  match cstart, cend with
+  | Some i, Some j -> i > j
+  | Some i, None   -> true
+  | _              -> false
+
 (* ----------------------------------------------------------------------- *)
 (** {Handlers for different commands} *)
 
@@ -40,7 +48,6 @@ let process_unknown s =
 
 let process_save content =
   Lwt_io.printl ("Save: ``"^content^"''") >>= fun () ->
-  (* FIXME: use LWT *)
   if (Sys.file_exists !ps_file && not !disallow_save) then (
     output_file !ps_file content;
     Lwt.return (Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")])))
@@ -50,18 +57,18 @@ let process_save content =
 
 let process_load () =
   Lwt_io.printl "Loading" >>= fun () ->
-  (* FIXME: use Lwt *)
-  let s = if Sys.file_exists !ps_file
-          then input_file !ps_file
+  let s = if Sys.file_exists !ps_file then input_file !ps_file
           else "(* Enter proof script below *)"
   in
   let res = `Assoc [("cmd", `String "setProof"); ("arg", `String s)] in
   Lwt.return (Frame.of_string (YS.to_string res))
 
 let process_eval proofscript = 
-  let l = (Util.splitn proofscript '.') |> List.rev |> List.tl in
+  let l = (Util.splitn_by proofscript (fun s i -> s.[i] = '.' && not (in_comment s i)))
+          |> List.rev |> List.tl in
   let (ps, rem_cmds) = find_ps l in
-  Lwt_io.printl ("Eval: ``"^proofscript^"''") >>= fun () -> 
+  Lwt_io.printl ("Eval: ``"^proofscript^"''") >>= fun () ->
+  (* Lwt.return (read_line ()) >>= fun _ -> *) (* uncomment for testing bad connection/slow eval *)
   Lwt_io.printl ("executing "^string_of_int (List.length rem_cmds)^" remaining commands") >>= fun () ->
   let res =
     (* FIXME: handle errors better, still return the handled prefix *)
