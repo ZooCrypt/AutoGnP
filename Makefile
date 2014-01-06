@@ -1,8 +1,8 @@
-
+-include Makefile.local
 
 OCAMLBUILDFLAGS=-cflags "-w +a-e-9" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind
 
-.PHONY : clean all doc\
+.PHONY : clean all doc test\
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
 
@@ -47,7 +47,7 @@ Test_Singular :
 Test_Pretty_Expr :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
 
-all-tests: zoocrypt
+test: zoocrypt
 	@echo "============ OK TESTS ==============="
 	@for file in test/rules/ok/*.zc; do\
 	   printf "File $$file:\n";\

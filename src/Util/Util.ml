@@ -209,6 +209,44 @@ let splitn s sep =
     in
     go [] (String.length s - 1)
 
+let splitn_by s f =
+  let rec go acc i len =
+    if i + len < String.length s then (
+      if f s (i+len)
+        then go ((String.sub s i len)::acc) (i+len+1) 0
+        else go acc i (len + 1)
+    ) else (
+      (String.sub s i len)::acc
+    )
+  in
+  List.rev (go [] 0 0)
+
+let string_find_from s t from =
+  let len_s = String.length s in
+  let len_t = String.length t in
+  let rec go i =
+    if i < len_s && len_s - i >= len_t then (
+      if String.sub s i len_t = t
+        then Some i
+        else go (i+1)
+    ) else (
+      None
+    )
+  in go from
+
+let string_rfind_from s t from =
+  let len_s = String.length s in
+  let len_t = String.length t in
+  let rec go i =
+    if i >= 0 then (
+      if len_s - i >= len_t && String.sub s i len_t = t
+        then Some i
+        else go (i-1)
+    ) else (
+      None
+    )
+  in go from
+
 let split s sep =
   match (try Some (String.index s sep) with Not_found -> None) with
   | Some i ->

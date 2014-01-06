@@ -16,9 +16,14 @@
             margin-right: 0.5em;
         }
         .locked {
-            background: rgba(255, 50, 50, 0.1);
+            background: rgba(50, 255, 50, 0.3);
             position: absolute;
         }
+        .processing {
+          background: rgba(255, 50, 50, 0.3);
+          position: absolute;
+        }
+
     </style>
 </head>
 <body>
@@ -31,6 +36,7 @@
         <td>
             <div>Proof goal.</div>
             <div class="editor" id="editor-goal"></div>
+            <div class="editor" id="editor-message"></div>
         </td>
     </tr>
     </table>

@@ -140,4 +140,10 @@ val cat_Some : 'a option list -> 'a list
 
 val splitn : string -> char -> string list
 
+val splitn_by : string -> (string -> int -> bool) -> string list
+
+val string_find_from : string -> string -> int -> int option
+
+val string_rfind_from : string -> string -> int -> int option
+
 val split : string -> char -> (string * string) option
