@@ -62,31 +62,31 @@ var $formerLineStart;
 exports.handler.attach = function(editor) {
     if (!initialized) {
         initialized = true;
-        dom.importCssString('\
-            .emacs-mode .ace_cursor{\
-                border: 2px rgba(50,250,50,0.8) solid!important;\
-                -moz-box-sizing: border-box!important;\
-                -webkit-box-sizing: border-box!important;\
-                box-sizing: border-box!important;\
-                background-color: rgba(0,250,0,0.9);\
-                opacity: 0.5;\
-            }\
-            .emacs-mode .ace_hidden-cursors .ace_cursor{\
-                opacity: 1;\
-                background-color: transparent;\
-            }\
-            .emacs-mode .ace_overwrite-cursors .ace_cursor {\
-                opacity: 1;\
-                background-color: transparent;\
-                border-width: 0 0 2px 2px !important;\
-            }\
-            .emacs-mode .ace_text-layer {\
-                z-index: 4\
-            }\
-            .emacs-mode .ace_cursor-layer {\
-                z-index: 2\
-            }', 'emacsMode'
-        );
+//        dom.importCssString('\
+//            .emacs-mode .ace_cursor{\
+//                border: 2px rgba(50,250,50,0.8) solid!important;\
+//                -moz-box-sizing: border-box!important;\
+//                -webkit-box-sizing: border-box!important;\
+//                box-sizing: border-box!important;\
+//                background-color: rgba(0,250,0,0.9);\
+//                opacity: 0.5;\
+//            }\
+//            .emacs-mode .ace_hidden-cursors .ace_cursor{\
+//                opacity: 1;\
+//                background-color: transparent;\
+//            }\
+//            .emacs-mode .ace_overwrite-cursors .ace_cursor {\
+//                opacity: 1;\
+//                background-color: transparent;\
+//                border-width: 0 0 2px 2px !important;\
+//            }\
+//            .emacs-mode .ace_text-layer {\
+//                z-index: 4\
+//            }\
+//            .emacs-mode .ace_cursor-layer {\
+//                z-index: 2\
+//            }', 'emacsMode'
+//        );
     }
     $formerLongWords = editor.session.$selectLongWords;
     editor.session.$selectLongWords = true;
@@ -291,8 +291,8 @@ exports.handler.handleKeyboard = function(data, hashId, key, keyCode) {
 };
 
 exports.emacsKeys = {
-    "Up|C-p"      : {command: "goorselect", args: ["golineup","selectup"]},
-    "Down|C-n"    : {command: "goorselect", args: ["golinedown","selectdown"]},
+    "Up"          : {command: "goorselect", args: ["golineup","selectup"]},
+    "Down"        : {command: "goorselect", args: ["golinedown","selectdown"]},
     "Left|C-b"    : {command: "goorselect", args: ["gotoleft","selectleft"]},
     "Right|C-f"   : {command: "goorselect", args: ["gotoright","selectright"]},
     "C-Left|M-b"  : {command: "goorselect", args: ["gotowordleft","selectwordleft"]},
@@ -302,7 +302,7 @@ exports.emacsKeys = {
     "C-Home|S-M-,": {command: "goorselect", args: ["gotostart","selecttostart"]},
     "C-End|S-M-." : {command: "goorselect", args: ["gotoend","selecttoend"]},
     "S-Up|S-C-p"      : "selectup",
-    "S-Down|S-C-n"    : "selectdown",
+    "S-Down"          : "selectdown",
     "S-Left|S-C-b"    : "selectleft",
     "S-Right|S-C-f"   : "selectright",
     "S-C-Left|S-M-b"  : "selectwordleft",

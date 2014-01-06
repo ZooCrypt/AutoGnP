@@ -74,11 +74,16 @@ function getPrevDot(from) {
     return n;
 }
 
+var emacs = ace.require("ace/keyboard/emacs").handler;
+
 var editorProof = ace.edit("editor-proof");
 editorProof.setTheme("ace/theme/eclipse");
 editorProof.setHighlightActiveLine(false);
 editorProof.focus();
 editorProof.renderer.setShowGutter(false);
+editorProof.setKeyboardHandler(emacs);
+editorProof.getSession().setTabSize(2);
+editorProof.getSession().setUseSoftTabs(true);
 
 editorProof.getSession().getDocument().on("change", function (ev) {
     var lt = lockedText();
@@ -180,10 +185,16 @@ webSocket.onmessage = function (evt) {
         editorProof.setValue(m.arg);
         editorProof.clearSelection();
         editorProof.scrollPageUp();
-        editorMessage.setValue("We just set the proof.");
+        editorMessage.setValue("Proofscript loaded.");
         editorMessage.clearSelection();
         var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked, 0);
         editorProof.moveCursorToPosition(pos);
+    } else if (m.cmd == "saveOK") {
+        editorMessage.setValue("Proofscript saved.");
+        editorMessage.clearSelection();
+    } else if (m.cmd == "saveFAILED") {
+        editorMessage.setValue("Save of proofscript failed.");
+        editorMessage.clearSelection();
     }
 };
 
@@ -263,8 +274,8 @@ editorProof.commands.addCommand({
 editorProof.commands.addCommand({
     name: 'evalNext',
     bindKey: {
-        win: 'Ctrl-Space',
-        mac: 'Ctrl-Space',
+        win: 'Ctrl-n',
+        mac: 'Ctrl-n',
         sender: 'editor|cli'
     },
     exec: function (env, args, request) {
@@ -275,8 +286,8 @@ editorProof.commands.addCommand({
 editorProof.commands.addCommand({
     name: 'evalPrev',
     bindKey: {
-        win: 'Ctrl-Backspace',
-        mac: 'Ctrl-Backspace',
+        win: 'Ctrl-p',
+        mac: 'Ctrl-p',
         sender: 'editor|cli'
     },
     exec: function (env, args, request) {

@@ -175,5 +175,5 @@ function ReconnectingWebSocket(url, protocols) {
 /**
  * Setting this to true is the equivalent of setting all instances of ReconnectingWebSocket.debug to true.
  */
-ReconnectingWebSocket.debugAll = true;
+ReconnectingWebSocket.debugAll = false;
 
