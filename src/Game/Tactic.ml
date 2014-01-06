@@ -8,6 +8,11 @@ open Proofstate
 
 module Ht = Hashtbl
 
+let create_var reuse ps s ty =
+  match Proofstate.create_var reuse ps s ty with
+  | None -> fail_cmd (F.sprintf "Variable %s already defined" s)
+  | Some v -> v
+
 let invert_ctxt (v,e) =
   let hole_occurs p =
     List.exists
@@ -119,12 +124,13 @@ let handle_tactic ps tac jus =
     let ty =
       match Game.get_ju_gcmd ju i with
       | Game.GSamp(v,_) -> v.Vsym.ty
-      | _ -> assert false
+      | _ -> fail_cmd (F.sprintf "Line %i is not a sampling." i)
     in
     let ps' = ps_copy ps in
     let v2 = create_var false ps' sv2 ty in
     let e2 = expr_of_parse_expr ps' e2 in
-    let (v1,e1) = match mctxt1 with
+    let (v1,e1) =
+      match mctxt1 with
       | Some(sv1,e1) ->
         let ps' = ps_copy ps in
         let v1 = create_var false ps' sv1 ty in
@@ -142,7 +148,7 @@ let handle_tactic ps tac jus =
     let ty =
       match Game.get_ju_lcmd ju (i,j,k) with
       | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
-      | _ -> assert false
+      | _ -> fail_cmd (F.sprintf "Position %i,%i,%i is not a sampling." i j k)
     in
     let ps' = ps_copy ps in
     let v2 = create_var false ps' sv2 ty in
@@ -167,7 +173,7 @@ let handle_tactic ps tac jus =
       | Game.GLet(_,e') when is_H e' ->
         let _,e = destr_H e' in
         e.e_ty
-      | _ -> assert false
+      | _ -> fail_cmd (F.sprintf "Line %is not hash assignment." i)
     in
     let vx = create_var false ps sx ty in
     apply_rule (rbad i vx) ps

@@ -107,6 +107,8 @@ let process_eval proofscript =
           `String (F.sprintf "parse error: %s" s)
         | Invalid_cmd s ->
           `String (F.sprintf "invalid command: %s" s)
+        | e ->
+          `String (F.sprintf "unknown error: %s" (Printexc.to_string e))
     in
     let g =
       match !rps.ps_goals with

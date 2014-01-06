@@ -58,12 +58,12 @@ let create_groupvar ps s =
 
 let create_var reuse ps s ty =
   if Ht.mem ps.ps_vars s then (
-    if reuse then Ht.find ps.ps_vars s
-    else failwith "variable already defined"
+    if reuse then Some (Ht.find ps.ps_vars s)
+    else None
   ) else (
     let v = Vsym.mk s ty in
     Ht.add ps.ps_vars s v;
-    v
+    Some v
   )
 
 let create_var_reuse ps s ty =

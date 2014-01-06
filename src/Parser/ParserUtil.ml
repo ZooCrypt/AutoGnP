@@ -13,6 +13,11 @@ exception ParseError of string
 
 let fail_parse s = raise (ParseError s)
 
+let create_var reuse ps s ty =
+  match Proofstate.create_var reuse ps s ty with
+  | None -> fail_parse (F.sprintf "Variable %s already defined" s)
+  | Some v -> v
+
 (* ----------------------------------------------------------------------- *)
 (** {1 Types for parsed types, expressions, and games } *)
 
