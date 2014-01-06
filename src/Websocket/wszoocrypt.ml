@@ -36,7 +36,7 @@ let in_comment s i =
   let cend   = exc_to_opt (fun () -> string_rfind_from s "*)" i) in
   match cstart, cend with
   | Some i, Some j -> i > j
-  | Some i, None   -> true
+  | Some _, None   -> true
   | _              -> false
 
 (* ----------------------------------------------------------------------- *)
@@ -89,7 +89,7 @@ let process_eval proofscript =
                    |> fsget
          in `Assoc [("cmd", `String "setGoal"); ("arg", `String g)])
     with Parse.ParseError s ->
-           `Assoc [("cmd", `String "error"); ("arg", `String ("parse error: "^s))]
+           `Assoc [("cmd", `String "error"); ("arg", `String (F.sprintf "parse error: %s" s))]
   in
   Lwt.return (Frame.of_string (YS.to_string res))
 

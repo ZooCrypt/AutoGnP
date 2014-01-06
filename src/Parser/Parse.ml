@@ -24,7 +24,7 @@ let wrap_error f s0 =
                   (if start >= S.length s then "" else (S.sub s start (S.length s - start)))
       in
       print_endline err;
-      raise (ParseError "error")
+      raise (ParseError err)
   | _ -> raise (ParseError "Unknown error while lexing/parsing.")
 
 (** Parse type declaration. *)
