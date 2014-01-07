@@ -164,10 +164,7 @@ val set_ju_ctxt : gcmd list -> ju_ctxt -> judgment
 
 val set_ju_gcmd : judgment -> int -> gcmd list -> judgment
 
-val get_ju_lcmd :
-  judgment ->
-  int * int * int ->
-  Osym.t * Vsym.t list * (lcmd list * lcmd * lcmd list) * expr
+val get_ju_lcmd : judgment -> ocmd_pos -> Osym.t * Vsym.t list * (lcmd list * lcmd * lcmd list) * expr
 
 type ju_octxt = {
   juoc_asym : Asym.t;
@@ -183,11 +180,11 @@ type ju_octxt = {
   juoc_juc : ju_ctxt;
 }
 
-val get_ju_octxt : judgment -> int * int * int -> lcmd * ju_octxt
+val get_ju_octxt : judgment -> ocmd_pos -> lcmd * ju_octxt
 
 val set_ju_octxt : lcmd list -> ju_octxt -> judgment
 
-val set_ju_lcmd : judgment -> int * int * int -> lcmd list -> judgment
+val set_ju_lcmd : judgment -> ocmd_pos -> lcmd list -> judgment
 
 (* ----------------------------------------------------------------------- *)
 (** {7 Equality} *)

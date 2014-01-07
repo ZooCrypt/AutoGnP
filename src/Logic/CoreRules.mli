@@ -17,19 +17,19 @@ val rctxt_ev : ctxt -> int -> judgment -> judgment list
 
 val rrandom : int -> ctxt -> ctxt -> Vsym.t -> judgment -> judgment list
 
-val rrandom_oracle : int * int * int -> ctxt -> ctxt -> Vsym.t -> judgment -> judgment list
+val rrandom_oracle : ocmd_pos -> ctxt -> ctxt -> Vsym.t -> judgment -> judgment list
 
 val rexcept : int -> expr list -> judgment -> judgment list
 
-val rexcept_oracle : int * int * int -> expr list -> judgment -> judgment list
+val rexcept_oracle : ocmd_pos -> expr list -> judgment -> judgment list
 
-val radd_test : int * int * int -> expr -> Asym.t -> Vsym.t list -> judgment -> judgment list
+val radd_test : ocmd_pos -> expr -> Asym.t -> Vsym.t list -> judgment -> judgment list
 
-val rrewrite_oracle : int * int * int -> direction -> judgment -> judgment list
+val rrewrite_oracle : ocmd_pos -> direction -> judgment -> judgment list
 
 val rswap : int -> int -> judgment -> judgment list
 
-val rswap_oracle : int * int * int -> int -> judgment -> judgment list
+val rswap_oracle : ocmd_pos -> int -> judgment -> judgment list
 
 val rrandom_indep : judgment -> 'a list
 
