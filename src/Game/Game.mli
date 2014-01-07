@@ -154,15 +154,15 @@ type odef_pos = int * int
 
 type ocmd_pos = int * int * int
 
-val get_ju_gcmd : judgment -> int -> gcmd
+val get_ju_gcmd : judgment -> gcmd_pos -> gcmd
 
 type ju_ctxt = { juc_left : gdef; juc_right : gdef; juc_ev : ev; }
 
-val get_ju_ctxt : judgment -> int -> gcmd * ju_ctxt
+val get_ju_ctxt : judgment -> gcmd_pos -> gcmd * ju_ctxt
 
 val set_ju_ctxt : gcmd list -> ju_ctxt -> judgment
 
-val set_ju_gcmd : judgment -> int -> gcmd list -> judgment
+val set_ju_gcmd : judgment -> gcmd_pos -> gcmd list -> judgment
 
 val get_ju_lcmd : judgment -> ocmd_pos -> Osym.t * Vsym.t list * (lcmd list * lcmd * lcmd list) * expr
 
