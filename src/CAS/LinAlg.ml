@@ -1,4 +1,4 @@
-(* Some simple linear algebra over F_2 *)
+(** Simple linear algebra (equation solving) over F_2. *)
 
 open Util
 open Array
@@ -120,6 +120,7 @@ let solve (m0 : (bool array) list) (b : bool array) =
 (* ----------------------------------------------------------------------- *)
 (** {3 Tests} *)
 
+(* FIXME: move to separate file *)
 let _test () =
   let m = make_matrix 3 2 false in
   let b = make 3 false in  

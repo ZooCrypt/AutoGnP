@@ -1,3 +1,4 @@
+(** Logical rules built on top of core rules. *)
 open Game
 open CoreRules
 open Expr

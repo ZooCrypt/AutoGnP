@@ -1,3 +1,4 @@
+(** Computational assumptions. *)
 type assumption_decision = private
   { ad_prefix1  : Game.gdef;
     ad_prefix2  : Game.gdef;

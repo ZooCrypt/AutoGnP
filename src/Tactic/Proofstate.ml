@@ -1,3 +1,4 @@
+(** Goals and mappings from strings to variables/symbols. *)
 module Ht = Hashtbl
 module T = Type
 module G = Game

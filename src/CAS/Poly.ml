@@ -3,6 +3,8 @@ open Expr
 open Util
 
 module F = Format
+module S = String
+module L = List
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Define and check normal-form for field-expressions } *)
@@ -12,7 +14,7 @@ module F = Format
    fe0 ::= mon | mon + .. + mon
    mon ::= - mon0 | mon0
    mon0 ::= NAT
-         | NAT * NFE * .. * NFE
+         |  NAT * NFE * .. * NFE
          |  NFE * ... * NFE
          |  NFE
 *)
@@ -24,7 +26,7 @@ let rec is_norm_field_exp e =
 
 and is_fe0 e =
   if is_FPlus e
-  then List.for_all is_mon (destr_FPlus e)
+  then L.for_all is_mon (destr_FPlus e)
   else is_mon e
 
 and is_mon e =
@@ -36,9 +38,9 @@ and is_mon0 e =
   if is_FMult e then
     (match destr_FMult e with
      | _::_ as xs ->
-       let (ys,zs) = List.partition is_FNat xs in
+       let (ys,zs) = L.partition is_FNat xs in
        (match ys with
-        | [_] | [] -> List.for_all (fun x -> not (is_field_exp x)) zs
+        | [_] | [] -> L.for_all (fun x -> not (is_field_exp x)) zs
         | _::_::_ -> false)
      | _ -> false)
   else (is_FNat e || not (is_field_exp e))
@@ -52,12 +54,12 @@ type coeff = int
 type 'a poly = (coeff * 'a monom) list (* a_1 * m_1 + .. + a_k * m_k *)
 
 let map_poly f p =
-  List.map (fun (c,m) -> (c, List.map (fun (x,e) -> (f x,e)) m)) p
+  L.map (fun (c,m) -> (c, L.map (fun (x,e) -> (f x,e)) m)) p
 
 let exps_of_monom (m : 'a monom) =
   let go acc (x,k) = replicate_r acc k x in 
-  let l = List.fold_left go [] m in
-  List.sort e_compare l 
+  let l = L.fold_left go [] m in
+  L.sort e_compare l 
 
 let exp_of_poly p =
   let summand (i,m) = match i, exps_of_monom m with
@@ -69,8 +71,8 @@ let exp_of_poly p =
       if i > 0 then mk_FMult (mk_FNat i    :: mes)
       else mk_FOpp (mk_FMult (mk_FNat (-i) :: mes))        
   in
-  let s = List.map summand p in
-  let e = mk_FPlus (List.sort e_compare s) in
+  let s = L.map summand p in
+  let e = mk_FPlus (L.sort e_compare s) in
   if (not (is_norm_field_exp e)) then F.printf "ERROR: %a\n\n%!" pp_exp e;
   assert (is_norm_field_exp e);
   e
@@ -80,18 +82,18 @@ let exp_of_poly p =
 let polys_of_field_expr e =
   let rec conv_fe0 e =
     if is_FPlus e
-    then List.map conv_mon (destr_FPlus e)
+    then L.map conv_mon (destr_FPlus e)
     else [ conv_mon e ]
   and conv_mon e =
     if is_FOpp e
     then conv_mon0 (fun x -> - x) (destr_FOpp e)
     else conv_mon0 (fun x -> x) e
   and conv_mon0 minv e =
-    let add_exponents es = List.map (fun e -> (e,1)) es in
+    let add_exponents es = L.map (fun e -> (e,1)) es in
     if is_FMult e then
       (match destr_FMult e with
        | _::_ as xs->
-           let (ys,zs) = List.partition is_FNat xs in
+           let (ys,zs) = L.partition is_FNat xs in
            begin match ys with
            | [x] ->
                (match x.e_node with
@@ -111,8 +113,8 @@ let polys_of_field_expr e =
     (conv_fe0 e1, Some(conv_fe0 e2))
   else (conv_fe0 e, None)
 
-
-(* for debugging only *)
+(* ----------------------------------------------------------------------- *)
+(** {3 For debugging only } *)
 
 let string_of_monom m =
   let go acc (i,k) =
@@ -121,19 +123,18 @@ let string_of_monom m =
     | 0 -> acc
     | 1 -> vi::acc
     | k -> (vi^(F.sprintf "^%i" k))::acc
-  in String.concat "*" (List.rev (List.fold_left go [] m))
+  in S.concat "*" (L.rev (L.fold_left go [] m))
 
 let string_of_poly p = 
-  String.concat " + " (List.map (fun (i,m) ->
-                                   (if i = 1 then "" else string_of_int i)
-                                   ^(string_of_monom m)) p)
-
+  S.concat " + "
+    (L.map (fun (i,m) ->  (if i = 1 then "" else string_of_int i)
+                            ^(string_of_monom m)) p)
 
 let factor_out a p =
   lefts_rights
-    (List.map
+    (L.map
       (fun (c,es) ->
-         match List.partition (fun (e,_) -> e_equal e a) es with
+         match L.partition (fun (e,_) -> e_equal e a) es with
          | ([(_,1)],others) -> Left(c,others)
          | ([],others)      -> Right(c,others)
          | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a |> fsget))

@@ -1,6 +1,8 @@
 <src/Util> or <src/Type> or <src/Expr> or <src/Test> : include
 
-<src/Parser> or <src/CAS> or <src/Game> or <src/Main> or <src/Websocket>: include
+<src/Logic> or <src/Tactic> or <src/Symbolic>: include
+
+<src/Parser> or <src/CAS> or <src/Game> or <src/Main>: include
 
 <src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), thread
 
@@ -8,8 +10,4 @@
 
 <src/Main/zoocrypt.native>: thread, package(unix)
 
-<src/Websocket/wszoocrypt.ml> or <src/Websocket/wszoocrypt.native>: thread, package(unix), package(websocket), package(yojson)
-
-<src/Logics/Cpa.cmo> or <src/Logics/Cpa.ml>: package(eliom.server),package(eliom),package(yojson),thread
-
-<src/Http/Rest.cmo> or <src/Http/Rest.ml>: package(eliom.server),package(eliom),package(yojson),thread
+<src/Main/wszoocrypt.ml> or <src/Main/wszoocrypt.native>: thread, package(unix), package(websocket), package(yojson)

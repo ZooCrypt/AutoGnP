@@ -1,3 +1,4 @@
+(** Core rules of the logic. *)
 open Util
 open Type
 open Expr

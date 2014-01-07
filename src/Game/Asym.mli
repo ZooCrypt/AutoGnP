@@ -1,4 +1,4 @@
-(** Oracle symbols. *)
+(** Adversary symbols. *)
 open Type
 open IdType
 

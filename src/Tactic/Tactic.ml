@@ -1,3 +1,4 @@
+(** Tactic engine: transformations of proof states. *)
 open ParserUtil
 open CoreRules
 open Rules

@@ -1,4 +1,4 @@
-(* Games *)
+(** Cryptographic game definitions. *)
 open Util
 open Type
 open Expr
