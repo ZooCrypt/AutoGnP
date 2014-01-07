@@ -62,7 +62,7 @@ rule lex = parse
   | "rrandom_oracle" { RRANDOM_ORACLE }
   | "rbad"           { RBAD }
   | "rctxt_ev"       { RCTXT_EV }
-  | "in"    { IN }
+  | "exists"    { EXISTS }
   | "L_"    { LIST }
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z']

@@ -40,7 +40,7 @@ type parse_expr =
   | Ifte of parse_expr * parse_expr * parse_expr
   | Land of parse_expr * parse_expr
   | Xor of parse_expr * parse_expr
-  | ElemH of parse_expr * parse_expr * (string * string) list
+  | Exists of parse_expr * parse_expr * (string * string) list
 
 type lcmd =
     LLet of string * parse_expr

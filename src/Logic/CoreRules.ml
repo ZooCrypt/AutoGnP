@@ -71,11 +71,11 @@ let rctxt_ev (c : ctxt) (i : int) ju =
   let l,b,r = Util.split_n i evs in 
   let b = 
     if is_Eq b then
-      let (e1,e2) = destr_Eq b inr
+      let (e1,e2) = destr_Eq b in
       mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
-    else if is_ElemH b then
-      let (e1,e2,h) = destr_ElemH b in
-      mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
+    else if is_Exists b then
+      let (e1,e2,h) = destr_Exists b in
+      mk_Exists (inst_ctxt c e1) (inst_ctxt c e2) h 
     else fail_rule "rctxt_ev: bad event, expected equality or x in L"
   in
   let ev = mk_Land (List.rev_append l (b:: r)) in
@@ -105,13 +105,13 @@ let merge_base_event ev1 ev2 =
   match ev1.e_node, ev2.e_node with
   | App (Eq,[e11;e12]), App(Eq,[e21;e22]) ->
     mk_Eq (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22])
-  | App (Eq,[e11;e12]), ElemH(e21,e22, l) ->
-    mk_ElemH (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
-  | ElemH(e11,e12, l), App (Eq,[e21;e22]) ->
-    mk_ElemH (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
-  | ElemH(e11,e12, l1), ElemH(e21,e22, l2) ->  
+  | App (Eq,[e11;e12]), Exists(e21,e22, l) ->
+    mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
+  | Exists(e11,e12, l), App (Eq,[e21;e22]) ->
+    mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
+  | Exists(e11,e12, l1), Exists(e21,e22, l2) ->  
   (* TODO we should be sure that bounded variables in l1 and l2 are disjoint *)
-    mk_ElemH (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) (l1 @ l2)
+    mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) (l1 @ l2)
   | _, _ -> failwith "do not knwon how to merge the event"
 
 let merge_ev i j ju =
@@ -331,8 +331,8 @@ let rec check_event r ev =
       let test_eq e1 e2 =
         e_equal e1 r && not (Se.mem r (e_vars e2))
       in test_eq e1 e2 || test_eq e2 e1
-    else if is_ElemH ev then
-      let e1,e2,_ = destr_ElemH ev in
+    else if is_Exists ev then
+      let e1,e2,_ = destr_Exists ev in
       e_equal e1 r && not (Se.mem r (e_vars e2))
     else false
 
@@ -374,7 +374,7 @@ let rbad p vsx ju =
     let i = [GSamp(vs,(e'.e_ty,[]))] in
     let ju1 = set_ju_ctxt i ctxt in
     let vx = mk_V vsx in
-    let ev = mk_ElemH e vx [vsx,h] in
+    let ev = mk_Exists e vx [vsx,h] in
     let ju2 = { ju1 with ju_ev = ev } in
     [ju1;ju2]
   | _ -> 

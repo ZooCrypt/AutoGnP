@@ -123,18 +123,19 @@ and check_nonzero ctype wfs e =
       | _                 -> CAS.mod_reduce nz e (* e is polynomial *)
       end
     | None    -> false
-
+(* TODO Remark: I think the type checking is not necessary, it is ensured by the
+   smart constructor ... *)
 and wf_exp ctype wfs e0 =
   let rec go e =
     let ty =
       match e.e_node with
       | Cnst c -> ty_of_cnst c e.e_ty
-      | ElemH(e1,e2,(vhs)) ->
+      | Exists(e1,e2,(vhs)) ->
         assert (List.for_all
                   (fun (v,h) -> ty_equal v.Vsym.ty h.Hsym.dom) vhs);
         let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
         wf_exp ctype wfs e2;
-        ignore (go e1);
+        wf_exp ctype wfs e1;
         assert (ty_equal e1.e_ty e2.e_ty);
         assert (ty_equal mk_Bool e.e_ty);
         mk_Bool

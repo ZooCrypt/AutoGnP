@@ -107,8 +107,8 @@ and norm_expr e =
   | H(h,e) -> norm_ggt (mk_H h (norm_expr e))
   | Tuple l -> mk_Tuple (List.map norm_expr l)
   | Proj(i,e) -> mk_proj_simpl i (norm_expr e)
-  | ElemH(e1,e2,h) ->
-    mk_ElemH (norm_expr e1) (norm_expr e2) h
+  | Exists(e1,e2,h) ->
+    mk_Exists (norm_expr e1) (norm_expr e2) h
   | App (op, l) ->
     if is_field_op op then norm_field_expr e
     else

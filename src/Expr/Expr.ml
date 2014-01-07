@@ -78,9 +78,9 @@ and 'a gexpr_node =
   | Cnst  of cnst                       (* constants *)
   | App   of 'a gop * 'a gexpr list     (* fixed arity operators *)
   | Nary  of nop * 'a gexpr list     (* variable arity AC operators *)
-  | ElemH of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
-          (* ElemH(e1,e2,[(x1,L_Hh1)...]:
-              e1 in [e2 | x1 <- L_Hh1, ....) *)
+  | Exists of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
+          (* Exists(e1,e2,[(x1,L_Hh1)...]:
+              exists  x1 <- L_Hh1, e1 = e2 *)
 
 
 type expr = internal gexpr
@@ -110,7 +110,7 @@ module Hse = Hashcons.Make (struct
     | Cnst c1, Cnst c2           -> c1 = c2
     | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
-    | ElemH(e1,e1',vh1), ElemH(e2,e2',vh2) -> 
+    | Exists(e1,e1',vh1), Exists(e2,e2',vh2) -> 
       e_equal e1 e2 && e_equal e1' e2' &&
         list_eq_for_all2 (fun (v1,h1) (v2,h2) ->
           Vsym.equal v1 v2 && Hsym.equal h1 h2) vh1 vh2
@@ -124,7 +124,7 @@ module Hse = Hashcons.Make (struct
     | Cnst(c)    -> cnst_hash c
     | App(o,es)  -> Hashcons.combine_list e_hash (op_hash o) es
     | Nary(o,es) -> Hashcons.combine_list e_hash (nop_hash o) es
-    | ElemH(e1,e2,vh) -> 
+    | Exists(e1,e2,vh) -> 
         Hashcons.combine_list 
           (fun (v,h) -> Hashcons.combine (Vsym.hash v) (Hsym.hash h))
           (Hashcons.combine (e_hash e1) (e_hash e2)) vh
@@ -169,8 +169,8 @@ let rec e_export e =
     | Cnst(c)    -> Cnst(c)
     | App(o,es)  -> App(op_export o, List.map e_export es)
     | Nary(o,es) -> Nary(o, List.map e_export es)
-    | ElemH(e1,e2,h) -> 
-      ElemH(e_export e1,e_export e2,
+    | Exists(e1,e2,h) -> 
+      Exists(e_export e1,e_export e2,
             List.map (fun (v,h) -> Vsym.export v, Hsym.export h) h)
   in mk_ee e ty
 
@@ -238,7 +238,7 @@ let is_FPlus e = is_Nary FPlus e
 
 let is_FMult e = is_Nary FMult e
 
-let is_ElemH e = match e.e_node with ElemH _ -> true | _ -> false
+let is_Exists e = match e.e_node with Exists _ -> true | _ -> false
 
 let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
@@ -326,12 +326,12 @@ let rec pp_exp_p above fmt e =
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op_p above fmt (o,es) 
   | Nary(o,es) -> pp_nop_p above fmt (o,es)
-  | ElemH(e1,e2,h) ->
+  | Exists(e1,e2,h) ->
     let pp fmt () = 
-      F.fprintf fmt "@[<hov 2>%a in@ [%a |@ %a]@]"
-        (pp_exp_p Top) e1 (pp_exp_p Top) e2 
+      F.fprintf fmt "@[<hov 2>exists %a,@ %a =@ %a@]"
         (pp_list ",@ " (fun fmt (v,h) ->
-          F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h in
+          F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h 
+        (pp_exp_p Top) e1 (pp_exp_p Top) e2 in
     pp_maybe_paren (notsep above && above<>NInfix(Land)) pp fmt ()
 
 and pp_op_p above fmt (op, es) =
@@ -470,10 +470,10 @@ let destr_Ifte   e =
   match e.e_node with 
   | App(Eq,[a;b;c]) -> (a,b,c) 
   | _ -> raise (Destr_failure "Ifte")
-let destr_ElemH  e = 
+let destr_Exists  e = 
   match e.e_node with
-  | ElemH(e1,e2,vh) -> e1,e2,vh
-  | _ -> raise (Destr_failure "ElemH")
+  | Exists(e1,e2,vh) -> e1,e2,vh
+  | _ -> raise (Destr_failure "Exists")
 
 (* ----------------------------------------------------------------------- *)
 (** {5 Constructor functions} *)
@@ -512,9 +512,9 @@ sig
   val ensure_ty_equal : t gty -> t gty -> t gexpr -> t gexpr option -> string -> unit
   val mk_V : t Vsym.gt -> t gexpr
   val mk_H : t Hsym.gt -> t gexpr -> t gexpr
-  val mk_Tuple : (t gexpr) list -> t gexpr
-  val mk_Proj : int -> t gexpr -> t gexpr
-  val mk_ElemH : t gexpr -> t gexpr -> (t Vsym.gt * t Hsym.gt) list -> t gexpr
+  val mk_Tuple  : (t gexpr) list -> t gexpr
+  val mk_Proj   : int -> t gexpr -> t gexpr
+  val mk_Exists : t gexpr -> t gexpr -> (t Vsym.gt * t Hsym.gt) list -> t gexpr
   
   val mk_GGen  : t Groupvar.gid -> t gexpr
   val mk_FNat  : int -> t gexpr
@@ -577,11 +577,11 @@ struct
     | Prod(tys) when i >= 0 && List.length tys < i -> E.mk (Proj(i,e)) (List.nth tys i)
     | _ -> raise (TypeError(e.e_ty, e.e_ty, e, None, "mk_Proj expected product type"))
 
-  let mk_ElemH e1 e2 h =
+  let mk_Exists e1 e2 h =
     ensure_ty_equal e1.e_ty e2.e_ty e1 None "mk_ElemH";
     List.iter (fun (v,h) ->
       ensure_ty_equal v.Vsym.ty h.Hsym.dom (mk_V v) None "mk_ElemH") h;
-    E.mk (ElemH(e1,e2,h)) ty_Bool
+    E.mk (Exists(e1,e2,h)) ty_Bool
   
   let mk_Cnst c ty = E.mk (Cnst c) ty
 
@@ -701,11 +701,11 @@ let sub_map g e =
       let e1' = g e1 in
       if e1 == e1' then e
       else mk_e (H(h,e1')) e.e_ty
-  | ElemH(e1,e2,h) ->
+  | Exists(e1,e2,h) ->
       let e1' = g e1 in
       let e2' = g e2 in
       if e1 == e1' && e2 == e2' then e
-      else mk_e (ElemH(e1',e2',h)) e.e_ty
+      else mk_e (Exists(e1',e2',h)) e.e_ty
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
@@ -734,14 +734,14 @@ let e_sub_fold g acc e =
   match e.e_node with
   | V _ | Cnst _ -> acc
   | H(_,e) | Proj(_, e) -> g acc e
-  | ElemH(e1,e2,_) -> g (g acc e1) e2
+  | Exists(e1,e2,_) -> g (g acc e1) e2
   | Tuple(es) | App(_, es) | Nary(_, es)-> List.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
   | H(_,e) | Proj(_, e) -> g e
-  | ElemH(e1,e2,_) -> g e1; g e2
+  | Exists(e1,e2,_) -> g e1; g e2
   | Tuple(es) | App(_, es) | Nary(_, es)-> List.iter g es
 
 let rec e_iter g e =

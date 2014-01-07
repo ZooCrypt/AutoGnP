@@ -51,7 +51,7 @@ and 'a gexpr_node =
   | Cnst of cnst
   | App of 'a gop * 'a gexpr list
   | Nary of nop * 'a gexpr list
-  | ElemH of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
+  | Exists of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
 
 type expr = IdType.internal gexpr
 
@@ -100,7 +100,7 @@ val is_some_Nary : 'a gexpr -> bool
 val is_Nary : nop -> 'a gexpr -> bool
 val is_FPlus : 'a gexpr -> bool
 val is_FMult : 'a gexpr -> bool
-val is_ElemH : 'a gexpr -> bool
+val is_Exists : 'a gexpr -> bool
 val is_Eq    : 'a gexpr -> bool
 val is_field_op : 'a gop -> bool
 val is_field_nop : nop -> bool
@@ -135,7 +135,7 @@ val destr_FMult  : 'a gexpr -> 'a gexpr list
 val destr_Xor    : 'a gexpr -> 'a gexpr list
 val destr_Land   : 'a gexpr -> 'a gexpr list
 val destruct_Land : 'a gexpr -> 'a gexpr list
-val destr_ElemH  : 'a gexpr -> 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
+val destr_Exists  : 'a gexpr -> 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
 
 (* ----------------------------------------------------------------------- *)
 (** {4 Constructor functions} *)
@@ -146,7 +146,7 @@ val mk_V      : Vsym.t -> expr
 val mk_H      : Hsym.t -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
-val mk_ElemH  : expr -> expr -> (Vsym.t * Hsym.t) list -> expr
+val mk_Exists : expr -> expr -> (Vsym.t * Hsym.t) list -> expr
 val mk_GGen   : Groupvar.id -> expr
 val mk_FNat   : int -> expr
 val mk_FOne   : expr
@@ -183,7 +183,7 @@ module EConstructors :
     val mk_H      : Hsym.et -> eexpr -> eexpr
     val mk_Tuple  : eexpr list -> eexpr
     val mk_Proj   : int -> eexpr -> eexpr
-    val mk_ElemH  : eexpr -> eexpr -> (Vsym.et * Hsym.et) list -> eexpr
+    val mk_Exists : eexpr -> eexpr -> (Vsym.et * Hsym.et) list -> eexpr
     val mk_GGen   : Groupvar.eid -> eexpr
     val mk_FNat   : int -> eexpr
     val mk_FOne   : eexpr

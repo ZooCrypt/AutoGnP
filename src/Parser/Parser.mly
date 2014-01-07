@@ -8,7 +8,7 @@
 
 /************************************************************************/
 /* Tokens for types */
-%token IN
+%token EXISTS
 %token <string> TBS
 %token TBOOL
 %token <string> TG
@@ -162,8 +162,8 @@ expr :
 | e = expr0 EOF { e }
 
 expr0 :
-| e1 = expr0 IN LBRACKET e2=expr0 MID bd=hbindings RBRACKET
-     { ElemH(e1,e2,bd) }
+| EXISTS bd=hbindings MID e1 = expr1 EQUAL e2 = expr1
+     { Exists(e1,e2,bd) }
 | e1 = expr1 EQUAL e2 = expr1 { Eq(e1,e2) }
 | e1 = expr1 QUESTION e2 = expr1 COLON e3 = expr1 { Ifte(e1, e2, e3) }
 | e = expr1 { e }

@@ -60,6 +60,7 @@ let handle_tactic ps tac jus =
     apply_rule (rnorm_unknown vs) ps
 
   | Rctxt_ev (sv,e,j) ->
+    (* TODO: how to be in the good typing context *)
     let ev = ju.Game.ju_ev in
     let b =
       match ev.e_node with
@@ -70,24 +71,13 @@ let handle_tactic ps tac jus =
     in
     let ty = 
       if is_Eq b then (fst (destr_Eq b)).e_ty
-      else if is_ElemH b then
-        let (e1,_,_) = destr_ElemH b in e1.e_ty 
+      else if is_Exists b then
+        let (e1,_,_) = destr_Exists b in e1.e_ty 
       else fail_rule "rctxt_ev: bad event"
     in
     let v1 = create_var false ps sv ty in
     let e1 = expr_of_parse_expr ps e in
     let c = v1, e1 in
-(*    let ev = 
-      if is_Eq ev then
-        let (e1,e2) = destr_Eq ev in
-        mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
-      else if is_ElemH ev then
-        let (e1,e2,h) = destr_ElemH ev in
-        mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
-      else fail_rule "rctxt_ev: bad event"
-    in
-*)
-    Format.printf "Rctxt_ev with %i and %a\n%!" j pp_exp e1;
     apply_rule (rctxt_ev c j) ps
 
   | Rindep -> apply_rule rrandom_indep ps
