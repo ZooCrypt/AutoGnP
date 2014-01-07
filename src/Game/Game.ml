@@ -342,51 +342,50 @@ let set_ju_lcmd ju p cmds =
 (* ----------------------------------------------------------------------- *)
 (** {6 Equality} *) 
 
-let d_equal (ty1,es1) (ty2,es2) = 
-  ty_equal ty1 ty2 && 
-    list_eq_for_all2 e_equal es1 es2
+let distr_equal (ty1,es1) (ty2,es2) = 
+  ty_equal ty1 ty2 && list_eq_for_all2 e_equal es1 es2
   
-let lc_equal i1 i2 = 
+let lcmd_equal i1 i2 = 
   match i1, i2 with
   | LLet(x1,e1), LLet(x2,e2) ->
     Vsym.equal x1 x2 && e_equal e1 e2
   | LBind(xs1,h1), LBind(xs2,h2) ->
     list_eq_for_all2 Vsym.equal xs1 xs2 && Hsym.equal h1 h2
   | LSamp(x1,d1), LSamp(x2,d2) ->
-    Vsym.equal x1 x2 && d_equal d1 d2
+    Vsym.equal x1 x2 && distr_equal d1 d2
   | LGuard e1, LGuard e2 -> e_equal e1 e2
   | LLet _  , (LBind _ | LSamp _ | LGuard _) 
   | LBind _ , (LLet _  | LSamp _ | LGuard _) 
   | LSamp _ , (LLet _  | LBind _ | LGuard _) 
   | LGuard _, (LLet _  | LBind _ | LSamp _ ) -> false
 
-let lcs_equal c1 c2 = list_eq_for_all2 lc_equal c1 c2
+let lcmds_equal c1 c2 = list_eq_for_all2 lcmd_equal c1 c2
 
-let o_equal (o1,xs1,c1,e1) (o2,xs2,c2,e2) = 
+let odef_equal (o1,xs1,c1,e1) (o2,xs2,c2,e2) = 
   Osym.equal o1 o2 &&
     list_eq_for_all2 Vsym.equal xs1 xs2 &&
-    lcs_equal c1 c2 &&
+    lcmds_equal c1 c2 &&
     e_equal e1 e2 
 
-let gc_equal i1 i2 =
+let gcmd_equal i1 i2 =
   match i1, i2 with
   | GLet(x1,e1), GLet(x2,e2) ->
     Vsym.equal x1 x2 && e_equal e1 e2
   | GSamp(x1,d1), GSamp(x2,d2) ->
-    Vsym.equal x1 x2 && d_equal d1 d2
+    Vsym.equal x1 x2 && distr_equal d1 d2
   | GCall(xs1,as1,e1,os1), GCall(xs2,as2,e2,os2) ->
     list_eq_for_all2 Vsym.equal xs1 xs2 &&
       e_equal e1 e2 &&
-      list_eq_for_all2 o_equal os1 os2 &&
+      list_eq_for_all2 odef_equal os1 os2 &&
       Asym.equal as1 as2
   | GLet _, (GSamp _ | GCall _) 
   | GSamp _, (GLet _ | GCall _) 
   | GCall _, (GLet _ | GSamp _) -> false
 
-let gcs_equal c1 c2 = list_eq_for_all2 gc_equal c1 c2
+let gdef_equal c1 c2 = list_eq_for_all2 gcmd_equal c1 c2
 
 let ju_equal ju1 ju2 = 
-  gcs_equal ju1.ju_gdef ju2.ju_gdef &&
+  gdef_equal ju1.ju_gdef ju2.ju_gdef &&
     e_equal ju1.ju_ev ju2.ju_ev
 
 let gdef_vars ju =

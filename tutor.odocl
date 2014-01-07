@@ -13,14 +13,14 @@ Hsym
 Vsym
 Expr
 
-# Symbolic
-Norm
-Deduc
-
 # CAS
 Poly
 CAS
 LinAlg
+
+# Symbolic
+Norm
+Deduc
 
 # Game
 Asym

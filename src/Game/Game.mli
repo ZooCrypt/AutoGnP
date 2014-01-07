@@ -1,126 +1,139 @@
 (** Cryptographic game definitions. *)
 
-type distr = Type.ty * Expr.expr list
+open Expr
+open Format
+
+(* ----------------------------------------------------------------------- *)
+(** {1 Types} *)
+
+type distr = Type.ty * expr list
 
 type lcmd =
-    LLet of Vsym.t * Expr.expr
+    LLet of Vsym.t * expr
   | LBind of Vsym.t list * Hsym.t
   | LSamp of Vsym.t * distr
-  | LGuard of Expr.expr
+  | LGuard of expr
 
-type odef = Osym.t * Vsym.t list * lcmd list * Expr.expr
+type odef = Osym.t * Vsym.t list * lcmd list * expr
 
 type gcmd =
-    GLet of Vsym.t * Expr.expr
+    GLet of Vsym.t * expr
   | GSamp of Vsym.t * distr
-  | GCall of Vsym.t list * Asym.t * Expr.expr * odef list
+  | GCall of Vsym.t list * Asym.t * expr * odef list
 
 type gdef = gcmd list
 
-type ev = Expr.expr
+type ev = expr
 
 type judgment = { ju_gdef : gdef; ju_ev : ev; }
 
-val pp_distr : Format.formatter -> 'a Type.gty * 'b Expr.gexpr list -> unit
+(* ----------------------------------------------------------------------- *)
+(** {2 Pretty printing} *)
 
-val pp_v : Format.formatter -> 'a Vsym.gt -> unit
+val pp_distr : formatter -> 'a Type.gty * 'b gexpr list -> unit
 
-val pp_binder : Format.formatter -> 'a Vsym.gt list -> unit
+val pp_v : formatter -> 'a Vsym.gt -> unit
 
-val pp_lcmd : Format.formatter -> lcmd -> unit
+val pp_binder : formatter -> 'a Vsym.gt list -> unit
 
-val pp_ilcmd : Format.formatter -> int * lcmd -> unit
+val pp_lcmd : formatter -> lcmd -> unit
+
+val pp_ilcmd : formatter -> int * lcmd -> unit
 
 val num_list : 'a list -> (int * 'a) list
 
-val pp_lcomp : Format.formatter -> 'a Expr.gexpr * lcmd list -> unit
+val pp_lcomp : formatter -> 'a gexpr * lcmd list -> unit
 
-val pp_odef :
-  Format.formatter ->
-  'a Osym.gt * 'b Vsym.gt list * lcmd list * 'c Expr.gexpr -> unit
+val pp_odef : formatter -> odef -> unit
 
-val pp_gcmd : Format.formatter -> gcmd -> unit
+val pp_gcmd : formatter -> gcmd -> unit
 
-val pp_igcmd : Format.formatter -> int * gcmd -> unit
+val pp_igcmd : formatter -> int * gcmd -> unit
 
-val pp_gdef : Format.formatter -> gcmd list -> unit
+val pp_gdef : formatter -> gdef -> unit
 
-val pp_ju : Format.formatter -> judgment -> unit
+val pp_ju : formatter -> judgment -> unit
 
-val pp_ps : Format.formatter -> judgment list -> unit
+val pp_ps : formatter -> judgment list -> unit
+
+(* ----------------------------------------------------------------------- *)
+(** {3 Generic functions} *)
 
 val map_distr_exp : ('a -> 'b) -> 'c * 'a list -> 'c * 'b list
 
-val map_lcmd_exp : (Expr.expr -> Expr.expr) -> lcmd -> lcmd
+val map_lcmd_exp : (expr -> expr) -> lcmd -> lcmd
 
-val map_odef_exp :
-  (Expr.expr -> Expr.expr) ->
-  'a * 'b * lcmd list * Expr.expr -> 'a * 'b * lcmd list * Expr.expr
+val map_odef_exp : (expr -> expr) -> odef -> odef
 
-val map_gcmd_exp : (Expr.expr -> Expr.expr) -> gcmd -> gcmd
+val map_gcmd_exp : (expr -> expr) -> gcmd -> gcmd
 
-val map_gdef_exp : (Expr.expr -> Expr.expr) -> gcmd list -> gcmd list
+val map_gdef_exp : (expr -> expr) -> gdef -> gcmd list
 
-val map_ju_exp : (Expr.expr -> Expr.expr) -> judgment -> judgment
+val map_ju_exp : (expr -> expr) -> judgment -> judgment
 
 val iter_distr_exp : ('a -> unit) -> 'b * 'a list -> unit
 
-val iter_lcmd_exp : (Expr.expr -> unit) -> lcmd -> unit
+val iter_lcmd_exp : (expr -> unit) -> lcmd -> unit
 
-val iter_odef_exp :
-  (Expr.expr -> unit) -> 'a * 'b * lcmd list * Expr.expr -> unit
+val iter_odef_exp : (expr -> unit) -> odef -> unit
 
-val iter_gcmd_exp : (Expr.expr -> unit) -> gcmd -> unit
+val iter_gcmd_exp : (expr -> unit) -> gcmd -> unit
 
-val iter_gdef_exp : (Expr.expr -> unit) -> gcmd list -> unit
+val iter_gdef_exp : (expr -> unit) -> gcmd list -> unit
 
-val iter_ju_exp : (Expr.expr -> unit) -> judgment -> unit
+val iter_ju_exp : (expr -> unit) -> judgment -> unit
 
-val fold_union : ('a -> Expr.Se.t) -> 'a list -> Expr.Se.t
+val fold_union : ('a -> Se.t) -> 'a list -> Se.t
 
-val read_distr : 'a * Expr.expr list -> Expr.Se.t
+(* ----------------------------------------------------------------------- *)
+(** {4 Read and write variables} *)
 
-val read_lcmd : lcmd -> Expr.Se.t
+val read_distr : distr -> Se.t
 
-val read_lcmds : lcmd list -> Expr.Se.t
+val read_lcmd : lcmd -> Se.t
 
-val add_binding : Vsym.t list -> Expr.Se.t
+val read_lcmds : lcmd list -> Se.t
 
-val write_lcmd : lcmd -> Expr.Se.t
+val add_binding : Vsym.t list -> Se.t
 
-val write_lcmds : lcmd list -> Expr.Se.t
+val write_lcmd : lcmd -> Se.t
 
-val read_odef : 'a * Vsym.t list * lcmd list * Expr.expr -> Expr.Se.t
+val write_lcmds : lcmd list -> Se.t
 
-val read_gcmd : gcmd -> Expr.Se.t
+val read_odef : odef -> Se.t
 
-val read_gcmds : gcmd list -> Expr.Se.t
+val read_gcmd : gcmd -> Se.t
 
-val write_gcmd : gcmd -> Expr.Se.t
+val read_gcmds : gcmd list -> Se.t
 
-val write_gcmds : gcmd list -> Expr.Se.t
+val write_gcmd : gcmd -> Se.t
 
-val read_ju : judgment -> Expr.Se.t
+val write_gcmds : gcmd list -> Se.t
 
-val has_log_distr : 'a * Expr.expr list -> bool
+val read_ju : judgment -> Se.t
+
+(* ----------------------------------------------------------------------- *)
+(** {5 Probabilistic polynomial time } *)
+
+val has_log_distr : distr -> bool
 
 val has_log_lcmd : lcmd -> bool
 
 val has_log_lcmds : lcmd list -> bool
 
-val has_log_o : 'a * 'b * lcmd list * Expr.expr -> bool
+val has_log_o : odef -> bool
 
 val has_log_gcmd : gcmd -> bool
 
 val has_log_gcmds : gcmd list -> bool
 
-val is_ppt_distr : 'a * Expr.expr list -> bool
+val is_ppt_distr : distr -> bool
 
 val is_ppt_lcmd : lcmd -> bool
 
 val is_ppt_lcmds : lcmd list -> bool
 
-val is_ppt_o : 'a * 'b * lcmd list * Expr.expr -> bool
+val is_ppt_o : odef -> bool
 
 val is_ppt_gcmd : gcmd -> bool
 
@@ -131,6 +144,9 @@ val is_ppt_ju : judgment -> bool
 val is_call : gcmd -> bool
 
 val has_call : gcmd list -> bool
+
+(* ----------------------------------------------------------------------- *)
+(** {6 Positions and replacement functions} *)
 
 type gcmd_pos = int
 
@@ -151,17 +167,17 @@ val set_ju_gcmd : judgment -> int -> gcmd list -> judgment
 val get_ju_lcmd :
   judgment ->
   int * int * int ->
-  Osym.t * Vsym.t list * (lcmd list * lcmd * lcmd list) * Expr.expr
+  Osym.t * Vsym.t list * (lcmd list * lcmd * lcmd list) * expr
 
 type ju_octxt = {
   juoc_asym : Asym.t;
   juoc_avars : Vsym.t list;
-  juoc_aarg : Expr.expr;
+  juoc_aarg : expr;
   juoc_oleft : odef list;
   juoc_oright : odef list;
   juoc_osym : Osym.t;
   juoc_oargs : Vsym.t list;
-  juoc_return : Expr.expr;
+  juoc_return : expr;
   juoc_cleft : lcmd list;
   juoc_cright : lcmd list;
   juoc_juc : ju_ctxt;
@@ -173,52 +189,46 @@ val set_ju_octxt : lcmd list -> ju_octxt -> judgment
 
 val set_ju_lcmd : judgment -> int * int * int -> lcmd list -> judgment
 
-val d_equal : Type.ty * Expr.expr list -> Type.ty * Expr.expr list -> bool
+(* ----------------------------------------------------------------------- *)
+(** {7 Equality} *)
 
-val lc_equal : lcmd -> lcmd -> bool
+val distr_equal : distr -> distr -> bool
 
-val lcs_equal : lcmd list -> lcmd list -> bool
+val lcmd_equal : lcmd -> lcmd -> bool
 
-val o_equal :
-  Osym.t * Vsym.t list * lcmd list * Expr.expr ->
-  Osym.t * Vsym.t list * lcmd list * Expr.expr -> bool
+val lcmds_equal : lcmd list -> lcmd list -> bool
 
-val gc_equal : gcmd -> gcmd -> bool
+val odef_equal : odef -> odef -> bool
 
-val gcs_equal : gcmd list -> gcmd list -> bool
+val gcmd_equal : gcmd -> gcmd -> bool
+
+val gdef_equal : gdef -> gdef -> bool
 
 val ju_equal : judgment -> judgment -> bool
 
-val gdef_vars : gcmd list -> Expr.Se.t
+val gdef_vars : gdef -> Se.t
 
-val ju_vars : judgment -> Expr.Se.t
+val ju_vars : judgment -> Se.t
 
-val norm_expr_def : Expr.expr -> Expr.expr
+(* ----------------------------------------------------------------------- *)
+(** {8 Normal forms} *)
 
-val norm_distr :
-  ?norm:(Expr.expr -> Expr.expr) ->
-  Expr.expr Expr.Me.t -> 'a * Expr.expr list -> 'a * Expr.expr list
+val norm_expr_def : expr -> expr
 
-val norm_odef :
-  ?norm:(Expr.expr -> Expr.expr) ->
-  Expr.expr Expr.Me.t ->
-  'a * 'b * lcmd list * Expr.expr -> 'a * 'b * lcmd list * Expr.expr
+val norm_distr : ?norm:(expr -> expr) -> expr Me.t -> distr -> distr
 
-val norm_gdef :
-  ?norm:(Expr.expr -> Expr.expr) ->
-  gcmd list -> gcmd list * Expr.expr Expr.Me.t
+val norm_odef : ?norm:(expr -> expr) -> expr Me.t -> odef -> odef
 
-val norm_ju : ?norm:(Expr.expr -> Expr.expr) -> judgment -> judgment
+val norm_gdef : ?norm:(expr -> expr) -> gdef -> gdef * expr Me.t
 
-val subst_v_e : (IdType.internal Vsym.gt -> Vsym.t) -> Expr.expr -> Expr.expr
+val norm_ju : ?norm:(expr -> expr) -> judgment -> judgment
+
+val subst_v_e : (IdType.internal Vsym.gt -> Vsym.t) -> expr -> expr
 
 val subst_v_lc : (Vsym.t -> Vsym.t) -> lcmd -> lcmd
 
-val subst_v_odef :
-  (Vsym.t -> Vsym.t) ->
-  'a * Vsym.t list * lcmd list * Expr.expr ->
-  'a * Vsym.t list * lcmd list * Expr.expr
+val subst_v_odef : (Vsym.t -> Vsym.t) -> odef -> odef
 
 val subst_v_gc : (Vsym.t -> Vsym.t) -> gcmd -> gcmd
 
-val subst_v_gdef : (Vsym.t -> Vsym.t) -> gcmd list -> gcmd list
+val subst_v_gdef : (Vsym.t -> Vsym.t) -> gdef -> gdef

@@ -58,7 +58,7 @@ let rconv do_norm_terms new_ju1 ju1 =
         pp_ju ju pp_ju new_ju;
       let cc = List.combine ju.ju_gdef new_ju.ju_gdef in
       (try
-         let (i1,i2) = List.find (fun (i1,i2) -> not (gc_equal i1 i2)) cc in
+         let (i1,i2) = List.find (fun (i1,i2) -> not (gcmd_equal i1 i2)) cc in
          Format.printf "i1 = %a@.i2 = %a@." pp_gcmd i1 pp_gcmd i2
        with _ -> Format.printf "????@.");
       flush_all (); 
@@ -330,7 +330,7 @@ let rassm_decision dir subst assm ju =
     if dir = LeftToRight then assm.ad_prefix1,assm.ad_prefix2 
     else assm.ad_prefix2,assm.ad_prefix1 in
   let cju = Util.take (List.length c) ju.ju_gdef in
-  if not (gcs_equal c cju) then 
+  if not (gdef_equal c cju) then 
     fail_cmd "Can not match the decisional assumption";
   let tl = Util.drop (List.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
