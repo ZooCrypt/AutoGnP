@@ -22,7 +22,7 @@ let rows m = length m
 
 let sol_col m = cols m
 
-let col_to_list m c =
+let _col_to_list m c =
   let res = ref [] in
   for r = rows m - 1 downto 0 do
     res := m.(r).(c)::!res
@@ -42,7 +42,7 @@ let iter_rows m f =
     f r
   done
 
-let iter_cols m f =
+let _iter_cols m f =
   for c = 0 to cols m - 1 do
     f c
   done

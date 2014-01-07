@@ -10,10 +10,6 @@ val rnorm_nounfold : judgment -> judgment list
 
 val runfold_only : judgment -> judgment list
 
-val simp_exp : expr -> Se.t -> (expr * expr option) list * expr option
-
-val rewrite_exps : Se.t -> expr -> expr
-
 val rnorm_unknown : expr list -> judgment -> judgment list
 
 val rlet_abstract : int -> Vsym.t -> expr -> judgment -> judgment list

@@ -22,10 +22,6 @@ let apply rule goals = match goals with
       gs' @ gs
   | _ -> fail_cmd "there are no goals"
 
-let delay goals = match goals with
-  | g::gs -> gs@[g]
-  | []    -> []
-
 (* ----------------------------------------------------------------------- *)
 (** {2 Low level rules} *)
 
@@ -39,8 +35,9 @@ let fail_if_occur vs ju s =
 
 (** Conversion *)
 
-let check_conv ju1 ju2 = 
+(* let check_conv ju1 ju2 = 
   ju_equal (norm_ju ju1) (norm_ju ju2) 
+ *)
 
 let rconv do_norm_terms new_ju1 ju1 =
   let (nf,ctype) =
