@@ -461,6 +461,11 @@ let destr_Eq     e = destr_App_bop "Eq"   Eq e
 let destr_Not    e = destr_App_uop "Not"  Not e
 let destr_Xor    e = destr_Nary   "Xor"  Xor e 
 let destr_Land   e = destr_Nary   "Land" Land e
+let destruct_Land e =
+  match e.e_node with
+  | Nary(Land,es) -> es 
+  | _ -> [e] 
+
 let destr_Ifte   e = 
   match e.e_node with 
   | App(Eq,[a;b;c]) -> (a,b,c) 
@@ -664,7 +669,7 @@ struct
   let mk_FMult es = mk_nary "mk_FMult" true FMult es ty_Fq
   let mk_Xor es = match es with
     | e::_ -> (match e.e_ty.ty_node with
-               | BS _ -> mk_nary "mk_Xor" true Xor es e.e_ty
+               | BS _ | Bool -> mk_nary "mk_Xor" true Xor es e.e_ty
                | _ -> failwith "mk_Xor: expected bitstring argument")
     | _ -> failwith "mk_Xor: expected non-empty list"
   let mk_Land es = mk_nary "mk_Land" false Land es ty_Bool

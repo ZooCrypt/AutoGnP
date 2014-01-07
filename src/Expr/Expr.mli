@@ -133,6 +133,7 @@ val destr_FPlus  : 'a gexpr -> 'a gexpr list
 val destr_FMult  : 'a gexpr -> 'a gexpr list
 val destr_Xor    : 'a gexpr -> 'a gexpr list
 val destr_Land   : 'a gexpr -> 'a gexpr list
+val destruct_Land : 'a gexpr -> 'a gexpr list
 val destr_ElemH  : 'a gexpr -> 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
 
 (* ----------------------------------------------------------------------- *)

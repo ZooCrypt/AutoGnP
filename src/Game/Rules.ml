@@ -1,3 +1,4 @@
+open Type
 open Game
 open CoreRule
 open Expr
@@ -122,19 +123,43 @@ let rassm dir assm subst ju =
       | _ -> failwith "rassm : can not infer subtitution")
       subst c jc in
   rassm_decision dir subst assm ju
+                            
+(* We known a set of facts 
+   e1 = e2 
+   e1 in [e2 | x <- L_H] ...
+   and inequalities 
+   We collect all the term we known and we try to invert the term we want.
+   Assume we known e1 = e2 then we known e1 ++ e2 = 0
+     as well for e1 in [e2 | ... ]
+*)
+(*let init_inverter test = 
+  let rec aux e1 e2 = 
+    match e1.e_ty.ty_node with
+    | Bool | BS _ -> mk_Xor [e1; e2], mk_False
+    | G  _ -> mk_FMinus (mk_GLog e1) (mk_GLog e2), mk_FZ
+    | Fq   -> mk_FMinus e1 e2, mk_FZ
+    | Prod lt ->
+      let es, is = 
+        List.split 
+          (List.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2))) in
+      mk_Tuple es, mk_Tuple is in
+  if is_Eq test then 
+    let e1,e2 = destr_Eq test in aux e1 e2, []
+  else if is_ElemH test then
+    let e1,e2, bd = destr_ElemH test in aux e1 e2, bd
+  else raise Not_found *)
 
-
-let switch_eq e1 e2 = 
-  let x = Vsym.mk "x" e1.e_ty in
-  match e1.e_ty.ty_node with
-  | BS _ -> mk_Xor [mk_V x; e2]
-  | G  _ -> mk_FMinus (mk_GLog (mk_V x)) (mk_GLog e2)
-  | Fq   -> mk_FMinus (mk_V x) e2
-  | _    -> raise Not_found 
-            (* Can we perform recursive call for product ? *)
-            (* How to do with bool *)  
-
-let auto_indep ju =
+(*let rec init_inverters l test = 
+  if is_Land test then
+    let tests = destr_Land test in
+    List.fold_left init_inverters l tests 
+  else
+    try 
+      let einv, bd = init_inverter test in
+      einv :: (List.map (fun (x,_) -> (x,x)) bd @ l)
+  match 
+*)
+(*let auto_indep ju =
   let gs = apply rnorm ju in
   let invert_eq vars r ev =
     let re = mk_V r in
@@ -157,7 +182,33 @@ let auto_indep ju =
   let can_swap
   swap pos d;
   context_select;
-
+*)
 let rrandom_indep ju =
 (*  try *) CoreRule.rrandom_indep ju 
 (*  with Failure _ -> auto_indep ju *)
+
+
+(* 
+
+   e1 = e2
+
+   (r' ++ e2) = (r' ++ e2)
+   (e1 ++ e2) = (e2 ++ e2)
+                0
+
+   (r' ++ e2) = (e2 ++ e2)
+  
+   e1 = e2 /\ e2 = e3
+   
+   r = e2
+
+   r 
+   r = r ++ e = e'
+
+   r ++ r ++ e = 0   --> e = 0
+   r ++ e ++ e' = 0
+   r ++ e' = 0 
+
+   
+   
+*)

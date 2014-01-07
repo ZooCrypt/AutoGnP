@@ -51,7 +51,7 @@ let ty_of_cnst c ty =
 
 let ty_of_nop ty = function
   | Land  -> mk_Bool
-  | Xor   -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
+  | Xor   -> (match ty.ty_node with BS _ | Bool -> ty | _ -> assert false)
   | (FMult | FPlus) -> mk_Fq
   | GMult  -> (match ty.ty_node with G _ -> ty | _ -> assert false)
 

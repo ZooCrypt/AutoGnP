@@ -59,50 +59,72 @@ let rconv do_norm_terms new_ju1 ju1 =
       failwith "rconv: not convertible");
   [new_ju1]
 
+(** Transformation of the event *)
 (* Applying context to ev *)
 let rctxt_ev (c : ctxt) (i : int) ju = 
   let ev = ju.ju_ev in
-  let (left,b,right) = match ev.e_node with
-    | Nary(Land,es) when i < List.length es ->
-      (Util.take i es, List.nth es i, Util.drop (i+1) es)
-    | _ when i = 1 -> ([],ev,[])
-    | _ -> assert false
-  in
+  let evs = destruct_Land ev in
+  if i < 0 || i >= List.length evs then failwith "invalid event position";
+  let l,b,r = Util.split_n i evs in 
   let b = 
     if is_Eq b then
-      let (e1,e2) = destr_Eq b in
+      let (e1,e2) = destr_Eq b inr
       mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
     else if is_ElemH b then
       let (e1,e2,h) = destr_ElemH b in
       mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
     else failwith "rctxt_ev: bad event, expected equality or x in L"
   in
-  let ev = mk_Land (left @ [b] @ right) in
+  let ev = mk_Land (List.rev_append l (b:: r)) in
   let wfs = wf_gdef NoCheckDivZero (ju.ju_gdef) in
   wf_exp CheckDivZero wfs ev;
   let new_ju = {ju with ju_ev = ev} in
   [new_ju]
 
-(*
-(* Applying context to ev *)
-let rctxt_ev ev c ju = 
-  let new_ju = {ju with ju_ev = ev} in
-  let ev1 = ju.ju_ev in
-  let cev1 = 
-    if is_Eq ev1 then
-      let (e1,e2) = destr_Eq ev1 in
-      mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
-    else if is_ElemH ev1 then
-      let (e1,e2,h) = destr_ElemH ev1 in
-      mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
-    else failwith "rctxt_ev: bad event"
-  in
-  (* FIXME: perform context check directly, no check_conv *)
-  let ju' = {ju with ju_ev = cev1} in
-  if not (check_conv new_ju ju') then 
-    failwith "rctxt_ev: bad context";
+(* Removing an event *)
+
+let remove_ev (rm:int list) ju = 
+  let rec aux i evs = 
+    match evs with
+    | [] -> []
+    | ev::evs -> 
+      let evs = aux (i+1) evs in
+      if List.mem i rm then evs else ev::evs in
+  let ev = ju.ju_ev in
+  let evs = aux 0 (destruct_Land ev) in
+  let new_ju = {ju with ju_ev = mk_Land evs} in
+  (* TODO : should we check DivZero *)
   [new_ju]
-*)
+  
+(* Merging event *)
+
+let merge_base_event ev1 ev2 =
+  match ev1.e_node, ev2.e_node with
+  | App (Eq,[e11;e12]), App(Eq,[e21;e22]) ->
+    mk_Eq (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22])
+  | App (Eq,[e11;e12]), ElemH(e21,e22, l) ->
+    mk_ElemH (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
+  | ElemH(e11,e12, l), App (Eq,[e21;e22]) ->
+    mk_ElemH (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
+  | ElemH(e11,e12, l1), ElemH(e21,e22, l2) ->  
+  (* TODO we should be sure that bounded variables in l1 and l2 are disjoint *)
+    mk_ElemH (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) (l1 @ l2)
+  | _, _ -> failwith "do not knwon how to merge the event"
+
+let merge_ev i j ju =
+  let i,j = if i <= j then i, j else j, i in
+  let evs = destruct_Land ju.ju_ev in
+  let l,b1,r = Util.split_n i evs in 
+  let l',b2,r = 
+    if i = j then [], b1, r 
+    else Util.split_n (j - i - 1) r in
+  let ev = merge_base_event b1 b2 in
+  let evs = List.rev_append l (List.rev_append l' (ev::r)) in
+  let new_ju = {ju with ju_ev = mk_Land evs} in
+  (* TODO : should we check DivZero, I think not *)
+  [new_ju]
+
+    
 
 (** random rules *)
 
