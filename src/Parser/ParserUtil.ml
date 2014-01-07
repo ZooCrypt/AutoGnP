@@ -1,5 +1,4 @@
-(** Types for parsing: Types and expressions *)
-
+(** Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
 open Util
 open Proofstate
 
@@ -7,6 +6,7 @@ module E = Expr
 module Ht = Hashtbl
 module G = Game
 module F = Format
+module T = Type
 
 (** Parser error with explanation *)
 exception ParseError of string

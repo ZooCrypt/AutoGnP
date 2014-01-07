@@ -8,6 +8,7 @@ open Util
 open Proofstate
 
 module Ht = Hashtbl
+module F  = Format
 
 let fail_unless c s =
   if not (c ()) then

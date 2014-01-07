@@ -125,7 +125,7 @@ let string_of_monom m =
     | k -> (vi^(F.sprintf "^%i" k))::acc
   in S.concat "*" (L.rev (L.fold_left go [] m))
 
-let string_of_poly p = 
+let _string_of_poly p = 
   S.concat " + "
     (L.map (fun (i,m) ->  (if i = 1 then "" else string_of_int i)
                             ^(string_of_monom m)) p)
