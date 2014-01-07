@@ -1,3 +1,4 @@
+(** Deducibility of expressions. *)
 open Type
 open Expr
 

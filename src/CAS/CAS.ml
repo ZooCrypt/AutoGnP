@@ -26,7 +26,7 @@ let rec string_of_fexp e = match e with
   | SPlus(a,b) -> F.sprintf "(%s + %s)" (string_of_fexp a) (string_of_fexp b)
   | SMult(a,b) -> F.sprintf "(%s * %s)" (string_of_fexp a) (string_of_fexp b)
 
-(* Abstraction of 'Expr.expr' to sfexp *)
+(* Abstraction of 'Expr.expr' to 'sfexp' *)
 let rec rename hr = function 
   | SV i -> SV (Ht.find hr i)
   | (SNat _) as e -> e
@@ -301,7 +301,7 @@ let xor_to_vec rows bindings e =
      set_idx e);
   arr
 
-(* Try to deduce xor context that deduces e from es *)
+(* Try to compute xor context that deduces e from es *)
 let solve_xor ecs e =
   let es     = L.map snd ecs in
   let es_sts = direct_subterms Xor Se.empty es in
@@ -332,7 +332,8 @@ let solve_xor ecs e =
   Format.printf "%a\n\n%!" pp_exp ctxt;
   ctxt
 
-let _test () =
+(* FIXME: move this file *)
+let _test_solve_xor () =
   let l = Lenvar.mk "l" in
   let t = mk_BS l in
   let vx = Vsym.mk "x" t in
@@ -347,18 +348,17 @@ let _test () =
   let c = solve_xor [(p1,a); (p2,b)] c in
   failwith (fsprintf "Deduced context %a\n%!" pp_exp c |> fsget)
 
-
 let norm before e =
   let (se,c,hv) = abstract_non_field before e in
   (* handle some simple special cases
      without calling Singular *)
   match se with
-  | SV i         -> Ht.find hv i
-  | SNat n       -> mk_FNat n
-  | SOpp(SNat n) -> mk_FOpp (mk_FNat n)
-  | SOpp(SV i)   -> mk_FOpp (Ht.find hv i)
+  | SV i                  -> Ht.find hv i
+  | SNat n                -> mk_FNat n
+  | SOpp(SNat n)          -> mk_FOpp (mk_FNat n)
+  | SOpp(SV i)            -> mk_FOpp (Ht.find hv i)
   | SMult(SNat 1, SV i)
-  | SMult(SV i, SNat 1) -> Ht.find hv i
+  | SMult(SV i, SNat 1)   -> Ht.find hv i
   | SMult(SNat i, SNat j) -> mk_FNat (i * j)
-  | SMult(SV i, SV j) -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
-  | _ -> norm_singular se c hv
+  | SMult(SV i, SV j)     -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
+  | _                     -> norm_singular se c hv

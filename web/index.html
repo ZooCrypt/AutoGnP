@@ -2,7 +2,9 @@
 
 <html>
 <head>
-    <meta charset="utf-8">
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+  <link rel="stylesheet" href="css/bootstrap.css">
+  <meta charset="utf-8">
     <title>ZooCrypt</title>
     <style type="text/css" media="screen">
         .editor {
@@ -23,25 +25,69 @@
           background: rgba(255, 50, 50, 0.3);
           position: absolute;
         }
+        /* Reset the container */
+        .container {
+          max-width: none !important;
+          min-width: 95%;
+          padding-left: 0px;
+          /*border: 5px solid green;*/
+        }
 
+        /* Demonstrate the grids */
+        .col-md-12 {
+          padding-top: 0px;
+          padding-bottom: 0px;
+          padding-left: 0px;
+          /*border: 5px solid red;*/
+        }
     </style>
 </head>
-<body>
-  <table>
-    <tr>
-        <td>
-            <div>Proof script (press Ctrl/Cmd-S for save, Ctrl-Enter for next, and Ctlr-Backspace for previous).</div>
+<body style="background-color: rgba(35, 35, 35, 0.84);">
+<div class="container">
+  <div class="row" style="color: #ffffff">
+    <div class="col-md-12">
+      Press Ctrl/Cmd-s to save, Ctrl-n to evaluate the next command, Ctrl-Return to evaluate up to the cursor,
+      and Ctlr-p to unlock the last command.
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <table>
+        <tbody>
+        <tr>
+          <td>
             <div class="editor" id="editor-proof"></div>
-        </td>
-        <td>
-            <div>Proof goal.</div>
+          </td>
+          <td>
             <div class="editor" id="editor-goal"></div>
             <div class="editor" id="editor-message"></div>
-        </td>
-    </tr>
-    </table>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Modal -->
+  <div id="Open file_modal" class="modal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header" style="text-align: center">
+          <h3>Open file</h3>
+        </div>
+        <div class="modal-body" >
+          <div style="height: 200px; text-align: center; vertical-align: 400px">
+            File 1
+          </div>
+        </div>
+        <div class="modal-footer"></div>
+      </div>
+    </div>
+  </div>
   <script src="imported/jquery/jquery-1.10.2.min.js"></script>
   <script src="imported/ace/ace.js"></script>
+  <script src="imported/ace/keybinding-emacs.js"></script>
+  <script src="imported/ace/mode-zoocrypt.js"></script>
+  <script src="imported/reconnecting-websocket.js"></script>
   <script src="zoocrypt.js"></script>
 </body>
 </html>

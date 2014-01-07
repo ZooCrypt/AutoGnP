@@ -50,7 +50,11 @@ let rec mk_simpl_op op l =
   | Not, [e] ->
     if is_True e then mk_False
     else if is_False e then mk_True
-    else mk_Not e
+    else
+      begin match e.e_node with
+      | App(Not,[e]) -> e
+      | _            -> mk_Not e
+      end
   | (        GExp   | GLog _ | EMap _
     | FOpp | FMinus | FInv   | FDiv 
     | Eq   | Ifte   | Not)           , _ -> assert false

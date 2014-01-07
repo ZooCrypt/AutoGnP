@@ -1,4 +1,4 @@
-(** Random variable symbols. *)
+(** Variable symbols. *)
 open Type
 open IdType
 

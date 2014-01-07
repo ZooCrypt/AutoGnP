@@ -1,4 +1,4 @@
-(** Hash function symbols. *)
+(** Bilinear map function symbols. *)
 open Type
 open IdType
 

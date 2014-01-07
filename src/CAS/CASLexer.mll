@@ -1,4 +1,17 @@
-{ type sing_tokens = INT of int | VAR of int | PLUS | TIMES | POW | DIV | OPEN | CLOSE | EOF | MINUS }
+{ 
+  type sing_tokens =
+      INT of int
+    | VAR of int 
+    | PLUS 
+    | TIMES 
+    | POW 
+    | DIV 
+    | OPEN 
+    | CLOSE 
+    | EOF 
+    | MINUS
+}
+
 rule lex = parse
   | [' ' '\n' '\t'] { lex lexbuf }
   | ['0'-'9']+ as s { INT(int_of_string s) }

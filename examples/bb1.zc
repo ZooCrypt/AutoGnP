@@ -21,7 +21,8 @@ prove
     let pk2 = g^d;
     let pk3 = g^h;
     (m0,m1) <- A2(pk1,pk2,pk3)  with
-      Kg1(i1) = [ (g^(c*d + r*(d*i1 + h)), g^r) | not (i1=i'), r <-$ Fq];
+      Kg1(i1) = [ (g^(c*d + r*(d*i1 + h)), g^r)
+                | not (i1=i'), r <-$ Fq];
     b <-$ Bool;
     let mb = (b?m0:m1);
     e <-$ Fq;

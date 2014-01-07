@@ -5,6 +5,7 @@ open Format
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Expressions} *)
+
 type 'a proj_type = 'a Type.gty * 'a Type.gty * 'a Type.gty
 
 type cnst =
@@ -210,6 +211,7 @@ module EConstructors :
 
 (* ----------------------------------------------------------------------- *)
 (** {5 Pretty printing} *)
+
 val pp_cnst : formatter -> cnst -> 'a Type.gty -> unit
 val pp_exp  : formatter -> 'a gexpr -> unit
 val pp_op   : formatter -> 'a gop * 'a gexpr list -> unit
@@ -277,13 +279,17 @@ val e_subst : expr Me.t -> expr -> expr
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
 
+(* ----------------------------------------------------------------------- *)
+(** {7 Useful functions on [expr]} *)
+
 val se_of_list : expr list -> Se.t
 
 val has_log : expr -> bool
+
 val is_ppt : expr -> bool
 
-
 type ctxt = Vsym.t * expr
+
 val inst_ctxt : ctxt -> expr -> expr
 
 val typeError_to_string :

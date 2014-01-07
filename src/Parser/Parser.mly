@@ -1,4 +1,5 @@
 %{
+  (** Parser for expressions, games, judgments, and tactic command. *)
 	open ParserUtil
 
 %}

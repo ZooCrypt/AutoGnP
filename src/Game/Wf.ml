@@ -1,4 +1,4 @@
-(* Well-formedness of games *)
+(** Well-formedness of games. *)
 
 open Util
 open Expr

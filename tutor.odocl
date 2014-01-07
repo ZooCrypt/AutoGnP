@@ -1,19 +1,42 @@
+# Util
 Util
 IdType
 Id
 Hashcons
+
+# Type
 Type
+
+# Expr
+Esym
 Hsym
-Rsym
-Psym
+Vsym
 Expr
+
+# CAS
+Poly
+CAS
+LinAlg
+
+# Symbolic
 Norm
+Deduc
+
+# Game
+Asym
+Osym
+Game
+Wf
+
+# Logic
+CoreRules
+Rules
+Assumption
+
+# Parser
 ParserUtil
 Parse
-LogicTypes
-LogicPretty
-LogicUtil
-Logic
-LogicParse
-LogicProofsearch
-LogicProve
+
+# Tactic
+Proofstate
+Tactic

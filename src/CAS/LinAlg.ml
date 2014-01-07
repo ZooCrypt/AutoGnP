@@ -1,4 +1,4 @@
-(* Some simple linear algebra over F_2 *)
+(** Simple linear algebra (equation solving) over F_2. *)
 
 open Util
 open Array
@@ -22,7 +22,7 @@ let rows m = length m
 
 let sol_col m = cols m
 
-let col_to_list m c =
+let _col_to_list m c =
   let res = ref [] in
   for r = rows m - 1 downto 0 do
     res := m.(r).(c)::!res
@@ -42,7 +42,7 @@ let iter_rows m f =
     f r
   done
 
-let iter_cols m f =
+let _iter_cols m f =
   for c = 0 to cols m - 1 do
     f c
   done
@@ -120,6 +120,7 @@ let solve (m0 : (bool array) list) (b : bool array) =
 (* ----------------------------------------------------------------------- *)
 (** {3 Tests} *)
 
+(* FIXME: move to separate file *)
 let _test () =
   let m = make_matrix 3 2 false in
   let b = make 3 false in  

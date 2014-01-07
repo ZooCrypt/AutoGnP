@@ -1,3 +1,4 @@
+(** Core rules of the logic. *)
 open Util
 open Type
 open Expr
@@ -8,6 +9,10 @@ open Assumption
 (* ----------------------------------------------------------------------- *)
 (** {1 Rules and tactic language} *)
 
+exception Invalid_rule of string
+
+let fail_rule s = raise (Invalid_rule s)
+
 (** goal handling *)
 
 let apply rule goals = match goals with
@@ -15,26 +20,24 @@ let apply rule goals = match goals with
       let gs' = rule g in
       List.iter (wf_ju NoCheckDivZero) gs';
       gs' @ gs
-  | _ -> failwith "there are no goals"
-
-let delay goals = match goals with
-  | g::gs -> gs@[g]
-  | []    -> []
+  | _ -> fail_rule "there are no goals"
 
 (* ----------------------------------------------------------------------- *)
 (** {2 Low level rules} *)
 
 (** Helper functions *)
 
-let assert_no_occur vs ju s =
-  assert_msg (not (Se.mem (mk_V vs) (ju_vars ju)))
-    (fsprintf "%s: variable %a occurs in judgment\n %a"
-        s Vsym.pp vs pp_ju ju |> fsget)
+let fail_if_occur vs ju s =
+  if (Se.mem (mk_V vs) (ju_vars ju)) then
+    fail_rule
+      (fsprintf "%s: variable %a occurs in judgment\n %a"
+         s Vsym.pp vs pp_ju ju |> fsget)
 
 (** Conversion *)
 
-let check_conv ju1 ju2 = 
+(* let check_conv ju1 ju2 = 
   ju_equal (norm_ju ju1) (norm_ju ju2) 
+*)
 
 let rconv do_norm_terms new_ju1 ju1 =
   let (nf,ctype) =
@@ -52,11 +55,11 @@ let rconv do_norm_terms new_ju1 ju1 =
         pp_ju ju pp_ju new_ju;
       let cc = List.combine ju.ju_gdef new_ju.ju_gdef in
       (try
-         let (i1,i2) = List.find (fun (i1,i2) -> not (gc_equal i1 i2)) cc in
+         let (i1,i2) = List.find (fun (i1,i2) -> not (gcmd_equal i1 i2)) cc in
          Format.printf "i1 = %a@.i2 = %a@." pp_gcmd i1 pp_gcmd i2
        with _ -> Format.printf "????@.");
       flush_all (); 
-      failwith "rconv: not convertible");
+      fail_rule "rconv: not convertible");
   [new_ju1]
 
 (** Transformation of the event *)
@@ -73,7 +76,7 @@ let rctxt_ev (c : ctxt) (i : int) ju =
     else if is_ElemH b then
       let (e1,e2,h) = destr_ElemH b in
       mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
-    else failwith "rctxt_ev: bad event, expected equality or x in L"
+    else fail_rule "rctxt_ev: bad event, expected equality or x in L"
   in
   let ev = mk_Land (List.rev_append l (b:: r)) in
   let wfs = wf_gdef NoCheckDivZero (ju.ju_gdef) in
@@ -131,7 +134,7 @@ let merge_ev i j ju =
 let ensure_bijection c1 c2 v =
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
           Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
-  then failwith "random: contexts not bijective"
+  then fail_rule "random: contexts not bijective"
 
 (* 'random p c1 c2 vslet' takes a position p, two contexts. and a
    variable symbol for the new let-bound variable. It first
@@ -141,7 +144,7 @@ let ensure_bijection c1 c2 v =
    (taking inequalities that are checked beforehand into account)
    and that 'forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x'.  *)
 let rrandom p c1 c2 vslet ju =
-  assert_no_occur vslet ju "rrandom";
+  fail_if_occur vslet ju "rrandom";
   match get_ju_ctxt ju p with
   | GSamp(vs,((t,[]) as d)), juc ->
     assert (ty_equal vslet.Vsym.ty t);
@@ -159,11 +162,11 @@ let rrandom p c1 c2 vslet ju =
                 juc_ev = subst juc.juc_ev }
     in
     [ set_ju_ctxt cmds juc ]
-  | _ -> failwith "random: position given is not a sampling"
+  | _ -> fail_rule "random: position given is not a sampling"
 
 (* random rule in oracle *)
 let rrandom_oracle p c1 c2 vslet ju =
-  assert_no_occur vslet ju "rrandom_oracle";
+  fail_if_occur vslet ju "rrandom_oracle";
   match get_ju_octxt ju p with
   | LSamp(vs,((t,[]) as d)), juoc ->
     assert (ty_equal vslet.Vsym.ty t);
@@ -184,7 +187,7 @@ let rrandom_oracle p c1 c2 vslet ju =
                  juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright }
     in
     [ set_ju_octxt cmds juoc ]
-  | _ -> failwith "random: position given is not a sampling"
+  | _ -> fail_rule "random: position given is not a sampling"
 
 (** Statistical distance *)
 
@@ -192,13 +195,13 @@ let rexcept p es ju =
   match get_ju_ctxt ju p with
   | GSamp(vs,(t,_es)), juc ->
     [ set_ju_ctxt [ GSamp(vs,(t,es)) ] juc ]
-  | _ -> failwith "rexcept: position given is not a sampling"
+  | _ -> fail_rule "rexcept: position given is not a sampling"
 
 let rexcept_oracle p es  ju =
   match get_ju_octxt ju p with
   | LSamp(vs,(t,_es)), juoc ->
     [ set_ju_octxt [ LSamp(vs,(t,es)) ] juoc ]
-  | _ -> failwith "rexcept_oracle: position given is not a sampling"
+  | _ -> fail_rule "rexcept_oracle: position given is not a sampling"
 
 (** Up-to bad: adding a new test to oracle *)
 
@@ -211,11 +214,11 @@ let rexcept_oracle p es  ju =
 let radd_test p tnew asym fvs ju =
   match get_ju_octxt ju p with
   | LGuard(t), juoc ->
-    assert (ty_equal tnew.e_ty  mk_Bool);
+    assert (ty_equal tnew.e_ty mk_Bool);
     let destr_guard lcmd = match lcmd with
       | LGuard(e) -> e
       | _ ->
-        failwith
+        fail_rule
           (fsprintf ("radd_test: new test cannot be insert after %a, "
              ^^"preceeding commands must be tests")
              pp_lcmd lcmd |> fsget)
@@ -240,7 +243,7 @@ let radd_test p tnew asym fvs ju =
             }
         };
     ]
-  | _ -> failwith "rexcept_oracle: position given is not a sampling"
+  | _ -> fail_rule "rexcept_oracle: position given is not a sampling"
 
 
 (** Rewriting oracles using tests *)
@@ -276,7 +279,7 @@ let check_swap read write i c =
   if not (disjoint iw cw && 
             disjoint ir cw &&
             disjoint cr iw) then 
-    failwith "swap : can not swap" (* FIXME improve the error message *)
+    fail_rule "swap : can not swap" (* FIXME improve the error message *)
     
 let swap i delta ju = 
   if delta = 0 then ju
@@ -291,7 +294,7 @@ let swap i delta ju =
         hd, List.rev htl, ttl in
     check_swap read_gcmds write_gcmds i c2;
     if is_call i && has_call c2 then
-      failwith "swap : can not swap";
+      fail_rule "swap : can not swap";
     let c2,c3 = if delta > 0 then c2, i::c3 else i::c2, c3 in
     set_ju_ctxt c2 {juc_left=c1; juc_right=c3; juc_ev=e}
 
@@ -336,7 +339,7 @@ let rec check_event r ev =
 let rrandom_indep ju = 
   match List.rev ju.ju_gdef with
   | GSamp(r,_) :: _ when check_event r ju.ju_ev -> []
-  | _ -> failwith "can not apply rrandom_indep"
+  | _ -> fail_rule "can not apply rrandom_indep"
 
 (** Reduction to decisional assumptions *)
 
@@ -346,24 +349,24 @@ let rassm_decision dir subst assm ju =
     if dir = LeftToRight then assm.ad_prefix1,assm.ad_prefix2 
     else assm.ad_prefix2,assm.ad_prefix1 in
   let cju = Util.take (List.length c) ju.ju_gdef in
-  if not (gcs_equal c cju) then 
-    failwith "Can not match the decisional assumption";
+  if not (gdef_equal c cju) then 
+    fail_rule "Can not match the decisional assumption";
   let tl = Util.drop (List.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
   let read = read_ju ju' in
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
   let diff = Se.inter priv read in
   if not (Se.is_empty diff) then
-    failwith "Does not respect the private variables";
+    fail_rule "Does not respect the private variables";
   if not (is_ppt_ju ju') then
-    failwith "Does not respect the computational assumption (game and event ppt)";
+    fail_rule "Does not respect the computational assumption (game and event ppt)";
   [{ ju with ju_gdef = c' @ tl }]
 
 (** Rules for random oracles *)
 
 (* Bad rule, random oracle *)
 let rbad p vsx ju =
-  assert_no_occur vsx ju "rbad";
+  fail_if_occur vsx ju "rbad";
   match get_ju_ctxt ju p with
   | GLet(vs,e'), ctxt when is_H e' ->
     let h,e = destr_H e' in
@@ -375,5 +378,5 @@ let rbad p vsx ju =
     let ju2 = { ju1 with ju_ev = ev } in
     [ju1;ju2]
   | _ -> 
-    failwith "can not apply bad rule"
+    fail_rule "can not apply bad rule"
 

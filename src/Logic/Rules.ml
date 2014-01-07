@@ -1,10 +1,10 @@
-open Type
 open Game
-open CoreRule
+open CoreRules
 open Expr
 open Norm
 open Util
 
+(** Logical rules built on top of core rules. *)
 (* unfold all lets and norm *)
 let rnorm ju =
   let new_ju = norm_ju ~norm:norm_expr_def ju in
@@ -47,7 +47,7 @@ let simp_exp e unknown =
       (match a.e_node with
        | Nary(FPlus,es) -> go es (Some b)
        | _ -> ([a,None],Some b) )
-  | _ -> ([split_unknown e ], None)
+  | _ -> ([ split_unknown e ], None)
 
 let rewrite_exps unknown e0 =
   let rec go e =
@@ -106,7 +106,7 @@ let rlet_unfold p ju =
                 juc_ev = subst juc.juc_ev }
     in
     rconv false (set_ju_ctxt [] juc) ju
-  | _ -> assert false
+  | _ -> fail_rule "rlet_unfold: no let at given position"
 
 
 let rassm dir assm subst ju =
@@ -120,7 +120,7 @@ let rassm dir assm subst ju =
       | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
         when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
         Vsym.M.add x1 x2 s
-      | _ -> failwith "rassm : can not infer subtitution")
+      | _ -> fail_rule "rassm : can not infer subtitution")
       subst c jc in
   rassm_decision dir subst assm ju
                             
@@ -183,8 +183,8 @@ let rassm dir assm subst ju =
   swap pos d;
   context_select;
 *)
-let rrandom_indep ju =
-(*  try *) CoreRule.rrandom_indep ju 
+(*let rrandom_indep ju =
+(*  try *) CoreRules.rrandom_indep ju *)
 (*  with Failure _ -> auto_indep ju *)
 
 

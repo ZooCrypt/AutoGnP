@@ -14,17 +14,34 @@ prove
     b <-$ Bool;
     let mb = (b?m0:m1);
     b' <- A2(mb * g^(a*x), g^x);
-  ] : b = b'.  print_goals : start.
- rnorm. print_goals : norm.
- rnorm_unknown a x.  print_goals : uk.
+  ] : b = b'.
+ 
+  (* auto would start with norm *)
+  rnorm.
+  (* 1. Match samplings in game with samplings in assumption:
+        a) G.x <-> A.x, G.a <-> A.y
+        b) G.a <-> A.x, G.x <-> A.y
+     2. Express game without x and y (and z)
+        Known for (a) :
+          gx := g^x, gy := g^a, gxy := g^ax
+        Required:
+          g^a ==> OK
+          g^x ==> OK
+          g ^ (a*x + log((b?m0:m1)))
+          Known at this point:
+            in G: p1 := m0, p2 := m1, ga := g^a, gx := g^x, gax := g^ax
+          our deducibility should return a recipe
+          without log, for example:
+            gax*(b?p1:p2)
+          We can then instantiate p1 and p2 with the respective values
+          and just insert the let-abstractions.
+ *)
+ rnorm_unknown a x.
  rlet_abstract 2 xa (g^a).
  rlet_abstract 3 xx (g^x).
- rlet_abstract 4 xax (g^(a*x)).  print_goals : after_let.
- assumption -> ddh c. rnorm. rswap 3 2. print_goals : after_ddh.
+ rlet_abstract 4 xax (g^(a*x)).
+ assumption -> ddh c. rnorm. rswap 3 2.
  rrandom 5 _ (u -> u + log(b?m0:m1)) z1.
- rnorm. print_goals : after_random.
- rswap 4 2.  print_goals : after_swap.
- rindep.  print_goals : finished.
-
-
-
+ rnorm.
+ rswap 4 2.
+ rindep.

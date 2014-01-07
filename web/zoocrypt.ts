@@ -1,6 +1,8 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
 
+declare var ReconnectingWebSocket
+
 /* ******************************************************************/
 /* Debug logging                                                    */
 /* ******************************************************************/
@@ -16,11 +18,19 @@ function log(s) {
 /* Websocket connection                                             */
 /* ******************************************************************/
 var wsServer = window.location.hostname ? window.location.hostname : "127.0.0.1";
-var webSocket = new WebSocket("ws://" + wsServer + ":9999/");
+var webSocket = new ReconnectingWebSocket("ws://" + wsServer + ":9999/");
+var firstConnect = true;
+
+//webSocket.onclose = function(evt) {
+//  log("reconnecting to server");
+//  webSocket = new WebSocket("ws://" + wsServer + ":9999/");
+//};
 
 // send json request to zoocrypt websocket server
 function sendZoocrypt(m) {
-  webSocket.send(JSON.stringify(m));
+  if (webSocket) {
+    webSocket.send(JSON.stringify(m));
+  }
 }
 
 /* ******************************************************************/
@@ -33,7 +43,6 @@ var firstUnlocked : number  = 0;
 var originalLockedText : string = "";
 // the last locking marker, used for removal
 var lastMarker;
-
 
 function lockedText() : string {
   return editorProof.getValue().substring(0, firstUnlocked);
@@ -69,11 +78,17 @@ function getPrevDot(from : number) {
   return n;
 }
 
+var emacs = ace.require("ace/keyboard/emacs").handler;
+
 var editorProof = ace.edit("editor-proof");
 editorProof.setTheme("ace/theme/eclipse");
 editorProof.setHighlightActiveLine(false);
 editorProof.focus();
-
+editorProof.renderer.setShowGutter(false)
+editorProof.setKeyboardHandler(emacs);
+editorProof.getSession().setTabSize(2);
+editorProof.getSession().setUseSoftTabs(true);
+editorProof.getSession().setMode("ace/mode/zoocrypt")
 editorProof.getSession().getDocument().on("change", function(ev) {
     var lt = lockedText();
     if (lt !== originalLockedText) {
@@ -96,6 +111,14 @@ editorProof.getSession().getDocument().on("change", function(ev) {
   }
 );
 
+function markLocked(c) {
+  var Range = ace.require('ace/range').Range;
+  var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
+  if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
+  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),c,'word',false);
+
+}
+
 /* ******************************************************************/
 /* Goal and message editor and resizing                             */
 /* ******************************************************************/
@@ -103,24 +126,28 @@ editorProof.getSession().getDocument().on("change", function(ev) {
 var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
+editorGoal.renderer.setShowGutter(false)
 
 var editorMessage = ace.edit("editor-message");
 editorMessage.setTheme("ace/theme/eclipse");
 editorMessage.setHighlightActiveLine(false);
+editorMessage.renderer.setShowGutter(false)
 
 // resize windows
 function resizeAce() : void {
+  var hpadding = 25;
+  var vpadding = 75;
   var edit = $('#editor-proof');
-  edit.height($(window).height() - 50);
-  edit.width($(window).width()/2 - 50);
+  edit.height($(window).height() - vpadding + 13);
+  edit.width($(window).width()/2 - hpadding);
 
   edit = $('#editor-goal');
-  edit.height(($(window).height() - 50) * 0.7);
-  edit.width($(window).width()/2 - 50);
+  edit.height(($(window).height() - vpadding) * 0.9);
+  edit.width($(window).width()/2 - hpadding);
 
   edit = $('#editor-message');
-  edit.height(($(window).height() - 50) * 0.3);
-  edit.width($(window).width()/2 - 50);
+  edit.height(($(window).height() - vpadding) * 0.1);
+  edit.width($(window).width()/2 - hpadding);
 }
 
 //listen for changes
@@ -135,35 +162,54 @@ resizeAce();
 
 // Request proof script
 webSocket.onopen = function (evt) {
-  sendZoocrypt({'cmd':'load','arg':''});
+  if (firstConnect) {
+    sendZoocrypt({'cmd':'load','arg':''});
+  }
+  firstConnect = false;
 };
+
+interface Reply {
+  err : string;
+  msgs : Array<string>;
+  arg : string;
+  cmd : string;
+  ok_upto : number;
+}
 
 // handle websocket answers
 webSocket.onmessage = function (evt) {
   log(evt.data);
-  var m = JSON.parse(evt.data);
+  var m : Reply = JSON.parse(evt.data);
   // answer for eval
   if (m.cmd == 'setGoal') {
-    // FIXME: advance cursor only if everything handled successfully
-    var Range = ace.require('ace/range').Range;
-    var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
-    if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
-    lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'locked','word',false);
+    setFirstUnlocked(m.ok_upto);
+    markLocked('locked');
     editorGoal.setValue(m.arg);
     editorGoal.clearSelection();
-    editorMessage.setValue("We just received a new goal.");
+    var pos = editorGoal.getSession().getDocument().indexToPosition(0,0);
+    editorGoal.moveCursorToPosition(pos);
+    if (m.err) {
+      editorMessage.setValue(m.err);
+    } else {
+      editorMessage.setValue(m.msgs.length > 0 ? m.msgs[m.msgs.length - 1] : "No message received.");
+    }
     editorMessage.clearSelection();
   // answer for load
   } else if (m.cmd == 'setProof') {
     editorProof.setValue(m.arg);
     editorProof.clearSelection();
     editorProof.scrollPageUp();
-    editorMessage.setValue("We just set the proof.");
+    editorMessage.setValue("Proofscript loaded.");
     editorMessage.clearSelection();
-  } else if (m.cmd == "error") {
-    editorMessage.setValue("Error: "+ m.arg);
+    var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
+    editorProof.moveCursorToPosition(pos);
+  } else if (m.cmd == "saveOK") {
+    editorMessage.setValue("Proofscript saved.");
     editorMessage.clearSelection();
-  }
+  } else if (m.cmd == "saveFAILED") {
+    editorMessage.setValue("Save of proofscript failed.");
+    editorMessage.clearSelection();
+}
 };
 
 
@@ -175,11 +221,12 @@ function evalLocked() {
   var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
   editorProof.moveCursorToPosition(pos);
   editorProof.clearSelection();
-  var Range = ace.require('ace/range').Range;
-  if (lastMarker) { editorProof.getSession().removeMarker(lastMarker); }
-  lastMarker = editorProof.getSession().addMarker(new Range(0,0,pos.row,pos.column),'processing','word',false);
+  markLocked('processing');
   if (lockedText() !== "") {
     sendZoocrypt({'cmd':'eval','arg':lockedText()});
+  } else {
+    editorGoal.setValue("");
+    editorMessage.setValue("");
   }
 }
 
@@ -189,6 +236,18 @@ function evalNext() {
     setFirstUnlocked(nextDot + 1);
     evalLocked();
   }
+}
+
+function evalCursor() {
+  var pos = editorProof.getCursorPosition();
+  var idx = editorProof.getSession().getDocument().positionToIndex(pos,0);
+  var prevDot = getPrevDot(idx+1);
+  if (prevDot == -1) {
+    setFirstUnlocked(0);
+  } else {
+    setFirstUnlocked(prevDot + 1);
+  }
+  evalLocked();
 }
 
 function evalPrev() {
@@ -218,10 +277,22 @@ editorProof.commands.addCommand({
 });
 
 editorProof.commands.addCommand({
-  name: 'evalNext',
+  name: 'evalCursor',
   bindKey: {
     win: 'Ctrl-Enter',
     mac: 'Ctrl-Enter',
+    sender: 'editor|cli'
+  },
+  exec: function(env, args, request) {
+    evalCursor();
+  }
+});
+
+editorProof.commands.addCommand({
+  name: 'evalNext',
+  bindKey: {
+    win: 'Ctrl-n',
+    mac: 'Ctrl-n',
     sender: 'editor|cli'
   },
   exec: function(env, args, request) {
@@ -232,8 +303,8 @@ editorProof.commands.addCommand({
 editorProof.commands.addCommand({
   name: 'evalPrev',
   bindKey: {
-    win: 'Ctrl-Backspace',
-    mac: 'Ctrl-Backspace',
+    win: 'Ctrl-p',
+    mac: 'Ctrl-p',
     sender: 'editor|cli'
   },
   exec: function(env, args, request) {
