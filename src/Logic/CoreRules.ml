@@ -37,7 +37,7 @@ let fail_if_occur vs ju s =
 
 (* let check_conv ju1 ju2 = 
   ju_equal (norm_ju ju1) (norm_ju ju2) 
- *)
+*)
 
 let rconv do_norm_terms new_ju1 ju1 =
   let (nf,ctype) =
