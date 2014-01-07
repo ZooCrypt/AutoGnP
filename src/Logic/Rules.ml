@@ -106,7 +106,7 @@ let rlet_unfold p ju =
                 juc_ev = subst juc.juc_ev }
     in
     rconv false (set_ju_ctxt [] juc) ju
-  | _ -> fail_cmd "rlet_unfold: no let at given position"
+  | _ -> fail_rule "rlet_unfold: no let at given position"
 
 
 let rassm dir assm subst ju =
@@ -120,6 +120,6 @@ let rassm dir assm subst ju =
       | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
         when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
         Vsym.M.add x1 x2 s
-      | _ -> fail_cmd "rassm : can not infer subtitution")
+      | _ -> fail_rule "rassm : can not infer subtitution")
       subst c jc in
   rassm_decision dir subst assm ju

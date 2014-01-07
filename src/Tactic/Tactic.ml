@@ -12,11 +12,11 @@ module F  = Format
 
 let fail_unless c s =
   if not (c ()) then
-    fail_cmd s
+    fail_rule s
 
 let create_var reuse ps s ty =
   match Proofstate.create_var reuse ps s ty with
-  | None -> fail_cmd (F.sprintf "Variable %s already defined" s)
+  | None -> fail_rule (F.sprintf "Variable %s already defined" s)
   | Some v -> v
 
 let invert_ctxt (v,e) =
@@ -41,13 +41,13 @@ let invert_ctxt (v,e) =
                (Poly.exp_of_poly g)
     in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
   | (_nom, Some(_denom)) ->
-    fail_cmd "invert does not support denominators with hole-occurences in contexts"
+    fail_rule "invert does not support denominators with hole-occurences in contexts"
 
 let handle_tactic ps tac jus =
   let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in
   let ju = match jus with
     | ju::_ -> ju
-    | [] -> fail_cmd "cannot apply tactic: there is no goal"
+    | [] -> fail_rule "cannot apply tactic: there is no goal"
   in
   match tac with
   | Rnorm -> apply_rule rnorm ps
@@ -66,13 +66,13 @@ let handle_tactic ps tac jus =
       | Nary(Land,es) when j < List.length es ->
         List.nth es j
       | _ when j = 0 -> ev
-      | _ -> fail_cmd "rctxt_ev: bad index"
+      | _ -> fail_rule "rctxt_ev: bad index"
     in
     let ty = 
       if is_Eq b then (fst (destr_Eq b)).e_ty
       else if is_ElemH b then
         let (e1,_,_) = destr_ElemH b in e1.e_ty 
-      else fail_cmd "rctxt_ev: bad event"
+      else fail_rule "rctxt_ev: bad event"
     in
     let v1 = create_var false ps sv ty in
     let e1 = expr_of_parse_expr ps e in
@@ -84,7 +84,7 @@ let handle_tactic ps tac jus =
       else if is_ElemH ev then
         let (e1,e2,h) = destr_ElemH ev in
         mk_ElemH (inst_ctxt c e1) (inst_ctxt c e2) h 
-      else fail_cmd "rctxt_ev: bad event"
+      else fail_rule "rctxt_ev: bad event"
     in
 *)
     Format.printf "Rctxt_ev with %i and %a\n%!" j pp_exp e1;
@@ -108,10 +108,10 @@ let handle_tactic ps tac jus =
   | Rassm(dir,s,xs) ->
     let assm = 
       try Ht.find ps.ps_assms s 
-      with Not_found -> fail_cmd ("error no assumption "^s) in
+      with Not_found -> fail_rule ("error no assumption "^s) in
     let needed = Assumption.needed_var dir assm in
     if List.length needed <> List.length xs then
-      fail_cmd "Bad number of variables";
+      fail_rule "Bad number of variables";
     let subst = 
       List.fold_left2 (fun s v x -> 
         let v' = create_var_reuse ps x v.Vsym.ty in
@@ -130,7 +130,7 @@ let handle_tactic ps tac jus =
     let ty =
       match Game.get_ju_gcmd ju i with
       | Game.GSamp(v,_) -> v.Vsym.ty
-      | _ -> fail_cmd (F.sprintf "Line %i is not a sampling." i)
+      | _ -> fail_rule (F.sprintf "Line %i is not a sampling." i)
     in
     let ps' = ps_copy ps in
     let v2 = create_var false ps' sv2 ty in
@@ -145,7 +145,7 @@ let handle_tactic ps tac jus =
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
       | None ->
-        fail_cmd "invert only implemented for Fq"
+        fail_rule "invert only implemented for Fq"
     in
     let vlet = create_var false ps svlet ty in
     apply_rule (rrandom i (v1,e1) (v2,e2) vlet) ps
@@ -154,7 +154,7 @@ let handle_tactic ps tac jus =
     let ty =
       match Game.get_ju_lcmd ju (i,j,k) with
       | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
-      | _ -> fail_cmd (F.sprintf "Position %i,%i,%i is not a sampling." i j k)
+      | _ -> fail_rule (F.sprintf "Position %i,%i,%i is not a sampling." i j k)
     in
     let ps' = ps_copy ps in
     let v2 = create_var false ps' sv2 ty in
@@ -168,7 +168,7 @@ let handle_tactic ps tac jus =
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
       | None ->
-        fail_cmd "invert only implemented for Fq"
+        fail_rule "invert only implemented for Fq"
     in
     let vlet = create_var false ps svlet ty in
     apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2) vlet) ps
@@ -179,7 +179,7 @@ let handle_tactic ps tac jus =
       | Game.GLet(_,e') when is_H e' ->
         let _,e = destr_H e' in
         e.e_ty
-      | _ -> fail_cmd (F.sprintf "Line %is not hash assignment." i)
+      | _ -> fail_rule (F.sprintf "Line %is not hash assignment." i)
     in
     let vx = create_var false ps sx ty in
     apply_rule (rbad i vx) ps
@@ -227,28 +227,28 @@ let handle_instr ps instr =
   match instr with
   | RODecl(s,t1,t2) ->
     if Ht.mem ps.ps_rodecls s then
-      fail_cmd "Random oracle with same name already declared.";
+      fail_rule "Random oracle with same name already declared.";
     Ht.add ps.ps_rodecls s
       (Hsym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     (ps, "Declared random oracle")
 
   | EMDecl(s,g1,g2,g3) ->
     if Ht.mem ps.ps_emdecls s then
-      fail_cmd "Bilinear map with same name already declared.";
+      fail_rule "Bilinear map with same name already declared.";
     Ht.add ps.ps_emdecls s
       (Esym.mk s (create_groupvar ps g1) (create_groupvar ps g2) (create_groupvar ps g3));
     (ps, "Declared bilinear map.")
 
   | ODecl(s,t1,t2) ->
       if Ht.mem ps.ps_odecls s then 
-        fail_cmd "Oracle with same name already declared.";
+        fail_rule "Oracle with same name already declared.";
     Ht.add ps.ps_odecls s 
       (Osym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     (ps, "Declared oracle.")
 
   | ADecl(s,t1,t2) ->
     if Ht.mem ps.ps_adecls s then 
-      fail_cmd "adversary with same name already declared.";
+      fail_rule "adversary with same name already declared.";
     Ht.add ps.ps_adecls s 
       (Asym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     (ps, "Declared adversary.")
@@ -259,10 +259,10 @@ let handle_instr ps instr =
     let g1 = gdef_of_parse_gdef true ps' g1 in
     let priv = List.fold_left (fun s x -> 
       try Vsym.S.add (Ht.find ps'.ps_vars x) s
-      with Not_found -> fail_cmd ("unknown variable "^x))
+      with Not_found -> fail_rule ("unknown variable "^x))
       Vsym.S.empty priv in
     if Ht.mem ps.ps_assms s then
-      fail_cmd "assumption with the same name already exists";
+      fail_rule "assumption with the same name already exists";
     Ht.add ps.ps_assms s (Assumption.mk_ad g0 g1 priv);
     (ps, "Declared assumption.")
     
@@ -274,19 +274,19 @@ let handle_instr ps instr =
   | Apply(tac) ->
     begin match ps.ps_goals with (* FIXME: more message *)
     | Some(jus) -> (handle_tactic ps tac jus, "Applied tactic.") 
-    | None -> fail_cmd "apply: no goals"
+    | None -> fail_rule "apply: no goals"
     end
 
   | Last ->
     begin match ps.ps_goals with
     | Some(ju::jus) -> ({ ps with ps_goals = Some(jus@[ju]) }, "Delayed current goal.")
-    | _ -> fail_cmd "last: no goals"
+    | _ -> fail_rule "last: no goals"
     end
 
   | Admit ->
     begin match ps.ps_goals with
     | Some(_::jus) -> ({ ps with ps_goals = Some(jus) }, "Admit goal.")
-    | _ -> fail_cmd "admit: no goals"
+    | _ -> fail_rule "admit: no goals"
     end
 
   | PrintGoals(s) ->

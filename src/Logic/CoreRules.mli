@@ -5,10 +5,13 @@ open Expr
 open Assumption
 open Util
 
-exception Invalid_cmd of string
+(** Exception that captures rule application errors. *)
+exception Invalid_rule of string
 
-val fail_cmd : string -> 'a
+(** [fail_rule s] raises a rule application error with information [s]. *)
+val fail_rule : string -> 'a
 
+(** [apply ru jus] applies the rule [ru] to the first judgment in [jus] *)
 val apply : (judgment -> judgment list) -> judgment list -> judgment list
 
 (** [rconv b j' j] returns [j'] if [j] and [j'] are equal
@@ -16,6 +19,11 @@ val apply : (judgment -> judgment list) -> judgment list -> judgment list
     to the equational theory. *)
 val rconv : bool -> judgment -> judgment -> judgment list
 
+(** [rctxt_ev ctx i ju] returns the judgment resulting from
+    replacing the [i]-th conjunct in the event of [ju]
+    with (a) [ctx(a) = ctx(b)] if it is equal to [a = b]
+    and (b) [ ctx(a) in \[ ctx(b) | x in l \] ] if it
+    is equal to [ a in \[ b | x in l\]]. *)
 val rctxt_ev : ctxt -> int -> judgment -> judgment list
 
 (** [rrandom p ctx1 ctx2 v ju] returns the judgment resulting
@@ -44,6 +52,7 @@ val rexcept : gcmd_pos -> expr list -> judgment -> judgment list
     (possibly empty) set of excepted values [es'] with [es]. *)    
 val rexcept_oracle : ocmd_pos -> expr list -> judgment -> judgment list
 
+(** [radd_test p e asym vs ju] returns the judgments resulting from ... FIXME *)
 val radd_test : ocmd_pos -> expr -> Asym.t -> Vsym.t list -> judgment -> judgment list
 
 (** [rrewrite_oracle p d j] returns the judgment resulting from rewriting
@@ -59,8 +68,15 @@ val rswap : gcmd_pos -> int -> judgment -> judgment list
     the command at oracle positions [p] [i] positons forward. *)
 val rswap_oracle : ocmd_pos -> int -> judgment -> judgment list
 
+(** [rrandom_indep ju] completes the proof of judgments of the
+     form [(G; r <- d) : E] where [E = /\_i ci] and
+     (a) [ci = (r = e)]  where r does not occur in e,
+     (b) [ci = (e = r)]  where r does not occur in e, or
+     (c) [ci = (r in L)] where r does not occur in L. *)
 val rrandom_indep : judgment -> judgment list
 
+(** [rassm_decision dir vmap assm ju] returns the judgment resulting from ... FIXME *)
 val rassm_decision : direction -> Vsym.t Vsym.M.t -> assumption_decision -> judgment -> judgment list
 
+(** [rbad p vsx ju] returns the judgment resulting from ... FIXME *)
 val rbad : int -> Vsym.t -> judgment -> judgment list

@@ -105,8 +105,8 @@ let process_eval proofscript =
       with
         | PU.ParseError s ->
           `String (F.sprintf "parse error: %s" s)
-        | Invalid_cmd s ->
-          `String (F.sprintf "invalid command: %s" s)
+        | Invalid_rule s ->
+          `String (F.sprintf "invalid rule application: %s" s)
         | e ->
           `String (F.sprintf "unknown error: %s" (Printexc.to_string e))
     in
