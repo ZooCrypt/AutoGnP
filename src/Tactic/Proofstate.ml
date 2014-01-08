@@ -1,4 +1,5 @@
 (** Goals and mappings from strings to variables/symbols. *)
+
 module Ht = Hashtbl
 module T = Type
 module G = Game
@@ -24,7 +25,8 @@ let mk_ps () =
     ps_emdecls = Ht.create 20;
     ps_assms   = Ht.create 5;
     ps_vars    = Ht.create 20; 
-    ps_goals   = None }
+    ps_goals   = None
+  }
 
 let ps_copy ps =
   { ps_lvars   = Ht.copy ps.ps_lvars;
@@ -41,7 +43,8 @@ let ps_copy ps =
 let ps_resetvars ps =
   { ps with
     ps_vars    = Ht.create 20;
-    ps_goals   = None }
+    ps_goals   = None
+  }
 
 let create_lenvar ps s =
   try Ht.find ps.ps_lvars s 

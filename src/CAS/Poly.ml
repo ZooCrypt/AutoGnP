@@ -48,7 +48,6 @@ and is_mon0 e =
 (* ----------------------------------------------------------------------- *)
 (** {2 Field expressions as polynomials (fe = f / g) } *)
 
-type var = int
 type 'a monom = ('a * int) list (* m_i = x_i^j_i *)
 type coeff = int
 type 'a poly = (coeff * 'a monom) list (* a_1 * m_1 + .. + a_k * m_k *)
@@ -114,7 +113,20 @@ let polys_of_field_expr e =
   else (conv_fe0 e, None)
 
 (* ----------------------------------------------------------------------- *)
-(** {3 For debugging only } *)
+(** {3 Factoring out polynomials} *)
+
+let factor_out a p =
+  lefts_rights
+    (L.map
+      (fun (c,es) ->
+         match L.partition (fun (e,_) -> e_equal e a) es with
+         | ([(_,1)],others) -> Left(c,others)
+         | ([],others)      -> Right(c,others)
+         | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a |> fsget))
+      p)
+
+(* ----------------------------------------------------------------------- *)
+(** {4 For debugging only } *)
 
 let string_of_monom m =
   let go acc (i,k) =
@@ -129,13 +141,3 @@ let _string_of_poly p =
   S.concat " + "
     (L.map (fun (i,m) ->  (if i = 1 then "" else string_of_int i)
                             ^(string_of_monom m)) p)
-
-let factor_out a p =
-  lefts_rights
-    (L.map
-      (fun (c,es) ->
-         match L.partition (fun (e,_) -> e_equal e a) es with
-         | ([(_,1)],others) -> Left(c,others)
-         | ([],others)      -> Right(c,others)
-         | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a |> fsget))
-      p)

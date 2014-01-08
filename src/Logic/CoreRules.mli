@@ -11,7 +11,7 @@ exception Invalid_rule of string
 (** [fail_rule s] raises a rule application error with information [s]. *)
 val fail_rule : string -> 'a
 
-(** [apply ru jus] applies the rule [ru] to the first judgment in [jus] *)
+(** [apply ru jus] applies the rule [ru] to the first judgment in [jus]. *)
 val apply : (judgment -> judgment list) -> judgment list -> judgment list
 
 (** [rconv b j' j] returns [j'] if [j] and [j'] are equal
@@ -55,7 +55,13 @@ val rexcept : gcmd_pos -> expr list -> judgment -> judgment list
     (possibly empty) set of excepted values [es'] with [es]. *)    
 val rexcept_oracle : ocmd_pos -> expr list -> judgment -> judgment list
 
-(** [radd_test p e asym vs ju] returns the judgments resulting from ... FIXME *)
+(** [radd_test p tnew asym vs ju] returns the judgments resulting from
+     adding the test [tnew] at oracle position [p = (i,j,k)]. The two new
+     judgments for [ju = G : E] are (1) [ G' : E ] where [G'] is obtained
+     from [G] by adding the test [tnew] to the oracle
+     and (2) [ G'_{1..i}; vs <- A() : t /\ not tnew]
+     where [G'_{1..i}] is the prefix of [G'] including [i] and [t] is
+     the original test in the oracle. *)
 val radd_test : ocmd_pos -> expr -> Asym.t -> Vsym.t list -> judgment -> judgment list
 
 (** [rrewrite_oracle p d j] returns the judgment resulting from rewriting
@@ -78,8 +84,15 @@ val rswap_oracle : ocmd_pos -> int -> judgment -> judgment list
      (c) [ci = (r in L)] where r does not occur in L. *)
 val rrandom_indep : judgment -> judgment list
 
-(** [rassm_decision dir vmap assm ju] returns the judgment resulting from ... FIXME *)
+(** [rassm_decision dir vmap assm ju] returns the judgment resulting from
+    applying the decisional assumption [assm] with the variable renaming
+    [vmap] in direction [dir] to [ju]. *)
 val rassm_decision : direction -> Vsym.t Vsym.M.t -> assumption_decision -> judgment -> judgment list
 
-(** [rbad p vsx ju] returns the judgment resulting from ... FIXME *)
+(** [rbad p vsx ju] returns the judgment resulting from
+    applying an up-to bad step with respect to a hash-query
+    [let y = h(e)] in position [p]. In the new judgments, the
+    hash query is replaced by [y <- d ]. The first judgment
+    keeps the event and the second judgment uses the event
+    [e in \[ x | x <- Lh\]] with variable [vsx]. *)
 val rbad : int -> Vsym.t -> judgment -> judgment list

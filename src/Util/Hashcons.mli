@@ -5,12 +5,12 @@
     for each value of the type that can be used for [Map]s, [Set]s,
     and [Hashtbl]s. *)
 
-(** We can hashcons values for which the {!HashedType} interface is implemented *)
+(** We can hashcons values for which the {!HashedType} interface is implemented. *)
 module type HashedType =
   sig
     type t
     val equal : t -> t -> bool
-      (** Equality function used type *)
+      (** Equality function used for type. *)
 
     val hash : t -> int
       (** Return [int] hash of value used for hashtable storage and retrieval.

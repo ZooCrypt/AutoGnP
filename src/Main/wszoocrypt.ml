@@ -3,6 +3,7 @@ open Util
 open Tactic
 open CoreRules
 open Proofstate
+open Deduc
 
 module YS = Yojson.Safe
 module F = Format

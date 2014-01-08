@@ -69,7 +69,7 @@ prove
 
 (* The two remaining random variables to which we could apply rrandom are x2 and y2:
     x2 has coefficient (v - u*w), y2 has coefficient H(g^u, g^v, g^z2)*...,
-    in the first exponent, so we pick x2 since (v -u*w) is nonzero. *)
+    in the first exponent, so we pick x2 since (v - u*w) is nonzero. *)
   rswap 10 1.
   rrandom 11 _ (y -> x1*u + y*v - w*y*u - w*y2*u*H(g^u,g^v,g^z2) +
                      y1*u*H(g^u,g^v,g^z2) + y2*v*H(g^u,g^v,g^z2)) r_x2. rnorm.

@@ -147,7 +147,7 @@ let invert from to_ =
         let k = ref (List.map (fun e -> get e, e) k) in
         Se.iter (fun u ->
           try 
-            let inv = CAS.solve_xor !k u in
+            let inv = DeducXor.solve_xor !k u in
             add u inv;
             k := (inv, u) :: !k
           with Not_found -> ()) u
@@ -180,8 +180,5 @@ let invert from to_ =
       done;
       raise Not_found 
     with Found inv -> inv
-
- 
-
     
     

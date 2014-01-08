@@ -107,8 +107,27 @@ let reduce_pivot m r c =
     if r' <> r & m.(r').(c) = true then
       add_row_to m r' r)
 
+(* let add_col vs a =
+  let i = ref (-1) in
+  List.map (fun v -> i := !i + 1; append v (make 1 a.(!i))) vs
+ *)
+
+let transpose m =
+  let rownum = length m in
+  let colnum = length m.(0) in
+  let newrow = make rownum false in
+  let m'     = make colnum newrow in
+  iter_rows m' (fun r ->
+    m'.(r) <- make rownum false;
+    iter_cols_with_sol m' (fun c ->
+      m'.(r).(c) <- m.(c).(r)));
+  m'
+
 let solve (m0 : (bool array) list) (b : bool array) =
   let m = of_list (m0 @ [b]) in
+  (* F.printf "%a%!\n\n" (pp_matrix (fun fmt b -> F.fprintf fmt "%i" (if b then 1 else 0)))  m; *)
+  let m = transpose m in
+  (* F.printf "%a%!\n\n" (pp_matrix (fun fmt b -> F.fprintf fmt "%i" (if b then 1 else 0)))  m; *)
   let rec go () =
     match is_solved m with
     | Pivot(r,c) ->

@@ -64,7 +64,7 @@ let rconv do_norm_terms new_ju1 ju1 =
 
 (** Transformation of the event *)
 (* Applying context to ev *)
-let rctxt_ev (c : ctxt) (i : int) ju = 
+let rctxt_ev (c : ctxt) (i : int) ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
   if i < 0 || i >= List.length evs then failwith "invalid event position";
@@ -205,7 +205,7 @@ let rexcept_oracle p es  ju =
 
 (** Up-to bad: adding a new test to oracle *)
 
-(* We get tow new judgments for G : E after
+(* We get two new judgments for G : E after
    applying 'radd_test (i,j,k) t' vz A':
    G' : E (where the test t' is added to the oracle)
    and

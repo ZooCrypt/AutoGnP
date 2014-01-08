@@ -1,12 +1,13 @@
 open Expr
-open Type
 open Poly
-open Util
 open CASLexer
 
 module F = Format
 module L = List
 module Ht = Hashtbl
+
+(* ----------------------------------------------------------------------- *)
+(** {1 Pure field expressions without other operators} *)
 
 (* field expression *)
 type fexp =
@@ -26,7 +27,7 @@ let rec string_of_fexp e = match e with
   | SPlus(a,b) -> F.sprintf "(%s + %s)" (string_of_fexp a) (string_of_fexp b)
   | SMult(a,b) -> F.sprintf "(%s * %s)" (string_of_fexp a) (string_of_fexp b)
 
-(* Abstraction of 'Expr.expr' to 'sfexp' *)
+(* Abstraction of [Expr.expr] to [sfexp] *)
 let rec rename hr = function 
   | SV i -> SV (Ht.find hr i)
   | (SNat _) as e -> e
@@ -35,6 +36,10 @@ let rec rename hr = function
   | SPlus(e1,e2) -> SPlus (rename hr e1, rename hr e2)
   | SMult(e1,e2) -> SMult (rename hr e1, rename hr e2)
 
+(* [abstract_non_field_multiple before es] abstracts all
+   expressions in [es] at once sharing variables for
+   common non-field subexpression. It also applies the
+   [before] function to expressions beforehand. *)
 let abstract_non_field_multiple before es =
   let c = ref 0 in
   let he = He.create 17 in
@@ -69,12 +74,14 @@ let abstract_non_field_multiple before es =
                       Ht.add hv i e) binding;
   (List.map (rename hr) ses, !c, hv)
 
+(* See [abstract_non_field *)
 let abstract_non_field before e =
   match abstract_non_field_multiple before [e] with
   | ([e],c,hv) -> (e,c,hv)
   | _ -> assert false
 
-(** Parser for Singular Polynomials in Q[x1,..,xk] *)
+(* ----------------------------------------------------------------------- *)
+(** {2 Parser for Singular Polynomials in Q[x1,..,xk]} *)
 
 (* for debugging / error messages *)
 let string_of_token t = match t with
@@ -99,7 +106,7 @@ let lex_to_list lexer s =
   in go ()
 
 (* Parse CAS result into Poly.poly data type.
-   We don't have nesting, so we use a custom parser. *)
+   We do not have nesting, so we use a custom parser. *)
 let parse_poly s =
   let rec pterm toks poly coeff mon  = match toks with
     | OPEN::rest                  -> pterm rest poly coeff mon
@@ -121,9 +128,8 @@ let parse_poly s =
                 ^ string_of_tokens toks)
   in pterm (lex_to_list CASLexer.lex s) [] 1 []
 
-(** Abstraction of non-field expression with variables *)
-
-(** Using CAS to perform polynomial computations *)
+(* ----------------------------------------------------------------------- *)
+(** {3 Using CAS to perform polynomial computations.} *)
 
 type systems = Singular | Macaulay
 
@@ -160,12 +166,15 @@ let call_system sys cmd linenum =
   in loop [] linenum
 
 let import_poly (caller : string) poly (hv : (int, expr) Ht.t) =
-  exp_of_poly (map_poly (fun i -> try Ht.find hv i
-                                  with Not_found -> failwith ("invalid variable returned by "^caller))
-               poly)
+  exp_of_poly
+    (map_poly
+       (fun i ->
+          try Ht.find hv i
+          with Not_found ->
+            failwith ("invalid variable returned by "^caller))
+       poly)
 
-
-let ht_norm_singular = Ht.create 17
+let cache_norm_singular = Ht.create 17
 
 let norm_singular se c hv =
   let convert_polys (p1,p2) =
@@ -175,7 +184,7 @@ let norm_singular se c hv =
     else mk_FDiv num denom
   in
   try
-    convert_polys (Ht.find ht_norm_singular se)
+    convert_polys (Ht.find cache_norm_singular se)
   with
     Not_found ->
     let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
@@ -189,7 +198,7 @@ let norm_singular se c hv =
     | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
       let p1 = parse_poly snum in
       let p2 = parse_poly sdenom in
-      Ht.add ht_norm_singular se (p1,p2);
+      Ht.add cache_norm_singular se (p1,p2);
       convert_polys (p1,p2)
     | repls ->
       failwith (F.sprintf "norm_singular: unexpected result %s\n"
@@ -216,7 +225,7 @@ let _norm_macaulay se c hv =
       failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
                   (String.concat "\n" repls))
 
-let ht_mod_reduce_macaulay = Ht.create 17
+let cache_mod_reduce_macaulay = Ht.create 17
 
 let _mod_reduce_macaulay a b =
   let (sa,sb,c) =
@@ -225,7 +234,7 @@ let _mod_reduce_macaulay a b =
     | _ -> assert false
   in
   try
-    Ht.find ht_mod_reduce_macaulay (sa,sb)
+    Ht.find cache_mod_reduce_macaulay (sa,sb)
   with
     Not_found -> 
     let vars = Array.to_list (Array.init c (F.sprintf "x%i")) in
@@ -240,7 +249,7 @@ let _mod_reduce_macaulay a b =
     | [ _s1; sremainder ] ->
       (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
       let res = sremainder = "true" in
-      Ht.add ht_mod_reduce_macaulay (sa,sb) res;
+      Ht.add cache_mod_reduce_macaulay (sa,sb) res;
       res
     | repls ->
       failwith (F.sprintf "norm_macaulay: unexpected result %s\n"
@@ -276,77 +285,10 @@ let mod_reduce_singular a b =
       failwith (F.sprintf "mod_reduce_singular: unexpected result %s\n"
                  (String.concat "\n" repls))
 
+(* ----------------------------------------------------------------------- *)
+(** {4 Computing the normal form and reducing modulo a polynomial.} *)
 
 let mod_reduce = mod_reduce_singular
-
-let direct_subterms o s es = 
-  let go acc e =
-    match e.e_node with
-    | Nary(o',es') when o = o' ->
-      Se.union acc (se_of_list es')
-    | _ ->
-      Se.add e s
-  in
-  List.fold_left go s es
-
-let xor_to_vec rows bindings e =
-  let arr = Array.make rows false in
-  let set_idx e =
-     Array.set arr (Ht.find bindings e) true
-  in
-  (match e.e_node with
-   | Nary(Xor,es') ->
-     List.iter set_idx es'
-   | _ ->
-     set_idx e);
-  arr
-
-(* Try to compute xor context that deduces e from es *)
-let solve_xor ecs e =
-  let es     = L.map snd ecs in
-  let es_sts = direct_subterms Xor Se.empty es in
-  let rows   = Se.cardinal es_sts in
-  let e_sts  = direct_subterms Xor Se.empty [e] in
-  if (not (Se.subset e_sts es_sts)) then
-    failwith "secret contains subterms that do not occur in known terms";
-    (* raise Not_found; *)
-  let bindings  = Ht.create rows in
-  let ibindings = Ht.create rows in  
-  List.iteri
-    (fun i e ->
-       Ht.add bindings e i;
-       Ht.add ibindings i e)
-    (Se.elements es_sts);
-  let colvecs = List.map (xor_to_vec rows bindings) es in
-  let vec = xor_to_vec rows bindings e in
-  let msolvec = LinAlg.solve colvecs vec in
-  let cs = L.map fst ecs in
-  let ctxt =
-    match msolvec with
-    | None -> failwith "no solution" (*raise Not_found*)
-    | Some(solvec) ->
-        mk_Xor
-          (cat_Some
-            (L.map2 (fun b_i ct -> if b_i then Some ct else None) solvec cs))
-  in
-  Format.printf "%a\n\n%!" pp_exp ctxt;
-  ctxt
-
-(* FIXME: move this file *)
-let _test_solve_xor () =
-  let l = Lenvar.mk "l" in
-  let t = mk_BS l in
-  let vx = Vsym.mk "x" t in
-  let vy = Vsym.mk "y" t in  
-  let vz = Vsym.mk "z" t in
-  let (x,y,z) = (mk_V vx, mk_V vy, mk_V vz) in
-  let a = mk_Xor [x;y] in
-  let b = mk_Xor [y;z] in  
-  let c = mk_Xor [x;z] in
-  let p1 = mk_V (Vsym.mk "p1" t) in
-  let p2 = mk_V (Vsym.mk "p2" t) in  
-  let c = solve_xor [(p1,a); (p2,b)] c in
-  failwith (fsprintf "Deduced context %a\n%!" pp_exp c |> fsget)
 
 let norm before e =
   let (se,c,hv) = abstract_non_field before e in
