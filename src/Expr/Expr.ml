@@ -584,7 +584,8 @@ struct
     | _ ->
       (* FIXME: the message you get from this is really confusing,
         expected t, got t, ..., expected product type *)
-      raise (TypeError(e.e_ty,e.e_ty,e,None,"mk_Proj expected product type"))
+      raise (TypeError(e.e_ty,e.e_ty,e,None,
+             (F.sprintf "mk_Proj expected product type with at least %i components" (i+1))))
 
   let mk_Exists e1 e2 h =
     ensure_ty_equal e1.e_ty e2.e_ty e1 None "mk_ElemH";

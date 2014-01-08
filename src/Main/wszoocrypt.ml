@@ -107,6 +107,8 @@ let process_eval proofscript =
           `String (F.sprintf "parse error: %s" s)
         | Invalid_rule s ->
           `String (F.sprintf "invalid rule application: %s" s)
+        | Expr.TypeError  e ->
+          `String (F.sprintf "type error: %s" (Expr.typeError_to_string e))
         | e ->
           `String (F.sprintf "unknown error: %s" (Printexc.to_string e))
     in
