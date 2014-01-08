@@ -579,9 +579,11 @@ struct
 
   let mk_Proj i e = 
     match e.e_ty.ty_node with
-    | Prod(tys) when i >= 0 && List.length tys < i -> 
+    | Prod(tys) when i >= 0 && List.length tys > i -> 
       E.mk (Proj(i,e)) (List.nth tys i)
-    | _ -> 
+    | _ ->
+      (* FIXME: the message you get from this is really confusing,
+        expected t, got t, ..., expected product type *)
       raise (TypeError(e.e_ty,e.e_ty,e,None,"mk_Proj expected product type"))
 
   let mk_Exists e1 e2 h =
@@ -825,9 +827,12 @@ let typeError_to_string (ty1,ty2,e1,me2,s) =
       format_to_string (fun fmt ->
         F.fprintf fmt "incompatible types `%a' vs. `%a' for expressions `%a' and `%a' in %s"
           pp_ty ty1 pp_ty ty2 pp_exp e1 pp_exp e2 s)
+  | None when ty_equal ty1 ty2 ->
+      format_to_string (fun fmt ->
+        F.fprintf fmt "type error in `%a' of type %a: %s" pp_exp e1 pp_ty ty1 s)
   | None ->
       format_to_string (fun fmt ->
-        F.fprintf fmt "expected type `%a', got  `%a' for Expression `%a' in %s"
+        F.fprintf fmt "expected type `%a', got  `%a' for Expression `%a': %s"
           pp_ty ty1 pp_ty ty2 pp_exp e1 s)
 
 let catch_TypeError f =
@@ -860,7 +865,6 @@ let sub t =
   let x2 = Vsym.mk "x" t in
   let e, z = aux (mk_V x1) (mk_V x2) in
   (x1,(x2,e)), z
-
     
 let mk_Zero t = snd (sub t)
 
