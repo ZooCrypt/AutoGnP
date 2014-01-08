@@ -10,5 +10,5 @@ val norm_expr : expr -> expr
 val abbrev_ggen : expr -> expr
 
 (** [e_equalmod e1 e2] returns [true] if [e1] and [e2] are equal modulo
-    the equational theory *)
+    the equational theory. *)
 val e_equalmod : expr -> expr -> bool
