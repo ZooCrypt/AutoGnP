@@ -164,6 +164,7 @@ expr :
 expr0 :
 | EXISTS bd=hbindings MID e1 = expr1 EQUAL e2 = expr1
      { Exists(e1,e2,bd) }
+| e1 = expr0 BACKSLASH i = NAT { Proj(i,e1) }
 | e1 = expr1 EQUAL e2 = expr1 { Eq(e1,e2) }
 | e1 = expr1 QUESTION e2 = expr1 COLON e3 = expr1 { Ifte(e1, e2, e3) }
 | e = expr1 { e }
@@ -195,11 +196,11 @@ exprlist0 :
 | e = expr0 COMMA l = exprlist0 { e::l }
 
 expr6 :
-| s = ID { V(s) }
-| UNIT   { Tuple [] }
+| s = ID  { V(s) }
+| UNIT    { Tuple [] }
 | i = NAT { CFNat i }
 | i = GEN { CGen(i) }
-| i = ZBS  { CZ(i) }
+| i = ZBS { CZ(i) }
 | TRUE    { CB(true) }
 | FALSE   { CB(false) }
 | s = AID LPAREN l = exprlist0 RPAREN { HApp(s,l) }
