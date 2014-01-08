@@ -298,7 +298,8 @@ val inst_ctxt : ctxt -> expr -> expr
                           and [inst_ctxt c e2 e2] = [zero] 
 *)
 val sub : ty -> (Vsym.t * ctxt) * expr
-
+val mk_Zero : ty -> expr
+val is_Zero : expr -> bool
 
 val typeError_to_string :
   'a gty * 'a gty * 'a gexpr * 'a gexpr option * string -> string

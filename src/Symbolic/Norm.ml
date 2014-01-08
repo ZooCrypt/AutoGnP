@@ -72,12 +72,17 @@ and mk_simpl_nop op l =
   | Xor -> 
     let l = List.flatten (List.map destr_xor l) in
     let l = List.sort e_compare l in
+    let e = List.hd l in
     let rec aux l = 
       match l with
       | [] | [_] -> l
       | e1::((e2::l) as l1) -> 
         if e_equal e1 e2 then aux l else e1 :: aux l1 in
-    mk_Xor (aux l)
+    List.iter (fun e -> Format.printf "%a " pp_exp e) l;
+    let l = aux l in
+    let l = List.filter (fun e -> not (is_Zero e)) l in
+    if l = [] then mk_Zero e.e_ty 
+    else mk_Xor (aux l)
       
   | Land -> 
     let l = List.flatten (List.map destr_xor l) in

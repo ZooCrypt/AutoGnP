@@ -18,4 +18,4 @@ val rlet_unfold : int -> judgment -> judgment list
 
 val rassm : Util.direction -> assumption_decision -> Vsym.t Vsym.M.t -> judgment -> judgment list
 
-val last_random_indep : judgment -> judgment list
+val rrandom_indep : judgment -> judgment list

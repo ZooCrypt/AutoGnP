@@ -188,29 +188,32 @@ let last_random_indep ju =
     let ev= ju.ju_ev in
     let fv = e_vars ev in
     let bds, ms = init_inverters ev in
-    List.iter (fun (_,e1m2,_,_,_) -> 
-      Format.printf "%a@." pp_exp e1m2) ms;
     let msv = List.map (fun (_,e1m2,_,_,x) -> e1m2, x) ms in
     let er = mk_V r in
     let vs = Se.elements (Se.remove er fv) in
     let vs = List.map (fun x -> x, x) vs in
     let bds = List.map (fun (x,_) -> let e = mk_V x in e, e) bds in
-    Format.printf "ICI1@.";
-    let inv = Deduc.invert (vs@bds@msv) er in
-    Format.printf "ICI2@.";
+    let inv = 
+      try Deduc.invert (vs@bds@msv) er 
+      with Not_found -> failwith "can not find inverter" in
     let used = e_vars inv in
     let tomerge = List.filter (fun (_,_,_,_,x) -> Se.mem x used) ms in
     let tomergei = List.map (fun (i,_,_,_,_) -> i) tomerge in 
     let ctxt = 
-      let e = mk_Tuple (List.map (fun (_,e,_,_,_) -> e) tomerge) in
-      let vx = Vsym.mk "x" e.e_ty in
-      let x = mk_V vx in
-      let projs = List.mapi (fun i _ -> mk_Proj i x) tomerge in
-      let app_proj inv (_,_,c,_,x) p = 
-        let x = destr_V x in
-        inst_ctxt (x,inv) (inst_ctxt c p) in
-      let inv = List.fold_left2 app_proj inv tomerge projs in
-      vx, inv in
+      if List.length tomerge = 1 then
+        let  (_,_,c,_,x1) = List.hd tomerge in
+        let x = destr_V x1 in
+        fst c, inst_ctxt (x,inv) (snd c)
+      else 
+        let e = mk_Tuple (List.map (fun (_,e,_,_,_) -> e) tomerge) in
+        let vx = Vsym.mk "x" e.e_ty in
+        let x = mk_V vx in
+        let projs = List.mapi (fun i _ -> mk_Proj i x) tomerge in
+        let app_proj inv (_,_,c,_,y) p = 
+          let y = destr_V y in
+          inst_ctxt (y,inv) (inst_ctxt c p) in
+        let inv = List.fold_left2 app_proj inv tomerge projs in
+        vx, inv in
     let pos = match List.rev tomerge with
       | (i,_,_,_,_) :: _ -> i 
       | _ -> assert false in
@@ -223,23 +226,9 @@ let last_random_indep ju =
       ] ju
 
   | _ -> failwith "The last instruction is not a sampling"
-(*
-let find_random r c = 
-  let r 
-let random_indep r ju = 
-  let 
-let random_indep ju = 
-  let g = ju.ju_gdef in
-  let ev = ju.ju_ev in
-  let fv = e_vars ev in
-  let rec aux rc c =
-    match c with
-    | [] -> failwith "not able to apply random_indep"
-
-    
-  let 
-*)
-
-
   
   
+let rrandom_indep ju = 
+  try rrandom_indep ju 
+  with _ ->
+    last_random_indep ju

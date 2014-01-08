@@ -862,3 +862,17 @@ let sub t =
   (x1,(x2,e)), z
 
     
+let mk_Zero t = snd (sub t)
+
+let rec is_Zero e = 
+  match e.e_node with
+  | Cnst (B false) -> true
+  | Cnst (FNat 0) -> true
+  | Cnst Z -> true
+  | Tuple es -> List.for_all is_Zero es
+  | App(GExp, [e1;e2]) -> 
+    is_Zero e2 || is_Zero e1
+  | _ -> false
+
+
+    
