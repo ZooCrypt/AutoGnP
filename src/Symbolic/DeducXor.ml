@@ -11,7 +11,7 @@ let direct_subterms o s es =
     | Nary(o',es') when o = o' ->
       Se.union acc (se_of_list es')
     | _ ->
-      Se.add e s
+      Se.add e acc
   in
   List.fold_left go s es
 
@@ -33,7 +33,11 @@ let solve_xor ecs e =
   let rows   = Se.cardinal es_sts in
   let e_sts  = direct_subterms Xor Se.empty [e] in
   if (not (Se.subset e_sts es_sts)) then
-    failwith "secret contains subterms that do not occur in known terms";
+    failwith (fsprintf
+                "secret contains subterms that do not occur in known terms: %a !< %a"
+                (pp_list ", " pp_exp) (Se.elements e_sts)
+                (pp_list ", " pp_exp) (Se.elements es_sts)
+              |> fsget);
     (* raise Not_found; *)
   let bindings  = Ht.create rows in
   let ibindings = Ht.create rows in  
@@ -57,8 +61,21 @@ let solve_xor ecs e =
   Format.printf "%a\n\n%!" pp_exp ctxt;
   ctxt
 
-(* FIXME: move this file *)
-let _test_solve_xor () =
+let _test_solve_xor_1 () =
+  let l = Lenvar.mk "l" in
+  let t = mk_BS l in
+  let vx = Vsym.mk "x" t in
+  let vz = Vsym.mk "z" t in
+  let (x,z) = (mk_V vx, mk_V vz) in
+  let a = mk_Xor [x] in
+  let b = mk_Xor [x;z] in  
+  let c = mk_Xor [z] in
+  let p1 = mk_V (Vsym.mk "p1" t) in
+  let p2 = mk_V (Vsym.mk "p2" t) in  
+  let c = solve_xor [(p1,a); (p2,b)] c in
+  failwith (fsprintf "Deduced context %a\n%!" pp_exp c |> fsget)
+
+let _test_solve_xor_2 () =
   let l = Lenvar.mk "l" in
   let t = mk_BS l in
   let vx = Vsym.mk "x" t in
@@ -66,9 +83,27 @@ let _test_solve_xor () =
   let vz = Vsym.mk "z" t in
   let (x,y,z) = (mk_V vx, mk_V vy, mk_V vz) in
   let a = mk_Xor [x;y] in
-  let b = mk_Xor [y;z] in  
-  let c = mk_Xor [x;z] in
+  let b = mk_Xor [x;z] in  
+  let c = mk_Xor [y;z] in
   let p1 = mk_V (Vsym.mk "p1" t) in
   let p2 = mk_V (Vsym.mk "p2" t) in  
   let c = solve_xor [(p1,a); (p2,b)] c in
   failwith (fsprintf "Deduced context %a\n%!" pp_exp c |> fsget)
+
+let _test_solve_xor_3 () =
+  let l = Lenvar.mk "l" in
+  let t = mk_BS l in
+  let vx = Vsym.mk "x" t in
+  let vy = Vsym.mk "y" t in  
+  let vz = Vsym.mk "z" t in
+  let (x,y,z) = (mk_V vx, mk_V vy, mk_V vz) in
+  let a = mk_Xor [x;y] in
+  let b = mk_Xor [x;z] in  
+  let c = mk_Xor [y] in
+  let d = mk_Xor [z] in
+  let p1 = mk_V (Vsym.mk "p1" t) in
+  let p2 = mk_V (Vsym.mk "p2" t) in  
+  let p3 = mk_V (Vsym.mk "p3" t) in    
+  let s = solve_xor [(p1,a); (p2,b); (p3,c)] d in
+  failwith (fsprintf "3. Deduced context %a\n%!" pp_exp s |> fsget)
+
