@@ -67,6 +67,9 @@ val split_n : int -> 'a list -> 'a list * 'a * 'a list
     l = List.rev_append rhd tl and List.length rhd = k *)
 val cut_n : int -> 'a list -> 'a list * 'a list
 
+(** [filter_map f l] returns the list corresponding to apply [f] to each 
+   elements of [l] and keep the one returning [Some] *)
+val filter_map : ('a -> 'b option) -> 'a list -> 'b list
 (** [list_from_to i j] returns the list with all natural
      numbers from [i] to [j-1]. *)
 val list_from_to : int -> int -> int list

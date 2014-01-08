@@ -80,7 +80,7 @@ let handle_tactic ps tac jus =
     let c = v1, e1 in
     apply_rule (rctxt_ev c j) ps
 
-  | Rindep -> apply_rule rrandom_indep ps
+  | Rindep -> apply_rule last_random_indep ps
 
   | Rswap(i,j) -> apply_rule (rswap i j) ps
 

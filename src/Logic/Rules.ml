@@ -123,92 +123,123 @@ let rassm dir assm subst ju =
       | _ -> fail_rule "rassm : can not infer subtitution")
       subst c jc in
   rassm_decision dir subst assm ju
-                            
+
+let t_seq t1 t2 ju = 
+  List.flatten (List.map t2 (t1 ju))
+
+let rec t_lseq ts ju =
+  match ts with
+  | [] -> [ju]
+  | t :: ts -> t_seq t (t_lseq ts) ju
+
+(* merging event in the postcondition *)
+let merge_ev tomerge ju = 
+  let tomerge = List.sort Pervasives.compare tomerge in
+  let rec tac k tomerge ju = 
+    match tomerge with
+    | [] | [_]-> [ju]
+    | i::j::tomerge -> 
+      let ju' = List.hd (merge_ev (i-k) (j-k) ju) in
+      tac (k+1) (j::tomerge) ju' in
+  tac 0 tomerge ju
+
+(** A tactic to automatize Random Indep *)                            
 (* We known a set of facts 
    e1 = e2 
-   e1 in [e2 | x <- L_H] ...
+   exists x in L | e1 = e2 
    and inequalities 
    We collect all the term we known and we try to invert the term we want.
-   Assume we known e1 = e2 then we known e1 ++ e2 = 0
-     as well for e1 in [e2 | ... ]
+   Assume we known e1 = e2 then we known e1 - e2 = 0
+   as well for exists x in L | e1 = e2
+   Then we try to invert the random variable, using the equality.
+   We get an inverter.
+   We look the equality which are used and we merge then in a single equivalent
+   equality, again we build the inverter (this should works).
+   We apply the inverter.
 *)
-(*let init_inverter test = 
-  let rec aux e1 e2 = 
-    match e1.e_ty.ty_node with
-    | Bool | BS _ -> mk_Xor [e1; e2], mk_False
-    | G  _ -> mk_FMinus (mk_GLog e1) (mk_GLog e2), mk_FZ
-    | Fq   -> mk_FMinus e1 e2, mk_FZ
-    | Prod lt ->
-      let es, is = 
-        List.split 
-          (List.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2))) in
-      mk_Tuple es, mk_Tuple is in
-  if is_Eq test then 
-    let e1,e2 = destr_Eq test in aux e1 e2, []
-  else if is_ElemH test then
-    let e1,e2, bd = destr_ElemH test in aux e1 e2, bd
-  else raise Not_found *)
 
-(*let rec init_inverters l test = 
-  if is_Land test then
-    let tests = destr_Land test in
-    List.fold_left init_inverters l tests 
-  else
-    try 
-      let einv, bd = init_inverter test in
-      einv :: (List.map (fun (x,_) -> (x,x)) bd @ l)
-  match 
-*)
-(*let auto_indep ju =
-  let gs = apply rnorm ju in
-  let invert_eq vars r ev =
-    let re = mk_V r in
-    let (e1,e2) = destr_Eq ev in
-    if not (e_exists (e_equal re) e1) then raise Not_found;
-    let x, inve = switch_eq e1 e2 in
-    let y = Vsym.mk "y" e.e_ty in
-    let inv = Inv.invert (inve, inst_ctxt (x,inve) e1 :: vars) re in
-    (x, inv) in
-
-  let find_inverter r i ev =
-    if is_Eq ev then invert_eq r ev
-    else if is_ElemH ev then invert_ElemH r ev 
+let init_inverter test = 
+  let e1, e2, bd = 
+    if is_Eq test then let e1,e2 = destr_Eq test in e1,e2,[]
+    else if is_Exists test then destr_Exists test 
     else raise Not_found in
-  
-      
-    match ev with
-    | 
-  let ju' = List.hd (rnorm ju) in
-  let can_swap
-  swap pos d;
-  context_select;
+  let (x1,c), z = sub e2.e_ty in
+  let c = (x1, inst_ctxt c e2) in
+  bd, inst_ctxt c e1, c, z
+
+let init_inverters test = 
+  let ts = destruct_Land test in
+  let bds = ref [] in
+  let rec aux i ts = 
+    match ts with
+    | [] -> []
+    | t::ts ->
+      try 
+        let bd,e1m2,inv,z = init_inverter t in
+        bds := bd @ !bds;
+        (i,e1m2,inv, z, mk_V (Vsym.mk "x" e1m2.e_ty)) :: aux (i+1) ts 
+      with Not_found -> aux (i+1) ts in
+  let l = aux 0 ts in
+  !bds, l
+
+let last_random_indep ju = 
+  match List.rev ju.ju_gdef with
+  | GSamp (r,_) :: _ ->
+    let ev= ju.ju_ev in
+    let fv = e_vars ev in
+    let bds, ms = init_inverters ev in
+    List.iter (fun (_,e1m2,_,_,_) -> 
+      Format.printf "%a@." pp_exp e1m2) ms;
+    let msv = List.map (fun (_,e1m2,_,_,x) -> e1m2, x) ms in
+    let er = mk_V r in
+    let vs = Se.elements (Se.remove er fv) in
+    let vs = List.map (fun x -> x, x) vs in
+    let bds = List.map (fun (x,_) -> let e = mk_V x in e, e) bds in
+    Format.printf "ICI1@.";
+    let inv = Deduc.invert (vs@bds@msv) er in
+    Format.printf "ICI2@.";
+    let used = e_vars inv in
+    let tomerge = List.filter (fun (_,_,_,_,x) -> Se.mem x used) ms in
+    let tomergei = List.map (fun (i,_,_,_,_) -> i) tomerge in 
+    let ctxt = 
+      let e = mk_Tuple (List.map (fun (_,e,_,_,_) -> e) tomerge) in
+      let vx = Vsym.mk "x" e.e_ty in
+      let x = mk_V vx in
+      let projs = List.mapi (fun i _ -> mk_Proj i x) tomerge in
+      let app_proj inv (_,_,c,_,x) p = 
+        let x = destr_V x in
+        inst_ctxt (x,inv) (inst_ctxt c p) in
+      let inv = List.fold_left2 app_proj inv tomerge projs in
+      vx, inv in
+    let pos = match List.rev tomerge with
+      | (i,_,_,_,_) :: _ -> i 
+      | _ -> assert false in
+    let pos = pos - (List.length tomerge - 1) in
+    t_lseq 
+      [ merge_ev tomergei;
+        rctxt_ev ctxt pos;
+        rnorm;
+        rrandom_indep 
+      ] ju
+
+  | _ -> failwith "The last instruction is not a sampling"
+(*
+let find_random r c = 
+  let r 
+let random_indep r ju = 
+  let 
+let random_indep ju = 
+  let g = ju.ju_gdef in
+  let ev = ju.ju_ev in
+  let fv = e_vars ev in
+  let rec aux rc c =
+    match c with
+    | [] -> failwith "not able to apply random_indep"
+
+    
+  let 
 *)
-(*let rrandom_indep ju =
-(*  try *) CoreRules.rrandom_indep ju *)
-(*  with Failure _ -> auto_indep ju *)
 
 
-(* 
-
-   e1 = e2
-
-   (r' ++ e2) = (r' ++ e2)
-   (e1 ++ e2) = (e2 ++ e2)
-                0
-
-   (r' ++ e2) = (e2 ++ e2)
   
-   e1 = e2 /\ e2 = e3
-   
-   r = e2
-
-   r 
-   r = r ++ e = e'
-
-   r ++ r ++ e = 0   --> e = 0
-   r ++ e ++ e' = 0
-   r ++ e' = 0 
-
-   
-   
-*)
+  

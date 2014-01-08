@@ -22,7 +22,7 @@ let invert from to_ =
     end
   and add_inverter e inv =
     match e.e_node with
-    | V _  | H _ | Proj _ | Cnst _ | ElemH _ -> ()
+    | V _  | H _ | Proj _ | Cnst _ | Exists _ -> ()
     | Tuple es -> 
       List.iteri (fun i e -> add e (mk_Proj i inv)) es
     | App(op, es) ->
@@ -77,7 +77,7 @@ let invert from to_ =
       | FPlus | FMult -> add_base e; List.iter (build_tbl true) es
       | Xor -> add_base e; List.iter (build_tbl false) es
       end
-    | ElemH _ -> () in
+    | Exists _ -> () in
 
   (* Try to reconstruct unknown expression from the set of known expression *)
   let rm_sub e = sub := Se.remove e !sub in
@@ -133,7 +133,7 @@ let invert from to_ =
       | GMult -> 
         if List.for_all is_in es then add_rm e (mk_GMult (List.map get es))
       end
-    | ElemH _ -> () (* How to deal with this *)
+    | Exists _ -> () (* How to deal with this *)
   in
  
   (* Calling the solver *)

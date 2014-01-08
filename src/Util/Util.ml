@@ -83,6 +83,15 @@ let cut_n i l =
     | a::l -> aux (i-1) (a::r) l in
   aux i [] l
 
+let rec filter_map f l = 
+  match l with
+  | [] -> []
+  | x :: l ->
+    match f x with
+    | None -> filter_map f l
+    | Some z -> z::filter_map f l
+
+      
 let list_from_to i j = (* [i,j), i.e., excluding j *)
   let rec go aux i = if i >= j then aux else go (i::aux) (i+1)
   in List.rev (go [] i)

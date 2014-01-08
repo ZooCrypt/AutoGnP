@@ -8,7 +8,7 @@ OCAMLBUILDFLAGS=-cflags "-w +a-e-9" -use-menhir -menhir "menhir -v" -classic-dis
 
 cur-dir := $(shell pwd)
 
-all: wszoocrypt
+all: zoocrypt wszoocrypt
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html

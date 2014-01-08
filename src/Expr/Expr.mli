@@ -105,7 +105,7 @@ val is_Eq    : 'a gexpr -> bool
 val is_field_op : 'a gop -> bool
 val is_field_nop : nop -> bool
 val is_field_exp : 'a gexpr -> bool
-
+val is_Land : 'a gexpr -> bool
 
 (* ----------------------------------------------------------------------- *)
 (** {3 Destructor functions} *)
@@ -292,7 +292,16 @@ type ctxt = Vsym.t * expr
 
 val inst_ctxt : ctxt -> expr -> expr
 
+(* A generic subtraction function:
+   [sub t] return a ctxt [(x1,x2,c)] and a [zero]
+   such that forall e1 e2:t , [inst_ctxt c e1 e2] =E [e1 - e2]
+                          and [inst_ctxt c e2 e2] = [zero] 
+*)
+val sub : ty -> (Vsym.t * ctxt) * expr
+
+
 val typeError_to_string :
   'a gty * 'a gty * 'a gexpr * 'a gexpr option * string -> string
 
 val catch_TypeError : (unit -> 'a) -> 'a
+

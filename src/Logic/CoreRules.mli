@@ -26,6 +26,9 @@ val rconv : bool -> judgment -> judgment -> judgment list
     is equal to [ a in \[ b | x in l\]]. *)
 val rctxt_ev : ctxt -> int -> judgment -> judgment list
 
+val remove_ev : int list -> judgment -> judgment list
+val merge_ev  : int -> int -> judgment -> judgment list
+
 (** [rrandom p ctx1 ctx2 v ju] returns the judgment resulting
     from replacing the sampling [r <- d] at position [p]
     with [r <- d; let v = ctx1[r]] and substituting v for r

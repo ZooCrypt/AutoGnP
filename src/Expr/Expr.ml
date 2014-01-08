@@ -238,7 +238,11 @@ let is_FPlus e = is_Nary FPlus e
 
 let is_FMult e = is_Nary FMult e
 
+let is_Land e = is_Nary Land e
+
 let is_Exists e = match e.e_node with Exists _ -> true | _ -> false
+
+
 
 let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
@@ -573,9 +577,12 @@ struct
   let mk_Tuple es =
     E.mk (Tuple es) (ty_Prod (List.map (fun e -> e.e_ty) es))
 
-  let mk_Proj i e = match e.e_ty.ty_node with
-    | Prod(tys) when i >= 0 && List.length tys < i -> E.mk (Proj(i,e)) (List.nth tys i)
-    | _ -> raise (TypeError(e.e_ty, e.e_ty, e, None, "mk_Proj expected product type"))
+  let mk_Proj i e = 
+    match e.e_ty.ty_node with
+    | Prod(tys) when i >= 0 && List.length tys < i -> 
+      E.mk (Proj(i,e)) (List.nth tys i)
+    | _ -> 
+      raise (TypeError(e.e_ty,e.e_ty,e,None,"mk_Proj expected product type"))
 
   let mk_Exists e1 e2 h =
     ensure_ty_equal e1.e_ty e2.e_ty e1 None "mk_ElemH";
@@ -808,8 +815,6 @@ let e_subst s = e_map_top (fun e -> Me.find e s)
 let se_of_list = List.fold_left (fun s e -> Se.add e s) Se.empty
 
 
-
-
 type ctxt = Vsym.t * expr
 
 let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
@@ -830,3 +835,30 @@ let catch_TypeError f =
   with Constructors.TypeError(ty1,ty2,e1,me2,s) ->
     print_string (typeError_to_string (ty1,ty2,e1,me2,s));
     raise (Constructors.TypeError(ty1,ty2,e1,me2,s))
+
+
+(* A generic subtraction function:
+   [sub t] return a ctxt [(x1,x2,c)] and a [zero]
+   such that forall e1 e2:t , [inst_ctxt c e1 e2] =E [e1 - e2]
+                          and [inst_ctxt c e2 e2] = [zero] 
+*)
+let sub t = 
+  let rec aux e1 e2 = 
+    match e2.e_ty.ty_node with
+    | Bool -> mk_Xor [e1;e2], mk_False
+    | BS t -> mk_Xor [e1;e2], mk_Z t
+    | G  id -> 
+      let g = mk_GGen id in
+      mk_GExp g (mk_FMinus (mk_GLog e1) (mk_GLog e2)), mk_GExp g mk_FZ
+    | Fq   -> mk_FMinus e1 e2, mk_FZ
+    | Prod lt ->
+      let es, zs = 
+        List.split 
+          (List.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
+      mk_Tuple es, mk_Tuple zs in
+  let x1 =  Vsym.mk "x"  t in
+  let x2 = Vsym.mk "x" t in
+  let e, z = aux (mk_V x1) (mk_V x2) in
+  (x1,(x2,e)), z
+
+    
