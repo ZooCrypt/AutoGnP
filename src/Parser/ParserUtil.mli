@@ -1,5 +1,5 @@
 (** Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
-open Proofstate
+open TheoryState
 open Expr
 open Type
 open Game
@@ -8,7 +8,7 @@ exception ParseError of string
 
 val fail_parse : string -> 'a
 
-val create_var : bool -> proofstate -> string -> ty -> Vsym.t
+val create_var : bool -> theory_state -> string -> ty -> Vsym.t
 
 type parse_ty =
     BS of string
@@ -59,30 +59,30 @@ type gcmd =
 
 type gdef = gcmd list
 
-val ty_of_parse_ty : proofstate -> parse_ty -> ty
+val ty_of_parse_ty : theory_state -> parse_ty -> ty
 
 val mk_Tuple : expr list -> expr
 
 val bind_of_parse_bind :
-  proofstate -> (string * string) list -> (Vsym.t * Hsym.t) list
+  theory_state -> (string * string) list -> (Vsym.t * Hsym.t) list
 
-val expr_of_parse_expr : proofstate -> parse_expr -> expr
+val expr_of_parse_expr : theory_state -> parse_expr -> expr
 
-val lcmd_of_parse_lcmd : bool -> proofstate -> lcmd -> Game.lcmd
+val lcmd_of_parse_lcmd : bool -> theory_state -> lcmd -> Game.lcmd
 
 val odef_of_parse_odef :
   bool ->
-  proofstate ->
+  theory_state ->
   string * string list * (lcmd list * parse_expr) ->
   Osym.t * Vsym.t list * Game.lcmd list * expr
 
-val gcmd_of_parse_gcmd : bool -> proofstate -> gcmd -> Game.gcmd
+val gcmd_of_parse_gcmd : bool -> theory_state -> gcmd -> Game.gcmd
 
 val gdef_of_parse_gdef :
-  bool -> proofstate -> gcmd list -> Game.gcmd list
+  bool -> theory_state -> gcmd list -> Game.gcmd list
 
 val ju_of_parse_ju :
-  bool -> proofstate -> gcmd list -> parse_expr -> judgment
+  bool -> theory_state -> gcmd list -> parse_expr -> judgment
 
 type tactic =
     Rnorm

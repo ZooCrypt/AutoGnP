@@ -74,7 +74,6 @@ let t_first_last gs =
     { subgoals = jus @ [ju];
       validation = validation }
         
-
 let t_on_n n t gs = 
   let len = List.length gs.subgoals in
   if len = 0 then raise NoOpenGoal;
