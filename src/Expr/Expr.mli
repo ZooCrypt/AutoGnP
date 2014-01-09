@@ -302,7 +302,7 @@ val mk_Zero : ty -> expr
 val is_Zero : expr -> bool
 
 val typeError_to_string :
-  'a gty * 'a gty * 'a gexpr * 'a gexpr option * string -> string
+  ty * ty * expr * expr option * string -> string
 
 val catch_TypeError : (unit -> 'a) -> 'a
 

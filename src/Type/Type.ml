@@ -92,4 +92,4 @@ let rec pp_ty fmt ty =
   | Bool    -> Format.fprintf fmt "Bool"
   | G gv    -> Format.fprintf fmt "G_%s" (Groupvar.name gv)
   | Fq      -> Format.fprintf fmt "Fq"
-  | Prod ts -> Format.fprintf fmt "(%a)" (pp_list "," pp_ty) ts
+  | Prod ts -> Format.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts
