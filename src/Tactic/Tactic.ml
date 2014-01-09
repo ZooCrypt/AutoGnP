@@ -307,8 +307,8 @@ let handle_instr ts instr =
     end
 (* FIXME: add qed/save tactic that changes proof_state to ClosedTheory if no goal remains *)
   | Extract filename ->
-    Extract.extract ps filename;
-    (ps, "file extracted")
+    Extract.extract ts filename;
+    (ts, "file extracted")
 
 let eval_theory s =
   let pt = Parse.theory s in

@@ -1,8 +1,8 @@
 open Type
-open Expr
-open Game
+(* open Expr *)
+(* open Game *)
 open CoreRules
-open Proofstate
+open TheoryState
 
 module Ht = Hashtbl
 
@@ -42,22 +42,23 @@ let pp_bilinear _fmt _bvars = ()
 
 let pp_proof _fmt _ps _pft = ()
 
-let pp_all fmt ps pft =
+let pp_all fmt ts pft =
   Format.fprintf fmt "@[<v>";
-  pp_lvars fmt ps.ps_lvars;
-  pp_gvars fmt ps.ps_gvars;
-  pp_bilinear fmt ps.ps_emdecls;
-  pp_proof fmt ps pft;
+  pp_lvars fmt ts.ts_lvars;
+  pp_gvars fmt ts.ts_gvars;
+  pp_bilinear fmt ts.ts_emdecls;
+  pp_proof fmt ts pft;
   Format.fprintf fmt "@]@."
 
-let extract ps filename = 
+let extract ts filename = 
   let pft = 
-    match ps.ps_goals with
-    | None -> tacerror "No derivation"
-    | Some gs -> get_proof gs in
+    match ts.ts_ps with
+    | BeforeProof  (* FIXME: adapt after adding save and storing the proof tree in ClosedTheory *)
+    | ClosedTheory -> tacerror "No derivation"
+    | ActiveProof gs -> get_proof gs in
   let out = open_out filename in
   let fmt = Format.formatter_of_out_channel out in
-  pp_all fmt ps pft;
+  pp_all fmt ts pft;
   close_out out
 
 
