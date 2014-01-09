@@ -11,7 +11,7 @@ val fail_parse : string -> 'a
 val create_var : bool -> proofstate -> string -> ty -> Vsym.t
 
 type parse_ty =
-    BS of string
+  | BS of string
   | Bool
   | G of string
   | Fq
@@ -85,37 +85,39 @@ val ju_of_parse_ju :
   bool -> proofstate -> gcmd list -> parse_expr -> judgment
 
 type tactic =
-    Rnorm
+  | Rnorm
   | Rnorm_nounfold
-  | Rnorm_unknown of string list
-  | Rswap of int * int
-  | Rswap_oracle of ocmd_pos * int
-  | Rctxt_ev of string * parse_expr * int
-  | Rrandom of int * (string * parse_expr) option * string * parse_expr * string
-  | Rrandom_oracle of ocmd_pos * (string * parse_expr) option * string *
-                      parse_expr * string
-  | Requiv of gdef * parse_expr option
-  | Rassm of Util.direction * string * string list
-  | Rlet_abstract of int * string * parse_expr
-  | Rlet_unfold of int
+  | Rnorm_unknown   of string list
+  | Rswap           of int * int
+  | Rswap_oracle    of ocmd_pos * int
+  | Rctxt_ev        of string * parse_expr * int
+  | Rrandom         of int * (string * parse_expr) option * string * 
+                       parse_expr * string
+  | Rrandom_oracle  of ocmd_pos * (string * parse_expr) option * string *
+                       parse_expr * string
+  | Requiv          of gdef * parse_expr option
+  | Rassm           of Util.direction * string * string list
+  | Rlet_abstract   of int * string * parse_expr
+  | Rlet_unfold     of int
   | Rindep
-  | Rbad of int * string
-  | Rexcept of int * parse_expr list
-  | Rexcept_oracle of ocmd_pos * parse_expr list
-  | Radd_test of ocmd_pos * parse_expr * string * string list
+  | Rbad            of int * string
+  | Rexcept         of int * parse_expr list
+  | Rexcept_oracle  of ocmd_pos * parse_expr list
+  | Radd_test       of ocmd_pos * parse_expr * string * string list
   | Rrewrite_oracle of ocmd_pos * Util.direction
 
 type instr =
-    RODecl of string * parse_ty * parse_ty
-  | EMDecl of string * string * string * string
-  | ODecl of string * parse_ty * parse_ty
-  | ADecl of string * parse_ty * parse_ty
-  | AssmDec of string * gdef * gdef * string list
-  | Judgment of gdef * parse_expr
+  | RODecl     of string * parse_ty * parse_ty
+  | EMDecl     of string * string * string * string
+  | ODecl      of string * parse_ty * parse_ty
+  | ADecl      of string * parse_ty * parse_ty
+  | AssmDec    of string * gdef * gdef * string list
+  | Judgment   of gdef * parse_expr
   | PrintGoals of string
-  | PrintGoal of string
-  | Apply of tactic
+  | PrintGoal  of string
+  | Apply      of tactic
   | Admit
   | Last
+  | Extract    of string
 
 type theory = instr list

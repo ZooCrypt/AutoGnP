@@ -63,6 +63,10 @@ let fail_if_occur vs ju s =
     tacerror "%s: variable %a occurs in judgment\n %a"
       s Vsym.pp vs pp_ju ju 
 
+let get_proof gs = 
+  if gs.subgoals <> [] then tacerror "still subgoal";
+  gs.validation []
+
 let t_first_last gs = 
   match gs.subgoals with
   | [] -> tacerror "last: no goals"

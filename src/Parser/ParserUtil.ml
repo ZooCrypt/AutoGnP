@@ -266,9 +266,10 @@ type instr =
   | AssmDec    of string * gdef * gdef * string list
   | Judgment   of gdef * parse_expr
   | PrintGoals of string
-  | PrintGoal of string  
+  | PrintGoal  of string  
   | Apply      of tactic
   | Admit
   | Last
+  | Extract    of string
 
 type theory = instr list

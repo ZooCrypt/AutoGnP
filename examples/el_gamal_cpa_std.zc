@@ -45,3 +45,5 @@ prove
  rnorm.
  rswap 4 2.
  rindep.
+
+extract "elgamal.ec".

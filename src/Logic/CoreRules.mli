@@ -6,9 +6,28 @@ open Assumption
 open Util
 
 (** {1 Proofs representation. } *)
-type rule_name
+type rule_name = 
+  | Radmit 
+  | Rconv
+  | Rctxt_ev   of gcmd_pos * ctxt 
+  | Rremove_ev of int list
+  | Rmerge_ev  of int * int 
+  | Rrandom    of gcmd_pos * ctxt * ctxt * Vsym.t
+  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt * Vsym.t
+  | Rexcept    of gcmd_pos * expr list
+  | Rexc_orcl  of ocmd_pos * expr list 
+  | Radd_test  of ocmd_pos * expr * Asym.t * Vsym.t list 
+  | Rrw_orcl   of ocmd_pos * direction
+  | Rswap      of gcmd_pos * int 
+  | Rswap_orcl of ocmd_pos * int 
+  | Rrnd_indep of bool * int
+  | Rassm_dec  of direction * Vsym.t Vsym.M.t * assumption_decision
+  | Rbad       of gcmd_pos * Vsym.t 
 
-type proof_tree
+type proof_tree = private  
+  { dr_subgoal : proof_tree list;
+    dr_rule    : rule_name;
+    dr_ju      : judgment; }
 
 type rule = judgment -> rule_name * judgment list
 
@@ -32,6 +51,7 @@ exception NoOpenGoal
 val tacerror : ('a, Format.formatter, unit, 'b) format4 -> 'a
 
 (** {2 Basic manipulation tactic}  *)
+val get_proof : proof_state -> proof_tree  
 val t_first_last : goals -> goals 
 val t_on_n : int -> tactic -> goals -> goals
 val t_last : tactic -> goals -> goals

@@ -1,6 +1,6 @@
-<src/Util> or <src/Type> or <src/Expr> or <src/Test> : include
+<src/Util> or <src/Type> or <src/Expr> or <src/Test>: include
 
-<src/Logic> or <src/Tactic> or <src/Symbolic>: include
+<src/Logic> or <src/Tactic> or <src/Symbolic> or <src/Extract>: include
 
 <src/Parser> or <src/CAS> or <src/Game> or <src/Main>: include
 

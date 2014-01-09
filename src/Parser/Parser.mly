@@ -99,6 +99,8 @@
 %token UNDERSCORE
 %token ADMIT
 %token LAST
+%token EXTRACT
+%token <string> STRING
 
 /************************************************************************/
 /* Production types */
@@ -349,6 +351,7 @@ instr :
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
    { Apply(Rctxt_ev(i1,e1,0)) }
 | RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_oracle(op,d)) }
+| EXTRACT s=STRING { Extract s }
 
 instruction:
 | i = instr DOT EOF { i }

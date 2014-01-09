@@ -1,6 +1,6 @@
 (** Tactic engine: transformations of proof states. *)
-open ParserUtil
 open CoreRules
+open ParserUtil
 open Rules
 open Expr
 open Type
@@ -295,6 +295,9 @@ let handle_instr ps instr =
               |> fsget
     in
     (ps, msg)
+  | Extract filename ->
+    Extract.extract ps filename;
+    (ps, "file extracted")
 
 let eval_theory s =
   let pt = Parse.theory s in

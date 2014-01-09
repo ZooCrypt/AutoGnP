@@ -4,6 +4,9 @@
 
   let unterminated_comment () =
     raise (Error "unterminated comment")
+  let unterminated_string () =
+    raise (Error "unterminated string")
+
 }
 
 let blank = [' ' '\t' '\r' '\n']
@@ -12,6 +15,7 @@ let newline = '\n'
 rule lex = parse
   | blank+  { lex lexbuf }
   | "(*"    { comment lexbuf; lex lexbuf }
+  | "\"" { STRING (Buffer.contents (string (Buffer.create 0) lexbuf)) }
   | [' ' '\t']
   | newline { Lexing.new_line lexbuf; lex lexbuf }
   | eof     { EOF }
@@ -63,6 +67,7 @@ rule lex = parse
   | "rbad"           { RBAD }
   | "rctxt_ev"       { RCTXT_EV }
   | "exists"    { EXISTS }
+  | "extract"   { EXTRACT }
   | "L_"    { LIST }
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z']
@@ -104,4 +109,14 @@ and comment = parse
   | newline     { Lexing.new_line lexbuf; comment lexbuf }
   | eof         { unterminated_comment () }
   | _           { comment lexbuf }
+
+and string buf = parse
+  | "\""          { buf }
+  | "\\n"         { Buffer.add_char buf '\n'; string buf lexbuf }
+  | "\\r"         { Buffer.add_char buf '\r'; string buf lexbuf }
+  | "\\" (_ as c) { Buffer.add_char buf c   ; string buf lexbuf }
+  | newline       { Buffer.add_string buf (Lexing.lexeme lexbuf); string buf lexbuf }
+  | _ as c        { Buffer.add_char buf c   ; string buf lexbuf }
+
+  | eof           { unterminated_string () }
 
