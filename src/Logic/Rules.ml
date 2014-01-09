@@ -188,7 +188,7 @@ let init_inverters test =
   let l = aux 0 ts in
   !bds, l
 
-let last_random_indep ju = 
+let t_last_random_indep ju = 
   match List.rev ju.ju_gdef with
   | GSamp (r,_) :: _ ->
     let ev= ju.ju_ev in
@@ -231,7 +231,15 @@ let last_random_indep ju =
 
   | _ -> tacerror "The last instruction is not a sampling"
   
-  
 let t_random_indep ju = 
-  (t_random_indep @| last_random_indep) ju
+  let rec aux i rc ju = 
+    match rc with
+    | GSamp _ :: rc -> 
+      ((t_swap (List.length rc) i @. t_last_random_indep) @|
+       aux (i+1) rc) ju
+    | _ :: rc -> aux (i+1) rc ju
+    | [] -> 
+      tacerror "random_indep: can not find an independent random variable" in
+  (CoreRules.t_random_indep @| aux 0 (List.rev ju.ju_gdef)) ju
+
 

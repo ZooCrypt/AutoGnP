@@ -32,13 +32,7 @@ let solve_xor ecs e =
   let es_sts = direct_subterms Xor Se.empty es in
   let rows   = Se.cardinal es_sts in
   let e_sts  = direct_subterms Xor Se.empty [e] in
-  if (not (Se.subset e_sts es_sts)) then
-    failwith (fsprintf
-                "secret contains subterms that do not occur in known terms: %a !< %a"
-                (pp_list ", " pp_exp) (Se.elements e_sts)
-                (pp_list ", " pp_exp) (Se.elements es_sts)
-              |> fsget);
-    (* raise Not_found; *)
+  if (not (Se.subset e_sts es_sts)) then raise Not_found; 
   let bindings  = Ht.create rows in
   let ibindings = Ht.create rows in  
   List.iteri
@@ -52,13 +46,12 @@ let solve_xor ecs e =
   let cs = L.map fst ecs in
   let ctxt =
     match msolvec with
-    | None -> failwith "no solution" (*raise Not_found*)
+    | None -> raise Not_found
     | Some(solvec) ->
         mk_Xor
           (cat_Some
             (L.map2 (fun b_i ct -> if b_i then Some ct else None) solvec cs))
   in
-  Format.printf "%a\n\n%!" pp_exp ctxt;
   ctxt
 
 let _test_solve_xor_1 () =
