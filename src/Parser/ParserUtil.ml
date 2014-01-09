@@ -1,6 +1,6 @@
 (** Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
 open Util
-open Proofstate
+open TheoryState
 
 module E = Expr
 module Ht = Hashtbl
@@ -14,7 +14,7 @@ exception ParseError of string
 let fail_parse s = raise (ParseError s)
 
 let create_var reuse ps s ty =
-  match Proofstate.create_var reuse ps s ty with
+  match TheoryState.create_var reuse ps s ty with
   | None -> fail_parse (F.sprintf "Variable %s already defined" s)
   | Some v -> v
 
@@ -86,54 +86,54 @@ let mk_Tuple es =
   | [e] -> e
   | _ -> E.mk_Tuple es
 
-let bind_of_parse_bind ps lH = 
+let bind_of_parse_bind ts lH = 
   List.map
     (fun (s,h) -> 
        let h = 
-         try Ht.find ps.ps_rodecls h
+         try Ht.find ts.ts_rodecls h
          with Not_found ->
            fail_parse (F.sprintf "undefined random oracle %s" h)
        in
-       let x = create_var_reuse ps s h.Hsym.dom in
+       let x = create_var_reuse ts s h.Hsym.dom in
        (x, h))
     lH
 
-let expr_of_parse_expr ps pe0 =
+let expr_of_parse_expr ts pe0 =
   let rec go pe = 
     match pe with
     | V(s) -> 
       let v = 
-        try Ht.find ps.ps_vars s
+        try Ht.find ts.ts_vars s
         with Not_found ->
           fail_parse (F.sprintf "undefined variable %s (not in %s)"
                         s
                         (String.concat ","
-                           (Ht.fold (fun v _ acc -> v::acc) (ps_copy ps).ps_vars [])))
+                           (Ht.fold (fun v _ acc -> v::acc) (ts_copy ts).ts_vars [])))
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (List.map go es)
     | Proj(i,e) -> E.mk_Proj i (go e)
     | Exists(e1,e2,lH) -> 
-      let lH = bind_of_parse_bind ps lH in
+      let lH = bind_of_parse_bind ts lH in
       let e1 = go e1 in
       let e2 = go e2 in
       E.mk_Exists e1 e2 lH
-    | HApp(s,es) when Ht.mem ps.ps_rodecls s -> 
-      let h = Ht.find ps.ps_rodecls s in
+    | HApp(s,es) when Ht.mem ts.ts_rodecls s -> 
+      let h = Ht.find ts.ts_rodecls s in
       let es = mk_Tuple (List.map go es) in
       E.mk_H h es
     | HApp(s,_) ->
       fail_parse (F.sprintf "undefined hash symbol %s" s)
-    | SApp(s,[a;b]) when Ht.mem ps.ps_emdecls s -> 
-      let es = Ht.find ps.ps_emdecls s in
+    | SApp(s,[a;b]) when Ht.mem ts.ts_emdecls s -> 
+      let es = Ht.find ts.ts_emdecls s in
       E.mk_EMap es (go a) (go b)
-    | SApp(s,_) when Ht.mem ps.ps_emdecls s ->
+    | SApp(s,_) when Ht.mem ts.ts_emdecls s ->
       fail_parse (F.sprintf "bilinear map %s expects two arguments" s)
     | SApp(s,_) ->
       fail_parse (F.sprintf "undefined function symbol %s" s)
     | CFNat(i)     -> E.mk_FNat i
-    | CGen(s)      -> E.mk_GGen (create_groupvar ps s)
-    | CZ(s)        -> E.mk_Z (create_lenvar ps s)
+    | CGen(s)      -> E.mk_GGen (create_groupvar ts s)
+    | CZ(s)        -> E.mk_Z (create_lenvar ts s)
     | CB b         -> E.mk_B b
     | Plus(e1,e2)  -> E.mk_FPlus [go e1; go e2]
     | Minus(e1,e2) -> E.mk_FMinus (go e1) (go e2)
@@ -177,50 +177,50 @@ let lcmd_of_parse_lcmd reuse ps lcmd =
     G.LGuard(expr_of_parse_expr ps e)
   | LBind(_) -> assert false (* not implemented yet *)
 
-let odef_of_parse_odef reuse ps (oname, vs, (m,e)) =
+let odef_of_parse_odef reuse ts (oname, vs, (m,e)) =
   let osym = 
-    try Ht.find ps.ps_odecls oname
+    try Ht.find ts.ts_odecls oname
     with Not_found -> fail_parse "oracle name not declared" in
   let vs = 
     match osym.Osym.dom.Type.ty_node, vs with
     | Type.Prod([]), [] -> []
-    | Type.Prod(ts), vs when List.length ts = List.length vs ->
-      let vts = List.combine vs ts in
-      let vs = List.map (fun (v,t) -> create_var reuse ps v t) vts in
+    | Type.Prod(tys), vs when List.length tys = List.length vs ->
+      let vts = List.combine vs tys in
+      let vs = List.map (fun (v,t) -> create_var reuse ts v t) vts in
       vs
-    | _, [v] -> [create_var reuse ps v osym.Osym.dom]
+    | _, [v] -> [create_var reuse ts v osym.Osym.dom]
     | _ -> assert false in
-  let m = List.map (lcmd_of_parse_lcmd reuse ps) m in
-  let e = expr_of_parse_expr ps e in
+  let m = List.map (lcmd_of_parse_lcmd reuse ts) m in
+  let e = expr_of_parse_expr ts e in
   (osym, vs, m, e)
 
-let gcmd_of_parse_gcmd reuse ps gc =
+let gcmd_of_parse_gcmd reuse ts gc =
   match gc with
   | GLet(s,e) ->
-    let e = expr_of_parse_expr ps e in
-    let v = create_var reuse ps s e.Expr.e_ty in
+    let e = expr_of_parse_expr ts e in
+    let v = create_var reuse ts s e.Expr.e_ty in
     G.GLet(v,e)
   | GSamp(s,t,es) ->
-    let t = ty_of_parse_ty ps t in
-    let es = List.map (expr_of_parse_expr ps) es in
-    let v = create_var reuse ps s t in
+    let t = ty_of_parse_ty ts t in
+    let es = List.map (expr_of_parse_expr ts) es in
+    let v = create_var reuse ts s t in
     G.GSamp(v,(t,es))
   | GCall(vs,aname,e,os) ->
-    let asym = try Ht.find ps.ps_adecls aname
+    let asym = try Ht.find ts.ts_adecls aname
                with Not_found -> fail_parse "adversary name not declared"
     in
-    let e = expr_of_parse_expr ps e in
+    let e = expr_of_parse_expr ts e in
     if not (Type.ty_equal e.Expr.e_ty asym.Asym.dom) then
       fail_parse "adversary argument has wrong type";
-    let os = List.map (odef_of_parse_odef reuse ps) os in
+    let os = List.map (odef_of_parse_odef reuse ts) os in
     begin match asym.Asym.codom.Type.ty_node, vs with
     | Type.Prod([]), [] -> G.GCall([], asym, e, os)
-    | Type.Prod(ts), vs when List.length ts = List.length vs ->
-      let vts = List.combine vs ts in
-      let vs = List.map (fun (v,t) -> create_var reuse ps v t) vts in
+    | Type.Prod(tys), vs when List.length tys = List.length vs ->
+      let vts = List.combine vs tys in
+      let vs = List.map (fun (v,t) -> create_var reuse ts v t) vts in
       G.GCall(vs, asym, e, os)
     | _, [v] ->
-      let v = create_var reuse ps v asym.Asym.codom in
+      let v = create_var reuse ts v asym.Asym.codom in
       G.GCall([v], asym, e, os)           
     | _ -> assert false
     end

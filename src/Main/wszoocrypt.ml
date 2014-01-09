@@ -2,7 +2,7 @@ open Websocket
 open Util
 open Tactic
 open CoreRules
-open Proofstate
+open TheoryState
 
 module YS = Yojson.Safe
 module F = Format
@@ -26,26 +26,26 @@ let in_comment s i =
 (** {Proofstate cache} *)
 
 (* We use the reversed list of commands (without '.')
-   as the key for the corresponding proofstate. *)
-let ps_cache = Hashtbl.create 10
+   as the key for the corresponding theory state. *)
+let ts_cache = Hashtbl.create 10
 
 (* 'lookup_ps_cache cmds' searches for the longest suffix of
    cmds for which there is a proofstate. The proofstate
    is returned together with the list of unhandled
    commands. *)
-let lookup_ps_cache cmds =
+let lookup_ts_cache cmds =
   let rec go handled_cmds rem_cmds =
     try
-      (Hashtbl.find ps_cache handled_cmds, List.rev handled_cmds, rem_cmds)
+      (Hashtbl.find ts_cache handled_cmds, List.rev handled_cmds, rem_cmds)
     with
       Not_found ->
         (match handled_cmds with
-         | [] -> ((mk_ps (), []), List.rev handled_cmds, rem_cmds)
+         | [] -> ((mk_ts (), []), List.rev handled_cmds, rem_cmds)
          | last::before -> go before (last::rem_cmds))
   in go (List.rev cmds) []
 
-let insert_ps_cache cmds (ps,msgs) =
-  Hashtbl.add ps_cache (List.rev cmds) (ps,msgs)
+let insert_ts_cache cmds (ts,msgs) =
+  Hashtbl.add ts_cache (List.rev cmds) (ts,msgs)
 
 (* ----------------------------------------------------------------------- *)
 (** {Handlers for different commands} *)
@@ -80,11 +80,11 @@ let process_eval proofscript =
   in
   let l = Util.splitn_by proofscript (fun s i -> s.[i] = '.' && not (in_comment s i))
   in
-  let ((ps0, msgs0), handled_cmds, rem_cmds) = lookup_ps_cache l in
+  let ((ts0, msgs0), handled_cmds, rem_cmds) = lookup_ts_cache l in
   F.printf "Eval: ``%s''\n%!" proofscript;
   F.printf "executing %i remaining commands\n%!" (List.length rem_cmds);
   let rhandled = ref handled_cmds in
-  let rps = ref ps0 in
+  let rts = ref ts0 in
   let rmsgs = ref msgs0 in
   (* handle the remaining commands, return the last message if ok
      and the error and the position up to where processing was
@@ -97,9 +97,9 @@ let process_eval proofscript =
       try 
         List.iter
           (fun cmd ->
-             let (ps, msg) = handle_instr !rps (Parse.instruction (cmd ^ ".")) in
-             rhandled := !rhandled @ [ cmd ]; rps := ps; rmsgs := !rmsgs @ [ msg ];
-             insert_ps_cache !rhandled (ps,!rmsgs))
+             let (ts, msg) = handle_instr !rts (Parse.instruction (cmd ^ ".")) in
+             rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
+             insert_ts_cache !rhandled (ts,!rmsgs))
           rem_cmds;
           `Null
       with
@@ -113,13 +113,14 @@ let process_eval proofscript =
           `String (F.sprintf "unknown error: %s" (Printexc.to_string e))
     in
     let g =
-      match !rps.ps_goals with
-      | None    -> "No proof started"
-      | Some { CoreRules.subgoals = [] } -> "No goals"
-      | Some gs ->
+      match !rts.ts_ps with
+      | BeforeProof  -> "No proof started."
+      | ClosedTheory -> "Theory closed."
+      | ActiveProof { CoreRules.subgoals = [] } -> "No goals."
+      | ActiveProof gs ->
         fsprintf "@[%a@.%s@]"
           pp_jus 
-          (Util.map_opt (fun gs -> (Util.take 1 gs.subgoals)) !rps.ps_goals)
+          (Util.take 1 gs.subgoals)
           (let rem = 
              List.length gs.CoreRules.subgoals - 1 in if rem = 0 then "" else
           string_of_int rem^" other goals")
