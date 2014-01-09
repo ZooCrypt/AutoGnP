@@ -74,6 +74,10 @@ let destr_G ty = match ty.ty_node with
   | G(gv) -> gv
   | _     -> assert false
 
+let destr_Prod ty = match ty.ty_node with
+  | Prod ts -> ts
+  | _ -> assert false
+
 (* ----------------------------------------------------------------------- *)
 
 let rec ty_export ty =

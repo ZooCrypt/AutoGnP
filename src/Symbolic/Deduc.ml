@@ -7,7 +7,6 @@ exception Found of expr
 let solve_Fq _k _u = raise Not_found 
 
 let invert from to_ =
-
   let to_ = Norm.norm_expr to_ in
   let known = He.create 17 in
   let progress = ref false in

@@ -146,7 +146,7 @@ let prove_by g (rule, subgoals) =
        dr_rule    = rule;
        dr_subgoal = pts; }}
 
-let radmit ju = Radmit, []
+let radmit _ju = Radmit, []
 let t_admit ju = 
   prove_by ju (radmit ju)
 

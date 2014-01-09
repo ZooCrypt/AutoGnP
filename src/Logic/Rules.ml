@@ -19,10 +19,16 @@ let t_norm ju =
   let new_ju = norm_ju ~norm:norm_expr_def ju in
   t_conv true new_ju ju
 
+let t_norm_tuple_proj ju = 
+  let norm e = remove_tuple_proj (norm_expr_def e) in
+  let new_ju = norm_ju ~norm ju in
+  t_conv true new_ju ju
+
 (* norm without unfolding *)
 let t_norm_nounfold ju = 
   let new_ju = map_ju_exp norm_expr_def ju in
   t_conv true new_ju ju
+
 
 (* unfold without norm *)
 let t_unfold_only ju = 
@@ -220,8 +226,8 @@ let last_random_indep ju =
     let pos = pos - (List.length tomerge - 1) in
     (t_merge_ev tomergei @.
       t_ctxt_ev pos ctxt @.
-      t_norm @.
-      t_random_indep) ju
+      t_norm_tuple_proj  @.
+      t_random_indep ) ju
 
   | _ -> tacerror "The last instruction is not a sampling"
   

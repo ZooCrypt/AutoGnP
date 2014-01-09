@@ -326,7 +326,7 @@ let rec pp_exp_p above fmt e =
       F.fprintf fmt "@[<hov>%a@]" (pp_list ",@ " (pp_exp_p Tup)) in
     pp_maybe_paren (above <> PrefixApp) pp fmt es
   | Proj(i,e)  -> 
-    F.fprintf fmt "pi_%i(%a)" i (pp_exp_p PrefixApp) e
+    F.fprintf fmt "%a%s%i" (pp_exp_p PrefixApp) e "\\" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op_p above fmt (o,es) 
   | Nary(o,es) -> pp_nop_p above fmt (o,es)

@@ -14,11 +14,12 @@ let destr_gexp gv g =
 let destr_xor e = 
   match e.e_node with Nary(Xor, l) -> l | _ -> [e]
 
-let norm_ggt e =   
+let rec norm_ggt e =   
   match e.e_ty.ty_node with
   | G gv -> mk_gexp gv (mk_GLog e)   (* g ^ (log x) *)
   | Fq | Bool | BS _ -> e
-  | Prod _ -> e
+  | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_ggt (mk_Proj i e)) lt)
+
 
 let mk_proj_simpl i e = 
   match e.e_node with 
@@ -152,8 +153,28 @@ let rec abbrev_ggen e =
 (* use norm_expr to check equality modulo equational theory *)
 let e_equalmod e e' = e_equal (norm_expr e) (norm_expr e')
 
+let rm_tuple_proj e es =
+  match es with
+  | e1::es ->
+    begin 
+      try 
+        let i, e2 = destr_Proj e1 in
+        if i <> 0 then raise Not_found;
+        if List.length es + 1 <> List.length (destr_Prod e2.e_ty) then 
+          raise Not_found;
+        List.iteri (fun i e -> 
+          let i',e' = destr_Proj e in
+          if i + 1 <> i' || not (e_equal e2 e') then raise Not_found) es;
+        e2
+      with Not_found | Destr_failure _ -> e
+    end
+  | _ -> e 
 
-
+let rec remove_tuple_proj e =
+  let e = e_sub_map remove_tuple_proj e in
+  match e.e_node with
+  | Tuple es -> rm_tuple_proj e es
+  | _ -> e
 
 
 
