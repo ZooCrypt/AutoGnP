@@ -4,21 +4,30 @@ open Expr
 open Norm
 open Util
 
-(** Logical rules built on top of core rules. *)
+(** {1 Composition tactic } *)
+
+let ( @. ) = t_seq 
+let ( @+) t ts g = 
+  t_subgoal ts (t g)
+
+let ( @| ) = t_or
+
+(** {2 Logical rules built on top of core rules. *)
+
 (* unfold all lets and norm *)
-let rnorm ju =
+let t_norm ju =
   let new_ju = norm_ju ~norm:norm_expr_def ju in
-  rconv true new_ju ju
+  t_conv true new_ju ju
 
 (* norm without unfolding *)
-let rnorm_nounfold ju = 
+let t_norm_nounfold ju = 
   let new_ju = map_ju_exp norm_expr_def ju in
-  rconv true new_ju ju
+  t_conv true new_ju ju
 
 (* unfold without norm *)
-let runfold_only ju = 
+let t_unfold_only ju = 
   let new_ju = norm_ju ~norm:(fun x -> x) ju in
-  rconv false new_ju ju
+  t_conv false new_ju ju
 
 (* exponent rewriting *)
 let simp_exp e unknown =
@@ -78,13 +87,13 @@ let rewrite_exps unknown e0 =
    (g^i)^o or X where i might be unknown, but o is not unknown.
    If there is a "let z=g^i" we can replace g^i by z in the next
    step. *)
-let rnorm_unknown unknown ju =
+let t_norm_unknown unknown ju =
   let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
   let new_ju = map_ju_exp norm ju in
-  rconv true new_ju ju
+  t_conv true new_ju ju
 
 (* FIXME: does not work for first line *)
-let rlet_abstract p vs e ju =
+let t_let_abstract p vs e ju =
   match get_ju_ctxt ju p with
   | cmd, juc ->
     let v = mk_V vs in
@@ -95,9 +104,9 @@ let rlet_abstract p vs e ju =
                 juc_right = map_gdef_exp subst juc.juc_right;
                 juc_ev = subst juc.juc_ev }
     in
-    rconv false (set_ju_ctxt cmds juc) ju
+    t_conv false (set_ju_ctxt cmds juc) ju
 
-let rlet_unfold p ju =
+let t_let_unfold p ju =
   match get_ju_ctxt ju p with
   | GLet(vs,e), juc ->
     let subst a = e_replace (mk_V vs) e a in
@@ -105,11 +114,11 @@ let rlet_unfold p ju =
                 juc_right = map_gdef_exp subst juc.juc_right;
                 juc_ev = subst juc.juc_ev }
     in
-    rconv false (set_ju_ctxt [] juc) ju
-  | _ -> fail_rule "rlet_unfold: no let at given position"
+    t_conv false (set_ju_ctxt [] juc) ju
+  | _ -> tacerror "rlet_unfold: no let at given position"
 
 
-let rassm dir assm subst ju =
+let t_assm dir assm subst ju =
   let c = 
     if dir = LeftToRight then assm.Assumption.ad_prefix1 
     else assm.Assumption.ad_prefix1 in
@@ -120,27 +129,18 @@ let rassm dir assm subst ju =
       | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
         when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
         Vsym.M.add x1 x2 s
-      | _ -> fail_rule "rassm : can not infer subtitution")
+      | _ -> tacerror "rassm : can not infer subtitution")
       subst c jc in
-  rassm_decision dir subst assm ju
-
-let t_seq t1 t2 ju = 
-  List.flatten (List.map t2 (t1 ju))
-
-let rec t_lseq ts ju =
-  match ts with
-  | [] -> [ju]
-  | t :: ts -> t_seq t (t_lseq ts) ju
+  t_assm_decision dir subst assm ju
 
 (* merging event in the postcondition *)
-let merge_ev tomerge ju = 
+let t_merge_ev tomerge ju = 
   let tomerge = List.sort Pervasives.compare tomerge in
   let rec tac k tomerge ju = 
     match tomerge with
-    | [] | [_]-> [ju]
+    | [] | [_]-> t_id ju
     | i::j::tomerge -> 
-      let ju' = List.hd (merge_ev (i-k) (j-k) ju) in
-      tac (k+1) (j::tomerge) ju' in
+      (t_merge_ev (i-k) (j-k) @. tac (k+1) (j::tomerge)) ju in
   tac 0 tomerge ju
 
 (** A tactic to automatize Random Indep *)                            
@@ -195,7 +195,7 @@ let last_random_indep ju =
     let bds = List.map (fun (x,_) -> let e = mk_V x in e, e) bds in
     let inv = 
       try Deduc.invert (vs@bds@msv) er 
-      with Not_found -> failwith "can not find inverter" in
+      with Not_found -> tacerror "can not find inverter" in
     let used = e_vars inv in
     let tomerge = List.filter (fun (_,_,_,_,x) -> Se.mem x used) ms in
     let tomergei = List.map (fun (i,_,_,_,_) -> i) tomerge in 
@@ -218,17 +218,14 @@ let last_random_indep ju =
       | (i,_,_,_,_) :: _ -> i 
       | _ -> assert false in
     let pos = pos - (List.length tomerge - 1) in
-    t_lseq 
-      [ merge_ev tomergei;
-        rctxt_ev ctxt pos;
-        rnorm;
-        rrandom_indep 
-      ] ju
+    (t_merge_ev tomergei @.
+      t_ctxt_ev pos ctxt @.
+      t_norm @.
+      t_random_indep) ju
 
-  | _ -> failwith "The last instruction is not a sampling"
+  | _ -> tacerror "The last instruction is not a sampling"
   
   
-let rrandom_indep ju = 
-  try rrandom_indep ju 
-  with _ ->
-    last_random_indep ju
+let t_random_indep ju = 
+  (t_random_indep @| last_random_indep) ju
+

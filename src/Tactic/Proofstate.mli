@@ -12,7 +12,7 @@ type proofstate = {
   ps_emdecls : (string, Esym.t) Hashtbl.t;
   ps_assms : (string, Assumption.assumption_decision) Hashtbl.t;
   ps_vars : (string, Vsym.t) Hashtbl.t;
-  ps_goals : judgment list option;
+  ps_goals : CoreRules.goals option;
 }
 
 val mk_ps : unit -> proofstate

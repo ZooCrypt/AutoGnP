@@ -113,11 +113,13 @@ let process_eval proofscript =
     let g =
       match !rps.ps_goals with
       | None    -> "No proof started"
-      | Some [] -> "No goals"
+      | Some { CoreRules.subgoals = [] } -> "No goals"
       | Some gs ->
         fsprintf "@[%a@.%s@]"
-          pp_goals (Util.map_opt (Util.take 1) !rps.ps_goals)
-          (let rem = List.length gs - 1 in if rem = 0 then "" else
+          pp_jus 
+          (Util.map_opt (fun gs -> (Util.take 1 gs.subgoals)) !rps.ps_goals)
+          (let rem = 
+             List.length gs.CoreRules.subgoals - 1 in if rem = 0 then "" else
           string_of_int rem^" other goals")
         |> fsget
     in `Assoc [ ("cmd", `String "setGoal");

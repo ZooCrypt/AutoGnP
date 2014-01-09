@@ -3,19 +3,25 @@
 open Game
 open Assumption
 open Expr
+open CoreRules
 
-val rnorm : judgment -> judgment list
+val ( @. ) : tactic -> tactic -> tactic
+val ( @+ ) : tactic -> tactic list -> tactic
+val ( @| ) : tactic -> tactic -> tactic
 
-val rnorm_nounfold : judgment -> judgment list
+val t_norm : tactic
 
-val runfold_only : judgment -> judgment list
+val t_norm_nounfold : tactic
 
-val rnorm_unknown : expr list -> judgment -> judgment list
+val t_unfold_only : tactic 
 
-val rlet_abstract : int -> Vsym.t -> expr -> judgment -> judgment list
+val t_norm_unknown : expr list -> tactic
 
-val rlet_unfold : int -> judgment -> judgment list
+val t_let_abstract : int -> Vsym.t -> expr -> tactic 
 
-val rassm : Util.direction -> assumption_decision -> Vsym.t Vsym.M.t -> judgment -> judgment list
+val t_let_unfold : int -> tactic
 
-val rrandom_indep : judgment -> judgment list
+val t_assm : 
+  Util.direction -> assumption_decision -> Vsym.t Vsym.M.t -> tactic
+
+val t_random_indep : tactic

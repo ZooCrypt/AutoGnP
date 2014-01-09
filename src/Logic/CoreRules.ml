@@ -6,65 +6,170 @@ open Game
 open Wf
 open Assumption
 
-(* ----------------------------------------------------------------------- *)
-(** {1 Rules and tactic language} *)
+(* final representation of a proof *)
+type rule_name = 
+  | Radmit 
+  | Rconv
+  | Rctxt_ev   of gcmd_pos * ctxt 
+  | Rremove_ev of int list
+  | Rmerge_ev  of int * int 
+  | Rrandom    of gcmd_pos * ctxt * ctxt * Vsym.t
+  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt * Vsym.t
+  | Rexcept    of gcmd_pos * expr list
+  | Rexc_orcl  of ocmd_pos * expr list 
+  | Radd_test  of ocmd_pos * expr * Asym.t * Vsym.t list 
+  | Rrw_orcl   of ocmd_pos * direction
+  | Rswap      of gcmd_pos * int 
+  | Rswap_orcl of ocmd_pos * int 
+  | Rrnd_indep of bool * int
+  | Rassm_dec  of direction * Vsym.t Vsym.M.t * assumption_decision
+  | Rbad       of gcmd_pos * Vsym.t 
+type proof_tree = 
+  { dr_subgoal : proof_tree list;
+    dr_rule    : rule_name;
+    dr_ju      : judgment; }
 
-exception Invalid_rule of string
 
-let fail_rule s = raise (Invalid_rule s)
+(* intermediate representation of a proof *)
 
-(** goal handling *)
+type rule = judgment -> rule_name * judgment list
+type validation = proof_tree list -> proof_tree
 
-let apply rule goals = match goals with
-  | g::gs ->
-      let gs' = rule g in
-      List.iter (wf_ju NoCheckDivZero) gs';
-      gs' @ gs
-  | _ -> fail_rule "there are no goals"
+type goal = judgment
 
-(* ----------------------------------------------------------------------- *)
-(** {2 Low level rules} *)
+type goals = {
+  subgoals   : judgment list;
+  validation : validation
+}
 
-(** Helper functions *)
+type tactic = goal -> goals 
+
+type proof_state = goals 
+
+exception Invalid_rule of string 
+exception NoOpenGoal 
+
+let tacerror fmt =
+  let buf  = Buffer.create 127 in
+  let fbuf = Format.formatter_of_buffer buf in
+  Format.kfprintf
+    (fun _ ->
+      Format.pp_print_flush fbuf ();
+      raise (Invalid_rule (Buffer.contents buf)))
+    fbuf fmt
 
 let fail_if_occur vs ju s =
   if (Se.mem (mk_V vs) (ju_vars ju)) then
-    fail_rule
-      (fsprintf "%s: variable %a occurs in judgment\n %a"
-         s Vsym.pp vs pp_ju ju |> fsget)
+    tacerror "%s: variable %a occurs in judgment\n %a"
+      s Vsym.pp vs pp_ju ju 
+
+let t_first_last gs = 
+  match gs.subgoals with
+  | [] -> tacerror "last: no goals"
+  | ju :: jus ->
+    let validation pts = 
+      match List.rev pts with
+      | pt :: pts -> gs.validation (pt::List.rev pts)
+      | _ -> assert false in
+    { subgoals = jus @ [ju];
+      validation = validation }
+        
+
+let t_on_n n t gs = 
+  let len = List.length gs.subgoals in
+  if len = 0 then raise NoOpenGoal;
+  if len <= n then tacerror "there is only %i subgoals" len;
+  let hd, g, tl = 
+    Util.split_n n gs.subgoals  
+  in
+  let gsn = t g in
+  let vali pts =
+    let hd, tl = Util.cut_n n pts in
+    let ptn, tl = Util.cut_n (List.length gsn.subgoals) tl in
+    gs.validation (List.rev_append hd (gsn.validation (List.rev ptn) :: tl))
+  in
+  { subgoals = List.rev_append hd (gsn.subgoals @ tl);
+    validation = vali }
+
+let t_last t gs = 
+  t_on_n (List.length gs.subgoals - 1) t gs
+
+let t_first t gs = 
+  t_on_n 0 t gs
+
+let merge_subgoals gs2s validation =
+  let rec validation' accu gs2s pts = 
+    match gs2s with
+    | [] -> assert (pts = []); validation (List.rev accu)
+    | gs2i::gs2s ->
+      let hd, tl = Util.cut_n (List.length gs2i.subgoals) pts in
+      validation' (gs2i.validation (List.rev hd) :: accu) gs2s tl in
+  { subgoals   = List.flatten (List.map (fun gs -> gs.subgoals) gs2s);
+    validation = validation' [] gs2s }
+
+(** Composition tactics *)    
+
+let t_id g = 
+  { subgoals = [g];
+    validation = fun pts -> match pts with [pt] -> pt | _ -> assert false }
+    
+let t_seq t1 t2 g = 
+  let gs1 = t1 g in
+  let gs2s = List.map t2 gs1.subgoals in
+  merge_subgoals gs2s gs1.validation
+ 
+let t_subgoal lt gs = 
+  let gs2s = 
+    try List.map2 (fun t g -> t g) lt gs.subgoals 
+    with Invalid_argument _ -> 
+      tacerror "%i tactics expected, %i are given" 
+        (List.length gs.subgoals) (List.length lt)
+  in
+  merge_subgoals gs2s gs.validation
+
+let t_try t g = 
+  try t g with Invalid_rule _ -> t_id g
+
+let t_or t1 t2 g = 
+  try t1 g with Invalid_rule _ -> t2 g
+
+
+(* ----------------------------------------------------------------------- *)
+(** {2 Low level rules} *)
+    
+let prove_by g (rule, subgoals) = 
+  { subgoals = subgoals;
+    validation = fun pts -> 
+      assert (List.length pts = List.length subgoals);
+      assert (List.for_all2 (fun dr g -> ju_equal dr.dr_ju g) pts subgoals);
+      {dr_ju      = g;
+       dr_rule    = rule;
+       dr_subgoal = pts; }}
+
+let radmit ju = Radmit, []
+let t_admit ju = 
+  prove_by ju (radmit ju)
 
 (** Conversion *)
-
-(* let check_conv ju1 ju2 = 
-  ju_equal (norm_ju ju1) (norm_ju ju2) 
-*)
-
-let rconv do_norm_terms new_ju1 ju1 =
+let rconv do_norm_terms new_ju ju =
   let (nf,ctype) =
     if do_norm_terms
     then (Norm.norm_expr,CheckDivZero)
     else (id,NoCheckDivZero)
   in
-  wf_ju ctype ju1;
-  wf_ju ctype new_ju1;
-  let ju = norm_ju ~norm:nf ju1 in
-  let new_ju = norm_ju ~norm:nf new_ju1 in
-  if not (ju_equal ju new_ju) then
-    (  
-      Format.printf "ju = %a@.new_ju = %a@." 
-        pp_ju ju pp_ju new_ju;
-      let cc = List.combine ju.ju_gdef new_ju.ju_gdef in
-      (try
-         let (i1,i2) = List.find (fun (i1,i2) -> not (gcmd_equal i1 i2)) cc in
-         Format.printf "i1 = %a@.i2 = %a@." pp_gcmd i1 pp_gcmd i2
-       with _ -> Format.printf "????@.");
-      flush_all (); 
-      fail_rule "rconv: not convertible");
-  [new_ju1]
+  wf_ju ctype ju;
+  wf_ju ctype new_ju;
+  let ju' = norm_ju ~norm:nf ju in
+  let new_ju' = norm_ju ~norm:nf new_ju in
+  if not (ju_equal ju' new_ju') then tacerror "rconv: not convertible";
+  Rconv, [new_ju]
+
+let t_conv do_norm_terms new_ju ju =
+  prove_by ju (rconv do_norm_terms new_ju ju)
 
 (** Transformation of the event *)
 (* Applying context to ev *)
-let rctxt_ev (c : ctxt) (i : int) ju =
+let rctxt_ev i c ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
   if i < 0 || i >= List.length evs then failwith "invalid event position";
@@ -76,17 +181,19 @@ let rctxt_ev (c : ctxt) (i : int) ju =
     else if is_Exists b then
       let (e1,e2,h) = destr_Exists b in
       mk_Exists (inst_ctxt c e1) (inst_ctxt c e2) h 
-    else fail_rule "rctxt_ev: bad event, expected equality or x in L"
+    else tacerror "rctxt_ev: bad event, expected equality or exists"
   in
   let ev = mk_Land (List.rev_append l (b:: r)) in
   let wfs = wf_gdef NoCheckDivZero (ju.ju_gdef) in
   wf_exp CheckDivZero wfs ev;
   let new_ju = {ju with ju_ev = ev} in
-  [new_ju]
+  Rctxt_ev(i, c), [new_ju]
 
-(* Removing an event *)
+let t_ctxt_ev i c ju =
+  prove_by ju (rctxt_ev i c ju)
 
-let remove_ev (rm:int list) ju = 
+(* Removing events *)
+let rremove_ev (rm:int list) ju = 
   let rec aux i evs = 
     match evs with
     | [] -> []
@@ -97,10 +204,12 @@ let remove_ev (rm:int list) ju =
   let evs = aux 0 (destruct_Land ev) in
   let new_ju = {ju with ju_ev = mk_Land evs} in
   (* TODO : should we check DivZero *)
-  [new_ju]
-  
-(* Merging event *)
+  Rremove_ev rm, [new_ju]
 
+let t_remove_ev rm ju = 
+  prove_by ju (rremove_ev rm ju)
+
+(* Merging events *)
 let merge_base_event ev1 ev2 =
   match ev1.e_node, ev2.e_node with
   | App (Eq,[e11;e12]), App(Eq,[e21;e22]) ->
@@ -114,7 +223,7 @@ let merge_base_event ev1 ev2 =
     mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) (l1 @ l2)
   | _, _ -> failwith "do not knwon how to merge the event"
 
-let merge_ev i j ju =
+let rmerge_ev i j ju =
   let i,j = if i <= j then i, j else j, i in
   let evs = destruct_Land ju.ju_ev in
   let l,b1,r = Util.split_n i evs in 
@@ -125,16 +234,17 @@ let merge_ev i j ju =
   let evs = List.rev_append l (List.rev_append l' (ev::r)) in
   let new_ju = {ju with ju_ev = mk_Land evs} in
   (* TODO : should we check DivZero, I think not *)
-  [new_ju]
+  Rmerge_ev(i,j), [new_ju]
 
-    
+let t_merge_ev i j ju = 
+  prove_by ju (rmerge_ev i j ju)
 
 (** random rules *)
 
 let ensure_bijection c1 c2 v =
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
           Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
-  then fail_rule "random: contexts not bijective"
+  then tacerror "random: contexts not bijective"
 
 (* 'random p c1 c2 vslet' takes a position p, two contexts. and a
    variable symbol for the new let-bound variable. It first
@@ -161,8 +271,11 @@ let rrandom p c1 c2 vslet ju =
                 juc_right = map_gdef_exp subst juc.juc_right;
                 juc_ev = subst juc.juc_ev }
     in
-    [ set_ju_ctxt cmds juc ]
-  | _ -> fail_rule "random: position given is not a sampling"
+    Rrandom(p,c1,c2,vslet), [ set_ju_ctxt cmds juc ]
+  | _ -> tacerror "random: position given is not a sampling"
+
+let t_random p c1 c2 vslet ju = 
+  prove_by ju (rrandom p c1 c2 vslet ju)
 
 (* random rule in oracle *)
 let rrandom_oracle p c1 c2 vslet ju =
@@ -186,22 +299,32 @@ let rrandom_oracle p c1 c2 vslet ju =
                  juoc_return = subst juoc.juoc_return;
                  juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright }
     in
-    [ set_ju_octxt cmds juoc ]
-  | _ -> fail_rule "random: position given is not a sampling"
+    Rrnd_orcl(p,c1,c2,vslet), [set_ju_octxt cmds juoc]
+  | _ -> tacerror "random: position given is not a sampling"
+
+let t_random_oracle  p c1 c2 vslet ju = 
+ prove_by ju (rrandom_oracle p c1 c2 vslet ju)
+
 
 (** Statistical distance *)
 
 let rexcept p es ju =
   match get_ju_ctxt ju p with
   | GSamp(vs,(t,_es)), juc ->
-    [ set_ju_ctxt [ GSamp(vs,(t,es)) ] juc ]
-  | _ -> fail_rule "rexcept: position given is not a sampling"
+    Rexcept(p, es), [ set_ju_ctxt [ GSamp(vs,(t,es)) ] juc ]
+  | _ -> tacerror "rexcept: position given is not a sampling"
 
-let rexcept_oracle p es  ju =
+let t_except p es ju = 
+  prove_by ju (rexcept p es ju)
+
+let rexcept_oracle p es ju =
   match get_ju_octxt ju p with
   | LSamp(vs,(t,_es)), juoc ->
-    [ set_ju_octxt [ LSamp(vs,(t,es)) ] juoc ]
-  | _ -> fail_rule "rexcept_oracle: position given is not a sampling"
+    Rexc_orcl(p,es), [ set_ju_octxt [ LSamp(vs,(t,es)) ] juoc ]
+  | _ -> tacerror "rexcept_oracle: position given is not a sampling"
+
+let t_except_oracle p es ju = 
+  prove_by ju (rexcept_oracle p es ju)
 
 (** Up-to bad: adding a new test to oracle *)
 
@@ -218,11 +341,9 @@ let radd_test p tnew asym fvs ju =
     let destr_guard lcmd = match lcmd with
       | LGuard(e) -> e
       | _ ->
-        fail_rule
-          (fsprintf ("radd_test: new test cannot be insert after %a, "
-             ^^"preceeding commands must be tests")
-             pp_lcmd lcmd |> fsget)
-    in
+        tacerror ("radd_test: new test cannot be insert after %a, " ^^
+                   "preceeding commands must be tests")
+             pp_lcmd lcmd in
     let tests = List.map destr_guard (List.rev juoc.juoc_cleft) in
     let subst = 
       List.fold_left2
@@ -233,7 +354,7 @@ let radd_test p tnew asym fvs ju =
       { juoc with (* we add the new test first *)
         juoc_cleft = juoc.juoc_cleft @ [ LGuard(tnew)] }
     in
-    [ set_ju_octxt [ LGuard(t) ] juoc;
+    Radd_test(p, tnew, asym, fvs), [ set_ju_octxt [ LGuard(t) ] juoc;
       set_ju_octxt [ LGuard(t) ]
         { juoc with
           juoc_juc =
@@ -243,8 +364,10 @@ let radd_test p tnew asym fvs ju =
             }
         };
     ]
-  | _ -> fail_rule "rexcept_oracle: position given is not a sampling"
+  | _ -> tacerror "rexcept_oracle: position given is not a sampling"
 
+let t_add_test p tnew asym fvs ju = 
+  prove_by ju (radd_test p tnew asym fvs ju)
 
 (** Rewriting oracles using tests *)
 
@@ -262,9 +385,11 @@ let rrewrite_oracle op dir ju =
                  juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright;
                  juoc_return = subst juoc.juoc_return }
     in
-    [ set_ju_octxt [lc] juoc ]
+    Rrw_orcl(op,dir), [ set_ju_octxt [lc] juoc ]
   | _ -> assert false
 
+let t_rewrite_oracle op dir ju = 
+  prove_by ju (rrewrite_oracle op dir ju)
 (** Swapping instructions *)
 
 let disjoint s1 s2 = 
@@ -279,7 +404,7 @@ let check_swap read write i c =
   if not (disjoint iw cw && 
             disjoint ir cw &&
             disjoint cr iw) then 
-    fail_rule "swap : can not swap" (* FIXME improve the error message *)
+    tacerror "swap : can not swap" (* FIXME improve the error message *)
     
 let swap i delta ju = 
   if delta = 0 then ju
@@ -294,11 +419,14 @@ let swap i delta ju =
         hd, List.rev htl, ttl in
     check_swap read_gcmds write_gcmds i c2;
     if is_call i && has_call c2 then
-      fail_rule "swap : can not swap";
+      tacerror "swap : can not swap";
     let c2,c3 = if delta > 0 then c2, i::c3 else i::c2, c3 in
     set_ju_ctxt c2 {juc_left=c1; juc_right=c3; juc_ev=e}
 
-let rswap i delta ju = [swap i delta ju]
+let rswap i delta ju = Rswap(i, delta), [swap i delta ju]
+
+let t_swap i delta ju = 
+  prove_by ju (rswap i delta ju)
 
 let swap_oracle i delta ju = 
   if delta = 0 then ju
@@ -317,30 +445,46 @@ let swap_oracle i delta ju =
     set_ju_octxt c2 { juoc with juoc_cleft = c1_rev; juoc_cright = c3 }
 
 let rswap_oracle i delta ju =
-  [swap_oracle i delta ju]
+  Rswap_orcl(i,delta), [swap_oracle i delta ju]
+
+let t_swap_oracle i delta ju =
+  prove_by ju (rswap_oracle i delta ju)
  
 (** Random indep *)
 
-let rec check_event r ev =
-  if is_Nary Land ev then
-    List.exists (check_event r) (destr_Land ev)
-  else
-    let r = mk_V r in
-    if is_Eq ev then
-      let e1, e2 = destr_Eq ev in
-      let test_eq e1 e2 =
-        e_equal e1 r && not (Se.mem r (e_vars e2))
-      in test_eq e1 e2 || test_eq e2 e1
-    else if is_Exists ev then
-      let e1,e2,_ = destr_Exists ev in
-      e_equal e1 r && not (Se.mem r (e_vars e2))
-    else false
+let check_event r ev =
+  let rec aux i evs = 
+    match evs with
+    | [] -> tacerror "can not apply rrandom_indep"
+    | ev::evs -> 
+      let r = mk_V r in
+      let test_eq e1 e2 = e_equal e1 r && not (Se.mem r (e_vars e2)) in
+      let check_eq e1 e2 = 
+        if test_eq e1 e2 then Rrnd_indep(true, i)
+        else if test_eq e2 e1 then Rrnd_indep(false, i)
+        else raise Not_found in
+      try 
+        if is_Eq ev then
+          let e1, e2 = destr_Eq ev in
+          check_eq e1 e2
+        else if is_Exists ev then
+          let e1,e2,_ = destr_Exists ev in
+          check_eq e1 e2 
+        else aux (i+1) evs 
+      with Not_found -> aux (i+1) evs in
+  aux 0 (destruct_Land ev)
+
+
 
 let rrandom_indep ju = 
   match List.rev ju.ju_gdef with
-  | GSamp(r,_) :: _ when check_event r ju.ju_ev -> []
-  | _ -> fail_rule "can not apply rrandom_indep"
+  | GSamp(r,_) :: _ ->
+    check_event r ju.ju_ev,  []
+  | _ -> tacerror "rrandom_indep: the last instruction is not a random"
 
+let t_random_indep ju = 
+  prove_by ju (rrandom_indep ju)
+  
 (** Reduction to decisional assumptions *)
 
 let rassm_decision dir subst assm ju =
@@ -350,17 +494,21 @@ let rassm_decision dir subst assm ju =
     else assm.ad_prefix2,assm.ad_prefix1 in
   let cju = Util.take (List.length c) ju.ju_gdef in
   if not (gdef_equal c cju) then 
-    fail_rule "Can not match the decisional assumption";
+    tacerror "Can not match the decisional assumption";
   let tl = Util.drop (List.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
   let read = read_ju ju' in
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
   let diff = Se.inter priv read in
   if not (Se.is_empty diff) then
-    fail_rule "Does not respect the private variables";
+    tacerror "Does not respect the private variables";
   if not (is_ppt_ju ju') then
-    fail_rule "Does not respect the computational assumption (game and event ppt)";
-  [{ ju with ju_gdef = c' @ tl }]
+    tacerror 
+      "Does not respect the computational assumption (game and event ppt)";
+  Rassm_dec(dir,subst,assm), [{ ju with ju_gdef = c' @ tl }]
+
+let t_assm_decision dir subst assm ju = 
+  prove_by ju (rassm_decision dir subst assm ju)
 
 (** Rules for random oracles *)
 
@@ -376,7 +524,11 @@ let rbad p vsx ju =
     let vx = mk_V vsx in
     let ev = mk_Exists e vx [vsx,h] in
     let ju2 = { ju1 with ju_ev = ev } in
-    [ju1;ju2]
+    Rbad(p,vsx), [ju1;ju2]
   | _ -> 
-    fail_rule "can not apply bad rule"
+    tacerror "can not apply bad rule"
+
+let t_bad p vsx ju =
+  prove_by ju (rbad p vsx ju)
+
 

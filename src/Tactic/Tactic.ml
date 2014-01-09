@@ -11,12 +11,11 @@ module Ht = Hashtbl
 module F  = Format
 
 let fail_unless c s =
-  if not (c ()) then
-    fail_rule s
+  if not (c ()) then tacerror s
 
 let create_var reuse ps s ty =
   match Proofstate.create_var reuse ps s ty with
-  | None -> fail_rule (F.sprintf "Variable %s already defined" s)
+  | None -> tacerror "Variable %s already defined" s
   | Some v -> v
 
 let invert_ctxt (v,e) =
@@ -41,23 +40,24 @@ let invert_ctxt (v,e) =
                (Poly.exp_of_poly g)
     in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
   | (_nom, Some(_denom)) ->
-    fail_rule "invert does not support denominators with hole-occurences in contexts"
+    tacerror
+      "invert does not support denominators with hole-occurences in contexts"
 
 let handle_tactic ps tac jus =
-  let apply_rule r ps = { ps with ps_goals = Some(apply r jus) } in
-  let ju = match jus with
+  let apply_rule r ps = { ps with ps_goals = Some(t_first r jus) } in
+  let ju = match jus.subgoals with
     | ju::_ -> ju
-    | [] -> fail_rule "cannot apply tactic: there is no goal"
+    | [] -> tacerror "cannot apply tactic: there is no goal"
   in
   match tac with
-  | Rnorm -> apply_rule rnorm ps
+  | Rnorm -> apply_rule t_norm ps
 
   | Rnorm_nounfold ->
-    apply_rule rnorm_nounfold ps
+    apply_rule t_norm_nounfold ps
 
   | Rnorm_unknown(is) ->
     let vs = List.map (fun s -> mk_V (Ht.find ps.ps_vars s)) is in
-    apply_rule (rnorm_unknown vs) ps
+    apply_rule (t_norm_unknown vs) ps
 
   | Rctxt_ev (sv,e,j) ->
     (* TODO: how to be in the good typing context *)
@@ -67,24 +67,24 @@ let handle_tactic ps tac jus =
       | Nary(Land,es) when j < List.length es ->
         List.nth es j
       | _ when j = 0 -> ev
-      | _ -> fail_rule "rctxt_ev: bad index"
+      | _ -> tacerror "rctxt_ev: bad index"
     in
     let ty = 
       if is_Eq b then (fst (destr_Eq b)).e_ty
       else if is_Exists b then
         let (e1,_,_) = destr_Exists b in e1.e_ty 
-      else fail_rule "rctxt_ev: bad event"
+      else tacerror "rctxt_ev: bad event"
     in
     let v1 = create_var false ps sv ty in
     let e1 = expr_of_parse_expr ps e in
     let c = v1, e1 in
-    apply_rule (rctxt_ev c j) ps
+    apply_rule (t_ctxt_ev j c) ps
 
-  | Rindep -> apply_rule rrandom_indep ps
+  | Rindep -> apply_rule t_random_indep ps
 
-  | Rswap(i,j) -> apply_rule (rswap i j) ps
+  | Rswap(i,j) -> apply_rule (t_swap i j) ps
 
-  | Rswap_oracle(op,j) -> apply_rule (rswap_oracle op j) ps
+  | Rswap_oracle(op,j) -> apply_rule (t_swap_oracle op j) ps
 
   | Requiv(gd,ev) ->
     let gd = gdef_of_parse_gdef true ps gd in 
@@ -93,34 +93,34 @@ let handle_tactic ps tac jus =
       match ev with
       | None -> ju.Game.ju_ev
       | Some e -> expr_of_parse_expr ps e in
-    apply_rule (rconv true { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
+    apply_rule (t_conv true { Game.ju_gdef = gd; Game.ju_ev = ev }) ps
 
   | Rassm(dir,s,xs) ->
     let assm = 
       try Ht.find ps.ps_assms s 
-      with Not_found -> fail_rule ("error no assumption "^s) in
+      with Not_found -> tacerror "error no assumption %s" s in
     let needed = Assumption.needed_var dir assm in
     if List.length needed <> List.length xs then
-      fail_rule "Bad number of variables";
+      tacerror "Bad number of variables";
     let subst = 
       List.fold_left2 (fun s v x -> 
         let v' = create_var_reuse ps x v.Vsym.ty in
         Vsym.M.add v v' s) Vsym.M.empty needed xs in
-    apply_rule (Rules.rassm dir assm subst) ps
+    apply_rule (Rules.t_assm dir assm subst) ps
 
   | Rlet_abstract(i,sv,e) ->
     let e = expr_of_parse_expr ps e in
     let v = create_var false ps sv e.e_ty in
-    apply_rule (rlet_abstract i v e) ps
+    apply_rule (t_let_abstract i v e) ps
 
   | Rlet_unfold(i) ->
-    apply_rule (rlet_unfold i) ps
+    apply_rule (t_let_unfold i) ps
 
   | Rrandom(i,mctxt1,sv2,e2,svlet) ->
     let ty =
       match Game.get_ju_gcmd ju i with
       | Game.GSamp(v,_) -> v.Vsym.ty
-      | _ -> fail_rule (F.sprintf "Line %i is not a sampling." i)
+      | _ -> tacerror "Line %i is not a sampling." i
     in
     let ps' = ps_copy ps in
     let v2 = create_var false ps' sv2 ty in
@@ -135,16 +135,16 @@ let handle_tactic ps tac jus =
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
       | None ->
-        fail_rule "invert only implemented for Fq"
+        tacerror "invert only implemented for Fq"
     in
     let vlet = create_var false ps svlet ty in
-    apply_rule (rrandom i (v1,e1) (v2,e2) vlet) ps
+    apply_rule (t_random i (v1,e1) (v2,e2) vlet) ps
 
   | Rrandom_oracle((i,j,k),mctxt1,sv2,e2,svlet) ->
     let ty =
       match Game.get_ju_lcmd ju (i,j,k) with
       | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
-      | _ -> fail_rule (F.sprintf "Position %i,%i,%i is not a sampling." i j k)
+      | _ -> tacerror "Position %i,%i,%i is not a sampling." i j k
     in
     let ps' = ps_copy ps in
     let v2 = create_var false ps' sv2 ty in
@@ -158,10 +158,10 @@ let handle_tactic ps tac jus =
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
       | None ->
-        fail_rule "invert only implemented for Fq"
+        tacerror "invert only implemented for Fq"
     in
     let vlet = create_var false ps svlet ty in
-    apply_rule (rrandom_oracle (i,j,k) (v1,e1) (v2,e2) vlet) ps
+    apply_rule (t_random_oracle (i,j,k) (v1,e1) (v2,e2) vlet) ps
 
   | Rbad(i,sx) ->
     let ty =
@@ -169,21 +169,21 @@ let handle_tactic ps tac jus =
       | Game.GLet(_,e') when is_H e' ->
         let _,e = destr_H e' in
         e.e_ty
-      | _ -> fail_rule (F.sprintf "Line %is not hash assignment." i)
+      | _ -> tacerror "Line %is not hash assignment." i
     in
     let vx = create_var false ps sx ty in
-    apply_rule (rbad i vx) ps
+    apply_rule (t_bad i vx) ps
 
   | Rexcept(i,es) ->
     let es = List.map (expr_of_parse_expr ps) es in
-    apply_rule (rexcept i es) ps
+    apply_rule (t_except i es) ps
 
   | Rexcept_oracle(op,es) ->
     let es = List.map (expr_of_parse_expr ps) es in
-    apply_rule (rexcept_oracle op es) ps
+    apply_rule (t_except_oracle op es) ps
    
   | Rrewrite_oracle(op,dir) ->
-    apply_rule (rrewrite_oracle op dir) ps
+    apply_rule (t_rewrite_oracle op dir) ps
 
   | Radd_test(op,t,aname,fvs) ->
     let t = expr_of_parse_expr ps t in
@@ -201,44 +201,47 @@ let handle_tactic ps tac jus =
     fail_unless (fun () -> List.length fvs = List.length tys)
       "number of given variables does not match type";
     let fvs = List.map2 (fun v ty -> create_var false ps v ty) fvs tys in
-    apply_rule (radd_test op t asym fvs) ps
-
-let pp_goals fmt gs = 
-  match gs with
+    apply_rule (t_add_test op t asym fvs) ps
+  
+let pp_jus fmt jus =  
+  match jus with
   | None -> Format.printf "No goals@\n"
   | Some [] -> Format.printf "No remaining goals, proof completed.@\n"
   | Some jus ->
     let pp_goal i ju =
       Format.fprintf fmt "goal %i:@\n%a@\n@\n" (i + 1) Game.pp_ju ju in
     List.iteri pp_goal jus 
+      
+let pp_goals fmt gs = 
+  pp_jus fmt (Util.map_opt (fun gs -> gs.subgoals) gs)
 
 let handle_instr ps instr =
   let ps = ps_copy ps in
   match instr with
   | RODecl(s,t1,t2) ->
     if Ht.mem ps.ps_rodecls s then
-      fail_rule "Random oracle with same name already declared.";
+      tacerror "Random oracle with same name already declared.";
     Ht.add ps.ps_rodecls s
       (Hsym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     (ps, "Declared random oracle")
 
   | EMDecl(s,g1,g2,g3) ->
     if Ht.mem ps.ps_emdecls s then
-      fail_rule "Bilinear map with same name already declared.";
+      tacerror "Bilinear map with same name already declared.";
     Ht.add ps.ps_emdecls s
       (Esym.mk s (create_groupvar ps g1) (create_groupvar ps g2) (create_groupvar ps g3));
     (ps, "Declared bilinear map.")
 
   | ODecl(s,t1,t2) ->
       if Ht.mem ps.ps_odecls s then 
-        fail_rule "Oracle with same name already declared.";
+        tacerror "Oracle with same name already declared.";
     Ht.add ps.ps_odecls s 
       (Osym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     (ps, "Declared oracle.")
 
   | ADecl(s,t1,t2) ->
     if Ht.mem ps.ps_adecls s then 
-      fail_rule "adversary with same name already declared.";
+      tacerror "adversary with same name already declared.";
     Ht.add ps.ps_adecls s 
       (Asym.mk s (ty_of_parse_ty ps t1) (ty_of_parse_ty ps t2));
     (ps, "Declared adversary.")
@@ -249,34 +252,36 @@ let handle_instr ps instr =
     let g1 = gdef_of_parse_gdef true ps' g1 in
     let priv = List.fold_left (fun s x -> 
       try Vsym.S.add (Ht.find ps'.ps_vars x) s
-      with Not_found -> fail_rule ("unknown variable "^x))
+      with Not_found -> tacerror "unknown variable %s" x)
       Vsym.S.empty priv in
     if Ht.mem ps.ps_assms s then
-      fail_rule "assumption with the same name already exists";
+      tacerror "assumption with the same name already exists";
     Ht.add ps.ps_assms s (Assumption.mk_ad g0 g1 priv);
     (ps, "Declared assumption.")
     
   | Judgment(gd, e) ->
     let ps = ps_resetvars ps in
     let ju = ju_of_parse_ju false ps gd e in
-    ({ ps with ps_goals = Some([ju]) }, "Started proof of judgment.")
+    ({ ps with ps_goals = Some(t_id ju) }, "Started proof of judgment.")
 
   | Apply(tac) ->
     begin match ps.ps_goals with (* FIXME: more message *)
     | Some(jus) -> (handle_tactic ps tac jus, "Applied tactic.") 
-    | None -> fail_rule "apply: no goals"
+    | None -> tacerror "apply: no goals"
     end
 
   | Last ->
     begin match ps.ps_goals with
-    | Some(ju::jus) -> ({ ps with ps_goals = Some(jus@[ju]) }, "Delayed current goal.")
-    | _ -> fail_rule "last: no goals"
+    | Some (jus) -> 
+      ({ ps with ps_goals = Some(t_first_last jus) }, "Delayed current goal")
+    | _ -> tacerror "last: no goals"
     end
 
   | Admit ->
     begin match ps.ps_goals with
-    | Some(_::jus) -> ({ ps with ps_goals = Some(jus) }, "Admit goal.")
-    | _ -> fail_rule "admit: no goals"
+    | Some(gs) -> 
+      ({ps with ps_goals = Some(t_first t_admit gs)}, "Admit goal.")
+    | _ -> tacerror "admit: no goals"
     end
 
   | PrintGoals(s) ->
@@ -285,7 +290,8 @@ let handle_instr ps instr =
 
   | PrintGoal(s) ->
     let msg = fsprintf "@[<v>Current goal in state %s:@\n%a@."
-                s pp_goals (Util.map_opt (Util.take 1) ps.ps_goals)
+                s pp_jus 
+                (Util.map_opt (fun gs -> (Util.take 1 gs.subgoals)) ps.ps_goals)
               |> fsget
     in
     (ps, msg)

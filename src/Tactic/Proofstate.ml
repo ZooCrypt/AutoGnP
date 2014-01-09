@@ -13,7 +13,7 @@ type proofstate =
     ps_emdecls : (string, Esym.t) Ht.t;
     ps_assms   : (string, Assumption.assumption_decision) Ht.t;
     ps_vars    : (string, Vsym.t) Ht.t;
-    ps_goals   : (G.judgment list) option
+    ps_goals   : CoreRules.goals option
   }
 
 let mk_ps () =

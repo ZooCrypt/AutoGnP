@@ -2,5 +2,5 @@ random oralce H : G -> BS_k.
 prove [
   u <-$ BS_k;
   v <-$ BS_k;
-] : u = v.
+] : u + v = 0_k.
 
