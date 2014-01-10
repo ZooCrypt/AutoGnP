@@ -389,14 +389,10 @@ let ju_equal ju1 ju2 =
     e_equal ju1.ju_ev ju2.ju_ev
 
 let gdef_vars ju =
-  let vs = ref Se.empty in
-  iter_gdef_exp (fun e -> vs := Se.union !vs (e_vars e)) ju;
-  !vs
+  Se.union (read_gcmds ju) (write_gcmds ju)
 
 let ju_vars ju =
-  let vs = ref Se.empty in
-  iter_ju_exp (fun e -> vs := Se.union !vs (e_vars e)) ju;
-  !vs
+  Se.union (gdef_vars ju.ju_gdef) (e_vars ju.ju_ev)
 
 (* ----------------------------------------------------------------------- *)
 (** {7 Normalization } *) 
