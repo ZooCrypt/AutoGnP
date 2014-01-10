@@ -71,9 +71,13 @@ let is_G ty = match ty.ty_node with
   | _ -> false
 
 let destr_G ty = match ty.ty_node with
-  | G(gv) -> gv
-  | _     -> assert false
+  | G gv -> gv
+  | _    -> assert false
 
+let destr_BS ty = 
+  match ty.ty_node with
+  | BS lv -> lv
+  | _     -> assert false
 let destr_Prod ty = match ty.ty_node with
   | Prod ts -> ts
   | _ -> assert false
