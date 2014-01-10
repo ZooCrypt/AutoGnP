@@ -6,7 +6,7 @@ module G = Game
 
 type theory_proof_state =
     BeforeProof
-  | ActiveProof of CoreRules.goals
+  | ActiveProof of CoreRules.proof_state
   | ClosedTheory
     (* FIXME: we should store the proof tree here. Extraction works
        only with a closed theory. *)
@@ -91,4 +91,9 @@ let create_var_reuse ps s ty =
     v
   )
 
+let get_proof_state ts = 
+  match ts.ts_ps with
+  | ActiveProof g -> g
+  | BeforeProof   -> Util.tacerror "cannot apply tactic: no active proof"
+  | ClosedTheory  -> Util.tacerror "cannot apply tactic: theory closed"
 

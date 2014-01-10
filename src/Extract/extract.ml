@@ -2,7 +2,7 @@ open Type
 open Expr
 open Game
 open CoreRules
-open Proofstate
+open TheoryState
 
 module Ht = Hashtbl
 
@@ -40,21 +40,20 @@ let pp_gvars fmt gvars =
 
 let pp_bilinear _fmt _bvars = ()
 
+(*let pp_assumption fmt assum = *)
+  
 let pp_proof _fmt _ps _pft = ()
 
 let pp_all fmt ps pft =
   Format.fprintf fmt "@[<v>";
-  pp_lvars fmt ps.ps_lvars;
-  pp_gvars fmt ps.ps_gvars;
-  pp_bilinear fmt ps.ps_emdecls;
+  pp_lvars fmt ps.ts_lvars;
+  pp_gvars fmt ps.ts_gvars;
+  pp_bilinear fmt ps.ts_emdecls;
   pp_proof fmt ps pft;
   Format.fprintf fmt "@]@."
 
 let extract ps filename = 
-  let pft = 
-    match ps.ps_goals with
-    | None -> tacerror "No derivation"
-    | Some gs -> get_proof gs in
+  let pft = get_proof_state ps in
   let out = open_out filename in
   let fmt = Format.formatter_of_out_channel out in
   pp_all fmt ps pft;

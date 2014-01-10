@@ -150,3 +150,12 @@ val string_find_from : string -> string -> int -> int option
 val string_rfind_from : string -> string -> int -> int option
 
 val split : string -> char -> (string * string) option
+
+(* Exception *)
+
+exception Invalid_rule of string 
+
+(** [tacerror s] raises a rule application error with information [s]. *)
+val tacerror : ('a, Format.formatter, unit, 'b) format4 -> 'a
+
+

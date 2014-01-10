@@ -44,12 +44,7 @@ let invert_ctxt (v,e) =
       "invert does not support denominators with hole-occurences in contexts"
 
 let handle_tactic ts tac =
-  let g =
-    match ts.ts_ps with
-    | ActiveProof g -> g
-    | BeforeProof   -> tacerror "cannot apply tactic: no active proof"
-    | ClosedTheory  -> tacerror "cannot apply tactic: theory closed"
-  in
+  let g = get_proof_state ts in
   let apply_rule r ts = { ts with ts_ps = ActiveProof(t_first r g) } in
   let ju = match g.subgoals with
     | ju::_ -> ju
@@ -307,8 +302,8 @@ let handle_instr ts instr =
     end
 (* FIXME: add qed/save tactic that changes proof_state to ClosedTheory if no goal remains *)
   | Extract filename ->
-    Extract.extract ps filename;
-    (ps, "file extracted")
+    Extract.extract ts filename;
+    (ts, "file extracted")
 
 let eval_theory s =
   let pt = Parse.theory s in

@@ -43,12 +43,7 @@ type goals = {
 type tactic = goal -> goals
 type proof_state = goals
 
-(** Exception that captures rule application errors. *)
-exception Invalid_rule of string
 exception NoOpenGoal 
-
-(** [tacerror s] raises a rule application error with information [s]. *)
-val tacerror : ('a, Format.formatter, unit, 'b) format4 -> 'a
 
 (** {2 Basic manipulation tactic}  *)
 val get_proof : proof_state -> proof_tree  

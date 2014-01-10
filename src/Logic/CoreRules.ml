@@ -46,17 +46,8 @@ type tactic = goal -> goals
 
 type proof_state = goals 
 
-exception Invalid_rule of string 
-exception NoOpenGoal 
 
-let tacerror fmt =
-  let buf  = Buffer.create 127 in
-  let fbuf = Format.formatter_of_buffer buf in
-  Format.kfprintf
-    (fun _ ->
-      Format.pp_print_flush fbuf ();
-      raise (Invalid_rule (Buffer.contents buf)))
-    fbuf fmt
+exception NoOpenGoal 
 
 let fail_if_occur vs ju s =
   if (Se.mem (mk_V vs) (ju_vars ju)) then

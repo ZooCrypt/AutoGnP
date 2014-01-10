@@ -267,3 +267,14 @@ let split s sep =
       Some (a, b)
   | None   -> None
 
+(** Exception *)
+exception Invalid_rule of string 
+
+let tacerror fmt =
+  let buf  = Buffer.create 127 in
+  let fbuf = Format.formatter_of_buffer buf in
+  Format.kfprintf
+    (fun _ ->
+      Format.pp_print_flush fbuf ();
+      raise (Invalid_rule (Buffer.contents buf)))
+    fbuf fmt

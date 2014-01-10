@@ -9,7 +9,7 @@ open Game
    After the proof, the theory is closed (the proof is completed). *)
 type theory_proof_state =
     BeforeProof
-  | ActiveProof of CoreRules.goals
+  | ActiveProof of CoreRules.proof_state
   | ClosedTheory
 
 type theory_state = {
@@ -37,3 +37,5 @@ val create_groupvar : theory_state -> string -> Groupvar.id
 val create_var : bool -> theory_state -> string -> Type.ty -> Vsym.t option
 
 val create_var_reuse : theory_state -> string -> Type.ty -> Vsym.t
+
+val get_proof_state : theory_state -> CoreRules.proof_state
