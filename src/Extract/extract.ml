@@ -1,6 +1,6 @@
 open Type
-open Expr
-open Game
+(* open Expr *)
+(* open Game *)
 open CoreRules
 open TheoryState
 
@@ -44,19 +44,19 @@ let pp_bilinear _fmt _bvars = ()
   
 let pp_proof _fmt _ps _pft = ()
 
-let pp_all fmt ps pft =
+let pp_all fmt ts pft =
   Format.fprintf fmt "@[<v>";
-  pp_lvars fmt ps.ts_lvars;
-  pp_gvars fmt ps.ts_gvars;
-  pp_bilinear fmt ps.ts_emdecls;
-  pp_proof fmt ps pft;
+  pp_lvars fmt ts.ts_lvars;
+  pp_gvars fmt ts.ts_gvars;
+  pp_bilinear fmt ts.ts_emdecls;
+  pp_proof fmt ts pft;
   Format.fprintf fmt "@]@."
 
-let extract ps filename = 
-  let pft = get_proof_state ps in
+let extract ts filename = 
+  let pft = get_proof_state ts in
   let out = open_out filename in
   let fmt = Format.formatter_of_out_channel out in
-  pp_all fmt ps pft;
+  pp_all fmt ts pft;
   close_out out
 
 
