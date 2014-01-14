@@ -15,3 +15,4 @@ val mod_reduce : expr -> expr -> bool
 val norm : (expr -> expr) -> expr -> expr 
 
 
+val solve_fq_sage : (expr * expr) list -> expr -> expr

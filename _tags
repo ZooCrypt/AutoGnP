@@ -4,10 +4,12 @@
 
 <src/Parser> or <src/CAS> or <src/Game> or <src/Main>: include
 
-<src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), thread
+<src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), package(yojson), thread
 
-<src/Main/zoocrypt.d.byte>: thread, package(unix)
+<src/Main/zoocrypt.d.byte>: thread, package(unix), package(yojson)
 
-<src/Main/zoocrypt.native>: thread, package(unix)
+<src/Main/zoocrypt.native>: thread, package(unix), package(yojson)
+
+<src/CAS/CAS.ml>: package(yojson)
 
 <src/Main/wszoocrypt.ml> or <src/Main/wszoocrypt.native>: thread, package(unix), package(websocket), package(yojson)
