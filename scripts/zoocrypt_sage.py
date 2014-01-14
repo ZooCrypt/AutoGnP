@@ -97,10 +97,21 @@ def divide_out(PR,f,d):
 def isVar(p):
   """
   Returns True if the polynomial p is just a variable, i.e., a monomial x with
-  coefficient 1.
+  arbitrary coefficient.
   """
   mons = monomials(p)
-  return len(mons) == 1 and mons[0].degree() == 1 # FIXME: use coeff
+  return len(mons) == 1 and mons[0].degree() == 1 # and coeff(p,mons[0]) == 1
+
+def varCoeff(p):
+  """
+  Returns the coefficient if the polynomial p is just a variable. Otherwise,
+  returns None.
+  """
+  mons = monomials(p)
+  if len(mons) == 1 and mons[0].degree() == 1:
+    return coeff(p,mons[0])
+  else:
+    return None
 
 def monoms(P):
   """Return all monomials in list of polynomials"""
@@ -131,6 +142,46 @@ def polyToList(f):
            for m in monomials(f) ]
 
 ###############################################################################
+# Smart constructors for contexts
+###############################################################################
+
+def rint(j):
+  return "int", int(j)
+
+def rplus(l):
+  l = filter(lambda t: t != rint(0),l)
+  if len(l) == 1:
+    return l[0]
+  elif len(l) == 0:
+    return rint(0)
+  else:
+    return "+",l
+
+def rmult(l):
+  l = filter(lambda t: t != rint(1),l)
+  if len(l) == 1:
+    return l[0]
+  elif len(l) == 0:
+    return rint(1)
+  else:
+    return "*",l
+
+def rexp(t,j):
+  if j == 1:
+    return t
+  else:
+    return "^",t,j
+
+def rinv(t):
+  return "/", rint(1), t
+
+def rdiv(t1,t2):
+  if t2 == rint(1):
+    return t1
+  else:
+    return  "/",t1,t2
+
+###############################################################################
 # Deducibility for Fq
 ###############################################################################
 
@@ -159,33 +210,33 @@ def make_param_deduc(PR_,w,known,secret):
   secret = make_param(PR,PR_,w,v,secret)
   return PR,known,secret,(BF.ngens() - 1)
 
-def monom_to_ctx(PR,abstr,m):
-  BF = PR.base()
-  vs = BF.gens()
+def monom_to_ctx(abstr,m):
   degs = m.degrees()
-  # binary ^
-  return [ ("^", abstr[j], degs[j]) for j in range(0,len(degs)) if degs[j] > 0]
+  return rmult([ rexp(abstr[j], degs[j])
+                 for j in range(0,len(degs))
+                 if degs[j] > 0 ])
 
-def frac_to_ctx(PR,abstr,t):
-  assert(t.denominator() == 1)
-  t = t.numerator()
-  res = []
-  for s in t:
-    # n-ary *
-    res += [ ("*", [("int", int(s[0]))] + monom_to_ctx(PR,abstr,s[1])) ]
-  # n-ary +
-  return "+", res
+def poly_to_ctx(abstr,t):
+  if type(t) == sage.rings.integer.Integer:
+    return rint(t)
+  else:
+    summands = [ rmult([rint(s[0]), monom_to_ctx(abstr,s[1])])
+                 for s in t ]
+    res = rplus(summands)
+    return res
 
-def vec_to_ctx(PR,abstr, known, v):
+def frac_to_ctx(abstr,t):
+  denom = t.denominator()
+  num = t.numerator()
+  res = rdiv(poly_to_ctx(abstr,num),poly_to_ctx(abstr,denom))
+  return res
+
+def vec_to_ctx(abstr, known, v):
   sys.stdout.flush()
-  # n-ary *
-  summands = [ ( "*"
-               , [ known[j][0]
-                 , frac_to_ctx(PR,abstr, v[0][j]) ] )
+  summands = [ rmult([ known[j][0], frac_to_ctx(abstr, v[0][j]) ])
                for j in range(0,len(known))
                if v[0][j] != 0 ]
-  # n-ary +
-  return "+", summands
+  return rplus(summands)
 
 def solve_fq(PR,known,secret):
   """
@@ -212,9 +263,13 @@ def solve_fq(PR,known,secret):
     progress = False
     for j, ec in enumerate(known):
       # abstract variables (FIXME: abstract monomials)
-      if isVar(ec[1]):
+      vc = varCoeff(ec[1])
+      if vc is not None:
         (PR,known,secret,vidx) = make_param_deduc(PR,ec[1],known,secret)
-        abstr[vidx] = ec[0] # store recipe for parameter
+        #debug("vc: %s"%vc)
+        #debug("vc_ctxt : %s"%str(frac_to_ctx(abstr,vc)))
+        # store recipe for parameter
+        abstr[vidx] = rmult([ rinv(frac_to_ctx(abstr,vc)), ec[0] ])
         progress = True
         break
   # express known polynomials and secrets
@@ -227,7 +282,7 @@ def solve_fq(PR,known,secret):
   res = KM.solve_left(SV)
   debug("result:\n%s\n"%res)
   # translate the result into a context
-  sol = vec_to_ctx(PR,abstr, known, res)
+  sol = vec_to_ctx(abstr, known, res)
   return sol
 
 ###############################################################################

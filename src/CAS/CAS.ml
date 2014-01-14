@@ -377,6 +377,7 @@ let parse_field_json ctxs t0 =
     | `List (`String "var"::[`Int v])  -> List.nth ctxs v
     | `List (`String "int"::[`Int i])  -> if i < 0 then mk_FOpp (mk_FNat (-i)) else mk_FNat i
     | `List (`String "+"::[`List ts])  -> mk_FPlus (List.map go ts)
+    | `List [`String "/"; n; d]        -> mk_FMult [ go n; mk_FInv (go d) ]
     | `List (`String "*"::[`List ts])  -> mk_FMult (List.map go ts)
     | `List [`String "^"; t; `Int i] when i > 0 -> mk_FMult (Util.replicate i (go t))
     | _                                -> failwith (F.sprintf "parse_field_json: error %s" (YS.pretty_to_string t))
@@ -401,7 +402,7 @@ let solve_fq_sage ecs e =
      | `Assoc l ->
        let get k = List.assoc k l in
         begin match get "ok" with
-        | `Bool true -> parse_field_json ctxs (get "res")
+        | `Bool true  -> parse_field_json ctxs (get "res")
         | `Bool false -> raise Not_found
         | _           -> failwith "error"
         end
