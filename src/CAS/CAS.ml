@@ -5,6 +5,7 @@ open CASLexer
 module F = Format
 module L = List
 module Ht = Hashtbl
+module YS = Yojson.Safe
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Pure field expressions without other operators} *)
@@ -128,17 +129,29 @@ let parse_poly s =
                 ^ string_of_tokens toks)
   in pterm (lex_to_list CASLexer.lex s) [] 1 []
 
+let parse_poly_json l =
+  List.map (fun s ->
+              match s with
+              | `List [`Int c; `List m] ->
+                (c, List.map (function `List [`Int v; `Int e] -> (v,e) | _ -> failwith "error") m)
+              | _ -> failwith "error") l
+
 (* ----------------------------------------------------------------------- *)
 (** {3 Using CAS to perform polynomial computations.} *)
 
-type systems = Singular | Macaulay
+type systems = Singular | Macaulay | Sage
 
 let ht_systems = Ht.create 17
 
 let setup_systems =
   [ (Singular,
      ("Singular -q -t", Some("LIB \"poly.lib\"; ring R = (0,x0),(a),dp; number n = 0; poly f = 0; ideal I = 0;")))
-  ; (Macaulay, ("m2 --no-tvalues --no-tty --no-prompts --silent", None)) ]
+  ; (Macaulay, ("m2 --no-tvalues --no-tty --no-prompts --silent", None))
+  ; (Sage, ("scripts/zoocrypt_sage.py", None)) ]
+
+let is_started sys =
+  try ignore (Ht.find ht_systems sys); true
+  with Not_found -> false
 
 let call_system sys cmd linenum =
   let (c_in, c_out) =
@@ -173,6 +186,49 @@ let import_poly (caller : string) poly (hv : (int, expr) Ht.t) =
           with Not_found ->
             failwith ("invalid variable returned by "^caller))
        poly)
+
+let cache_norm_sage = Ht.create 17
+
+let _norm_sage se c hv =
+  let convert_polys (p1,p2) =
+    let num   = import_poly "norm_sage" p1 hv in
+    let denom = import_poly "norm_sage" p2 hv in
+    if e_equal denom mk_FOne then num
+    else mk_FDiv num denom
+  in
+  try
+    convert_polys (Ht.find cache_norm_sage se)
+  with
+    |  Not_found ->
+       let cmd = YS.to_string
+                  (`Assoc [ ("cmd", `String "normFieldExp")
+                          ; ("varnum", `Int c)
+                          ; ("fieldexp", `String (string_of_fexp se)) ])
+       in
+       begin match call_system Sage (cmd^"\n") 1 with
+       | [ sres ] ->
+         begin match YS.from_string sres with
+         | `Assoc l ->
+           let get k = List.assoc k l in
+           begin match get "ok" with
+           | `Bool true ->
+             begin match get "numerator", get "denominator" with
+             | `List lnum, `List ldenom -> 
+               let p1 = parse_poly_json lnum in
+               let p2 = parse_poly_json ldenom in
+               Ht.add cache_norm_sage se (p1,p2);
+               convert_polys (p1,p2)
+             | _ -> failwith "error"
+             end
+           | _    -> failwith "error"        
+           end
+         | _ -> failwith "error"
+         end
+       | repls ->
+         failwith
+           (F.sprintf "norm_sage: unexpected result %s\n"
+             (String.concat "\n" repls))
+       end
 
 let cache_norm_singular = Ht.create 17
 
@@ -303,4 +359,56 @@ let norm before e =
   | SMult(SV i, SNat 1)   -> Ht.find hv i
   | SMult(SNat i, SNat j) -> mk_FNat (i * j)
   | SMult(SV i, SV j)     -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
+  (* seems like it is not creating the normal forms that we expect *)
+  (* | _                     -> norm_sage se c hv *)
   | _                     -> norm_singular se c hv
+
+let () =
+  (* FIXME: add exit handlers for other systems *)
+  let exit_cmd = YS.to_string (`Assoc [ ("cmd", `String "exit") ])^"\n" in
+  at_exit (fun () -> if is_started Sage then ignore (call_system Sage exit_cmd 1))
+
+(* ----------------------------------------------------------------------- *)
+(** {5 Deducibility for fields using Sage.} *)
+
+let parse_field_json ctxs t0 =
+  let rec go t =
+    match t with
+    | `List (`String "var"::[`Int v])  -> List.nth ctxs v
+    | `List (`String "int"::[`Int i])  -> if i < 0 then mk_FOpp (mk_FNat (-i)) else mk_FNat i
+    | `List (`String "+"::[`List ts])  -> mk_FPlus (List.map go ts)
+    | `List [`String "/"; n; d]        -> mk_FMult [ go n; mk_FInv (go d) ]
+    | `List (`String "*"::[`List ts])  -> mk_FMult (List.map go ts)
+    | `List [`String "^"; t; `Int i] when i > 0 -> mk_FMult (Util.replicate i (go t))
+    | _                                -> failwith (F.sprintf "parse_field_json: error %s" (YS.pretty_to_string t))
+  in go t0
+
+let solve_fq_sage ecs e =
+  let (se,secs,c) =
+    match abstract_non_field_multiple (fun x -> x) (e::(List.map snd ecs)) with
+    | (se::secs,c,_) -> (se,secs,c)
+    | _ -> assert false
+  in
+  let ctxs = List.map fst ecs in
+  let cmd = YS.to_string
+    (`Assoc [ ("cmd", `String "solveFq")
+            ; ("varnum", `Int c)
+            ; ("known", `List (List.map (fun fe -> `String (string_of_fexp fe)) secs))
+            ; ("secret", `String (string_of_fexp se)) ])
+  in
+  match call_system Sage (cmd^"\n") 1 with
+  | [ sres ] ->
+     begin match YS.from_string sres with
+     | `Assoc l ->
+       let get k = List.assoc k l in
+        begin match get "ok" with
+        | `Bool true  -> parse_field_json ctxs (get "res")
+        | `Bool false -> raise Not_found
+        | _           -> failwith "error"
+        end
+     | _ -> failwith "error"
+     end
+   | repls ->
+         failwith
+           (F.sprintf "norm_sage: unexpected result %s\n"
+             (String.concat "\n" repls))

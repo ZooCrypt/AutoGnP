@@ -29,4 +29,13 @@ and follow the installation instructions on:
 After the installation is finished, you should be able to start "Singular"
 from the commandline.
 
+You also need an installation of Sage [2] for
+field deducibility.
+
+On mac, you can download binaries on:
+  http://www.sagemath.org/download-mac.html
+Afterwards, you have to ensure that "sage" is in
+your path.
+
 [1] http://www.singular.uni-kl.de/
+[2] http://sagemath.org

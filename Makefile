@@ -47,6 +47,10 @@ Test_Singular :
 Test_Pretty_Expr :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
 
+Test_Solve_Fq :
+	ocamlbuild $(OCAMLBUILDFLAGS) Test_Solve_Fq.d.byte && ./Test_Solve_Fq.d.byte
+
+
 test: zoocrypt
 	@echo "============ OK TESTS ==============="
 	@for file in test/rules/ok/*.zc; do\
