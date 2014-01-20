@@ -90,7 +90,6 @@ let pp_cnst fmt ty = function
   | Z -> Format.fprintf fmt "%a.zeros" pp_lvar_mod (destr_BS ty)
   | B b -> Format.fprintf fmt "%b" b
 
-
 let string_of_nop ty = function
   | FPlus -> "F.(+)"
   | FMult -> "F.( * )"
@@ -116,7 +115,7 @@ let rec pp_exp fmt e =
 
 and pp_op fmt op es = 
   match op, es with
-  | GExp, [e1;e2] ->
+  | GExp _, [e1;e2] ->
     Format.fprintf fmt "(@[<hov 2>%a.(^)@ %a@ %a@])"
       pp_gvar_mod (destr_G e1.e_ty) pp_exp e1 pp_exp e2
   | GLog lv,[e] ->
@@ -297,9 +296,123 @@ let pp_game name fmt ju =
     pp_adv_mod  ginfo.ainfo
     pp_main     ju.ju_gdef
 
+type bound = 
+  | Bint of int
+  | Bhalf
+  | Bf
+  | Bbs of IdType.internal Lenvar.gid
+  | Bju of (string * judgment)
+  | Badd of bound * bound
+  | Bsub of bound * bound
+  | Bmul of bound * bound
 
+let pp_prob fmt (name,ju) = 
+  Format.fprintf fmt "@[Pr[%s(A).main() @ &m :@ %a]@]" name pp_exp ju.ju_ev
+
+let rec pp_bound fmt bound = 
+  match bound with
+  | Bint n -> Format.fprintf fmt "%i%%r" n
+  | Bhalf  -> Format.fprintf fmt "1%%r/2%%r" 
+  | Bf     -> Format.fprintf fmt "1%%r/F.q%%r"
+  | Bbs lv -> Format.fprintf fmt "1%%r/(2^%a.length)%%r" pp_lvar_mod lv
+  | Bju ju -> pp_prob fmt ju 
+  | Badd(b1,b2) -> Format.fprintf fmt "(%a + %a)" pp_bound b1 pp_bound b2
+  | Bsub(b1,b2) -> Format.fprintf fmt "(%a - %a)" pp_bound b1 pp_bound b2
+  | Bmul(b1,b2) -> Format.fprintf fmt "(%a * %a)" pp_bound b1 pp_bound b2
+
+type cmp = Eq | Le
+
+let pp_cmp fmt = function
+  | Eq -> Format.fprintf fmt "="
+  | Le -> Format.fprintf fmt "<="
+
+let pp_axiom fmt n pn (cmp,bound) =
+  Format.fprintf fmt "@[axiom pr%i &m :@ %a %a@ %a.@]@ "
+    n pp_prob pn pp_cmp cmp pp_bound bound 
+
+let rec bound_indep ty = 
+  match ty.ty_node with
+  | BS lv -> Bbs lv
+  | Bool  -> Bhalf
+  | G _   -> Bf
+  | Fq    -> Bf
+  | Prod ts ->
+    let rec aux ts = 
+      match ts with
+      | [] -> Bint 1
+      | [t] -> bound_indep t
+      | t::ts -> Bmul(bound_indep t, aux ts) in
+    aux ts
+
+let bound_rule rule gn ju subgoals = 
+  match rule, subgoals with
+  | Radmit, [] -> (gn,ju), (Eq,Bju(gn,ju))
+  | Rconv, [_,b] -> (gn,ju), b
+  | Rctxt_ev _, [_,b] -> (gn,ju), b
+  | Rremove_ev _, [_,b] -> (gn,ju), b
+  | Rmerge_ev _, [_,b] -> (gn,ju), b
+  | Rrandom _, [_,b] -> (gn,ju), b
+  | Rrnd_orcl _, [_,b] -> (gn,ju), b
+  | Rexcept _,_ -> assert false 
+  | Rexc_orcl _,_ -> assert false
+  | Radd_test _,_ -> assert false
+  | Rrw_orcl _,_ -> assert false
+  | Rswap _, [_,b] -> (gn,ju), b
+  | Rswap_orcl _, [_,b] -> (gn,ju), b
+  | Rrnd_indep (_,i), [] -> 
+    let ev = List.nth (destruct_Land ju.ju_ev) i in
+    let bound = 
+      (* TODO fixme sampling restriction *)
+      if is_Eq ev then 
+        let e,_ = destr_Eq ev in
+        (Eq, bound_indep e.e_ty)
+      else if is_Exists ev then assert false
+      else assert false in
+    (gn,ju), bound
+
+  | Rassm_dec (_dir,_,_), [ju',(_, b)] -> 
+    (gn,ju), (Le, Badd (Bsub (Bju(gn,ju), Bju ju'), b))
+  | Rbad _,_ -> assert false
+  | _,_ -> assert false
+
+let pp_rule = function
+  | Radmit -> "admit"
+  | Rconv -> "conv"
+  | Rctxt_ev _ -> "ctxt_ev"
+  | Rremove_ev _ -> "remove_ev"
+  | Rmerge_ev _ -> "merge_ev"
+  | Rrandom _ -> "random"
+  | Rrnd_orcl _ -> "rnd_orcl"
+  | Rexcept _ -> "except"
+  | Rexc_orcl _ -> "except_orcl"
+  | Radd_test _ -> "add_test"
+  | Rrw_orcl _ -> "rw_orcl"
+  | Rswap _ -> "swap"
+  | Rswap_orcl _ -> "swap_orcl"
+  | Rrnd_indep _ -> "indep"
+  | Rassm_dec _ ->  "assumption"
+  | Rbad _ -> "bad"
+
+
+let pp_rule fmt n gn ju rule subgoals = 
+  let bound = bound_rule rule gn ju subgoals in
+  pp_axiom fmt n (fst bound) (snd bound);
+  Format.fprintf fmt "(* %s *)@ @ " (pp_rule rule);
+  bound
     
+let pp_proof fmt pft =
+  let gc = ref 0 in
+  let get_gc () = incr gc; !gc in
 
+  let rec aux fmt pft = 
+    let n = get_gc () in
+    let gn = "G" ^ string_of_int n in
+    let subgoals = List.map (aux fmt) pft.dr_subgoal in
+    Format.fprintf fmt "%a@ " (pp_game gn) pft.dr_ju;
+    pp_rule fmt n gn pft.dr_ju pft.dr_rule subgoals in
+  
+  ignore (aux fmt pft)
+    
 let pp_all fmt ts pft =
   Format.fprintf fmt "@[<v>";
   pp_lvars fmt ts.ts_lvars;
@@ -308,18 +421,21 @@ let pp_all fmt ts pft =
   pp_assumption fmt ts.ts_assms;
   let ginfo = game_info pft.dr_ju.ju_gdef in
   pp_adv_decl fmt ginfo;
-  pp_game "G1" fmt pft.dr_ju;
+  pp_proof fmt pft;
 
   Format.fprintf fmt "@]@."
 
 let extract ts filename = 
+  Extraction.extract ts filename
+
+(*
   let ps = get_proof_state ts in
   let pft = get_proof ps in
   let out = open_out filename in
   let fmt = Format.formatter_of_out_channel out in
   pp_all fmt ts pft;
   close_out out
-
+*)
 
   
 
