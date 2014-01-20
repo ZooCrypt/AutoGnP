@@ -29,9 +29,8 @@ let mk_proj_simpl i e =
 
 let rec mk_simpl_op op l =
   match op, l with
-  | GExp, [g1;p1] ->
+  | GExp gv, [g1;p1] ->
     (* g1 is necessary of the form g ^ a *)
-    let gv = destr_G g1.e_ty in
     let a = destr_gexp gv g1 in
     let p = norm_field_expr (mk_FMult [a; p1]) in
     mk_gexp gv p
@@ -56,7 +55,7 @@ let rec mk_simpl_op op l =
       | App(Not,[e]) -> e
       | _            -> mk_Not e
       end
-  | (        GExp   | GLog _ | EMap _
+  | (        GExp _ | GLog _ | EMap _
     | FOpp | FMinus | FInv   | FDiv 
     | Eq   | Ifte   | Not)           , _ -> assert false
 
@@ -142,7 +141,7 @@ and norm_field_expr e =
 let rec abbrev_ggen e =
   let e = e_sub_map abbrev_ggen e in
   match e.e_node with
-  | App(GExp,[a;b]) ->
+  | App(GExp _,[a;b]) ->
     if is_GGen a then (
        if e_equal b mk_FOne then a
        else if is_GLog b then destr_GLog b

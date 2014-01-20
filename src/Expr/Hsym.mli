@@ -11,6 +11,7 @@ val equal : t -> t -> bool
 val mk : string -> ty -> ty -> t
 val mke : string -> int -> ety -> ety -> et
 val pp : Format.formatter -> 'a gt -> unit
+val tostring : 'a gt -> string
 module M : Map.S with type key = t
 module S : Set.S with type elt = t
 module H : Hashtbl.S with type key = t

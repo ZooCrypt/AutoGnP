@@ -40,3 +40,4 @@ let mke name i dom codom =
 (* let pp fmt os = Id.pp fmt os.id *)
 (* FIXME: implememt renaming *)
 let pp fmt os = Format.fprintf fmt "%s" (Id.name os.id)
+let tostring os = Id.name os.id

@@ -26,7 +26,7 @@ let invert from to_ =
       List.iteri (fun i e -> add e (mk_Proj i inv)) es
     | App(op, es) ->
       begin match op, es with 
-      | GExp, [e1;e2] ->
+      | GExp _, [e1;e2] ->
         if is_GGen e1 then add e2 (mk_GLog inv)
       | GLog g, [e] -> add e (mk_GExp (mk_GGen g) inv)
       | FOpp, _ -> add e (mk_FOpp inv)
@@ -94,7 +94,7 @@ let invert from to_ =
         add_rm e (mk_Tuple (List.map get es))
     | App(op,es) ->
       begin match op, es with
-      | GExp, [e1;e2] ->
+      | GExp _, [e1;e2] ->
         if not (is_in e) && is_in e1 && is_in e2 then 
           add_rm e (mk_GExp (get e1) (get e2))
       | GLog _, [e1] -> construct1 e e1 mk_GLog

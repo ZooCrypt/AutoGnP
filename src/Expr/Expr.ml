@@ -24,7 +24,7 @@ let cnst_hash = function
 
 (* operators with fixed arity *)
 type 'a gop =
-    GExp                     (* exponentiation in source group *)
+    GExp of 'a Groupvar.gid  (* exponentiation in source group *)
   | GLog of 'a Groupvar.gid  (* discrete logarithm in group *)
   | FOpp                     (* additive inverse in Fq *)
   | FMinus                   (* subtraction in Fq *)
@@ -39,7 +39,7 @@ type op = internal gop
 type eop = exported gop
 
 let op_hash = function
-    GExp     -> 1
+    GExp gv  -> Hashcons.combine 1 (Groupvar.hash gv)
   | GLog gv  -> Hashcons.combine 2 (Groupvar.hash gv)
   | FOpp     -> 3
   | FMinus   -> 4
@@ -148,7 +148,7 @@ let mk_ee n ty = {
 }
 
 let op_export o = match o with
-  | GExp     -> GExp
+  | GExp gv  -> GExp(Groupvar.export gv)
   | GLog gv  -> GLog(Groupvar.export gv)
   | FOpp     -> FOpp
   | FMinus   -> FMinus
@@ -250,7 +250,7 @@ let is_Eq e = is_App Eq e
 
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
-  | GExp | GLog _ | EMap _
+  | GExp _ | GLog _ | EMap _
   | Eq | Ifte | Not -> false 
 
 let is_field_nop = function
@@ -349,17 +349,17 @@ and pp_op_p above fmt (op, es) =
   let pp_prefix op before after a =
     F.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after in
   match op, es with
-  | GExp,   [a;b] -> 
+  | GExp _,   [a;b] -> 
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult))
-      GExp "^" a b
+      op "^" a b
   | FDiv,   [a;b] -> 
     pp_bin (notsep above) FDiv "/" a b
   | FMinus, [a;b] -> 
     pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "-" a b
   | Eq,     [a;b] -> 
     pp_bin (notsep above && above<>NInfix(Land)) Eq "=" a b
-  | GLog gv, [a]   -> 
-    pp_prefix (GLog gv)  "log("  ")"   a
+  | GLog _, [a]   -> 
+    pp_prefix op "log("  ")"   a
   | FOpp,   [a]   -> 
     pp_prefix FOpp  "-"     ""    a
   | FInv,   [a]   -> 
@@ -442,7 +442,10 @@ let destr_Nary s o e =
 
 let destr_GMult  e = destr_Nary "GMult"  GMult e
 
-let destr_GExp   e = destr_App_bop "GExp" GExp e
+let destr_GExp   e = 
+  match e.e_node with 
+  | App(GExp _,[e1;e2]) -> e1,e2
+  | _ -> raise (Destr_failure "GExpr")
 
 let destr_GLog   e =
   match e.e_node with 
@@ -558,7 +561,7 @@ struct
 
   let ensure_ty_G ty s =
     match ty.ty_node with
-    | G _ -> ()
+    | G gv -> gv
     | _    ->
       failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty |> fsget)
 
@@ -608,18 +611,13 @@ struct
   let mk_App o es ty = E.mk (App(o,es)) ty
 
   let mk_GExp a b =
-    ensure_ty_G a.e_ty "mk_GExp";
+    let gv = ensure_ty_G a.e_ty "mk_GExp" in
     ensure_ty_equal b.e_ty ty_Fq b None "mk_GExp";
-    mk_App GExp [a;b] a.e_ty
+    mk_App (GExp gv) [a;b] a.e_ty
 
   let mk_GLog a =
-    match a.e_ty.ty_node with
-    | G gv -> 
-      mk_App (GLog gv) [a] ty_Fq
-    | _ ->
-      failwith
-        (fsprintf "mk_GLog expected value of group type, got %a"
-           pp_ty a.e_ty |> fsget)
+    let gv = ensure_ty_G a.e_ty "mk_GLog" in
+    mk_App (GLog gv) [a] ty_Fq
 
   let mk_EMap es a b =
     ensure_ty_equal a.e_ty (ty_G es.Esym.source1) a None "mk_EMap";
@@ -875,7 +873,7 @@ let rec is_Zero e =
   | Cnst (FNat 0) -> true
   | Cnst Z -> true
   | Tuple es -> List.for_all is_Zero es
-  | App(GExp, [e1;e2]) -> 
+  | App(GExp _, [e1;e2]) -> 
     is_Zero e2 || is_Zero e1
   | _ -> false
 

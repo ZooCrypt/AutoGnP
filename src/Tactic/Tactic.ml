@@ -254,7 +254,7 @@ let handle_instr ts instr =
       Vsym.S.empty priv in
     if Ht.mem ts.ts_assms s then
       tacerror "assumption with the same name already exists";
-    Ht.add ts.ts_assms s (Assumption.mk_ad g0 g1 priv);
+    Ht.add ts.ts_assms s (Assumption.mk_ad s g0 g1 priv);
     (ts, "Declared assumption.")
     
   | Judgment(gd, e) ->

@@ -56,12 +56,8 @@ let ty_of_nop ty = function
   | GMult  -> (match ty.ty_node with G _ -> ty | _ -> assert false)
 
 let ty_of_op ty argtys o =
-  let ensure_ty_G ty = match ty.ty_node with
-    | G gv -> gv
-    | _ -> assert false
-  in
   match o with
-  | GExp     -> let gv = ensure_ty_G ty in ([mk_G gv;mk_Fq],mk_G gv,[])
+  | GExp gv  -> ([mk_G gv;mk_Fq],mk_G gv,[])
   | GLog(gv) -> ([mk_G gv],mk_Fq,[])
   | EMap(es) -> ([mk_G (es.Esym.source1); mk_G (es.Esym.source2)], mk_G (es.Esym.target),[])
   | FMinus   -> ([mk_Fq;mk_Fq],mk_Fq,[])

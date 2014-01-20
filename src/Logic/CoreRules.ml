@@ -481,8 +481,8 @@ let t_random_indep ju =
   
 (** Reduction to decisional assumptions *)
 
-let rassm_decision dir subst assm ju =
-  let assm = Assumption.subst subst assm in
+let rassm_decision dir subst assm' ju =
+  let assm = Assumption.subst subst assm' in
   let c,c' = 
     if dir = LeftToRight then assm.ad_prefix1,assm.ad_prefix2 
     else assm.ad_prefix2,assm.ad_prefix1 in
@@ -499,7 +499,7 @@ let rassm_decision dir subst assm ju =
   if not (is_ppt_ju ju') then
     tacerror 
       "Does not respect the computational assumption (game and event ppt)";
-  Rassm_dec(dir,subst,assm), [{ ju with ju_gdef = c' @ tl }]
+  Rassm_dec(dir,subst,assm'), [{ ju with ju_gdef = c' @ tl }]
 
 let t_assm_decision dir subst assm ju = 
   prove_by ju (rassm_decision dir subst assm ju)

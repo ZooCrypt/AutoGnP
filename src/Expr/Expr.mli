@@ -17,7 +17,7 @@ type cnst =
 val cnst_hash : cnst -> int
 
 type 'a gop =
-    GExp
+    GExp of 'a Groupvar.gid
   | GLog of 'a Groupvar.gid
   | FOpp
   | FMinus

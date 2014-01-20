@@ -33,4 +33,6 @@ let mke name i ty = { id = Id.mke name i; ty = ty; }
 
 (* let pp fmt ps = Id.pp fmt ps.id *)
 (* FIXME: implememt renaming *)
+
 let pp fmt ps = Format.fprintf fmt "%s" (Id.name ps.id)
+let tostring ps = Id.name ps.id

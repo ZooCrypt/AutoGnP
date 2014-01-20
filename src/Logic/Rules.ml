@@ -68,7 +68,7 @@ let rewrite_exps unknown e0 =
   let rec go e =
     let e = e_sub_map go e in
     match e.e_node with
-    | App(GExp,[a;b]) ->
+    | App(GExp _,[a;b]) ->
       assert (is_GGen a);
       let gen = a in
       let (ies,ce) = simp_exp b unknown in

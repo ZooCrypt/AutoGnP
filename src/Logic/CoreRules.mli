@@ -9,7 +9,7 @@ open Util
 type rule_name = 
   | Radmit 
   | Rconv
-  | Rctxt_ev   of gcmd_pos * ctxt 
+  | Rctxt_ev   of int * ctxt 
   | Rremove_ev of int list
   | Rmerge_ev  of int * int 
   | Rrandom    of gcmd_pos * ctxt * ctxt * Vsym.t

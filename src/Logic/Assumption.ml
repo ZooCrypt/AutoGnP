@@ -4,13 +4,14 @@ open Wf
 open Util
 
 type assumption_decision =
-  { ad_prefix1    : gdef;
+  { ad_name       : string;
+    ad_prefix1    : gdef;
     ad_prefix2    : gdef;
     ad_pubvars    : Vsym.S.t;
     ad_privvars   : Vsym.S.t; 
   }
 
-let mk_ad pref1 pref2 pvars =
+let mk_ad name pref1 pref2 pvars =
   let check_nocall gd =
     List.iter 
       (function
@@ -37,7 +38,8 @@ let mk_ad pref1 pref2 pvars =
   end;
   let pubvars = 
     Se.fold (fun e s -> Vsym.S.add (destr_V e) s) pubvar1 Vsym.S.empty in
-  { ad_prefix1    = pref1;
+  { ad_name = name;
+    ad_prefix1    = pref1;
     ad_prefix2    = pref2;
     ad_pubvars    = pubvars;
     ad_privvars   = pvars;
@@ -57,7 +59,8 @@ let subst subst assm =
   let subst_s s =
     Vsym.S.fold (fun x -> Vsym.S.add (subst_v x)) s Vsym.S.empty in
   let subst_g = Game.subst_v_gdef subst_v in
-  { ad_prefix1  = subst_g assm.ad_prefix1;
+  { ad_name     = assm.ad_name;
+    ad_prefix1  = subst_g assm.ad_prefix1;
     ad_prefix2  = subst_g assm.ad_prefix2;
     ad_pubvars  = subst_s assm.ad_pubvars;
     ad_privvars = subst_s assm.ad_privvars;
