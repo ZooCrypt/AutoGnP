@@ -42,6 +42,7 @@ rule lex = parse
   | "admit" { ADMIT }
   | "last" { LAST }
   | "oracle" { ORACLE }
+  | "operator" { OPERATOR }
   | "assumption" { ASSUMPTION }
   | "random" { RANDOM }
   | "bilinear" { BILINEAR }

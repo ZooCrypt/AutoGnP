@@ -512,7 +512,10 @@ let rbad p vsx ju =
   match get_ju_ctxt ju p with
   | GLet(vs,e'), ctxt when is_H e' ->
     let h,e = destr_H e' in
-    (* TODO CHECK THAT h is only used here *)
+    if not (Hsym.is_ro h) then 
+      tacerror "the function %a is not a random oracle" Hsym.pp h;
+    (* TODO CHECK THAT h is only used here, and that call are guarded in
+       oracle *)
     let i = [GSamp(vs,(e'.e_ty,[]))] in
     let ju1 = set_ju_ctxt i ctxt in
     let vx = mk_V vsx in

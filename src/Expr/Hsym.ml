@@ -3,8 +3,9 @@ open IdType
 open Util
 
 type 'a gt = { 
-  id : 'a Id.gid;
-  dom : 'a gty;
+  id    : 'a Id.gid;
+  ro    : bool;          (* true if random oracle *)
+  dom   : 'a gty;
   codom : 'a gty;
 }
 
@@ -14,6 +15,7 @@ type et = exported gt
 
 let export hs = {
   id = Id.export hs.id;
+  ro = hs.ro;
   dom = ty_export hs.dom;
   codom = ty_export hs.codom
 }
@@ -30,11 +32,13 @@ module M = Hs.M
 module S = Hs.S
 module H = Hs.H
 
-let mk name dom codom =
-  { id = Id.mk name; dom = dom; codom = codom }
+let mk name ro dom codom =
+  { id = Id.mk name; ro; dom; codom }
 
-let mke name i dom codom = 
-  { id = Id.mke name i; dom = dom; codom = codom }
+let mke name i ro dom codom = 
+  { id = Id.mke name i; ro; dom; codom}
 
 let pp fmt hs = Format.fprintf fmt "%s" (Id.name hs.id)
 let tostring hs = Id.name hs.id
+
+let is_ro hs = hs.ro

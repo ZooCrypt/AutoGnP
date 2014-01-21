@@ -216,11 +216,11 @@ let handle_instr ts instr =
   let ts = ts_copy ts in
   (* FIXME: only allow declarations in BeforeProof state *)
   match instr with
-  | RODecl(s,t1,t2) ->
+  | RODecl(s,ro,t1,t2) ->
     if Ht.mem ts.ts_rodecls s then
       tacerror "Random oracle with same name already declared.";
     Ht.add ts.ts_rodecls s
-      (Hsym.mk s (ty_of_parse_ty ts t1) (ty_of_parse_ty ts t2));
+      (Hsym.mk s ro (ty_of_parse_ty ts t1) (ty_of_parse_ty ts t2));
     (ts, "Declared random oracle")
 
   | EMDecl(s,g1,g2,g3) ->

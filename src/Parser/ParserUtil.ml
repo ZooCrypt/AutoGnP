@@ -259,7 +259,7 @@ type tactic =
   | Rrewrite_oracle of G.ocmd_pos * direction
 
 type instr =
-  | RODecl     of string * parse_ty * parse_ty
+  | RODecl     of string * bool * parse_ty * parse_ty
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty

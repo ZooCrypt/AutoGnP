@@ -43,6 +43,18 @@ let string_of_op file = function
   | Ifte    -> assert false
   | EMap _  -> assert false
 
+let op_of_op file = function
+  | GExp _  -> Opow
+  | GLog gv -> Ostr ((gvar_mod file gv) ^ ".log")
+  | FOpp    -> Oopp
+  | FMinus  -> Osub
+  | FInv    -> Ostr "F.inv"
+  | FDiv    -> Odiv
+  | Eq      -> Oeq
+  | Not     -> Ostr "!"
+  | Ifte    -> assert false
+  | EMap _  -> assert false
+
 let string_of_nop file ty = function
   | FPlus -> "F.(+)"
   | FMult -> "F.( * )"
@@ -54,7 +66,19 @@ let string_of_nop file ty = function
     end
   | Land -> "(/\\)" 
   | GMult -> gvar_mod file (destr_G ty) ^ ".( * )"
-  
+
+let op_of_nop ty = function
+  | FPlus -> Oadd
+  | FMult -> Omul
+  | Xor   -> 
+    begin match ty.ty_node with 
+    | BS _ -> Opow
+    | Bool  -> assert false
+    | _     -> assert false
+    end
+  | Land -> Oand
+  | GMult -> Omul
+
 let string_of_cnst file ty = function
   | GGen   -> fsprintf "%s.g" (gvar_mod file (destr_G ty)) |> fsget
   | FNat i -> fsprintf "(F.ofint %i)" i |> fsget
@@ -68,17 +92,15 @@ let rec expression file e =
   | Tuple es -> Etuple (List.map (expression file) es)
   | Proj (i,e) -> Eproj(i, expression file e) 
   | Cnst c -> Ecnst (string_of_cnst file e.e_ty c)
-  | App(Eq,[e1;e2]) -> 
-    Eeq(expression file e1, expression file e2)
   | App(Ifte,[e1;e2;e3]) -> 
     Eif(expression file e1, expression file e2, expression file e3)
   | App(op,es) ->
-    Eapp(string_of_op file op, List.map (expression file) es)
+    Eapp(op_of_op file op, List.map (expression file) es)
   | Nary(op,es) -> 
     begin match es with
     | [] -> assert false
     | e::es -> 
-      let op = string_of_nop file e.e_ty op in
+      let op = op_of_nop e.e_ty op in
       List.fold_left (fun e e1 -> Eapp(op,[e;expression file e1])) 
         (expression file e) es 
     end
@@ -94,18 +116,18 @@ let rec formula file prefix mem ?(local=Vsym.S.empty) e =
   | Proj (i,e) -> Fproj(i, formula file prefix mem ~local e) 
   | Cnst c -> Fcnst (string_of_cnst file e.e_ty c)
   | App(Eq,[e1;e2]) -> 
-    Feq(formula file prefix mem ~local e1, formula file prefix mem ~local e2)
+    f_eq (formula file prefix mem ~local e1) (formula file prefix mem ~local e2)
   | App(Ifte,[e1;e2;e3]) -> 
     Fif(formula file prefix mem ~local e1, 
         formula file prefix mem ~local e2, 
         formula file prefix mem ~local e3)
   | App(op,es) ->
-    Fapp(string_of_op file op, List.map (formula file prefix mem ~local) es)
+    Fapp(op_of_op file op, List.map (formula file prefix mem ~local) es)
   | Nary(op,es) -> 
     begin match es with
     | [] -> assert false
     | e::es -> 
-      let op = string_of_nop file e.e_ty op in
+      let op = op_of_nop e.e_ty op in
       List.fold_left 
         (fun e e1 -> Fapp(op,[e;formula file prefix mem ~local e1])) 
         (formula file prefix mem ~local e) es 
@@ -118,7 +140,7 @@ let oracle file (osym,param,lc,ret) =
   let vres = [],res in
   let rec body lc = 
     match lc with
-    | [] -> [Iasgn([vres], Eapp("Some", [expression file ret]))]
+    | [] -> [Iasgn([vres], Eapp(Ostr "Some", [expression file ret]))]
     | LLet (v,e) :: lc -> 
       Iasgn ([pvar [] v],expression file e) :: body lc
     | LSamp (v,(ty,r)) :: lc -> assert (r = []); 
@@ -194,7 +216,7 @@ let game ?(local=true) file g =
       globs @ [MCmod m_orcl;
                        MCmod m_adv;
                        MCfun f_main] in
-    let name = top_name file "Game" in
+    let name = top_name file "M" in
     let modu = 
       { mod_name  = name;
         mod_param = [adv_decl file];
@@ -279,7 +301,7 @@ let mem = "m"
 let cmp_eq = true
 let cmp_le = false
 let mk_cmp f1 cmp f2 = 
-  if cmp = cmp_eq then Feq(f1,f2) else Fle(f1,f2)
+  if cmp = cmp_eq then f_eq f1 f2 else f_le f1 f2
 let forall_mem f = Fforall_mem(mem, f)
 
 let add_pr_lemma file f proof = 
@@ -307,7 +329,7 @@ let init_same file ju1 ju2 =
   let g2 = get_game file ju2.ju_gdef in
   let ev1 = formula file [g1.mod_name] (Some "1") ju1.ju_ev in  
   let ev2 = formula file [g2.mod_name] (Some "2") ju2.ju_ev in
-  let ev  = Feq(ev1, ev2) in 
+  let ev  = f_eq ev1 ev2 in 
   let open_pp fmt () = 
     Format.fprintf fmt "@[<v>intros &m;byequiv (_: ={glob A} ==> %a);@ "
       pp_form ev;
@@ -340,8 +362,8 @@ let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
   let write = write_gcmds (Util.take pos ju2.ju_gdef) in
   let mk_eq e =
     let v = destr_V e in
-    Feq(Fv(pvar [g1.mod_name] v, Some "1"),
-        Fv(pvar [g2.mod_name] v, Some "2")) in
+    f_eq (Fv(pvar [g1.mod_name] v, Some "1"))
+         (Fv(pvar [g2.mod_name] v, Some "2")) in
   let eqs = 
     match Se.elements write with
     | [] -> f_true
@@ -360,8 +382,8 @@ let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
   Format.fprintf fmt "  progress.@ ";
   Format.fprintf fmt "    by smt. (* improve *)@ ";
   Format.fprintf fmt "    by smt. (* improve *)@ ";
-  Format.fprintf fmt "    by ringeq. (* FIXME *)@ ";
-  Format.fprintf fmt "    by ringeq. (* FIXME *)@ ";
+  Format.fprintf fmt "    by admit. (*ringeq. FIXME *)@ ";
+  Format.fprintf fmt "    by admit. (*ringeq. FIXME *)@ ";
   Format.fprintf fmt "  by apply eq_sym.@ ";
   Format.fprintf fmt "sim.";
   close_pp fmt ()
@@ -427,7 +449,7 @@ let extract_assum file dir subst ainfo pft pft' =
     let ev = formula file [g.mod_name] (Some "1") ev in
     Format.fprintf fmt 
       "@[<v> intros &m; byequiv (_: @[={glob A} ==>@ %a@]) => //.@ "
-      pp_form (Feq(ev,Fv(([], "res"), Some "2")));
+      pp_form (f_eq ev (Fv(([], "res"), Some "2")));
     Format.fprintf fmt
       "by proc; inline{2} %a; wp; sim.@]"
       pp_fun_name (fa,"main") in
@@ -459,6 +481,43 @@ let skip_swap pft =
     | Rswap(p,i) -> aux ((p,i)::sw) (List.hd pft.dr_subgoal)
     | _ -> List.rev sw, pft in
   aux [] pft
+
+let bound_rnd_indep file pos ju = 
+  let ty,l = 
+    match List.rev ju.ju_gdef with GSamp(_,d) :: _ -> d | _ -> assert false in
+  let size, lemma =
+    match ty.ty_node with
+    | BS lv -> f_2pow (bs_length file lv), lvar_mod file lv ^".Dword.mu_x_def"
+    | Bool  -> f_2  , "Bool.Dbool.mu_x_def"
+    | G _   -> f_Fq,  assert false (* FIXME *)
+    | Fq    -> f_Fq,  "F.FDistr.mu_x_def_in"
+    | _     -> assert false (* FIXME *) in
+  let isize = f_rinv (Frofi size) in
+  assert (l = []);
+  let evs = destruct_Land ju.ju_ev in
+  let ev = List.nth evs pos in
+  if is_Eq ev then isize, ev, lemma 
+  else assert false (* FIXME exists *)
+
+let extract_rnd_indep file side pos ju = 
+  let g = game file ju.ju_gdef in
+  let pr = extract_pr file mem ju in
+  let bound, ev, lemma = bound_rnd_indep file pos ju in
+  let proof fmt () = 
+    Format.fprintf fmt "@[<v>intros &m; byphoare (_ : true ==> %a) => //.@ "
+      pp_form (formula file [g.mod_name] None ev);
+    if is_Eq ev then
+      let e1,e2 = destr_Eq ev in
+      let e = if side then e2 else e1 in
+      Format.fprintf fmt 
+        "proc; rnd ((=) %a); conseq (_ : _ ==> true); last by [].@ "
+        pp_form (formula file [g.mod_name] None e);
+      Format.fprintf fmt "simplify; intros &m1;progress.@ ";
+      Format.fprintf fmt "apply Real.eq_le;apply %s." lemma
+    else assert false;
+    Format.fprintf fmt "@]" in
+  let lemma = add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
+  lemma, pr, cmp_le, bound
 
 let rec extract_proof file pft = 
   match pft.dr_rule with
@@ -493,11 +552,9 @@ let rec extract_proof file pft =
   | Rswap_orcl _ ->
     let pft' = List.hd pft.dr_subgoal in
     extract_proof_sb1 file pft pft' (pr_admit "swap oracle")
-  | Rrnd_indep _ -> (* FIXME *)
-    let pr = extract_pr ~local:false file mem pft.dr_ju in
-    let lemma = add_pr_lemma file (mk_cmp pr cmp_eq pr) 
-      (Some (fun fmt () -> Format.fprintf fmt "(* rnd indep *)trivial.")) in
-    lemma, pr, cmp_eq, pr
+  | Rrnd_indep (side, pos) -> 
+    extract_rnd_indep file side pos pft.dr_ju 
+    
   | Rassm_dec (dir,subst, assum) ->
     let pft' = List.hd pft.dr_subgoal in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
@@ -507,9 +564,11 @@ let rec extract_proof file pft =
     let proof fmt () = 
       Format.fprintf fmt "@[<v>intros &m.@ ";
       Format.fprintf fmt "@[apply (real_le_trans@ %a@ %a@ %a).@]@ "
-        pp_form pr pp_form (f_radd abs pr') pp_form (f_radd abs bound);
-      Format.fprintf fmt "apply (%s &m); apply Real.addleM; first by [].@ "
-        lemma2;
+        (pp_form_lvl min_lvl) pr 
+        (pp_form_lvl min_lvl) (f_radd abs pr') 
+        (pp_form_lvl min_lvl) (f_radd abs bound);
+      Format.fprintf fmt "apply (%s &m).@ " lemma2;
+      Format.fprintf fmt "apply Real.addleM; first by [].@ ";
       Format.fprintf fmt "by %s (%s &m).@]"
         (if cmp = cmp_eq then "rewrite" else "apply") lemma1 in
     let lemma3 = 

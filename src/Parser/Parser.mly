@@ -72,6 +72,7 @@
 %token TO
 %token ADVERSARY
 %token ORACLE
+%token OPERATOR
 %token ASSUMPTION
 %token RANDOM
 %token BILINEAR
@@ -307,7 +308,8 @@ instr :
 | LAST { Last }
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 { ODecl(i,t1,t2) }
-| RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,t1,t2) }
+| RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,true,t1,t2) }
+| OPERATOR i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,false,t1,t2) }
 | BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG { EMDecl(i,g1,g2,g3) }
 | ASSUMPTION i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
    p=ID*

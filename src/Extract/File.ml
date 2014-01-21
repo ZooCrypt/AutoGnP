@@ -12,14 +12,27 @@ type mem  = string
 
 type cnst = string
 
+
+type op = 
+ | Oopp (* prefix - *)
+ | Opow (* ^ *)
+ | Osub (* - *)
+ | Oadd (* + *)
+ | Omul (* * *)
+ | Odiv (* / *)
+ | Oeq
+ | Ole
+ | Ostr of string
+ | Oand
+
+
 type expr = 
   | Epv    of pvar 
   | Etuple of expr list
   | Eproj  of int * expr
   | Ecnst  of cnst
-  | Eapp   of string * expr list
+  | Eapp   of op * expr list
   | Eif    of expr * expr * expr 
-  | Eeq    of expr * expr
 
 type lvalue = pvar list
 
@@ -64,19 +77,24 @@ type form =
   | Ftuple of form list
   | Fproj of int * form
   | Fcnst of cnst
-  | Fapp of string * form list
+  | Fapp of op * form list
   | Fif of form * form * form 
-  | Feq of form * form
-  | Fle of form * form
   | Fabs of form
+  | Frofi of form (* int -> real *)
 (*  | Fexists of (lvar * hvar) list * form *)
   | Fforall_mem of mem * form  
   | Fpr of fun_name * mem * form list * form
 
-let f_true = Fapp("true",[])
-let f_and f1 f2 = Fapp("(/\\)", [f1; f2])
-let f_rsub f1 f2 = Fapp("Real.(-)", [f1;f2])
-let f_radd f1 f2 = Fapp("Real.(+)", [f1;f2])
+let f_true = Fcnst "true"
+let f_eq f1 f2 = Fapp(Oeq,[f1;f2])
+let f_le f1 f2 = Fapp(Ole,[f1;f2])
+let f_and f1 f2 = Fapp(Oand, [f1; f2])
+let f_rsub f1 f2 = Fapp(Osub, [f1;f2])
+let f_radd f1 f2 = Fapp(Oadd, [f1;f2])
+let f_rinv f = Fapp(Odiv, [Fcnst "1%r";f])
+let f_2 = Fcnst "2"
+let f_2pow f = Fapp(Opow, [f_2;f])
+let f_Fq = Fcnst "F.q"
 
 let get_pr_ev = function
   | Fpr(_,_,_,ev) -> ev
@@ -93,45 +111,25 @@ type tvar_info = {
   tvar_ty  : string;
 }
 
-(* 
-   si pas rnd oracle
-     (* Partage par tout le monde *)
-     module type HashOrcl = {
-       fun hash(_:t1) : t2 
-     }.
-     (* Specifique *)
-     theory Hxxx.
-       op h : t1 -> t2.
-       module H = { 
-         var log : t1 list
-         fun hash(x:t1) : t2 = { 
-            log = x::log;
-            return h x;
-         }
-       }.
-     end.
-   si rnd oracle
-   module H = {
-     var m : (t1,t2) map
-     var log : t1 list
-     fun init () : unit = {
-        blabla
-     }
-     fun hash (x:t1) : t2 = {
-        log = x::log;
-        return m.[x];
-     }
-   }
-*)
 
-type hash_info = {
-  h_rnd  : bool;
+(* type ro_info = {
   h_th   : string;
   h_mod  : string;
-  h_eget : expr -> expr;
-  h_fget : mem option -> form -> form;
   h_log  : string;
   h_fadv : string;
+}
+*)
+  
+type op_info = 
+  { o_name : string }
+
+type hash_kind = 
+  | Hop of op_info 
+
+type hash_info = {
+  h_kind : hash_kind;
+  h_eget : expr -> expr;
+  h_fget : mem option -> form -> form;
 }         
 
 type orcl_info = { 
@@ -270,23 +268,19 @@ let mod_gvar file gv = {mn = (get_gvar file gv).tvar_mod; ma = []}
 let add_bilinears _file _ts = ()
  
 let add_hash file h = 
-  let name = top_name file (Hsym.tostring h) in
-  let hname = name^".h" in
-  let info = { 
-    h_rnd  = false;
-    h_th   = name;
-    h_mod  = "H";
-    h_eget = (fun e -> Eapp(hname, [e]));
-    h_fget = (fun _ f -> Fapp(hname, [f]));
-    h_log  = "log";
-    h_fadv = "hash"
-  } in
-  Hsym.H.add file.hvar h info
+  if Hsym.is_ro h then 
+    assert false (* FIXME *)
+  else
+    let name = top_name file (Hsym.tostring h) in
+    let info = { 
+      h_kind = Hop {o_name = name };
+      h_eget = (fun e -> Eapp(Ostr name, [e]));
+      h_fget = (fun _ f -> Fapp(Ostr name, [f]));
+    } in
+    Hsym.H.add file.hvar h info
  
 let add_hashs file ts = 
   Ht.iter (fun _ h -> add_hash file h) ts.ts_rodecls
-
-
 
 let add_adv local file ginfo =
   match file.adv_info with
@@ -323,4 +317,7 @@ let gvar_mod file gv =
 
 let lvar_mod file lv = 
   (Lenvar.H.find file.levar lv).tvar_mod
+
+let bs_length file lv = 
+  Fcnst(lvar_mod file lv ^ ".length")
 
