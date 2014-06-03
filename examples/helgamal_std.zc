@@ -26,20 +26,26 @@ prove
   ] : b = b'.  
 
 rnorm.
+print_goals : norm1.
 rswap 4 -2.
 rlet_abstract 2 gsk (g^sk).
 rlet_abstract 3 gy (g^y).
 rlet_abstract 4 gsky (g^(sk*y)).
+print_goals : norm2.
 assumption -> ddh u.
+print_goals : norm3.
 rnorm.
 rswap 3 -2.
 rlet_abstract 1 h (H(g^u)).
+print_goals : norm4.
 assumption -> es. (* assumption <- seems to be buggy *)
 rswap 1 4.
 rrandom 5 (v -> v ++ (b?m0:m1)) (v -> v ++ (b?m0:m1)) z1.
 rnorm.
+print_goals : norm5.
 (* rindep seems to be byggy it should work automatically *)
 rswap 4 2.
+print_goals : norm6.
 rindep.
 
 extract "helgamal_std.ec".

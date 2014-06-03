@@ -239,7 +239,17 @@ section.
                                         (M0.b{2} = M0.b'{2}));
       [ proc | by [] | by intros &m1 &m2 ->].
     swap{2} 6 -2.
-    (* conv *)admit.
+    call (_:((M1.b{1} ? M1.m0{1} : M1.m1{1}) ^ M1.h{1} = M1.z1{1}) /\
+            ((M1.h{1} = M0.h{2}) /\
+             ((M1.b{1} = M0.b{2}) /\
+              ((((M1.y{1} = M0.y{2}) /\ ((M1.sk{1} = M0.sk{2}) /\ true)) /\
+                (M1.m0{1} = M0.m0{2})) /\
+               (M1.m1{1} = M0.m1{2}))))).
+    auto.
+    call (_:(M1.y{1} = M0.y{2}) /\ ((M1.sk{1} = M0.sk{2}) /\ true)).
+    auto.
+    progress;admit. (* FIXME *)
+    
   qed.
   
   local lemma Lem1:
@@ -288,11 +298,10 @@ section.
        ((M2.m0{1} = M1.m0{2}) /\
         ((M2.m1{1} = M1.m1{2}) /\ (M2.sk{1} = M1.sk{2})))) /\ ={glob A}).
       progress.
-        by smt. (* improve *)
-        by smt. (* improve *)
-        by admit. (*ringeq. FIXME *)
-        by admit. (*ringeq. FIXME *)
-      by apply eq_sym.
+(*        by ringeq. *) smt.
+        by rewrite !BS_k.Dword.mu_x_def.
+        by apply BS_k.Dword.in_supp_def.
+(*        by ringeq. *) smt.
     sim.
   qed.
   
@@ -443,7 +452,20 @@ section.
     intros &m;byequiv (_: ={glob A} ==> (M5.b{1} = M5.b'{1}) =
                                         (M4.b{2} = M4.b'{2}));
       [ proc | by [] | by intros &m1 &m2 ->].
-    (* conv *)admit.
+    call (_:(M5.b{1} = M4.b{2}) /\
+            ((((M5.y{1} = M4.y{2}) /\
+               ((M5.sk{1} = M4.sk{2}) /\
+                ((H (G.g ^ M4.u{2}) = M4.h{2}) /\
+                 ((M5.u{1} = M4.u{2}) /\ true)))) /\
+              (M5.m0{1} = M4.m0{2})) /\
+             (M5.m1{1} = M4.m1{2}))).
+    auto.
+    call (_:(M5.y{1} = M4.y{2}) /\
+            ((M5.sk{1} = M4.sk{2}) /\
+             ((H (G.g ^ M4.u{2}) = M4.h{2}) /\ ((M5.u{1} = M4.u{2}) /\ true)))).
+    auto.
+    progress;admit. (* FIXME *)
+    
   qed.
   
   local lemma Lem11:
@@ -491,7 +513,23 @@ section.
                                         (M5.b{2} = M5.b'{2}));
       [ proc | by [] | by intros &m1 &m2 ->].
     swap{2} 1 2.
-    (* conv *)admit.
+    call (_:(M6.b{1} = M5.b{2}) /\
+            ((((G.g ^ M6.u{1} = M6.gsky{1}) /\
+               ((G.g ^ M6.y{1} = M6.gy{1}) /\
+                ((G.g ^ M6.sk{1} = M6.gsk{1}) /\
+                 ((M6.u{1} = M5.u{2}) /\
+                  ((M6.y{1} = M5.y{2}) /\ ((M6.sk{1} = M5.sk{2}) /\ true)))))) /\
+              (M6.m0{1} = M5.m0{2})) /\
+             (M6.m1{1} = M5.m1{2}))).
+    auto.
+    call (_:(G.g ^ M6.u{1} = M6.gsky{1}) /\
+            ((G.g ^ M6.y{1} = M6.gy{1}) /\
+             ((G.g ^ M6.sk{1} = M6.gsk{1}) /\
+              ((M6.u{1} = M5.u{2}) /\
+               ((M6.y{1} = M5.y{2}) /\ ((M6.sk{1} = M5.sk{2}) /\ true)))))).
+    auto.
+    progress;admit. (* FIXME *)
+    
   qed.
   
   local lemma Lem13:
@@ -610,7 +648,21 @@ section.
     intros &m;byequiv (_: ={glob A} ==> (M8.b{1} = M8.b'{1}) =
                                         (M7.b{2} = M7.b'{2}));
       [ proc | by [] | by intros &m1 &m2 ->].
-    (* conv *)admit.
+    call (_:(M8.b{1} = M7.b{2}) /\
+            ((((G.g ^ (M7.sk{2} * M7.y{2}) = M7.gsky{2}) /\
+               ((G.g ^ M7.y{2} = M7.gy{2}) /\
+                ((G.g ^ M7.sk{2} = M7.gsk{2}) /\
+                 ((M8.y{1} = M7.y{2}) /\ ((M8.sk{1} = M7.sk{2}) /\ true))))) /\
+              (M8.m0{1} = M7.m0{2})) /\
+             (M8.m1{1} = M7.m1{2}))).
+    auto.
+    call (_:(G.g ^ (M7.sk{2} * M7.y{2}) = M7.gsky{2}) /\
+            ((G.g ^ M7.y{2} = M7.gy{2}) /\
+             ((G.g ^ M7.sk{2} = M7.gsk{2}) /\
+              ((M8.y{1} = M7.y{2}) /\ ((M8.sk{1} = M7.sk{2}) /\ true))))).
+    auto.
+    progress;admit. (* FIXME *)
+    
   qed.
   
   local lemma Lem19:
@@ -633,7 +685,20 @@ section.
                                         (M8.b{2} = M8.b'{2}));
       [ proc | by [] | by intros &m1 &m2 ->].
     swap{2} 2 2.
-    (* conv *)admit.
+    call (_:((G.g ^ M.y{1}, M.mb{1} ^ M.he{1}) = M.c{1}) /\
+            ((H (M.pk{1} ^ M.y{1}) = M.he{1}) /\
+             ((M.y{1} = M8.y{2}) /\
+              (((M.b{1} ? M.m0{1} : M.m1{1}) = M.mb{1}) /\
+               ((M.b{1} = M8.b{2}) /\
+                ((((G.g ^ M.sk{1} = M.pk{1}) /\
+                   ((M.sk{1} = M8.sk{2}) /\ true)) /\
+                  (M.m0{1} = M8.m0{2})) /\
+                 (M.m1{1} = M8.m1{2}))))))).
+    auto.
+    call (_:(G.g ^ M.sk{1} = M.pk{1}) /\ ((M.sk{1} = M8.sk{2}) /\ true)).
+    auto.
+    progress;admit. (* FIXME *)
+    
   qed.
   
   local lemma Lem21:

@@ -41,3 +41,5 @@ let mke name i source1 source2 target =
     source2 = source2; target = target }
 
 let pp fmt hs = Format.fprintf fmt "%s" (Id.name hs.id)
+
+let name hs =  (Id.name hs.id)

@@ -50,11 +50,11 @@ type instr =
  | Iif   of expr * instr list * instr list
 
 type fundef = {
-  f_name : string;
+  f_name  : string;
   f_param : (pvar * ty) list;
   f_local : (pvar * ty) list;
   f_res   : (pvar * ty) option;
-  f_body : instr list
+  f_body  : instr list
 }
 
 type mod_body = 
@@ -193,11 +193,14 @@ type assumption_info = {
   a_len2  : int;
 }
 
+type bmap_info = string
+
 type file = {
   mutable top_name : Sstring.t;
   levar : tvar_info Lenvar.H.t;
   grvar : tvar_info Groupvar.H.t;
   hvar  : hash_info Hsym.H.t;
+  bvar  : bmap_info Esym.H.t;
   assump : (string, assumption_info) Ht.t;
   mutable game_trans : (gdef * mod_def) list;
   mutable glob_decl  : cmd list;
@@ -210,6 +213,7 @@ let empty_file = {
   levar    = Lenvar.H.create 7;
   grvar    = Groupvar.H.create 7;
   hvar     = Hsym.H.create 7;
+  bvar     = Esym.H.create 7;
   assump   = Ht.create 3;
   game_trans = [];
   glob_decl  = [];
@@ -265,8 +269,16 @@ let get_gvar file gv =
 
 let mod_gvar file gv = {mn = (get_gvar file gv).tvar_mod; ma = []}
  
-let add_bilinears _file _ts = ()
+let add_bilinear file bv = 
+  let name = top_name file ("B" ^ Esym.name bv) in
+  Esym.H.add file.bvar bv name
  
+let add_bilinears file ts = 
+  Ht.iter (fun _ bv -> add_bilinear file bv) ts.ts_emdecls
+ 
+let bvar_mod file bv =
+  try Esym.H.find file.bvar bv with Not_found -> assert false
+
 let add_hash file h = 
   if Hsym.is_ro h then 
     assert false (* FIXME *)

@@ -14,6 +14,7 @@ val equal : t -> t -> bool
 val mk : string -> Groupvar.id -> Groupvar.id -> Groupvar.id -> t
 val mke : string -> int -> Groupvar.eid -> Groupvar.eid -> Groupvar.eid -> et
 val pp : Format.formatter -> 'a gt -> unit
+val name : 'a gt -> string
 module M : Map.S with type key = t
 module S : Set.S with type elt = t
 module H : Hashtbl.S with type key = t

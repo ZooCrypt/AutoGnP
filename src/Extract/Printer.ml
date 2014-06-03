@@ -67,8 +67,11 @@ let rec pp_type file fmt ty =
   | Bool     -> Format.fprintf fmt "bool"
   | G gv     -> pp_tvar fmt (get_gvar file gv)
   | Fq       -> Format.fprintf fmt "F.t"
-  | Prod tys -> 
-    Format.fprintf fmt "(@[%a@])" (pp_list " *@ " (pp_type file)) tys
+  | Prod tys ->
+    if tys = [] then 
+      Format.fprintf fmt "unit"
+    else
+      Format.fprintf fmt "(@[%a@])" (pp_list " *@ " (pp_type file)) tys
 
 let pp_at_mem fmt = function
   | None -> ()
@@ -306,6 +309,34 @@ let pp_gvars_mod fmt gvars =
     Groupvar.H.iter out gvars;
     Format.fprintf fmt "@ "
 
+(** {3 Bilinear map } *)
+
+let pp_bilinear_mod file fmt bvars = 
+  if Esym.H.length bvars <> 0 then
+    let out bv s = 
+      let g1 = gvar_mod file bv.Esym.source1 in
+      let g2 = gvar_mod file bv.Esym.source2 in
+      let gt = gvar_mod file bv.Esym.target in
+      let pp_with g wg =
+         Format.fprintf fmt "     type %s.group <- %s.group,@ " g wg;
+         Format.fprintf fmt "     op   %s.( * ) <- %s.( * ),@ " g wg;
+         Format.fprintf fmt "     op   %s.([-]) <- %s.([-]),@ " g wg;
+         Format.fprintf fmt "     op   %s.( / ) <- %s.( / ),@ " g wg;
+         Format.fprintf fmt "     op   %s.( ^ ) <- %s.( ^ ),@ " g wg;
+         Format.fprintf fmt "     op   %s.log   <- %s.log"      g wg in
+      Format.fprintf fmt "clone Bilinear.Bl as %s with@ " s;
+      pp_with "G1" g1;
+      Format.fprintf fmt ",@ ";
+      pp_with "G2" g2;
+      Format.fprintf fmt ",@ ";
+      pp_with "GT" gt;
+      Format.fprintf fmt ".@ @ " in
+
+    Format.fprintf fmt "(** { Bilinear Map declarations. } *)@ @ ";
+    Format.fprintf fmt "require Bilinear.@ @ ";
+    Esym.H.iter out bvars;
+    Format.fprintf fmt "@ "
+
 let pp_hash_mod fmt file = 
   if Hsym.H.length file.hvar <> 0 then 
     let out h info =
@@ -345,7 +376,8 @@ let pp_assumptions fmt file =
     Ht.iter (pp_assumption fmt file) file.assump
   end
 
-let pp_oname fmt name = Format.fprintf fmt "O.o%a" Osym.pp name
+let pp_oname1 fmt name = Format.fprintf fmt "o%a" Osym.pp name
+let pp_oname fmt name = Format.fprintf fmt "O.%a" pp_oname1 name
 
 let obinding tbl = 
   Osym.H.fold (fun k v l -> (k,v)::l) tbl [] 
@@ -356,19 +388,19 @@ let abinding tbl =
 let pp_adv_type fmt file = 
   let pp_orcl_decl fmt (oname, oinfo) = 
     Format.fprintf fmt "@[proc %a (@[%a@]) :@ %a@]"
-      pp_oname oname 
+      pp_oname1 oname 
       (pp_list ",@ " (pp_var_decl file)) oinfo.oparams
       (pp_type file) oinfo.ores.e_ty in
   let pp_orcl_ty fmt oinfo = 
     Format.fprintf fmt "@[<v>module type Orcl = {@   @[<v>%a@]@ }.@]@ " 
-      (pp_list "@ " pp_orcl_decl) (obinding oinfo) in
+      (pp_list "@ " pp_orcl_decl) (List.rev (obinding oinfo)) in
   let pp_adv_decl fmt (name,os) =
     Format.fprintf fmt "@[proc a%a (_ : %a) : %a {%a}@]"
       Asym.pp name (pp_type file) name.Asym.dom (pp_type file) name.Asym.codom
       (pp_list ",@ " pp_oname) os in
   let pp_adv_ty fmt ainfo = 
     Format.fprintf fmt "@[<v>module type Adv (O:Orcl) = {@    @[<v>%a@]@ }.@]@ "
-      (pp_list "@ " pp_adv_decl) (abinding ainfo)
+      (pp_list "@ " pp_adv_decl) (List.rev (abinding ainfo))
   in
   let ginfo = (adv_info file).adv_g in
   Format.fprintf fmt "@[<v>%a@ %a@ @]"
@@ -407,6 +439,7 @@ let pp_file fmt file =
   Format.fprintf fmt "require import ZooUtil.@ ";
   pp_lvars_mod fmt file.levar;
   pp_gvars_mod fmt file.grvar;
+  pp_bilinear_mod file fmt file.bvar;
   pp_hash_mod fmt file;
   pp_assumptions fmt file;
   pp_adv_type fmt file;

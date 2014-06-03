@@ -111,7 +111,7 @@ by [].
 
 (* Declaring the ring and field structure *)
 require AlgTactic.
-
+require Ring.
 instance ring with t
   op rzero = F.zero
   op rone  = F.one

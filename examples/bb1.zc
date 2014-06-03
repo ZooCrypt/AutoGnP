@@ -25,8 +25,8 @@ prove
                 | not (i1=i'), r <-$ Fq];
     b <-$ Bool;
     let mb = (b?m0:m1);
-    e <-$ Fq;
-    b' <- A3(mb * e(pk1,pk2)^e, g^e, (pk2^i'*pk3)^e) with
+    e' <-$ Fq;
+    b' <- A3(mb * e(pk1,pk2)^e', g^e', (pk2^i'*pk3)^e') with
       Kg2(i2) = [ (g^(c*d + r2*(d*i2 + h)), g^r2)
                 | not (i2=i'), r2 <-$ Fq];
   ] : b = b'.
@@ -43,12 +43,12 @@ prove
   rnorm.
 
   rswap 1 3.
-  rnorm_unknown c d e.
+  rnorm_unknown c d e'.
 
   rlet_abstract 3 xc (g ^ c).
   rlet_abstract 4 xd (g ^ d).
-  rlet_abstract 5 xe (g ^ e).
-  rlet_abstract 6 t (g_t^(c*d*e)).
+  rlet_abstract 5 xe (g ^ e').
+  rlet_abstract 6 t (g_t^(c*d*e')).
 
   assumption -> bddh u. rnorm. rswap 4 4.
 
@@ -56,3 +56,5 @@ prove
   rnorm. rswap 7 2.
 
   rindep.
+
+extract "bb1.ec".
