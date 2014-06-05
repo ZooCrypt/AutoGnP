@@ -79,4 +79,7 @@ proof.
   rewrite inv_def -{1}(gpow_log x) mul_pow;smt. 
 qed.
 
+require Ring. 
+hint rewrite Ring.rw_algebra : log_bij log_g log_pow log_mul.
+
 end CG.

@@ -359,19 +359,56 @@ let pr_swap file sw ju1 ju2 fmt () =
 let invert_swap sw = 
   List.fold_left (fun sw (p,i) -> (p+i, -i)::sw) [] sw
 
-type conv_command = 
+type tactic = 
+  | Admit
   | Auto
-  | Call of form
+  | Progress
+  | Algebra
+  | Call of form 
+  | TSeq of tactics
+  | TSeqSub of tactic * tactics 
+
+and tactics = tactic list
+
+type tcommand = 
+  | Tac of tactic
+  | TSub of tcommands list
+
+and tcommands = tcommand list
+
+let rec pp_tac fmt = function
+  | Admit -> Format.fprintf fmt "admit" 
+  | Auto  -> Format.fprintf fmt "auto" 
+  | Progress -> Format.fprintf fmt "progress" 
+  | Algebra -> Format.fprintf fmt "algebra"
+  | TSeq lt -> 
+    Format.fprintf fmt "@[<hov>(%a)@]" (pp_list ";@ " pp_tac) lt 
+  | Call(inv) -> Format.fprintf fmt "call (_:%a)" pp_form inv
+  | TSeqSub(t, ts) ->
+    Format.fprintf fmt "@[<hov 2>%a;@ [ @[<hov 0>%a@]]@]" 
+      pp_tac t
+      (pp_list " |@ " pp_tac) ts
+
+
+let rec pp_cmd fmt = function
+  | Tac t -> Format.fprintf fmt "%a." pp_tac t
+  | TSub ts -> 
+    Format.fprintf fmt "  @[<v>%a@]" 
+      (pp_list "@ @ " pp_cmds) ts
+      
+and pp_cmds fmt tacs=
+  Format.fprintf fmt "@[<v>%a@]" (pp_list "@ " pp_cmd) tacs 
+
 
 type conv_info = {
-  tacs : conv_command list;
+  tacs : tcommands;
   invs : form
 }
 
 let add_auto tacs = 
   match tacs with 
-  | Auto :: _ -> tacs 
-  | _ -> Auto :: tacs
+  | Tac Auto :: _ -> tacs 
+  | _ -> Tac Auto :: tacs
 
 let add_let_info file g v e side inv = 
   let e1 = formula file [g.mod_name] side e in
@@ -394,14 +431,14 @@ let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () =
   let add_info2 v2 e2 inv = add_let_info file g2 v2 e2 (Some "2") inv in
   let add_rnd v1 v2 inv = add_rnd_info file g1 g2 v1 v2 inv in
   let add_call vs1 odef1 vs2 odef2 inv = 
-(*    assert (odef1 = []); (* FIXME not implemented *)
-    assert (odef2 = []); (* FIXME not implemented *) *)
+    let prove_orcl _o1 _o2 = [Tac Admit] in (* FIXME *)
     let mk_eq v1 v2 = 
       let e1 = formula file [g1.mod_name] (Some "1") (Expr.mk_V v1) in
       let e2 = formula file [g2.mod_name] (Some "2") (Expr.mk_V v2) in 
       f_eq e1 e2 in
     let eqs = List.map2 mk_eq vs1 vs2 in
-    { tacs = Call inv.invs :: inv.tacs;
+    let pr_orcls = List.map2 prove_orcl odef1 odef2 in
+    { tacs = Tac (Call inv.invs) :: TSub pr_orcls :: inv.tacs;
       invs = List.fold_left f_and inv.invs eqs } in
   (* the game are now ju ju' *)
   let rec aux lc1 lc2 inv = 
@@ -416,16 +453,9 @@ let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () =
     | GCall(vs1,_,_,odef1)::lc1, GCall(vs2,_,_,odef2)::lc2 ->
       aux lc1 lc2 (add_call vs1 odef1 vs2 odef2 inv)
     | _, _ -> assert false in
-  let inv = aux ju.ju_gdef ju'.ju_gdef { tacs = []; invs = f_true } in
-  let rec pp_tac fmt tacs = 
-    match tacs with
-    | Auto :: tacs -> Format.fprintf fmt "auto.@ "; pp_tac fmt tacs
-    | Call inv :: tacs -> 
-      Format.fprintf fmt "call (_:%a).@ " pp_form inv;
-      pp_tac fmt tacs
-    | [] -> 
-      Format.fprintf fmt "progress;admit. (* FIXME *)@ " in
-  pp_tac fmt inv.tacs;
+  let inv = aux ju.ju_gdef ju'.ju_gdef 
+    { tacs = [Tac (TSeq [Auto;Progress;Algebra])]; invs = f_true } in
+  pp_cmds fmt inv.tacs;
   close_pp fmt ()
 
 let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
@@ -470,10 +500,10 @@ let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
     | Prod _ -> assert false (* FIXME *) in
   let ty = (fst inv1).Vsym.ty in 
   Format.fprintf fmt "  progress.@ ";
-  Format.fprintf fmt "    by ringeq.@ ";
+  Format.fprintf fmt "    by algebra.@ ";
   Format.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
   Format.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
-  Format.fprintf fmt "    by ringeq.@ ";
+  Format.fprintf fmt "    by algebra.@ ";
   Format.fprintf fmt "sim.";
   close_pp fmt ()
 

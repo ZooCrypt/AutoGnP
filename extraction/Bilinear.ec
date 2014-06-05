@@ -38,5 +38,7 @@ proof.
   rewrite -{1}(G1.gpow_log x) -{1}(G2.gpow_log y) e_pow GT.log_pow F.mulA e_g_g GT.log_g;ringeq.
 qed.
 
+hint rewrite Ring.rw_algebra : e_g_g log_e.
+
 end Bl.
    
