@@ -116,12 +116,12 @@ val rexcept_oracle  : ocmd_pos -> expr list -> rule
 val t_except_oracle : ocmd_pos -> expr list -> tactic
 
 (** [radd_test p tnew asym vs ju] returns the judgments resulting from
-     adding the test [tnew] at oracle position [p = (i,j,k)]. The two new
-     judgments for [ju = G : E] are (1) [ G' : E ] where [G'] is obtained
-     from [G] by adding the test [tnew] to the oracle
-     and (2) [ G'_{1..i}; vs <- A() : t /\ not tnew]
-     where [G'_{1..i}] is the prefix of [G'] including [i] and [t] is
-     the original test in the oracle. *)
+    adding the test [tnew] at oracle position [p = (i,j,k)]. The two new
+    judgments for [ju = G : E] are (1) [ G' : E ] where [G'] is obtained
+    from [G] by adding the test [tnew] to the oracle
+    and (2) [ G'_{1..i}; vs <- A() : t /\ not tnew]
+    where [G'_{1..i}] is the prefix of [G'] including [i] and [t] is
+    the original test in the oracle. *)
 val radd_test  : ocmd_pos -> expr -> Asym.t -> Vsym.t list -> rule 
 val t_add_test : ocmd_pos -> expr -> Asym.t -> Vsym.t list -> tactic
 
