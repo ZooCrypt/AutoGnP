@@ -30,7 +30,8 @@ let   opp_lvl = next_lvl pow_lvl
 let   mul_lvl = next_lvl opp_lvl 
 let   add_lvl = next_lvl mul_lvl 
 let    eq_lvl = next_lvl add_lvl 
-let   and_lvl = next_lvl eq_lvl 
+let   not_lvl = next_lvl eq_lvl
+let   and_lvl = next_lvl not_lvl 
 let    if_lvl = next_lvl and_lvl 
 let quant_lvl = next_lvl if_lvl 
 let   max_lvl = max_int 
@@ -93,6 +94,10 @@ let rec pp_form_lvl outer fmt = function
         let pp fmt () = 
           Format.fprintf fmt "@[-@ %a@]" (pp_form_lvl opp_lvl) e in
         pp, opp_lvl
+      | Onot, [e] ->
+        let pp fmt () = 
+          Format.fprintf fmt "@[!@ %a@]" (pp_form_lvl not_lvl) e in
+        pp, not_lvl
       | Opow, [e1;e2] -> pp_infix pp_form_lvl pow_lvl "^" e1 e2, pow_lvl
       | Osub, [e1;e2] -> pp_infix pp_form_lvl add_lvl "-" e1 e2, add_lvl
       | Oadd, [e1;e2] -> pp_infix pp_form_lvl add_lvl "+" e1 e2, add_lvl
@@ -101,7 +106,7 @@ let rec pp_form_lvl outer fmt = function
       | Oeq,  [e1;e2] -> pp_eq    pp_form_lvl         "=" e1 e2, eq_lvl
       | Ole,  [e1;e2] -> pp_eq    pp_form_lvl         "<=" e1 e2, eq_lvl
       | Oand, [e1;e2] -> pp_infix pp_form_lvl mul_lvl "/\\" e1 e2, and_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand), _ -> 
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -154,6 +159,11 @@ let rec pp_exp_lvl outer fmt = function
         let pp fmt () = 
           Format.fprintf fmt "@[-@ %a@]" (pp_exp_lvl opp_lvl) e in
         pp, opp_lvl
+      | Onot, [e] -> 
+        let pp fmt () = 
+          Format.fprintf fmt "@[!@ %a@]" (pp_exp_lvl not_lvl) e in
+        pp, not_lvl
+ 
       | Opow, [e1;e2] -> pp_infix pp_exp_lvl pow_lvl "^" e1 e2, pow_lvl
       | Osub, [e1;e2] -> pp_infix pp_exp_lvl add_lvl "-" e1 e2, add_lvl
       | Oadd, [e1;e2] -> pp_infix pp_exp_lvl add_lvl "+" e1 e2, add_lvl
@@ -162,7 +172,7 @@ let rec pp_exp_lvl outer fmt = function
       | Oeq,  [e1;e2] -> pp_eq    pp_exp_lvl         "=" e1 e2, eq_lvl
       | Ole,  [e1;e2] -> pp_eq    pp_exp_lvl         "<=" e1 e2, eq_lvl
       | Oand, [e1;e2] -> pp_infix pp_exp_lvl mul_lvl "/\\" e1 e2, and_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand), _ -> 
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 

@@ -108,7 +108,7 @@ let rec expression file e =
 let rec formula file prefix mem ?(local=Vsym.S.empty) e = 
   match e.e_node with 
   | V v -> 
-    if Vsym.S.mem v local then Fv(pvar [] v, None)
+    if Vsym.S.mem v local then Fv(pvar [] v, mem)
     else Fv (pvar prefix v, mem)
   | H(h,e) ->  mk_fget file mem h (formula file prefix mem ~local e)
   | Tuple es -> Ftuple (List.map (formula file prefix mem ~local) es)
@@ -238,8 +238,6 @@ let game ?(local=true) file g =
     else file.glob_decl <- Cmod(modu) :: file.glob_decl;
     modu
 
-
-
 let add_assumption file name assum = 
   let advty = top_name file ("Adv_"^name) in
   let ngame1 = top_name file ("G_"^name^string_of_int 1) in
@@ -361,10 +359,16 @@ let invert_swap sw =
 
 type tactic = 
   | Admit
+  | Rnd
+  | Skip
+  | Wp of int * int
   | Auto
   | Progress
   | Algebra
   | Call of form 
+  | If
+  | Proc
+  | Seq of int * int * form
   | TSeq of tactics
   | TSeqSub of tactic * tactics 
 
@@ -376,14 +380,57 @@ type tcommand =
 
 and tcommands = tcommand list
 
+let add_auto tacs = 
+  match tacs with 
+  | Tac Auto :: _ -> tacs 
+  | _ -> Tac Auto :: tacs
+
+let add_TSub sub cont = 
+  if sub = [] then cont
+  else TSub sub :: cont 
+
+let add_wp i1 i2 cont = 
+  match cont with
+  | Tac (Wp(i1',i2')) :: _ | Tac (TSeq (Wp(i1',i2')::_)) :: _ ->
+    assert (i1' <= i1);
+    assert (i2' <= i2);
+    cont
+  | Tac ((Rnd | Skip | If) as t1) :: cont ->
+    Tac (TSeq [Wp(i1,i2);t1]) :: cont
+  | Tac (TSeq ts) :: cont ->
+    Tac (TSeq (Wp(i1,i2)::ts)) :: cont
+  | _ -> Tac(Wp(i1,i2)) :: cont
+
+
+let add_rnd cont = 
+  match cont with
+  | Tac ((Rnd | Skip | Wp _ | If) as t1) :: cont ->
+    Tac (TSeq [Rnd;t1]) :: cont
+  | Tac (TSeq ts) :: cont ->
+    Tac (TSeq (Rnd::ts)) :: cont
+  | _ -> Tac Rnd :: cont
+
+let t_spa = TSeq [Skip;Progress;Algebra]
+let t_pa  = TSeq [Progress;Algebra]
+let t_aa  = TSeq [Auto;Algebra]
+let t_id  = TSeq []
+
 let rec pp_tac fmt = function
-  | Admit -> Format.fprintf fmt "admit" 
-  | Auto  -> Format.fprintf fmt "auto" 
-  | Progress -> Format.fprintf fmt "progress" 
-  | Algebra -> Format.fprintf fmt "algebra"
-  | TSeq lt -> 
-    Format.fprintf fmt "@[<hov>(%a)@]" (pp_list ";@ " pp_tac) lt 
-  | Call(inv) -> Format.fprintf fmt "call (_:%a)" pp_form inv
+  | Admit     -> Format.fprintf fmt "admit" 
+  | Rnd       -> Format.fprintf fmt "rnd" 
+  | Skip      -> Format.fprintf fmt "skip"
+  | Wp(i1,i2) -> Format.fprintf fmt "wp %i %i" i1 i2
+  | Auto      -> Format.fprintf fmt "auto" 
+  | Progress  -> Format.fprintf fmt "progress" 
+  | Algebra   -> Format.fprintf fmt "algebra"
+  | Call inv  -> Format.fprintf fmt "call (_:%a)" pp_form inv
+  | If        -> Format.fprintf fmt "if" 
+  | Proc      -> Format.fprintf fmt "proc"
+  | Seq (i1,i2,f) -> 
+    Format.fprintf fmt "@[seq %i %i :@ (@[%a@])@]" i1 i2 pp_form f
+  | TSeq lt   -> 
+    if lt <> [] then
+      Format.fprintf fmt "@[<hov>(%a)@]" (pp_list ";@ " pp_tac) lt 
   | TSeqSub(t, ts) ->
     Format.fprintf fmt "@[<hov 2>%a;@ [ @[<hov 0>%a@]]@]" 
       pp_tac t
@@ -400,62 +447,136 @@ and pp_cmds fmt tacs=
   Format.fprintf fmt "@[<v>%a@]" (pp_list "@ " pp_cmd) tacs 
 
 
+
 type conv_info = {
+  loc1 : Vsym.S.t;
+  loc2 : Vsym.S.t;
+  pos1 : int;
+  pos2 : int;
   tacs : tcommands;
   invs : form
 }
 
-let add_auto tacs = 
-  match tacs with 
-  | Tac Auto :: _ -> tacs 
-  | _ -> Tac Auto :: tacs
+let add_let_info file g v e side loc info = 
+  let s = if side then Some "1" else Some "2" in
+  let loc1 = if side && loc then Vsym.S.add v info.loc1 else info.loc1 in
+  let loc2 = if not side && loc then Vsym.S.add v info.loc2 else info.loc2 in
+  let local = if side then loc1 else loc2 in
+  let e1 = formula file [g.mod_name] s ~local e in
+  let e2 = formula file [g.mod_name] s ~local (Expr.mk_V v) in
+  { 
+    loc1 = loc1;
+    loc2 = loc2;
+    pos1 = if side then info.pos1 + 1 else info.pos1;
+    pos2 = if side then info.pos2 else info.pos2 + 1;
+    tacs = add_wp info.pos1 info.pos2 info.tacs;
+    invs = f_and (f_eq e1 e2) info.invs }
 
-let add_let_info file g v e side inv = 
-  let e1 = formula file [g.mod_name] side e in
-  let e2 = formula file [g.mod_name] side (Expr.mk_V v) in
-  { tacs = add_auto inv.tacs;
-    invs = f_and (f_eq e1 e2) inv.invs }
+let add_rnd_info file g1 g2 v1 v2 loc info = 
+  let loc1 = if loc then Vsym.S.add v1 info.loc1 else info.loc1 in
+  let loc2 = if loc then Vsym.S.add v2 info.loc2 else info.loc2 in
+  let e1 = formula file [g1.mod_name] (Some "1") ~local:loc1 (Expr.mk_V v1) in
+  let e2 = formula file [g2.mod_name] (Some "2") ~local:loc2 (Expr.mk_V v2) in
+  { loc1 = loc1;
+    loc2 = loc2;
+    pos1 = info.pos1 + 1;
+    pos2 = info.pos2 + 1;
+    tacs = add_rnd info.tacs;
+    invs = f_and (f_eq e1 e2) info.invs }
 
-let add_rnd_info file g1 g2 v1 v2 inv = 
-  let e1 = formula file [g1.mod_name] (Some "1") (Expr.mk_V v1) in
-  let e2 = formula file [g2.mod_name] (Some "2") (Expr.mk_V v2) in
-  { tacs = add_auto inv.tacs;
-    invs = f_and (f_eq e1 e2) inv.invs }
+let add_guard file g1 g2 e1 e2 info =
+  let e1 = formula file [g1.mod_name] (Some "1") ~local:info.loc1 e1 in
+  let e2 = formula file [g2.mod_name] (Some "2") ~local:info.loc2 e2 in 
+  let t = f_eq e1 e2 in
+  { 
+    loc1 = info.loc1;
+    loc2 = info.loc2;
+    pos1 = 0;
+    pos2 = 0;
+    tacs = [Tac t_spa]; 
+    invs = f_and t info.invs } 
+  
+let init_inv_oracle p1 p2 inv =
+  let add_eq f v1 v2 = 
+    f_and (f_eq (Fv(pvar [] v1, Some "1")) (Fv(pvar [] v2, Some "2"))) f in
+  List.fold_left2 add_eq 
+    (f_and (f_eq (Fv(([],"_res"), Some "1")) (Fv(([],"_res"), Some "2"))) inv)
+    p1 p2
 
 let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () = 
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
   open_pp fmt (); 
   pp_swaps 1 fmt sw1;
   pp_swaps 2 fmt (invert_swap sw2);
-  let add_info1 v1 e1 inv = add_let_info file g1 v1 e1 (Some "1") inv in
-  let add_info2 v2 e2 inv = add_let_info file g2 v2 e2 (Some "2") inv in
-  let add_rnd v1 v2 inv = add_rnd_info file g1 g2 v1 v2 inv in
-  let add_call vs1 odef1 vs2 odef2 inv = 
-    let prove_orcl _o1 _o2 = [Tac Admit] in (* FIXME *)
+  let add_info1 v1 e1 loc info = 
+    add_let_info file g1 v1 e1 true loc info in
+  let add_info2 v2 e2 loc info = 
+    add_let_info file g2 v2 e2 false loc info in
+  let add_rnd v1 v2 loc info = add_rnd_info file g1 g2 v1 v2 loc info in
+  let prove_orcl info (_,p1,lc1,_) (_,p2,lc2,_) =
+    let rec aux lc1 lc2 info = 
+      match lc1, lc2 with
+      | [], [] -> add_wp info.pos1 info.pos2 info.tacs
+      | LLet (v1,e1)::lc1, _ ->
+        aux lc1 lc2 (add_info1 v1 e1 true info)
+      | _, LLet (v2,e2)::lc2 ->
+        aux lc1 lc2 (add_info2 v2 e2 true info)
+      | LSamp(v1,_)::lc1, LSamp(v2,_)::lc2 ->
+        aux lc1 lc2 (add_rnd v1 v2 true info) 
+      | LBind _ :: _, LBind _ :: _ -> assert false (* FIXME *)
+      | LGuard e1 :: lc1, LGuard e2 :: lc2 ->
+        let tacs = aux lc1 lc2 (add_guard file g1 g2 e1 e2 info) in
+        if info.pos1 = 0 && info.pos2 = 0 then 
+          Tac (TSeqSub(If, [t_pa; t_id; t_aa])) :: tacs 
+        else
+          Tac (Seq (info.pos1, info.pos2, info.invs)) ::
+            TSub [info.tacs] ::
+            Tac (TSeqSub(If, [t_pa; t_id; t_aa])) ::
+            tacs 
+      | _, _ -> assert false in
+    let inv = init_inv_oracle p1 p2 info.invs in
+    let info = 
+      { loc1 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p1;
+        loc2 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p2;
+        pos1 = 0; pos2 = 0;
+        tacs = [Tac t_spa];
+        invs  = inv } in
+    let tacs = aux lc1 lc2 info in
+    Tac (TSeq [Proc;TSeqSub (Seq(1,1,inv), [Auto; t_id])]) :: tacs in
+        
+  let add_call vs1 odef1 vs2 odef2 info = 
+    let prove_orcl o1 o2 = prove_orcl info o1 o2 in
     let mk_eq v1 v2 = 
       let e1 = formula file [g1.mod_name] (Some "1") (Expr.mk_V v1) in
       let e2 = formula file [g2.mod_name] (Some "2") (Expr.mk_V v2) in 
       f_eq e1 e2 in
     let eqs = List.map2 mk_eq vs1 vs2 in
     let pr_orcls = List.map2 prove_orcl odef1 odef2 in
-    { tacs = Tac (Call inv.invs) :: TSub pr_orcls :: inv.tacs;
-      invs = List.fold_left f_and inv.invs eqs } in
+    { loc1 = info.loc1;
+      loc2 = info.loc2;
+      pos1 = info.pos1 + 1;
+      pos2 = info.pos2 + 1;
+      tacs = Tac (Call info.invs) :: TSub pr_orcls :: info.tacs;
+      invs = List.fold_left f_and info.invs eqs } in
   (* the game are now ju ju' *)
-  let rec aux lc1 lc2 inv = 
+  let rec aux lc1 lc2 info = 
     match lc1, lc2 with
-    | [], [] -> inv
+    | [], [] -> info.tacs
     | GLet (v1,e1)::lc1, _ ->
-      aux lc1 lc2 (add_info1 v1 e1 inv)
+      aux lc1 lc2 (add_info1 v1 e1 false info)
     | _, GLet (v2,e2)::lc2 ->
-      aux lc1 lc2 (add_info2 v2 e2 inv)
+      aux lc1 lc2 (add_info2 v2 e2 false info)
     | GSamp(v1,_)::lc1, GSamp(v2,_)::lc2 ->
-      aux lc1 lc2 (add_rnd v1 v2 inv) 
+      aux lc1 lc2 (add_rnd v1 v2 false info) 
     | GCall(vs1,_,_,odef1)::lc1, GCall(vs2,_,_,odef2)::lc2 ->
-      aux lc1 lc2 (add_call vs1 odef1 vs2 odef2 inv)
+      aux lc1 lc2 (add_call vs1 odef1 vs2 odef2 info)
     | _, _ -> assert false in
-  let inv = aux ju.ju_gdef ju'.ju_gdef 
-    { tacs = [Tac (TSeq [Auto;Progress;Algebra])]; invs = f_true } in
-  pp_cmds fmt inv.tacs;
+  let info = 
+    { loc1 = Vsym.S.empty; loc2 = Vsym.S.empty;
+      pos1 = 0; pos2 = 0;
+      tacs = [Tac t_spa]; invs = f_true } in
+  let tacs = aux ju.ju_gdef ju'.ju_gdef info in 
+  pp_cmds fmt tacs;
   close_pp fmt ()
 
 let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =

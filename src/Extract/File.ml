@@ -24,6 +24,7 @@ type op =
  | Ole
  | Ostr of string
  | Oand
+ | Onot
 
 
 type expr = 
@@ -87,6 +88,7 @@ type form =
 
 let f_true = Fcnst "true"
 let f_eq f1 f2 = Fapp(Oeq,[f1;f2])
+let f_not f = Fapp(Onot, [f])
 let f_le f1 f2 = Fapp(Ole,[f1;f2])
 let f_and f1 f2 = Fapp(Oand, [f1; f2])
 let f_rsub f1 f2 = Fapp(Osub, [f1;f2])
