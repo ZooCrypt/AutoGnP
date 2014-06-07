@@ -39,5 +39,5 @@ ParserUtil
 Parse
 
 # Tactic
-Proofstate
+TheoryState
 Tactic

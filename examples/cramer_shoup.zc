@@ -1,8 +1,10 @@
 adversary A1 : (G * G * G * G) -> (G * G).
 adversary A2 : (G * G * G * G) -> Bool.
 oracle Dec : (G * G * G * G) -> G.
+
 (* not really  a random oracle, change this later *)
 random oracle H : ( G * G * G) -> Fq.
+
 assumption ddh
   [ x <-$ Fq; y <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
@@ -47,7 +49,7 @@ prove
   rnorm. rnorm_unknown u w.
   rlet_abstract 2 gw g^w.
   rlet_abstract 3 gu g^u.
-  rlet_abstract 4 gwu g^(w*u). 
+  rlet_abstract 4 gwu g^(w*u).
   assumption -> ddh v. rnorm.
 
 (* Perform "safe" applications of the random rule from start-of-main
