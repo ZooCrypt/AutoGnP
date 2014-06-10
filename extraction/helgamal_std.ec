@@ -93,8 +93,8 @@ module type Orcl = {
 }.
 
 module type Adv (O:Orcl) = {
-   proc aA2 (_ : (G.group * BS_k.word)) : bool {}
    proc aA1 (_ : G.group) : (BS_k.word * BS_k.word) {}
+   proc aA2 (_ : (G.group * BS_k.word)) : bool {}
 }.
 
 module M(A:Adv) = {
@@ -245,11 +245,11 @@ section.
               ((((M1.y{1} = M0.y{2}) /\ ((M1.sk{1} = M0.sk{2}) /\ true)) /\
                 (M1.m0{1} = M0.m0{2})) /\
                (M1.m1{1} = M0.m1{2}))))).
-    auto.
+      
+    (wp 5 5; rnd; rnd).
     call (_:(M1.y{1} = M0.y{2}) /\ ((M1.sk{1} = M0.sk{2}) /\ true)).
-    auto.
-    progress;admit. (* FIXME *)
-    
+      
+    (rnd; rnd; skip; progress; algebra).
   qed.
   
   local lemma Lem1:
@@ -290,18 +290,18 @@ section.
       [ proc | by [] | by intros &m1 &m2 ->].
     sim.
     wp 5 5.
-    rnd (fun v, (M1.b{2} ? M1.m0{2} : M1.m1{2}) ^ v)
-      (fun v, (M1.b{2} ? M1.m0{2} : M1.m1{2}) ^ v).
+    rnd (fun (v:BS_k.word), (M1.b{2} ? M1.m0{2} : M1.m1{2}) ^ v)
+      (fun (v:BS_k.word), (M1.b{2} ? M1.m0{2} : M1.m1{2}) ^ v).
     conseq (_: _ ==>
       (M2.y{1} = M1.y{2}) /\
       ((M2.b{1} = M1.b{2}) /\
        ((M2.m0{1} = M1.m0{2}) /\
         ((M2.m1{1} = M1.m1{2}) /\ (M2.sk{1} = M1.sk{2})))) /\ ={glob A}).
       progress.
-(*        by ringeq. *) smt.
+        by algebra.
         by rewrite !BS_k.Dword.mu_x_def.
         by apply BS_k.Dword.in_supp_def.
-(*        by ringeq. *) smt.
+        by algebra.
     sim.
   qed.
   
@@ -459,13 +459,13 @@ section.
                  ((M5.u{1} = M4.u{2}) /\ true)))) /\
               (M5.m0{1} = M4.m0{2})) /\
              (M5.m1{1} = M4.m1{2}))).
-    auto.
+      
+    rnd.
     call (_:(M5.y{1} = M4.y{2}) /\
             ((M5.sk{1} = M4.sk{2}) /\
              ((H (G.g ^ M4.u{2}) = M4.h{2}) /\ ((M5.u{1} = M4.u{2}) /\ true)))).
-    auto.
-    progress;admit. (* FIXME *)
-    
+      
+    (rnd; rnd; wp 1 1; rnd; skip; progress; algebra).
   qed.
   
   local lemma Lem11:
@@ -521,15 +521,15 @@ section.
                   ((M6.y{1} = M5.y{2}) /\ ((M6.sk{1} = M5.sk{2}) /\ true)))))) /\
               (M6.m0{1} = M5.m0{2})) /\
              (M6.m1{1} = M5.m1{2}))).
-    auto.
+      
+    rnd.
     call (_:(G.g ^ M6.u{1} = M6.gsky{1}) /\
             ((G.g ^ M6.y{1} = M6.gy{1}) /\
              ((G.g ^ M6.sk{1} = M6.gsk{1}) /\
               ((M6.u{1} = M5.u{2}) /\
                ((M6.y{1} = M5.y{2}) /\ ((M6.sk{1} = M5.sk{2}) /\ true)))))).
-    auto.
-    progress;admit. (* FIXME *)
-    
+      
+    (wp 3 3; rnd; rnd; rnd; skip; progress; algebra).
   qed.
   
   local lemma Lem13:
@@ -655,14 +655,14 @@ section.
                  ((M8.y{1} = M7.y{2}) /\ ((M8.sk{1} = M7.sk{2}) /\ true))))) /\
               (M8.m0{1} = M7.m0{2})) /\
              (M8.m1{1} = M7.m1{2}))).
-    auto.
+      
+    rnd.
     call (_:(G.g ^ (M7.sk{2} * M7.y{2}) = M7.gsky{2}) /\
             ((G.g ^ M7.y{2} = M7.gy{2}) /\
              ((G.g ^ M7.sk{2} = M7.gsk{2}) /\
               ((M8.y{1} = M7.y{2}) /\ ((M8.sk{1} = M7.sk{2}) /\ true))))).
-    auto.
-    progress;admit. (* FIXME *)
-    
+      
+    (wp 2 2; rnd; rnd; skip; progress; algebra).
   qed.
   
   local lemma Lem19:
@@ -694,11 +694,12 @@ section.
                    ((M.sk{1} = M8.sk{2}) /\ true)) /\
                   (M.m0{1} = M8.m0{2})) /\
                  (M.m1{1} = M8.m1{2}))))))).
-    auto.
+      
+    (wp 6 4; rnd; wp 4 3; rnd).
     call (_:(G.g ^ M.sk{1} = M.pk{1}) /\ ((M.sk{1} = M8.sk{2}) /\ true)).
-    auto.
-    progress;admit. (* FIXME *)
-    
+      
+    wp 1 1; rnd; skip; progress.
+    algebra.
   qed.
   
   local lemma Lem21:

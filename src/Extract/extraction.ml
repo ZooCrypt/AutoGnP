@@ -39,7 +39,7 @@ let string_of_op file = function
   | FInv    -> "F.inv"
   | FDiv    -> "F.(/)"
   | Eq      -> assert false
-  | Not     -> "!"
+  | Not     -> assert false 
   | Ifte    -> assert false
   | EMap _  -> assert false
 
@@ -51,9 +51,10 @@ let op_of_op file = function
   | FInv    -> Ostr "F.inv"
   | FDiv    -> Odiv
   | Eq      -> Oeq
-  | Not     -> Ostr "!"
+  | Not     -> Onot
   | Ifte    -> assert false
   | EMap bm -> Ostr  ((bvar_mod file bm) ^ ".e")
+
 let string_of_nop file ty = function
   | FPlus -> "F.(+)"
   | FMult -> "F.( * )"
@@ -105,31 +106,34 @@ let rec expression file e =
     end
   | Exists _ -> assert false 
 
-let rec formula file prefix mem ?(local=Vsym.S.empty) e = 
+let rec formula file prefix mem 
+    ?(local=Vsym.S.empty) ?(flocal=Vsym.S.empty) e = 
   match e.e_node with 
   | V v -> 
-    if Vsym.S.mem v local then Fv(pvar [] v, mem)
+    if Vsym.S.mem v flocal then Fv(pvar [] v, None)
+    else if Vsym.S.mem v local then Fv (pvar [] v, mem)
     else Fv (pvar prefix v, mem)
-  | H(h,e) ->  mk_fget file mem h (formula file prefix mem ~local e)
-  | Tuple es -> Ftuple (List.map (formula file prefix mem ~local) es)
-  | Proj (i,e) -> Fproj(i, formula file prefix mem ~local e) 
+  | H(h,e) ->  mk_fget file mem h (formula file prefix mem ~local ~flocal e)
+  | Tuple es -> Ftuple (List.map (formula file prefix mem ~local ~flocal) es)
+  | Proj (i,e) -> Fproj(i, formula file prefix mem ~local ~flocal e) 
   | Cnst c -> Fcnst (string_of_cnst file e.e_ty c)
   | App(Eq,[e1;e2]) -> 
-    f_eq (formula file prefix mem ~local e1) (formula file prefix mem ~local e2)
+    f_eq (formula file prefix mem ~local ~flocal e1) 
+         (formula file prefix mem ~local ~flocal e2)
   | App(Ifte,[e1;e2;e3]) -> 
-    Fif(formula file prefix mem ~local e1, 
-        formula file prefix mem ~local e2, 
-        formula file prefix mem ~local e3)
+    Fif(formula file prefix mem ~local ~flocal e1, 
+        formula file prefix mem ~local ~flocal e2, 
+        formula file prefix mem ~local ~flocal e3)
   | App(op,es) ->
-    Fapp(op_of_op file op, List.map (formula file prefix mem ~local) es)
+    Fapp(op_of_op file op, List.map (formula file prefix mem ~local ~flocal) es)
   | Nary(op,es) -> 
     begin match es with
     | [] -> assert false
     | e::es -> 
       let op = op_of_nop e.e_ty op in
       List.fold_left 
-        (fun e e1 -> Fapp(op,[e;formula file prefix mem ~local e1])) 
-        (formula file prefix mem ~local e) es 
+        (fun e e1 -> Fapp(op,[e;formula file prefix mem ~local ~flocal e1])) 
+        (formula file prefix mem ~local ~flocal e) es 
     end
   | Exists _ -> assert false 
   
@@ -361,16 +365,19 @@ type tactic =
   | Admit
   | Rnd
   | Skip
-  | Wp of int * int
+  | Wp       of int * int
   | Auto
-  | Progress
+  | Progress of string list
   | Algebra
-  | Call of form 
+  | Call     of form 
   | If
   | Proc
-  | Seq of int * int * form
-  | TSeq of tactics
-  | TSeqSub of tactic * tactics 
+  | Apply    of string
+  | Seq      of int * int * form
+  | TOr      of tactic * tactic
+  | TRepeat  of tactic
+  | TSeq     of tactics
+  | TSeqSub  of tactic * tactics 
 
 and tactics = tactic list
 
@@ -410,10 +417,18 @@ let add_rnd cont =
     Tac (TSeq (Rnd::ts)) :: cont
   | _ -> Tac Rnd :: cont
 
-let t_spa = TSeq [Skip;Progress;Algebra]
-let t_pa  = TSeq [Progress;Algebra]
+let t_spa = TSeq [Skip;Progress [];Algebra]
+let t_pa  = TSeq [Progress [];Algebra]
 let t_aa  = TSeq [Auto;Algebra]
 let t_id  = TSeq []
+
+let t_pr_if = 
+  TSeq [
+    Progress ["nosplit"];
+    TRepeat (TOr (Apply "iff_and", TOr (Apply "iff_neq", Apply "iff_eq")));
+    Progress [];
+    Algebra
+  ]
 
 let rec pp_tac fmt = function
   | Admit     -> Format.fprintf fmt "admit" 
@@ -421,13 +436,20 @@ let rec pp_tac fmt = function
   | Skip      -> Format.fprintf fmt "skip"
   | Wp(i1,i2) -> Format.fprintf fmt "wp %i %i" i1 i2
   | Auto      -> Format.fprintf fmt "auto" 
-  | Progress  -> Format.fprintf fmt "progress" 
+  | Progress s-> 
+    if s = [] then Format.fprintf fmt "progress" 
+    else 
+      Format.fprintf fmt "progress @[[%a]@]" 
+        (pp_list "@ " (fun fmt -> Format.fprintf fmt "%s")) s
   | Algebra   -> Format.fprintf fmt "algebra"
   | Call inv  -> Format.fprintf fmt "call (_:%a)" pp_form inv
   | If        -> Format.fprintf fmt "if" 
   | Proc      -> Format.fprintf fmt "proc"
   | Seq (i1,i2,f) -> 
     Format.fprintf fmt "@[seq %i %i :@ (@[%a@])@]" i1 i2 pp_form f
+  | Apply s   -> Format.fprintf fmt "apply %s" s
+  | TOr(t1,t2) -> Format.fprintf fmt "(@[%a ||@ %a@])" pp_tac t1 pp_tac t2
+  | TRepeat t -> Format.fprintf fmt "do ?%a" pp_tac t
   | TSeq lt   -> 
     if lt <> [] then
       Format.fprintf fmt "@[<hov>(%a)@]" (pp_list ";@ " pp_tac) lt 
@@ -484,16 +506,16 @@ let add_rnd_info file g1 g2 v1 v2 loc info =
     tacs = add_rnd info.tacs;
     invs = f_and (f_eq e1 e2) info.invs }
 
-let add_guard file g1 g2 e1 e2 info =
+let add_guard file g1 g2 e1 e2 info tacs =
   let e1 = formula file [g1.mod_name] (Some "1") ~local:info.loc1 e1 in
   let e2 = formula file [g2.mod_name] (Some "2") ~local:info.loc2 e2 in 
-  let t = f_eq e1 e2 in
+  let t = f_and e1 e2 in
   { 
     loc1 = info.loc1;
     loc2 = info.loc2;
     pos1 = 0;
     pos2 = 0;
-    tacs = [Tac t_spa]; 
+    tacs = tacs; 
     invs = f_and t info.invs } 
   
 let init_inv_oracle p1 p2 inv =
@@ -525,13 +547,13 @@ let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () =
         aux lc1 lc2 (add_rnd v1 v2 true info) 
       | LBind _ :: _, LBind _ :: _ -> assert false (* FIXME *)
       | LGuard e1 :: lc1, LGuard e2 :: lc2 ->
-        let tacs = aux lc1 lc2 (add_guard file g1 g2 e1 e2 info) in
+        let tacs = aux lc1 lc2 (add_guard file g1 g2 e1 e2 info [Tac t_spa]) in
         if info.pos1 = 0 && info.pos2 = 0 then 
-          Tac (TSeqSub(If, [t_pa; t_id; t_aa])) :: tacs 
+          Tac (TSeqSub(If, [t_pr_if; t_id; t_aa])) :: tacs 
         else
           Tac (Seq (info.pos1, info.pos2, info.invs)) ::
             TSub [info.tacs] ::
-            Tac (TSeqSub(If, [t_pa; t_id; t_aa])) ::
+            Tac (TSeqSub(If, [t_pr_if; t_id; t_aa])) ::
             tacs 
       | _, _ -> assert false in
     let inv = init_inv_oracle p1 p2 info.invs in
@@ -579,46 +601,55 @@ let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () =
   pp_cmds fmt tacs;
   close_pp fmt ()
 
+let mk_eq_expr file ?(local=Vsym.S.empty) g1 g2 e =
+  f_eq (formula file [g1.mod_name] (Some "1") ~local e)
+       (formula file [g2.mod_name] (Some "2") ~local e)
+
+let mk_eq_exprs file ?(local=Vsym.S.empty) g1 g2 es =
+  match Se.elements es with
+  | [] -> f_true
+  | e::es -> 
+    List.fold_left (fun eq e -> f_and (mk_eq_expr file ~local g1 g2 e) eq)
+      (mk_eq_expr file ~local g1 g2 e) es
+
+let pp_inv file ?(local=Vsym.S.empty) g fmt (x,inv) = 
+  let flocal = Vsym.S.singleton x in
+  let f = formula file [g.mod_name] (Some "2") ~local ~flocal inv in
+  Format.fprintf fmt "@[<hov 2>(fun (%a:%a),@ %a)@]"
+    Vsym.pp x (pp_type file) x.Vsym.ty pp_form f 
+
+let mu_x_def file fmt ty = 
+  match ty.ty_node with
+  | BS lv -> 
+    Format.fprintf fmt "%a.Dword.mu_x_def" pp_mod_name (mod_lvar file lv)
+  | Bool ->
+    Format.fprintf fmt "Bool.Dbool.mu_x_def"
+  | G _gv -> assert false (* FIXME *)
+  | Fq    -> Format.fprintf fmt "FDistr.mu_x_def_in"
+  | Prod _ -> assert false (* FIXME *) 
+
+let supp_def file fmt ty = 
+  match ty.ty_node with
+  | BS lv -> 
+    Format.fprintf fmt "%a.Dword.in_supp_def" pp_mod_name (mod_lvar file lv)
+  | Bool ->
+    Format.fprintf fmt "Bool.Dbool.supp_def"
+  | G _gv -> assert false (* FIXME *)
+  | Fq    -> Format.fprintf fmt "FDistr.supp_def"
+  | Prod _ -> assert false (* FIXME *) 
+
 let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
   let write = write_gcmds (Util.take pos ju2.ju_gdef) in
-  let mk_eq e =
-    let v = destr_V e in
-    f_eq (Fv(pvar [g1.mod_name] v, Some "1"))
-         (Fv(pvar [g2.mod_name] v, Some "2")) in
-  let eqs = 
-    match Se.elements write with
-    | [] -> f_true
-    | e::es -> List.fold_left (fun eq e -> f_and (mk_eq e) eq) (mk_eq e) es in
-  let pp_inv fmt (x,inv) = 
-    let local = Vsym.S.singleton x in
-    Format.fprintf fmt "@[<hov 2>(fun %a,@ %a)@]"
-      Vsym.pp x pp_form (formula file [g2.mod_name] (Some "2") ~local inv) in
+
+  let eqs = mk_eq_exprs file g1 g2 write in
   open_pp fmt ();
   Format.fprintf fmt "sim.@ ";
   Format.fprintf fmt "wp %i %i.@ " (pos + 1) (pos + 1);
   Format.fprintf fmt "@[<hov 2>rnd@ %a@ %a.@]@ "
-    pp_inv inv2 pp_inv inv1;
+    (pp_inv file g2) inv2 (pp_inv file g2) inv1;
   Format.fprintf fmt "@[<hov 2>conseq (_: _ ==>@ %a /\\ ={glob A}).@]@ " 
     pp_form eqs;
-  let mu_x_def file fmt ty = 
-    match ty.ty_node with
-    | BS lv -> 
-      Format.fprintf fmt "%a.Dword.mu_x_def" pp_mod_name (mod_lvar file lv)
-    | Bool ->
-      Format.fprintf fmt "Bool.Dbool.mu_x_def"
-    | G _gv -> assert false (* FIXME *)
-    | Fq    -> Format.fprintf fmt "FDistr.mu_x_def_in"
-    | Prod _ -> assert false (* FIXME *) in
-  let supp_def file fmt ty = 
-    match ty.ty_node with
-    | BS lv -> 
-      Format.fprintf fmt "%a.Dword.in_supp_def" pp_mod_name (mod_lvar file lv)
-    | Bool ->
-      Format.fprintf fmt "Bool.Dbool.supp_def"
-    | G _gv -> assert false (* FIXME *)
-    | Fq    -> Format.fprintf fmt "FDistr.supp_def"
-    | Prod _ -> assert false (* FIXME *) in
   let ty = (fst inv1).Vsym.ty in 
   Format.fprintf fmt "  progress.@ ";
   Format.fprintf fmt "    by algebra.@ ";
@@ -627,6 +658,95 @@ let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
   Format.fprintf fmt "    by algebra.@ ";
   Format.fprintf fmt "sim.";
   close_pp fmt ()
+
+let pr_random_orcl file ((i,j,k) as pos, inv1, inv2,_newx) ju1 ju2 fmt () =
+  let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
+  let _i, ctxt = Game.get_ju_octxt ju1 pos in
+  let _i, ctxt2 = Game.get_ju_octxt ju2 pos in
+  let jctxt = ctxt.juoc_juc in
+  let write1 = write_gcmds jctxt.juc_left in
+  let writec = add_binding ctxt.juoc_avars in
+  let write1c = Se.union write1 writec in
+  let write2 = write_gcmds jctxt.juc_right in
+  let write = Se.union write1c write2 in
+  open_pp fmt ();
+  Format.fprintf fmt "conseq (_: _ ==> @[%a@]) => //.@ "
+    pp_form (mk_eq_exprs file g1 g2 write);
+  let len = List.length jctxt.juc_left in
+  Format.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " len len
+      pp_form (mk_eq_exprs file g1 g2 write1);
+  Format.fprintf fmt "  [ by sim | ].@ ";
+  if jctxt.juc_right <> [] then begin
+    Format.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " 
+      1 1
+      pp_form (mk_eq_exprs file g1 g2 write1c);
+    Format.fprintf fmt "  [ | by sim ].@ "
+  end;
+  Format.fprintf fmt "call (_: @[%a@]).@ "
+    pp_form (mk_eq_exprs file g1 g2 write1);
+  List.iter (fun _ -> Format.fprintf fmt "  sim.@ ") ctxt.juoc_oleft;
+  (* The proof of the oracle *)
+  let ginv = mk_eq_exprs file g1 g2 write1 in
+  let p1 = ctxt.juoc_oargs and p2 = ctxt2.juoc_oargs in
+  let iinv = init_inv_oracle p1 p2 ginv in
+  let add_info1 v1 e1 loc info = 
+    add_let_info file g1 v1 e1 true loc info in
+  let add_info2 v2 e2 loc info = 
+    add_let_info file g2 v2 e2 false loc info in
+  let add_rnd v1 v2 loc info = add_rnd_info file g1 g2 v1 v2 loc info in
+  let rec aux lc1 lc2 info = 
+    match lc1, lc2 with
+    | [], [] -> info
+    | LLet (v1,e1)::lc1, _ ->
+      aux lc1 lc2 (add_info1 v1 e1 true info)
+    | _, LLet (v2,e2)::lc2 ->
+      aux lc1 lc2 (add_info2 v2 e2 true info)
+    | LSamp(v1,_)::lc1, LSamp(v2,_)::lc2 ->
+      aux lc1 lc2 (add_rnd v1 v2 true info) 
+    | LBind _ :: _, LBind _ :: _ -> assert false (* FIXME *)
+    | LGuard e1 :: lc1, LGuard e2 :: lc2 ->
+      let info' = aux lc1 lc2 (add_guard file g1 g2 e1 e2 info []) in
+      let tacs = 
+        if info.pos1 = 0 && info.pos2 = 0 then 
+          Tac (TSeqSub(If, [t_pr_if; t_id; t_aa])) :: info'.tacs 
+        else
+          Tac (Seq (info.pos1, info.pos2, info.invs)) ::
+            TSub [info.tacs] ::
+            Tac (TSeqSub(If, [t_pr_if; t_id; t_aa])) ::
+            info'.tacs in
+      { info' with tacs = tacs }
+    | _, _ -> assert false in
+  let info = 
+      { loc1 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p1;
+        loc2 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p2;
+        pos1 = 0; pos2 = 0;
+        tacs = [];
+        invs  = iinv } in
+  let info = aux ctxt.juoc_cleft ctxt2.juoc_cleft info in
+  Format.fprintf fmt "  proc;seq 1 1 : (@[%a@]);[by sim | ].@ "
+    pp_form iinv;
+  Format.fprintf fmt "  @[%a@]@ " pp_cmds info.tacs;
+  Format.fprintf fmt "  sim.@ ";
+  Format.fprintf fmt "  wp 1 1.@ ";
+  Format.fprintf fmt "  @[<hov 2>rnd@ %a@ %a.@]@ "
+    (pp_inv file ~local:info.loc2 g2) inv2 (pp_inv file ~local:info.loc2 g2)
+    inv1;
+  Format.fprintf fmt "  @[<hov 2>conseq (_: _ ==>@ %a).@]@ " 
+    pp_form info.invs;
+  let ty = (fst inv1).Vsym.ty in 
+  Format.fprintf fmt "    progress.@ ";
+  Format.fprintf fmt "      by algebra.@ ";
+  Format.fprintf fmt "      by rewrite !%a.@ " (mu_x_def file) ty;
+  Format.fprintf fmt "      by apply %a.@ " (supp_def file) ty;
+  Format.fprintf fmt "      by algebra.@ ";
+  Format.fprintf fmt "    auto.@ ";
+
+(* End proof of the oracle *)
+  List.iter (fun _ -> Format.fprintf fmt "  sim.@ ") ctxt.juoc_oright;
+  Format.fprintf fmt "auto.";
+  close_pp fmt ()
+  
+  
 
 let pr_intr_rw1_app lemma1 lemma2 fmt () = 
   Format.fprintf fmt "intros &m; rewrite {1}(%s &m);apply (%s &m)."
@@ -773,9 +893,10 @@ let rec extract_proof file pft =
     let pft' = List.hd pft.dr_subgoal in
     extract_proof_sb1 file pft pft' 
       (pr_random file (pos,inv1,inv2,newx) pft.dr_ju pft'.dr_ju)
-  | Rrnd_orcl _ ->
+  | Rrnd_orcl (pos, inv1, inv2, newx) ->
     let pft' = List.hd pft.dr_subgoal in
-    extract_proof_sb1 file pft pft' (pr_admit "random oracle")
+    extract_proof_sb1 file pft pft' 
+      (pr_random_orcl file (pos,inv1,inv2,newx) pft.dr_ju pft'.dr_ju)
   | Rexcept _ -> assert false
   | Rexc_orcl _ -> assert false 
   | Radd_test _ -> assert false 
