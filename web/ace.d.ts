@@ -1289,6 +1289,12 @@ declare module AceAjax {
         setShowPrintMargin(showPrintMargin: boolean);
 
         /**
+         * If `showPrintMargin` is set to `true`, the print margin is shown in the editor.
+         * @param showPrintMargin Specifies whether or not to show the print margin
+         **/
+        setDisplayIndentGuides(showIndentGuides: boolean);
+
+        /**
          * Returns `true` if the print margin is being shown.
         **/
         getShowPrintMargin(): boolean;

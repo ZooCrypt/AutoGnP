@@ -82,6 +82,8 @@ var emacs = ace.require("ace/keyboard/emacs").handler;
 
 var editorProof = ace.edit("editor-proof");
 editorProof.setTheme("ace/theme/eclipse");
+editorProof.setShowPrintMargin(false)
+editorProof.setDisplayIndentGuides(false)
 editorProof.setHighlightActiveLine(false);
 editorProof.focus();
 editorProof.renderer.setShowGutter(false)
@@ -126,12 +128,14 @@ function markLocked(c) {
 var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
+editorGoal.setShowPrintMargin(false)
 editorGoal.renderer.setShowGutter(false)
 
 var editorMessage = ace.edit("editor-message");
 editorMessage.setTheme("ace/theme/eclipse");
 editorMessage.setHighlightActiveLine(false);
-editorMessage.renderer.setShowGutter(false)
+editorMessage.setShowPrintMargin(false);
+editorMessage.renderer.setShowGutter(false);
 
 // resize windows
 function resizeAce() : void {
