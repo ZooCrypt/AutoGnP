@@ -48,18 +48,35 @@ function setFirstUnlocked(i) {
     originalLockedText = lockedText();
 }
 
-function insideComment(t, pos) {
-    var cstart = t.lastIndexOf("(*", pos);
-    var cend = t.lastIndexOf("*)", pos);
-
-    // comment start and comment-start not followed by comment-end
-    return (cstart !== -1 && cstart > cend);
+function insideCommentOrString(t, pos) {
+    var i = 0;
+    var insideComment = false;
+    var insideString = false;
+    while (i < pos) {
+        if (insideComment) {
+            if (t[i] == "*" && t[i + 1] == ")") {
+                insideComment = false;
+            }
+        } else if (insideString) {
+            if (t[i] == "\"") {
+                insideString = false;
+            }
+        } else {
+            if (t[i] == "(" && t[i + 1] == "*") {
+                insideComment = true;
+            } else if (t[i] == "\"") {
+                insideString = true;
+            }
+        }
+        i++;
+    }
+    return insideComment || insideString;
 }
 
 function getNextDot(from) {
     var t = editorProof.getValue();
     var n = t.indexOf(".", from);
-    if (n !== -1 && insideComment(t, n)) {
+    if (n !== -1 && insideCommentOrString(t, n)) {
         return getNextDot(n + 1);
     }
     return n;
@@ -68,7 +85,7 @@ function getNextDot(from) {
 function getPrevDot(from) {
     var t = editorProof.getValue();
     var n = t.lastIndexOf(".", Math.max(0, from - 2));
-    if (n !== -1 && insideComment(t, n)) {
+    if (n !== -1 && insideCommentOrString(t, n)) {
         return getPrevDot(n - 1);
     }
     return n;
@@ -97,7 +114,7 @@ editorProof.getSession().getDocument().on("change", function (ev) {
             if (lt.charAt(i) !== originalLockedText.charAt(i)) {
                 break;
             }
-            if (lt.charAt(i) == '.' && !insideComment(lt, i)) {
+            if (lt.charAt(i) == '.' && !insideCommentOrString(lt, i)) {
                 lastDot = i;
             }
         }
@@ -124,11 +141,13 @@ var editorGoal = ace.edit("editor-goal");
 editorGoal.setTheme("ace/theme/eclipse");
 editorGoal.setHighlightActiveLine(false);
 editorGoal.setShowPrintMargin(false);
+editorGoal.setDisplayIndentGuides(false);
 editorGoal.renderer.setShowGutter(false);
 
 var editorMessage = ace.edit("editor-message");
 editorMessage.setTheme("ace/theme/eclipse");
 editorMessage.setHighlightActiveLine(false);
+editorMessage.setDisplayIndentGuides(false);
 editorMessage.setShowPrintMargin(false);
 editorMessage.renderer.setShowGutter(false);
 
