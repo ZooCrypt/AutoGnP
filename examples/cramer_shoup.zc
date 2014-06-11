@@ -63,6 +63,11 @@ prove
    Prefer applications where both contexts are division-free.
 *)
   rswap 4 1. rrandom 5 _ (y -> w*x2 + y) tmp. rnorm.
+    (* support _ in second position:
+       let x1 random variable in line 5,
+       list of terms in gdef,
+       find first field_expressions fe that contains x1 (in outermost field context),
+       use (x1 -> fe) *)
   rswap 6 1. rrandom 7 _ (y -> w*y2 + y) tmp. rnorm.
   rswap 8 1. rrandom 9 _ (y -> w*z2 + y) tmp. rnorm.
   rswap 4 7. rswap 5 6. rswap 6 3.
