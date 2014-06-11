@@ -203,9 +203,13 @@ val gdef_equal : gdef -> gdef -> bool
 
 val ju_equal : judgment -> judgment -> bool
 
-val gdef_vars : gdef -> Se.t
+val gdef_vars : gdef -> Vsym.S.t
 
-val ju_vars : judgment -> Se.t
+val ju_vars : judgment -> Vsym.S.t
+
+val gdef_used_vars : gdef -> Se.t
+
+val ju_used_vars : judgment -> Se.t
 
 (* ----------------------------------------------------------------------- *)
 (** {8 Normal forms} *)

@@ -388,11 +388,38 @@ let ju_equal ju1 ju2 =
   gdef_equal ju1.ju_gdef ju2.ju_gdef &&
     e_equal ju1.ju_ev ju2.ju_ev
 
-let gdef_vars ju =
-  Se.union (read_gcmds ju) (write_gcmds ju)
+(* ----------------------------------------------------------------------- *)
+(** {6 Variables} *) 
 
-let ju_vars ju =
-  Se.union (gdef_vars ju.ju_gdef) (e_vars ju.ju_ev)
+let fold_union_vs f xs =
+  List.fold_right Vsym.S.union (List.map f xs) Vsym.S.empty
+
+let lcmd_vars = function 
+  | LLet(v,_) | LSamp(v,_) -> Vsym.S.singleton v
+  | LBind(vs,_) -> List.fold_right Vsym.S.add vs Vsym.S.empty
+  | _ -> Vsym.S.empty
+
+let lcmds_vars c = fold_union_vs lcmd_vars c
+
+let odef_vars (_,vs,cmd,_) = 
+  Vsym.S.union
+    (List.fold_right Vsym.S.add vs Vsym.S.empty)
+    (lcmds_vars cmd)
+
+let gcmd_vars = function
+  | GLet(v,_) | GSamp(v,_) -> Vsym.S.singleton v
+  | GCall(vs,_,_,odefs) ->
+    Vsym.S.union
+      (List.fold_right Vsym.S.add vs Vsym.S.empty)
+      (fold_union_vs odef_vars odefs)
+
+let gdef_vars gdef = fold_union_vs gcmd_vars gdef
+
+let ju_vars ju = gdef_vars ju.ju_gdef
+
+let gdef_used_vars gdef = Se.union (read_gcmds gdef) (write_gcmds gdef)
+
+let ju_used_vars ju = Se.union (gdef_used_vars ju.ju_gdef) (e_vars ju.ju_ev)
 
 (* ----------------------------------------------------------------------- *)
 (** {7 Normalization } *) 

@@ -86,25 +86,32 @@ val ju_of_parse_ju :
 
 type tactic =
   | Rnorm
+  | Rfalse_ev
   | Rnorm_nounfold
-  | Rnorm_unknown   of string list
-  | Rswap           of int * int
-  | Rswap_oracle    of ocmd_pos * int
-  | Rctxt_ev        of string * parse_expr * int
-  | Rrandom         of int * (string * parse_expr) option * string * 
+  | Rnorm_unknown    of string list
+  | Rswap            of int * int
+  | Rswap_oracle     of ocmd_pos * int
+  | Rctxt_ev         of string * parse_expr * int
+  | Rrandom          of int * (string * parse_expr) option * string * 
                        parse_expr * string
-  | Rrandom_oracle  of ocmd_pos * (string * parse_expr) option * string *
+  | Rrandom_oracle   of ocmd_pos * (string * parse_expr) option * string *
                        parse_expr * string
-  | Requiv          of gdef * parse_expr option
-  | Rassm           of Util.direction * string * string list
-  | Rlet_abstract   of int * string * parse_expr
-  | Rlet_unfold     of int
+  | Requiv           of gdef * parse_expr option
+  | Rassm_decisional of Util.direction * string * string list
+  | Rassm_computational of string * parse_expr  
+  | Rlet_abstract    of int * string * parse_expr
+  | Rlet_unfold      of int
   | Rindep
-  | Rbad            of int * string
-  | Rexcept         of int * parse_expr list
-  | Rexcept_oracle  of ocmd_pos * parse_expr list
-  | Radd_test       of ocmd_pos * parse_expr * string * string list
-  | Rrewrite_oracle of ocmd_pos * Util.direction
+  | Rbad             of int * string
+  | Rexcept          of int * parse_expr list
+  | Rexcept_oracle   of ocmd_pos * parse_expr list
+  | Radd_test        of ocmd_pos * parse_expr * string * string list
+  | Rrewrite_oracle  of ocmd_pos * Util.direction
+  | Rcase_ev         of parse_expr
+  | Rremove_ev       of int list
+  | Rrewrite_ev of int * Util.direction
+  | Rsplit_ev of int
+
 
 type instr =
   | RODecl     of string * bool * parse_ty * parse_ty
@@ -112,6 +119,7 @@ type instr =
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
   | AssmDec    of string * gdef * gdef * string list
+  | AssmComp   of string * gdef * string * parse_ty * parse_expr * string list
   | Judgment   of gdef * parse_expr
   | PrintGoals of string
   | PrintGoal  of string

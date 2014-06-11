@@ -18,7 +18,7 @@ let pvar modn v =
   modn, Vsym.tostring v
 
 let globals gdef = 
-  let glob = gdef_vars gdef in
+  let glob = gdef_used_vars gdef in
   List.map (fun e ->
      let v = destr_V e in 
      MCvar(pvar [] v, v.Vsym.ty)) (Se.elements glob) 
@@ -252,7 +252,7 @@ let add_assumption file name assum =
       Se.fold (fun e l ->
         let v = destr_V e in
         if Vsym.S.mem v pub then l else
-        (pvar [] v, v.Vsym.ty) :: l) (gdef_vars gdef) [] in 
+        (pvar [] v, v.Vsym.ty) :: l) (gdef_used_vars gdef) [] in 
 
     let res = ([],"_res") in
     let init = instructions file (mod_name "A" []) gdef in
@@ -286,7 +286,7 @@ let add_assumption file name assum =
   Ht.add file.assump name info
   
 let add_assumptions file ts = 
-  Ht.iter (fun n a -> add_assumption file n a) ts.ts_assms
+  Ht.iter (fun n a -> add_assumption file n a) ts.ts_assms_dec
 
 let init_file ts pft = 
   let file = empty_file in

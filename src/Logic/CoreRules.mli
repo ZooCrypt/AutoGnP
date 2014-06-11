@@ -9,6 +9,7 @@ open Util
 type rule_name = 
   | Radmit 
   | Rconv
+  | Rfalse_ev
   | Rctxt_ev   of int * ctxt 
   | Rremove_ev of int list
   | Rmerge_ev  of int * int 
@@ -22,7 +23,11 @@ type rule_name =
   | Rswap_orcl of ocmd_pos * int 
   | Rrnd_indep of bool * int
   | Rassm_dec  of direction * Vsym.t Vsym.M.t * assumption_decision
+  | Rassm_comp of expr * Vsym.t Vsym.M.t * assumption_computational
   | Rbad       of gcmd_pos * Vsym.t 
+  | Rcase_ev   of expr
+  | Rsplit_ev  of int
+  | Rrw_ev     of int * direction
 
 type proof_tree = private  
   { dr_subgoal : proof_tree list;
@@ -79,8 +84,20 @@ val t_conv : bool -> judgment -> tactic
 val rctxt_ev  : int -> ctxt -> rule 
 val t_ctxt_ev : int -> ctxt -> tactic
 
+val rcase_ev  : expr -> rule
+val t_case_ev : expr -> tactic
+
 val rremove_ev  : int list -> rule 
 val t_remove_ev : int list -> tactic 
+
+val rfalse_ev  : rule 
+val t_false_ev : tactic 
+
+val rrw_ev   : int -> direction -> rule
+val t_rw_ev  : int -> direction -> tactic
+
+val rsplit_ev   : int -> rule
+val t_split_ev  : int -> tactic
 
 val rmerge_ev   : int -> int -> rule
 val t_merge_ev  : int -> int -> tactic
@@ -156,6 +173,9 @@ val rassm_decision  :
   direction -> Vsym.t Vsym.M.t -> assumption_decision -> rule
 val t_assm_decision : 
   direction -> Vsym.t Vsym.M.t -> assumption_decision -> tactic
+
+val rassm_comp  : assumption_computational -> expr -> Vsym.t Vsym.M.t -> rule
+val t_assm_comp : assumption_computational -> expr -> Vsym.t Vsym.M.t-> tactic
 
 (** [rbad p vsx ju] returns the judgment resulting from
     applying an up-to bad step with respect to a hash-query

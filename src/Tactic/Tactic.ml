@@ -49,6 +49,9 @@ let handle_tactic ts tac =
     | ju::_ -> ju
     | [] -> tacerror "cannot apply tactic: there is no goal"
   in
+  (* FIXME: for now, we just clean up ts_vars here *)
+  let ts = ts_importvars ts ju in
+  Hashtbl.iter (fun s _ -> Format.printf "\n##### %s #####" s) ts.ts_vars;
   match tac with
   | PU.Rnorm -> apply_rule Rules.t_norm ts
 
@@ -80,7 +83,19 @@ let handle_tactic ts tac =
     let c = v1, e1 in
     apply_rule (t_ctxt_ev j c) ts
 
+  | PU.Rcase_ev (e) ->
+    let e = PU.expr_of_parse_expr ts e in
+    apply_rule (t_case_ev e) ts
+
   | PU.Rindep -> apply_rule t_random_indep ts
+
+  | PU.Rremove_ev(is) -> apply_rule (t_remove_ev is) ts
+
+  | PU.Rsplit_ev(i) -> apply_rule (t_split_ev i) ts
+
+  | PU.Rrewrite_ev(i,d) -> apply_rule (t_rw_ev i d) ts
+
+  | PU.Rfalse_ev -> apply_rule t_false_ev ts
 
   | PU.Rswap(i,j) -> apply_rule (t_swap i j) ts
 
@@ -88,16 +103,17 @@ let handle_tactic ts tac =
 
   | PU.Requiv(gd,ev) ->
     let gd = PU.gdef_of_parse_gdef true ts gd in 
-      (* reuse variables from previous games *)
+    (* reuse variables from previous games *)
     let ev = 
       match ev with
       | None -> ju.Game.ju_ev
-      | Some e -> PU.expr_of_parse_expr ts e in
+      | Some e -> PU.expr_of_parse_expr ts e
+    in
     apply_rule (t_conv true { Game.ju_gdef = gd; Game.ju_ev = ev }) ts
 
-  | PU.Rassm(dir,s,xs) ->
+  | PU.Rassm_decisional(dir,s,xs) ->
     let assm = 
-      try Ht.find ts.ts_assms s 
+      try Ht.find ts.ts_assms_dec s 
       with Not_found -> tacerror "error no assumption %s" s in
     let needed = Assumption.needed_var dir assm in
     if List.length needed <> List.length xs then
@@ -106,7 +122,15 @@ let handle_tactic ts tac =
       List.fold_left2 (fun s v x -> 
         let v' = create_var_reuse ts x v.Vsym.ty in
         Vsym.M.add v v' s) Vsym.M.empty needed xs in
-    apply_rule (Rules.t_assm dir assm subst) ts
+    apply_rule (Rules.t_assm_decisional dir assm subst) ts
+
+  | PU.Rassm_computational(s,ev_e) ->
+    let assm = 
+      try Ht.find ts.ts_assms_comp s 
+      with Not_found -> tacerror "error no assumption %s" s
+    in
+    let ev_e = PU.expr_of_parse_expr ts ev_e in
+    apply_rule (Rules.t_assm_computational assm ev_e) ts
 
   | PU.Rlet_abstract(i,sv,e) ->
     let e = PU.expr_of_parse_expr ts e in
@@ -251,10 +275,27 @@ let handle_instr ts instr =
       try Vsym.S.add (Ht.find ts'.ts_vars x) s
       with Not_found -> tacerror "unknown variable %s" x)
       Vsym.S.empty priv in
-    if Ht.mem ts.ts_assms s then
+    if Ht.mem ts.ts_assms_dec s then
       tacerror "assumption with the same name already exists";
-    Ht.add ts.ts_assms s (Assumption.mk_ad s g0 g1 priv);
-    (ts, "Declared assumption.")
+    Ht.add ts.ts_assms_dec s (Assumption.mk_ad s g0 g1 priv);
+    (ts, "Declared decisional assumption.")
+
+  | PU.AssmComp(s,g,ev_var,ev_ty,ev,priv) ->
+    let ts' = ts_resetvars ts in
+    let g = PU.gdef_of_parse_gdef true ts' g in
+    let priv = List.fold_left (fun s x -> 
+      try Vsym.S.add (Ht.find ts'.ts_vars x) s
+      with Not_found -> tacerror "unknown variable %s" x)
+      Vsym.S.empty priv
+    in
+    let ev_ty  = PU.ty_of_parse_ty ts' ev_ty in
+    let ev_var = create_var false ts' ev_var ev_ty in
+    let ev = PU.expr_of_parse_expr ts' ev in
+    let assm = Assumption.mk_ac s g ev_var ev priv in
+    if Ht.mem ts.ts_assms_comp s then
+      tacerror "assumption with the same name already exists";
+    Ht.add ts.ts_assms_comp s assm;
+    (ts, "Declared computational assumption.")
     
   | PU.Judgment(gd, e) ->
     let ts = ts_resetvars ts in

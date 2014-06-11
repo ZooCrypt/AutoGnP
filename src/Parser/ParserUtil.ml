@@ -240,6 +240,7 @@ let ju_of_parse_ju reuse ps gd e =
 
 type tactic =
     Rnorm
+  | Rfalse_ev
   | Rnorm_nounfold    
   | Rnorm_unknown of string list
   | Rswap of int * int
@@ -248,7 +249,8 @@ type tactic =
   | Rrandom of int * (string * parse_expr) option * string * parse_expr * string
   | Rrandom_oracle of G.ocmd_pos * (string * parse_expr) option * string * parse_expr * string
   | Requiv of gdef * parse_expr option
-  | Rassm of direction * string * string list
+  | Rassm_decisional of direction * string * string list
+  | Rassm_computational of string * parse_expr
   | Rlet_abstract of int * string * parse_expr
   | Rlet_unfold of int
   | Rindep
@@ -257,6 +259,10 @@ type tactic =
   | Rexcept_oracle of G.ocmd_pos * parse_expr list
   | Radd_test of G.ocmd_pos * parse_expr * string * string list
   | Rrewrite_oracle of G.ocmd_pos * direction
+  | Rcase_ev of parse_expr
+  | Rremove_ev of int list
+  | Rrewrite_ev of int * direction
+  | Rsplit_ev of int
 
 type instr =
   | RODecl     of string * bool * parse_ty * parse_ty
@@ -264,6 +270,7 @@ type instr =
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
   | AssmDec    of string * gdef * gdef * string list
+  | AssmComp   of string * gdef * string * parse_ty * parse_expr * string list
   | Judgment   of gdef * parse_expr
   | PrintGoals of string
   | PrintGoal  of string  

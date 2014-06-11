@@ -73,7 +73,8 @@
 %token ADVERSARY
 %token ORACLE
 %token OPERATOR
-%token ASSUMPTION
+%token ASSUMPTION_DECISIONAL
+%token ASSUMPTION_COMPUTATIONAL
 %token RANDOM
 %token BILINEAR
 %token MAP
@@ -90,6 +91,11 @@
 %token REQUIV
 %token RINDEP
 %token RBAD
+%token RCASE_EV
+%token RFALSE_EV
+%token RREWRITE_EV
+%token RSPLIT_EV
+%token RREMOVE_EV
 %token RLET_ABSTRACT
 %token RLET_UNFOLD
 %token RCTXT_EV
@@ -311,9 +317,11 @@ instr :
 | RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,true,t1,t2) }
 | OPERATOR i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,false,t1,t2) }
 | BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG { EMDecl(i,g1,g2,g3) }
-| ASSUMPTION i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
+| ASSUMPTION_DECISIONAL i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
    p=ID*
     { AssmDec(i,g0,g1,p) }
+| ASSUMPTION_COMPUTATIONAL i1 = ID LBRACKET g = gdef0 RBRACKET LPAREN i2 = ID COLON t = typ0 TO e = expr0 RPAREN p=ID*
+    { AssmComp(i1,g,i2,t,e,p) }
 | PROVE  LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
 | PRINTGOALS COLON i = ID { PrintGoals(i) }
 | PRINTGOAL COLON i = ID { PrintGoal(i) }
@@ -324,7 +332,8 @@ instr :
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
-| ASSUMPTION d=dir s=ID xs=ID* { Apply (Rassm(d,s,xs))}
+| ASSUMPTION_DECISIONAL d=dir s=ID xs=ID* { Apply (Rassm_decisional(d,s,xs))}
+| ASSUMPTION_COMPUTATIONAL s=ID e = expr0 { Apply (Rassm_computational(s,e))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
@@ -350,9 +359,17 @@ instr :
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN j = NAT
    { Apply(Rctxt_ev(i1,e1,j - 1)) }
+| RREMOVE_EV i = int
+   { Apply(Rremove_ev([i - 1])) }
+| RSPLIT_EV i = int
+   { Apply(Rsplit_ev(i - 1)) }
+| RCASE_EV e = expr0
+   { Apply(Rcase_ev(e)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
    { Apply(Rctxt_ev(i1,e1,0)) }
+| RFALSE_EV {Apply(Rfalse_ev)}
 | RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_oracle(op,d)) }
+| RREWRITE_EV i = int d = dir { Apply(Rrewrite_ev(i - 1,d)) }
 | EXTRACT s=STRING { Extract s }
 
 instruction:

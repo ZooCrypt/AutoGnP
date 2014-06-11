@@ -106,10 +106,10 @@ ace.define('ace/mode/zoocrypt_highlight_rules', ['require', 'exports', 'module' 
   var ZoocryptHighlightRules = function() {
 
     var keywords = (
-      "assumption|adversary|oracle|prove|bilinear|rrewrite_oracle|rnorm_nounfold|"  +
+      "assumption_decisional|adversary|oracle|prove|bilinear|rrewrite_oracle|rnorm_nounfold|"  +
         "rnorm|rnorm_unknown|rlet_abstract|rswap|rindep|last|radd_test|admit|operator|" +
         "rrandom|rrandom_oracle|rnorm_unkown|let|random|rbad|rctxt_ev|extract|rexcept|" +
-        "rlet_unfold"
+        "rlet_unfold|rremove_ev|rcase_ev|rsplit_ev|rrewrite_ev|rfalse_ev|assumption_computational"
       );
 
     var builtinConstants = ("true|false|Fq");

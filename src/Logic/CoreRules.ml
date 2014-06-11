@@ -10,9 +10,10 @@ open Assumption
 type rule_name = 
   | Radmit 
   | Rconv
+  | Rfalse_ev
   | Rctxt_ev   of gcmd_pos * ctxt 
   | Rremove_ev of int list
-  | Rmerge_ev  of int * int 
+  | Rmerge_ev  of int * int
   | Rrandom    of gcmd_pos * ctxt * ctxt * Vsym.t
   | Rrnd_orcl  of ocmd_pos * ctxt * ctxt * Vsym.t
   | Rexcept    of gcmd_pos * expr list
@@ -23,9 +24,12 @@ type rule_name =
   | Rswap_orcl of ocmd_pos * int 
   | Rrnd_indep of bool * int
   | Rassm_dec  of direction * Vsym.t Vsym.M.t * assumption_decision
+  | Rassm_comp of expr * Vsym.t Vsym.M.t * assumption_computational
   | Rbad       of gcmd_pos * Vsym.t
-  (* merge event direction: split *)
-  (* rwr_event: rewrite A /\ s = t /\ B *)
+  | Rcase_ev   of expr
+  | Rsplit_ev  of int
+  | Rrw_ev     of int * direction
+
 type proof_tree = 
   { dr_subgoal : proof_tree list;
     dr_rule    : rule_name;
@@ -52,7 +56,7 @@ type proof_state = goals
 exception NoOpenGoal 
 
 let fail_if_occur vs ju s =
-  if (Se.mem (mk_V vs) (ju_vars ju)) then
+  if (Se.mem (mk_V vs) (ju_used_vars ju)) then
     tacerror "%s: variable %a occurs in judgment\n %a"
       s Vsym.pp vs pp_ju ju 
 
@@ -164,6 +168,7 @@ let t_conv do_norm_terms new_ju ju =
   prove_by ju (rconv do_norm_terms new_ju ju)
 
 (** Transformation of the event *)
+
 (* Applying context to ev *)
 let rctxt_ev i c ju =
   let ev = ju.ju_ev in
@@ -185,8 +190,63 @@ let rctxt_ev i c ju =
   let new_ju = {ju with ju_ev = ev} in
   Rctxt_ev(i, c), [new_ju]
 
-let t_ctxt_ev i c ju =
-  prove_by ju (rctxt_ev i c ju)
+let t_ctxt_ev i c ju = prove_by ju (rctxt_ev i c ju)
+
+let rcase_ev e ju =
+  let ev = ju.ju_ev in
+  let ju1 = {ju with ju_ev = mk_Land [ev;e] } in
+  let ju2 = {ju with ju_ev = mk_Land [ev; (mk_Not e)] } in
+  Rcase_ev(e), [ju1; ju2]
+
+let t_case_ev e ju = prove_by ju (rcase_ev e ju)
+
+let rfalse_ev ju =
+  if is_False ju.ju_ev
+    then Rfalse_ev, [] else tacerror "rfalse_ev: event false expected"
+
+let t_false_ev ju = prove_by ju (rfalse_ev ju)
+
+
+let rsplit_ev i ju =
+  let ev = ju.ju_ev in
+  let evs = destruct_Land ev in
+  if i < 0 || i >= List.length evs then failwith "invalid event position";
+  let l,b,r = Util.split_n i evs in 
+  let b =
+    if not (is_Eq b)
+      then tacerror "rsplit_ev: bad event, expected equality";
+    let (e1,e2) = destr_Eq b in
+    if not (is_Tuple e1 && is_Tuple e2)
+      then tacerror "rsplit_ev: bad event, tuples";
+    let es1, es2 = destr_Tuple e1, destr_Tuple e2 in
+    if not (List.length es1 = List.length es2)
+      then tacerror "rsplit_ev: bad event, tuples";
+    List.map (fun (e1,e2) -> mk_Eq e1 e2) (List.combine es1 es2)
+  in
+  let evs = l@b@r in
+  let new_ju = {ju with ju_ev = mk_Land evs} in
+  Rsplit_ev(i), [ new_ju ]
+
+let t_split_ev i ju = prove_by ju (rsplit_ev i ju)
+
+let rrw_ev i d ju =
+  let ev = ju.ju_ev in
+  let evs = destruct_Land ev in
+  if i < 0 || i >= List.length evs then failwith "invalid event position";
+  let l,b,r = Util.split_n i evs in 
+  let u,v =
+    if not (is_Eq b)
+      then tacerror "rrw_ev: bad event, expected equality";
+    let u,v = destr_Eq b in
+    if d = LeftToRight then (u,v) else (v,u)
+  in
+  let subst e = e_replace u v e in
+  let evs = (List.map subst l)@[b]@(List.map subst r) in
+  let new_ju = { ju with ju_ev = mk_Land evs } in
+  Rrw_ev(i,d), [ new_ju ]
+
+let t_rw_ev i d ju = prove_by ju (rrw_ev i d ju)
+
 
 (* Removing events *)
 let rremove_ev (rm:int list) ju = 
@@ -505,6 +565,35 @@ let rassm_decision dir subst assm' ju =
 
 let t_assm_decision dir subst assm ju = 
   prove_by ju (rassm_decision dir subst assm ju)
+
+(** Reduction to computational assumption *)
+
+let rassm_comp assm ev_e subst ju =
+  let assm = Assumption.instantiate subst assm in
+  let assm_ev = e_replace (mk_V assm.ac_event_var) ev_e assm.ac_event in
+  if ju.ju_ev <> assm_ev
+    then (tacerror
+            "assumption_computational: event not equal, expected %a, got %a"
+            pp_exp ju.ju_ev pp_exp assm_ev);
+  let c = assm.ac_prefix in
+  let cju = Util.take (List.length c) ju.ju_gdef in
+  if not (gdef_equal c cju)
+    then tacerror "assumption_computational: prefix does not match";
+  let tl = Util.drop (List.length c) ju.ju_gdef in
+  let ju' = { ju with ju_gdef = tl } in
+  let read = read_ju ju' in
+  let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ac_privvars Se.empty in
+  let diff = Se.inter priv read in
+  if not (Se.is_empty diff) then
+    tacerror "Does not respect the private variables";
+  if not (is_ppt_ju ju') then
+    tacerror 
+      "Does not respect the computational assumption (game and event ppt)";
+  Rassm_comp(ev_e,subst,assm), []
+
+let t_assm_comp assm ev_e subst ju = 
+  prove_by ju (rassm_comp assm ev_e subst ju)
+
 
 (** Rules for random oracles *)
 

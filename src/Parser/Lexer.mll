@@ -43,7 +43,8 @@ rule lex = parse
   | "last" { LAST }
   | "oracle" { ORACLE }
   | "operator" { OPERATOR }
-  | "assumption" { ASSUMPTION }
+  | "assumption_decisional" { ASSUMPTION_DECISIONAL }
+  | "assumption_computational" { ASSUMPTION_COMPUTATIONAL }
   | "random" { RANDOM }
   | "bilinear" { BILINEAR }
   | "map" { MAP }
@@ -53,10 +54,15 @@ rule lex = parse
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm" { RNORM }
   | "radd_test" { RADD_TEST }
+  | "rcase_ev" { RCASE_EV }
+  | "rremove_ev" { RREMOVE_EV }
   | "rnorm_nounfold" { RNORM_NOUNFOLD }  
   | "rlet_abstract"  { RLET_ABSTRACT }
   | "rlet_unfold"  { RLET_UNFOLD }
   | "rrewrite_oracle"  { RREWRITE_ORACLE }  
+  | "rrewrite_ev" { RREWRITE_EV }
+  | "rsplit_ev" { RSPLIT_EV }
+  | "rfalse_ev" { RFALSE_EV }
   | "with"  { WITH }
   | "rexcept" { REXCEPT }
   | "rexcept_oracle" { REXCEPT_ORACLE }  

@@ -4,12 +4,18 @@ oracle Dec : (G * G * G * G) -> G.
 
 operator H : ( G * G * G) -> Fq.
 
-assumption ddh
+assumption_decisional ddh
   [ x <-$ Fq; y <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
   [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
     x y z.
+
+assumption_computational tcr
+  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
+    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; ]
+  (x : (G * G * G) -> (H(x) = H(ga,gb,gc)) /\ not (x = (ga,gb,gc)) )
+  a b c.
 
 prove
   [ w  <-$ Fq;
@@ -46,19 +52,19 @@ prove
 *)
   rswap 15 -13.
   rnorm. rnorm_unknown u w.
-  rlet_abstract 2 gw g^w.
-  rlet_abstract 3 gu g^u.
-  rlet_abstract 4 gwu g^(w*u).
-  assumption -> ddh v. rnorm.
+  rlet_abstract 3 gw g^w.
+  rlet_abstract 4 gu g^u.
+  rlet_abstract 5 gwu g^(w*u).
+  assumption_decisional -> ddh v. rnorm.
 
 (* Perform "safe" applications of the random rule from start-of-main
    to end-of-main using the field-expression where the random
    variable occurs first as bijection and computing the inverse.
    Prefer applications where both contexts are division-free.
 *)
-  rswap 4 1. rrandom 5 _ (y -> w*x2 + y) l_x1. rnorm.
-  rswap 6 1. rrandom 7 _ (y -> w*y2 + y) l_y1. rnorm.
-  rswap 8 1. rrandom 9 _ (y -> w*z2 + y) l_z1. rnorm.
+  rswap 4 1. rrandom 5 _ (y -> w*x2 + y) tmp. rnorm.
+  rswap 6 1. rrandom 7 _ (y -> w*y2 + y) tmp. rnorm.
+  rswap 8 1. rrandom 9 _ (y -> w*z2 + y) tmp. rnorm.
   rswap 4 7. rswap 5 6. rswap 6 3.
 
 (* If we try to apply rrandom to z2, we notice that the inequality
@@ -66,7 +72,7 @@ prove
    excepted.
 *)
   rexcept 3 u*w.
-  rrandom 9 _ (y -> z1*u + y*v + log(b?m0:m1) - w*y*u) l_z2. rnorm.
+  rrandom 9 _ (y -> z1*u + y*v + log(b?m0:m1) - w*y*u) tmp. rnorm.
 
 (* The two remaining random variables to which we could apply rrandom are x2 and y2:
     x2 has coefficient (v - u*w), y2 has coefficient H(g^u, g^v, g^z2)*...,
@@ -79,7 +85,7 @@ prove
    we can add a test to Dec because the bad case can be discharged
    using TCR later on.
 *)
-  radd_test (12,1,4) (not (H(a,a',c) = H(g^u, g^v,g^z2))) A3 ba ba' bc bd.
+  radd_test (12,1,2) (not (H(a,a',c) = H(g^u, g^v,g^z2))) A3 ba ba' bc bd.
 
 (* We first focus on the bad case:
    For a reduction to TCR, the inputs u,v,z2 must be uniformly sampled.
@@ -87,16 +93,56 @@ prove
    the sampling of v.
 *)
   last.
-  rexcept 3.
+  (* adapt the event to get the right inequality *)
+  rcase_ev ((ba,ba',bc) = (g^u,g^v,g^z2)). rnorm.
+  rsplit_ev 4.
+  rrewrite_ev 4 ->.
+  rrewrite_ev 5 ->.
+  rrewrite_ev 6 ->.
+  rnorm.
+  rrewrite_ev 3 ->.
+  rnorm.
+  rfalse_ev.
+  
+  rremove_ev 1. rremove_ev 1.
+  
+  radd_test (12,1,3) (a^w  = a') A4 ga ga' gc gd.
+  rnorm.
+
+  (* We have a test of the form "var = expr".
+     We always rewrite with such tests.
+  *)
+  rrewrite_oracle (12,1,1) <-. rnorm.
+  rnorm_unknown u v z2.
   rswap 2 -1.
+  rexcept 3.
   rswap 3 -1.
   rswap 9 -6.
-  rlet_abstract 4 hin (g^u, g^v, g^z2).
-  admit. (* this is TCR *)
+  rlet_abstract 4 tu g^u.
+  rlet_abstract 5 tv g^v.
+  rlet_abstract 6 tz g^z2.
+  assumption_computational tcr (ba,ba',bc).
 
-  (* There is still a problem because we use the plug-and-pray bad
-     rule, but want to use the list-rule here because we reduce
-     to a compute-assumption *)
+(* We have a test of the form "var = expr".
+   We always rewrite with such tests.
+*)
+  rrewrite_oracle (12,1,1) <-. rnorm.
+  rlet_abstract 14 l log(ga).
+  rlet_abstract 14 hc H(g^u,g^v,g^z2).
+  rlet_abstract 14 hb H(ga, ga', gc).
+  rswap 10 6.
+  rctxt_ev (qq -> log(qq)) 3.
+  rnorm_nounfold.
+  rctxt_ev
+    (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
+           - x1*u*log(ga') - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*log(ga')*hc + (x2*log(ga')*2))
+          /
+          (-(w*w*u*l*hb) + w*u*log(ga')*hb + w*v*l*hb + -(v*log(ga')*hb) + w*w*u*l*hc +
+          -(w*u*log(ga')*hc) + -(w*v*l*hc) + v*log(ga')*hc))
+    3.
+  rlet_unfold 15.
+  rnorm_nounfold.
+  rindep.
 
 (* We now add the user-provided validity check "a^w = a'" in Dec.
    Why now?
@@ -104,7 +150,7 @@ prove
    earlier step and had to backtrack
    OR because we are stuck now.
 *)
-  radd_test (12,1,6) (a^w  = a') A3' ga ga' gc gd.
+  radd_test (12,1,3) (a^w  = a') A5 ga ga' gc gd.
   rnorm.
 
 (* We have a test of the form "var = expr".
@@ -117,11 +163,11 @@ prove
    We always rewrite with such tests.
 *)
   rrewrite_oracle (12,1,1) <-. rnorm.
-  rlet_abstract 13 l log(ga).
-  rlet_abstract 13 hc H(g^u,g^v,g^z2).
-  rlet_abstract 13 hb H(ga, ga', gc).
+  rlet_abstract 14 l log(ga).
+  rlet_abstract 14 hc H(g^u,g^v,g^z2).
+  rlet_abstract 14 hb H(ga, ga', gc).
   rswap 10 6.
-  rctxt_ev (q -> log(q)) 6.
+  rctxt_ev (q -> log(q)) 3.
   rnorm_nounfold.
   rctxt_ev
     (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
@@ -129,7 +175,7 @@ prove
           /
           (-(w*w*u*l*hb) + w*u*log(ga')*hb + w*v*l*hb + -(v*log(ga')*hb) + w*w*u*l*hc +
           -(w*u*log(ga')*hc) + -(w*v*l*hc) + v*log(ga')*hc))
-    6.
+    3.
   rlet_unfold 15.
   rnorm_nounfold.
   rindep.

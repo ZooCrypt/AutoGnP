@@ -115,19 +115,15 @@ let t_norm_unknown unknown ju =
   let new_ju = map_ju_exp norm ju in
   t_conv true new_ju ju
 
-(* FIXME: does not work for first line *)
 let t_let_abstract p vs e ju =
-  match get_ju_ctxt ju p with
-  | cmd, juc ->
-    let v = mk_V vs in
-    let cmds = cmd::[GLet(vs, e)] in
-    (* could also try to normalize given expression *)
-    let subst a = e_replace e v a in
-    let juc = { juc with
-                juc_right = map_gdef_exp subst juc.juc_right;
-                juc_ev = subst juc.juc_ev }
-    in
-    t_conv false (set_ju_ctxt cmds juc) ju
+  let l,r = Util.cut_n p ju.ju_gdef in
+  let v = mk_V vs in
+  (* could also try to normalize given expression *)
+  let subst a = e_replace e v a in
+  let new_ju = { ju_gdef = List.rev_append l (GLet(vs, e)::map_gdef_exp subst r);
+                 ju_ev = subst ju.ju_ev }
+  in
+  t_conv false new_ju ju
 
 let t_let_unfold p ju =
   match get_ju_ctxt ju p with
@@ -141,7 +137,7 @@ let t_let_unfold p ju =
   | _ -> tacerror "rlet_unfold: no let at given position"
 
 
-let t_assm dir assm subst ju =
+let t_assm_decisional dir assm subst ju =
   let c = 
     if dir = LeftToRight then assm.Assumption.ad_prefix1 
     else assm.Assumption.ad_prefix1 in
@@ -152,9 +148,24 @@ let t_assm dir assm subst ju =
       | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
         when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
         Vsym.M.add x1 x2 s
-      | _ -> tacerror "rassm : can not infer subtitution")
+      | _ -> tacerror "assumption_decisional : can not infer substitution")
       subst c jc in
   t_assm_decision dir subst assm ju
+
+let t_assm_computational assm ev_e ju =
+  let c = assm.Assumption.ac_prefix in
+  let jc = Util.take (List.length c) ju.ju_gdef in
+  let subst =
+    List.fold_left2 (fun s i1 i2 ->
+      match i1, i2 with
+      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
+        when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
+        Vsym.M.add x1 x2 s
+      | _ ->
+        tacerror "assumption_computational : can not infer substitution")
+      Vsym.M.empty c jc
+  in
+  t_assm_comp assm ev_e subst ju
 
 (* merging event in the postcondition *)
 let t_merge_ev tomerge ju = 

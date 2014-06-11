@@ -18,7 +18,8 @@ type theory_state = {
   ts_odecls : (string, Osym.t) Hashtbl.t;
   ts_adecls : (string, Asym.t) Hashtbl.t;
   ts_emdecls : (string, Esym.t) Hashtbl.t;
-  ts_assms : (string, Assumption.assumption_decision) Hashtbl.t;
+  ts_assms_dec  : (string, Assumption.assumption_decision) Hashtbl.t;
+  ts_assms_comp : (string, Assumption.assumption_computational) Hashtbl.t;
   ts_vars : (string, Vsym.t) Hashtbl.t;
   ts_ps : theory_proof_state;
 }
@@ -36,5 +37,7 @@ val create_groupvar : theory_state -> string -> Groupvar.id
 val create_var : bool -> theory_state -> string -> Type.ty -> Vsym.t option
 
 val create_var_reuse : theory_state -> string -> Type.ty -> Vsym.t
+
+val ts_importvars : theory_state -> Game.judgment -> theory_state
 
 val get_proof_state : theory_state -> CoreRules.proof_state
