@@ -45,7 +45,6 @@ prove
   rnorm. rnorm_unknown alpha beta delta.
   print_goals : after_norm.
 
-(*
   rrandom 5 _ (x -> x + d * i') z.
   rnorm. print_goals : after_random.
 
@@ -68,4 +67,4 @@ prove
   rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)) zzzz.
   rnorm. rswap 7 2.  print_goals : after_random.
 
-  rindep.  print_goals : after_indep. *)
+  rindep.  print_goals : after_indep.

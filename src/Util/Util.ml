@@ -96,7 +96,7 @@ let list_from_to i j = (* [i,j), i.e., excluding j *)
   let rec go aux i = if i >= j then aux else go (i::aux) (i+1)
   in List.rev (go [] i)
 
-let (|>) x f = f x
+(* let (|>) x f = f x *)
 
 let format_to_string f = 
   ignore (Format.flush_str_formatter ());

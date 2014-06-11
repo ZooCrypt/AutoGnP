@@ -1,7 +1,5 @@
 (** Tactic engine: transformations of proof states. *)
 open CoreRules
-open ParserUtil
-open Rules
 open Expr
 open Type
 open Util
@@ -9,6 +7,7 @@ open TheoryState
 
 module Ht = Hashtbl
 module F  = Format
+module PU = ParserUtil
 
 let fail_unless c s =
   if not (c ()) then tacerror s
@@ -51,16 +50,16 @@ let handle_tactic ts tac =
     | [] -> tacerror "cannot apply tactic: there is no goal"
   in
   match tac with
-  | Rnorm -> apply_rule t_norm ts
+  | PU.Rnorm -> apply_rule Rules.t_norm ts
 
-  | Rnorm_nounfold ->
-    apply_rule t_norm_nounfold ts
+  | PU.Rnorm_nounfold ->
+    apply_rule Rules.t_norm_nounfold ts
 
-  | Rnorm_unknown(is) ->
+  | PU.Rnorm_unknown(is) ->
     let vs = List.map (fun s -> mk_V (Ht.find ts.ts_vars s)) is in
-    apply_rule (t_norm_unknown vs) ts
+    apply_rule (Rules.t_norm_unknown vs) ts
 
-  | Rctxt_ev (sv,e,j) ->
+  | PU.Rctxt_ev (sv,e,j) ->
     (* TODO: how to be in the good typing context *)
     let ev = ju.Game.ju_ev in
     let b =
@@ -77,26 +76,26 @@ let handle_tactic ts tac =
       else tacerror "rctxt_ev: bad event"
     in
     let v1 = create_var false ts sv ty in
-    let e1 = expr_of_parse_expr ts e in
+    let e1 = PU.expr_of_parse_expr ts e in
     let c = v1, e1 in
     apply_rule (t_ctxt_ev j c) ts
 
-  | Rindep -> apply_rule t_random_indep ts
+  | PU.Rindep -> apply_rule t_random_indep ts
 
-  | Rswap(i,j) -> apply_rule (t_swap i j) ts
+  | PU.Rswap(i,j) -> apply_rule (t_swap i j) ts
 
-  | Rswap_oracle(op,j) -> apply_rule (t_swap_oracle op j) ts
+  | PU.Rswap_oracle(op,j) -> apply_rule (t_swap_oracle op j) ts
 
-  | Requiv(gd,ev) ->
-    let gd = gdef_of_parse_gdef true ts gd in 
+  | PU.Requiv(gd,ev) ->
+    let gd = PU.gdef_of_parse_gdef true ts gd in 
       (* reuse variables from previous games *)
     let ev = 
       match ev with
       | None -> ju.Game.ju_ev
-      | Some e -> expr_of_parse_expr ts e in
+      | Some e -> PU.expr_of_parse_expr ts e in
     apply_rule (t_conv true { Game.ju_gdef = gd; Game.ju_ev = ev }) ts
 
-  | Rassm(dir,s,xs) ->
+  | PU.Rassm(dir,s,xs) ->
     let assm = 
       try Ht.find ts.ts_assms s 
       with Not_found -> tacerror "error no assumption %s" s in
@@ -109,15 +108,15 @@ let handle_tactic ts tac =
         Vsym.M.add v v' s) Vsym.M.empty needed xs in
     apply_rule (Rules.t_assm dir assm subst) ts
 
-  | Rlet_abstract(i,sv,e) ->
-    let e = expr_of_parse_expr ts e in
+  | PU.Rlet_abstract(i,sv,e) ->
+    let e = PU.expr_of_parse_expr ts e in
     let v = create_var false ts sv e.e_ty in
-    apply_rule (t_let_abstract i v e) ts
+    apply_rule (Rules.t_let_abstract i v e) ts
 
-  | Rlet_unfold(i) ->
-    apply_rule (t_let_unfold i) ts
+  | PU.Rlet_unfold(i) ->
+    apply_rule (Rules.t_let_unfold i) ts
 
-  | Rrandom(i,mctxt1,sv2,e2,svlet) ->
+  | PU.Rrandom(i,mctxt1,sv2,e2,svlet) ->
     let ty =
       match Game.get_ju_gcmd ju i with
       | Game.GSamp(v,_) -> v.Vsym.ty
@@ -125,13 +124,13 @@ let handle_tactic ts tac =
     in
     let ts' = ts_copy ts in
     let v2 = create_var false ts' sv2 ty in
-    let e2 = expr_of_parse_expr ts' e2 in
+    let e2 = PU.expr_of_parse_expr ts' e2 in
     let (v1,e1) =
       match mctxt1 with
       | Some(sv1,e1) ->
         let ts' = ts_copy ts in
         let v1 = create_var false ts' sv1 ty in
-        let e1 = expr_of_parse_expr ts' e1 in
+        let e1 = PU.expr_of_parse_expr ts' e1 in
         (v1,e1)
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
@@ -141,7 +140,7 @@ let handle_tactic ts tac =
     let vlet = create_var false ts svlet ty in
     apply_rule (t_random i (v1,e1) (v2,e2) vlet) ts
 
-  | Rrandom_oracle((i,j,k),mctxt1,sv2,e2,svlet) ->
+  | PU.Rrandom_oracle((i,j,k),mctxt1,sv2,e2,svlet) ->
     let ty =
       match Game.get_ju_lcmd ju (i,j,k) with
       | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
@@ -149,12 +148,12 @@ let handle_tactic ts tac =
     in
     let ts' = ts_copy ts in
     let v2 = create_var false ts' sv2 ty in
-    let e2 = expr_of_parse_expr ts' e2 in
+    let e2 = PU.expr_of_parse_expr ts' e2 in
     let (v1,e1) = match mctxt1 with
       | Some(sv1,e1) ->
         let ts' = ts_copy ts in
         let v1 = create_var false ts' sv1 ty in
-        let e1 = expr_of_parse_expr ts' e1 in
+        let e1 = PU.expr_of_parse_expr ts' e1 in
         (v1,e1)
       | None when ty_equal ty mk_Fq ->
         invert_ctxt (v2,e2)
@@ -164,7 +163,7 @@ let handle_tactic ts tac =
     let vlet = create_var false ts svlet ty in
     apply_rule (t_random_oracle (i,j,k) (v1,e1) (v2,e2) vlet) ts
 
-  | Rbad(i,sx) ->
+  | PU.Rbad(i,sx) ->
     let ty =
       match Game.get_ju_gcmd ju i with
       | Game.GLet(_,e') when is_H e' ->
@@ -175,19 +174,19 @@ let handle_tactic ts tac =
     let vx = create_var false ts sx ty in
     apply_rule (t_bad i vx) ts
 
-  | Rexcept(i,es) ->
-    let es = List.map (expr_of_parse_expr ts) es in
+  | PU.Rexcept(i,es) ->
+    let es = List.map (PU.expr_of_parse_expr ts) es in
     apply_rule (t_except i es) ts
 
-  | Rexcept_oracle(op,es) ->
-    let es = List.map (expr_of_parse_expr ts) es in
+  | PU.Rexcept_oracle(op,es) ->
+    let es = List.map (PU.expr_of_parse_expr ts) es in
     apply_rule (t_except_oracle op es) ts
    
-  | Rrewrite_oracle(op,dir) ->
+  | PU.Rrewrite_oracle(op,dir) ->
     apply_rule (t_rewrite_oracle op dir) ts
 
-  | Radd_test(op,t,aname,fvs) ->
-    let t = expr_of_parse_expr ts t in
+  | PU.Radd_test(op,t,aname,fvs) ->
+    let t = PU.expr_of_parse_expr ts t in
     let _, juoc = Game.get_ju_octxt ju op in
     let oty = juoc.Game.juoc_osym.Osym.dom in
     let destr_prod ty = match oty.ty_node with
@@ -216,38 +215,38 @@ let handle_instr ts instr =
   let ts = ts_copy ts in
   (* FIXME: only allow declarations in BeforeProof state *)
   match instr with
-  | RODecl(s,ro,t1,t2) ->
+  | PU.RODecl(s,ro,t1,t2) ->
     if Ht.mem ts.ts_rodecls s then
       tacerror "Random oracle with same name already declared.";
     Ht.add ts.ts_rodecls s
-      (Hsym.mk s ro (ty_of_parse_ty ts t1) (ty_of_parse_ty ts t2));
+      (Hsym.mk s ro (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared random oracle")
 
-  | EMDecl(s,g1,g2,g3) ->
+  | PU.EMDecl(s,g1,g2,g3) ->
     if Ht.mem ts.ts_emdecls s then
       tacerror "Bilinear map with same name already declared.";
     Ht.add ts.ts_emdecls s
       (Esym.mk s (create_groupvar ts g1) (create_groupvar ts g2) (create_groupvar ts g3));
     (ts, "Declared bilinear map.")
 
-  | ODecl(s,t1,t2) ->
+  | PU.ODecl(s,t1,t2) ->
       if Ht.mem ts.ts_odecls s then 
         tacerror "Oracle with same name already declared.";
     Ht.add ts.ts_odecls s 
-      (Osym.mk s (ty_of_parse_ty ts t1) (ty_of_parse_ty ts t2));
+      (Osym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared oracle.")
 
-  | ADecl(s,t1,t2) ->
+  | PU.ADecl(s,t1,t2) ->
     if Ht.mem ts.ts_adecls s then 
       tacerror "adversary with same name already declared.";
     Ht.add ts.ts_adecls s 
-      (Asym.mk s (ty_of_parse_ty ts t1) (ty_of_parse_ty ts t2));
+      (Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared adversary.")
 
-  | AssmDec(s,g0,g1,priv) ->
+  | PU.AssmDec(s,g0,g1,priv) ->
     let ts' = ts_resetvars ts in
-    let g0 = gdef_of_parse_gdef true ts' g0 in
-    let g1 = gdef_of_parse_gdef true ts' g1 in
+    let g0 = PU.gdef_of_parse_gdef true ts' g0 in
+    let g1 = PU.gdef_of_parse_gdef true ts' g1 in
     let priv = List.fold_left (fun s x -> 
       try Vsym.S.add (Ht.find ts'.ts_vars x) s
       with Not_found -> tacerror "unknown variable %s" x)
@@ -257,28 +256,28 @@ let handle_instr ts instr =
     Ht.add ts.ts_assms s (Assumption.mk_ad s g0 g1 priv);
     (ts, "Declared assumption.")
     
-  | Judgment(gd, e) ->
+  | PU.Judgment(gd, e) ->
     let ts = ts_resetvars ts in
-    let ju = ju_of_parse_ju false ts gd e in
+    let ju = PU.ju_of_parse_ju false ts gd e in
     ({ ts with ts_ps = ActiveProof(t_id ju) }, "Started proof of judgment.")
 
-  | Apply(tac) -> (handle_tactic ts tac, "Applied tactic.")
+  | PU.Apply(tac) -> (handle_tactic ts tac, "Applied tactic.")
 
-  | Last ->
+  | PU.Last ->
     begin match ts.ts_ps with
     | ActiveProof (g) -> 
       ({ ts with ts_ps = ActiveProof(t_first_last g) }, "Delayed current goal")
     | _ -> tacerror "last: no goals"
     end
 
-  | Admit ->
+  | PU.Admit ->
     begin match ts.ts_ps with
     | ActiveProof(g) -> 
       ({ts with ts_ps = ActiveProof(t_first t_admit g)}, "Admit goal.")
     | _ -> tacerror "admit: no goals"
     end
 
-  | PrintGoals(s) ->
+  | PU.PrintGoals(s) ->
     begin match ts.ts_ps with
     | ActiveProof(g) -> 
       let msg = fsprintf "@[<v>Proof state %s:@\n%a@." s pp_jus g.subgoals |> fsget in
@@ -287,7 +286,7 @@ let handle_instr ts instr =
     | ClosedTheory -> (ts, "Theory closed.")
     end
 
-  | PrintGoal(s) ->
+  | PU.PrintGoal(s) ->
     begin match ts.ts_ps with
     | ActiveProof(g) -> 
       let msg = fsprintf "@[<v>Current goal in state %s:@\n%a@."
@@ -301,7 +300,7 @@ let handle_instr ts instr =
     | ClosedTheory -> (ts, "Proof finished.")
     end
 (* FIXME: add qed/save tactic that changes proof_state to ClosedTheory if no goal remains *)
-  | Extract filename ->
+  | PU.Extract filename ->
     Extraction.extract ts filename;
     (ts, "file extracted")
 

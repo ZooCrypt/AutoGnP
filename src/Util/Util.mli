@@ -75,7 +75,7 @@ val filter_map : ('a -> 'b option) -> 'a list -> 'b list
 val list_from_to : int -> int -> int list
 
 (** [x |> f] is equivalent to [f x]. *)
-val (|>) : 'a -> ('a -> 'b) -> 'b
+(* val (|>) : 'a -> ('a -> 'b) -> 'b *)
 
 (** [exc_to_opt f] returns [None] if [f ()] raises an
     exception and [Some (f ())] otherwise. *)

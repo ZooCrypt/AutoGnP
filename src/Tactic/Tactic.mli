@@ -3,8 +3,6 @@
 open TheoryState
 open Game
 open Format
-open Expr
-open Type
 open ParserUtil
 
 (* val pp_goals : formatter -> CoreRules.goals option -> unit *)

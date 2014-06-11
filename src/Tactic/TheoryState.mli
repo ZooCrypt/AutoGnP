@@ -1,7 +1,6 @@
 (** Goals and mappings from strings to variables/symbols. *)
 
 open Type
-open Game
 
 (** There are three possible positions in a theory:
    Before the proof.

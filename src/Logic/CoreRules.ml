@@ -23,7 +23,9 @@ type rule_name =
   | Rswap_orcl of ocmd_pos * int 
   | Rrnd_indep of bool * int
   | Rassm_dec  of direction * Vsym.t Vsym.M.t * assumption_decision
-  | Rbad       of gcmd_pos * Vsym.t 
+  | Rbad       of gcmd_pos * Vsym.t
+  (* merge event direction: split *)
+  (* rwr_event: rewrite A /\ s = t /\ B *)
 type proof_tree = 
   { dr_subgoal : proof_tree list;
     dr_rule    : rule_name;

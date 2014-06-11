@@ -35,33 +35,47 @@ let t_unfold_only ju =
   let new_ju = norm_ju ~norm:(fun x -> x) ju in
   t_conv false new_ju ju
 
-(* exponent rewriting *)
+(* [simp e unknown] takes an exponent expression [e] and a
+   set [unknown] of unknown expressions.
+   It returns a pair [(ges,mdenom)] where [mdenom] is 
+   a denominator using [None] to encode [1] and [ges] is a
+   list of of triples (b,ue,ke) representing (b^ue)^ke
+   where [None] encodes the default group generator.
+   The whole list [ges] represent the product of group
+   elements in [ges]. *)
 let simp_exp e unknown =
   let norm_mult es = mk_FMult (List.sort e_compare es) in
   let norm_fopp e  = mk_FOpp e in
   let rec split_unknown e =
-    let is_unknown e = is_GLog e || Se.mem e unknown in
+    let is_unknown e = Se.mem e unknown in
     match e.e_node with
     | Nary(FMult,es) ->
-      (match List.partition is_unknown es with
-       | [],ke -> (norm_mult ke,None)
-       | ue,[] -> (norm_mult ue,None)
-       | ue,ke -> (norm_mult ue,Some(norm_mult ke)))
+      let de,es = List.partition is_GLog es in
+      let ue,ke = List.partition is_unknown es in 
+      let b,de = match de with
+        | []    -> (None,de)
+        | b::bs -> (Some (destr_GLog b),bs)
+      in
+      begin match ue@de, ke with
+      | [],ke -> (b, norm_mult ke,None)
+      | ue,[] -> (b, norm_mult ue,None)
+      | ue,ke -> (b, norm_mult ue, Some(norm_mult ke))
+      end
     | App(FOpp,[a]) ->
-        (match split_unknown a with
-         | (e1,None)    -> (norm_fopp e1,None)
-         | (e1,Some e2) -> (e1,Some(norm_fopp e2)))
-    | _ -> (e,None)
+      begin match split_unknown a with
+      | (b,e1,None)    -> (b, norm_fopp e1,None)
+      | (b,e1,Some e2) -> (b, e1,Some(norm_fopp e2))
+      end
+    | _ -> (None,e,None)
   in
-  let go sum denom =
-    (List.map split_unknown sum, denom)
-  in
+  let go sum denom = (List.map split_unknown sum, denom) in
   match e.e_node with
   | Nary(FPlus,es)  -> go es None
   | App(FDiv,[a;b]) ->
-      (match a.e_node with
-       | Nary(FPlus,es) -> go es (Some b)
-       | _ -> ([a,None],Some b) )
+    begin match a.e_node with
+    | Nary(FPlus,es) -> go es (Some b)
+    | _ -> ([(None,a,None)],Some b)
+    end
   | _ -> ([ split_unknown e ], None)
 
 let rewrite_exps unknown e0 =
@@ -72,19 +86,22 @@ let rewrite_exps unknown e0 =
       assert (is_GGen a);
       let gen = a in
       let (ies,ce) = simp_exp b unknown in
-      let expio ie moe = match moe with
+      let expio b ie moe =
+        let gen = match b with None -> gen | Some a -> a in
+        match moe with
         | Some oe -> mk_GExp (mk_GExp gen ie) oe
         | None    -> mk_GExp gen ie
       in
       let a =
         match ies with
-        | []       -> gen
-        | [ie,moe] -> expio ie moe
-        | ies      -> mk_GMult (List.map (fun (ie,moe) -> expio ie moe) ies)
+        | []         -> gen
+        | [b,ie,moe] -> expio b ie moe
+        | ies        -> mk_GMult (List.map (fun (b,ie,moe) -> expio b ie moe) ies)
       in
-      (match ce with
-       | None    -> a
-       | Some oe -> mk_GExp a (mk_FInv oe))
+      begin match ce with
+      | None    -> a
+      | Some oe -> mk_GExp a (mk_FInv oe)
+      end
     | _ -> e
   in
   go e0
