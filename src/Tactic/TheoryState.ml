@@ -101,7 +101,7 @@ let ts_importvars ts ju =
   let import_var vs =
     Ht.add ts.ts_vars (vs.Vsym.id |> Id.name) vs
   in
-  Vsym.S.iter import_var (ju_vars ju);
+  Vsym.S.iter import_var (ju_all_vars ju);
   ts
 
 let get_proof_state ts = 

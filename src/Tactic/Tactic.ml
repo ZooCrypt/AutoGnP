@@ -51,7 +51,6 @@ let handle_tactic ts tac =
   in
   (* FIXME: for now, we just clean up ts_vars here *)
   let ts = ts_importvars ts ju in
-  Hashtbl.iter (fun s _ -> Format.printf "\n##### %s #####" s) ts.ts_vars;
   match tac with
   | PU.Rnorm -> apply_rule Rules.t_norm ts
 

@@ -32,8 +32,8 @@ let mk_ad name pref1 pref2 pvars =
   check_nocall pref2;
   ignore (wf_gdef NoCheckDivZero pref1);
   ignore (wf_gdef NoCheckDivZero pref2);
-  let pubvar1 = Se.diff (gdef_used_vars pref1) pvarse in
-  let pubvar2 = Se.diff (gdef_used_vars pref2) pvarse in
+  let pubvar1 = Se.diff (gdef_vars pref1) pvarse in
+  let pubvar2 = Se.diff (gdef_vars pref2) pvarse in
   if not (Se.equal pubvar1 pubvar2) then begin
     let diff = Se.union (Se.diff pubvar1 pubvar2) (Se.diff pubvar2 pubvar1) in
     tacerror "public variables should be equal: %a"
@@ -87,7 +87,7 @@ let mk_ac name pref ev_var ev priv_vars =
   in
   check_nocall pref;
   ignore (wf_gdef NoCheckDivZero pref);
-  let pub_varse = Se.diff (gdef_used_vars pref) priv_varse in
+  let pub_varse = Se.diff (gdef_vars pref) priv_varse in
   let pub_vars =
     Se.fold (fun e s -> Vsym.S.add (destr_V e) s) pub_varse Vsym.S.empty
   in

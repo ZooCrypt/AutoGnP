@@ -56,7 +56,7 @@ type proof_state = goals
 exception NoOpenGoal 
 
 let fail_if_occur vs ju s =
-  if (Se.mem (mk_V vs) (ju_used_vars ju)) then
+  if (Se.mem (mk_V vs) (ju_vars ju)) then
     tacerror "%s: variable %a occurs in judgment\n %a"
       s Vsym.pp vs pp_ju ju 
 

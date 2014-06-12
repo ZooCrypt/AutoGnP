@@ -406,20 +406,20 @@ let odef_vars (_,vs,cmd,_) =
     (List.fold_right Vsym.S.add vs Vsym.S.empty)
     (lcmds_vars cmd)
 
-let gcmd_vars = function
+let gcmd_all_vars = function
   | GLet(v,_) | GSamp(v,_) -> Vsym.S.singleton v
   | GCall(vs,_,_,odefs) ->
     Vsym.S.union
       (List.fold_right Vsym.S.add vs Vsym.S.empty)
       (fold_union_vs odef_vars odefs)
 
-let gdef_vars gdef = fold_union_vs gcmd_vars gdef
+let gdef_all_vars gdef = fold_union_vs gcmd_all_vars gdef
 
-let ju_vars ju = gdef_vars ju.ju_gdef
+let ju_all_vars ju = gdef_all_vars ju.ju_gdef
 
-let gdef_used_vars gdef = Se.union (read_gcmds gdef) (write_gcmds gdef)
+let gdef_vars gdef = Se.union (read_gcmds gdef) (write_gcmds gdef)
 
-let ju_used_vars ju = Se.union (gdef_used_vars ju.ju_gdef) (e_vars ju.ju_ev)
+let ju_vars ju = Se.union (gdef_vars ju.ju_gdef) (e_vars ju.ju_ev)
 
 (* ----------------------------------------------------------------------- *)
 (** {7 Normalization } *) 
