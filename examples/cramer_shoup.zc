@@ -62,12 +62,15 @@ prove
    variable occurs first as bijection and computing the inverse.
    Prefer applications where both contexts are division-free.
 *)
+  (* make g ^ (w*x2 + x1) random using x1 / _ - x1 does not require division *)
   rswap 4 1. rrandom 5 _ (y -> w*x2 + y) tmp. rnorm.
     (* support _ in second position:
        let x1 random variable in line 5,
        list of terms in gdef,
        find first field_expressions fe that contains x1 (in outermost field context),
-       use (x1 -> fe) *)
+       use (x1 -> fe)
+       move everything before so that bijection defined
+    *)
   rswap 6 1. rrandom 7 _ (y -> w*y2 + y) tmp. rnorm.
   rswap 8 1. rrandom 9 _ (y -> w*z2 + y) tmp. rnorm.
   rswap 4 7. rswap 5 6. rswap 6 3.
@@ -91,6 +94,14 @@ prove
    using TCR later on.
 *)
   radd_test (12,1,2) (not (H(a,a',c) = H(g^u, g^v,g^z2))) A3 ba ba' bc bd.
+  last.
+  
+
+  G[T] ~ G[T /\ T'] : true ==> ={res} \/ (exists x in LO. T(x) /\ !T'(x)){2}
+  
+  LO, LH
+  
+  last.
 
 (* We first focus on the bad case:
    For a reduction to TCR, the inputs u,v,z2 must be uniformly sampled.
