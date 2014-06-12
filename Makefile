@@ -27,7 +27,7 @@ clean:
 	-@rm -rf tutor.docdir
 
 zoocrypt :
-	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native && ./zoocrypt.native ./examples/bb1_asym.zc
+	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native
 
 wszoocrypt :
 	ocamlbuild $(OCAMLBUILDFLAGS) wszoocrypt.native 
