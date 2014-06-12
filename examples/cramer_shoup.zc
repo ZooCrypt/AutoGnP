@@ -94,14 +94,6 @@ prove
    using TCR later on.
 *)
   radd_test (12,1,2) (not (H(a,a',c) = H(g^u, g^v,g^z2))) A3 ba ba' bc bd.
-  last.
-  
-
-  G[T] ~ G[T /\ T'] : true ==> ={res} \/ (exists x in LO. T(x) /\ !T'(x)){2}
-  
-  LO, LH
-  
-  last.
 
 (* We first focus on the bad case:
    For a reduction to TCR, the inputs u,v,z2 must be uniformly sampled.
@@ -195,3 +187,5 @@ prove
   rlet_unfold 15.
   rnorm_nounfold.
   rindep.
+  
+  extract "cramer_shoup.ec"
