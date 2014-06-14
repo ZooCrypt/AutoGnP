@@ -257,8 +257,6 @@ val e_find : ('a gexpr -> bool) -> 'a gexpr -> 'a gexpr
      of [e] and satisfy [p]. *)
 val e_find_all : (expr -> bool) -> expr -> Se.t
 
-val e_vars : expr -> Se.t
-
 (** [e_map f e] applies [f] recursively to all subterms of [e] proceeding
      in a bottom-up fashion. *)
 val e_map : (expr -> expr) -> expr -> expr

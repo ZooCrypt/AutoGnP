@@ -104,7 +104,7 @@ let add_row_to m r1 r2 =
 
 let reduce_pivot m r c =
   iter_rows m (fun r' ->
-    if r' <> r & m.(r').(c) = true then
+    if r' <> r && m.(r').(c) = true then
       add_row_to m r' r)
 
 (* let add_col vs a =
