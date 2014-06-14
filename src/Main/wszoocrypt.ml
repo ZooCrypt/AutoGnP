@@ -14,14 +14,6 @@ let ps_file = ref ""
 let disallow_save = ref false
 let server_name = ref "localhost"
 
-let in_comment s i =
-  let cstart = exc_to_opt (fun () -> string_rfind_from s "(*" i) in
-  let cend   = exc_to_opt (fun () -> string_rfind_from s "*)" i) in
-  match cstart, cend with
-  | Some i, Some j -> i > j
-  | Some _, None   -> true
-  | _              -> false
-
 (* ----------------------------------------------------------------------- *)
 (** {Proofstate cache} *)
 
@@ -73,13 +65,39 @@ let process_load () =
   let res = `Assoc [("cmd", `String "setProof"); ("arg", `String s)] in
   Lwt.return (Frame.of_string (YS.to_string res))
 
+let split_proof_script s =
+  let rec find_dot i =
+    try
+      match s.[i] with
+      | '.' ->
+        Some i
+      | '"' ->
+        find_dot (find_quote (i+1))
+      | '(' when s.[i+1] = '*' ->
+        find_dot (find_comment_end (i+2))
+      | _ ->
+        find_dot (i+1)
+    with
+      Invalid_argument _ -> None
+  and find_comment_end i =
+    match s.[i] with
+    | '*' when s.[i+1] = ')' -> i+2
+    | _ -> find_comment_end (i+1)
+  and find_quote i =
+    match s.[i] with
+    | '"' -> i+1
+    | _   -> find_quote (i+1)
+  in
+  let rec go i acc =
+    match find_dot i with
+    | Some j -> go (j+1) ((String.sub s i (j - i))::acc)
+    | None   -> List.rev acc
+  in
+  go 0 []
+
 let process_eval proofscript =
-  let proofscript = (* drop last '.' *)
-    let len = String.length proofscript in
-    String.sub proofscript 0 (if len > 0 then len - 1 else len)
-  in
-  let l = Util.splitn_by proofscript (fun s i -> s.[i] = '.' && not (in_comment s i))
-  in
+  let l = split_proof_script proofscript in
+  F.printf "Eval: ``%a''\n%!" (pp_list ";" pp_string) l;  
   let ((ts0, msgs0), handled_cmds, rem_cmds) = lookup_ts_cache l in
   F.printf "Eval: ``%s''\n%!" proofscript;
   F.printf "executing %i remaining commands\n%!" (List.length rem_cmds);
@@ -94,9 +112,11 @@ let process_eval proofscript =
   in
   let res =
     let error =
+      let last_cmd = ref "" in
       try 
         List.iter
           (fun cmd ->
+             last_cmd := cmd;
              let (ts, msg) = handle_instr !rts (Parse.instruction (cmd ^ ".")) in
              rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
              insert_ts_cache !rhandled (ts,!rmsgs))
@@ -104,7 +124,7 @@ let process_eval proofscript =
           `Null
       with
         | PU.ParseError s ->
-          `String (F.sprintf "parse error: %s" s)
+          `String (F.sprintf "parse error %s in ``%s''" s !last_cmd)
         | Invalid_rule s ->
           `String (F.sprintf "invalid rule application: %s" s)
         | Expr.TypeError  e ->

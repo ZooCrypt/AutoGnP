@@ -54,7 +54,7 @@ function insideCommentOrString(t, pos) {
     var insideString = false;
     while (i < pos) {
         if (insideComment) {
-            if (t[i] == "*" && t[i + 1] == ")") {
+            if (t[i] == "*" && t.length > i + 1 && t[i + 1] == ")") {
                 insideComment = false;
             }
         } else if (insideString) {
@@ -62,7 +62,7 @@ function insideCommentOrString(t, pos) {
                 insideString = false;
             }
         } else {
-            if (t[i] == "(" && t[i + 1] == "*") {
+            if (t[i] == "(" && t.length > i + 1 && t[i + 1] == "*") {
                 insideComment = true;
             } else if (t[i] == "\"") {
                 insideString = true;

@@ -145,6 +145,8 @@ let rec pp_list sep pp_elt f l =
 let pp_list_c pe = (pp_list "," pe)
 let pp_list_s = pp_list_c (fun fmt -> Format.fprintf fmt "%s")
 
+let pp_string fmt s = Format.fprintf fmt "%s" s
+
 let input_file file_name =
   let in_channel = open_in file_name in
   let rec go lines =

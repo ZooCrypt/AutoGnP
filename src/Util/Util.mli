@@ -121,6 +121,8 @@ val pp_list_c : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list 
 (** [pplist_s] pretty prints a list of strings *)
 val pp_list_s : Format.formatter -> string list -> unit
 
+val pp_string : Format.formatter -> string -> unit
+
 val input_file : string -> string
 
 val output_file : string -> string -> unit
