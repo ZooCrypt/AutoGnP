@@ -211,9 +211,15 @@ let rec pp_instr file fmt = function
   | Iasgn(lv,e) ->
     Format.fprintf fmt "@[<hov 2>%a =@ %a;@]" 
       pp_lvalue lv pp_exp e
-  | Irnd(lv,ty) ->
+  | Irnd(lv,ty,[]) ->
     Format.fprintf fmt "@[<hov 2>%a =@ $%a;@]" 
       pp_lvalue lv (pp_ty_distr file) ty
+  | Irnd(lv,ty,[e]) -> 
+    Format.fprintf fmt "@[<hov 2>%a =@ $(@[%a \\@ FSet.single %a@]);@]" 
+      pp_lvalue lv (pp_ty_distr file) ty (pp_exp_lvl (app_lvl - 1)) e
+  | Irnd(_lv,_ty,_l) -> 
+    Format.eprintf "multiple restriction not implemented@.";
+    assert false
   | Icall(lv,f,e) ->
     Format.fprintf fmt "@[<hov 2>%a =@ %a(%a);@]" 
       pp_lvalue lv pp_fun_name f pp_exp e
@@ -314,6 +320,8 @@ let pp_gvars_mod fmt gvars =
     in
     Format.fprintf fmt "(** { Group declarations. } *)@ @ ";
     Format.fprintf fmt "require import PrimeField.@ ";
+    Format.fprintf fmt "require import SDField.@ ";
+    Format.fprintf fmt "import FSet.Dexcepted.@ ";
     Format.fprintf fmt "import F.@ ";
     Format.fprintf fmt "require CyclicGroup.@ @ ";
     Groupvar.H.iter out gvars;
@@ -423,7 +431,7 @@ let pp_cmd local file fmt = function
   | Clemma(loc,name,f,Some proof) ->
     Format.fprintf fmt "%slemma %s:@   @[%a@]."
       (if loc then "local " else "") name pp_form f;
-    Format.fprintf fmt "@ proof.@   %a@ qed." proof ()
+    Format.fprintf fmt "@ proof.@   @[<v>%a@]@ qed." proof ()
       
   | Clemma(loc,name,f,None) ->
     assert (loc = false);

@@ -1,6 +1,7 @@
 adversary A1 : G -> (G * G).
 adversary A2 : (G * G) -> Bool.
-assumption ddh
+
+assumption_decisional ddh
   [ x <-$ Fq; y <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
   [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
@@ -37,10 +38,10 @@ prove
           and just insert the let-abstractions.
  *)
  rnorm_unknown a x.
- rlet_abstract 2 xa (g^a).
- rlet_abstract 3 xx (g^x).
- rlet_abstract 4 xax (g^(a*x)).
- assumption -> ddh c. rnorm. rswap 3 2.
+ rlet_abstract 3 xa (g^a).
+ rlet_abstract 4 xx (g^x).
+ rlet_abstract 5 xax (g^(a*x)).
+ assumption_decisional -> ddh c. rnorm. rswap 3 2.
  rrandom 5 _ (u -> u + log(b?m0:m1)) z1.
  rnorm.
  rswap 4 2.

@@ -46,7 +46,7 @@ type fun_name = mod_name * string
   
 type instr = 
  | Iasgn of lvalue * expr
- | Irnd  of lvalue * ty
+ | Irnd  of lvalue * ty * expr list
  | Icall of lvalue * fun_name * expr 
  | Iif   of expr * instr list * instr list
 
@@ -87,8 +87,9 @@ type form =
   | Fpr of fun_name * mem * form list * form
 
 let f_true = Fcnst "true"
-let f_eq f1 f2 = Fapp(Oeq,[f1;f2])
 let f_not f = Fapp(Onot, [f])
+let f_eq f1 f2 = Fapp(Oeq,[f1;f2])
+let f_neq f1 f2 = f_not (f_eq f1 f2)
 let f_le f1 f2 = Fapp(Ole,[f1;f2])
 let f_and f1 f2 = Fapp(Oand, [f1; f2])
 let f_rsub f1 f2 = Fapp(Osub, [f1;f2])
