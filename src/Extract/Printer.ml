@@ -448,6 +448,9 @@ let pp_adv_decl fmt file =
     | Cmod md -> md.mod_name :: r
     | _ -> r in
   let r = List.fold_left add_mod r file.glob_decl in      
+  let r = 
+    if Groupvar.H.length file.grvar <> 0 then "SDF.SD1query.SDN.Count" :: r 
+    else r in
   let name,ty = adv_decl file in
   Format.fprintf fmt "declare module %s : %s {@[<hov 2>%a@]}.@ @ "
     name ty (pp_list ", " Format.pp_print_string) r 

@@ -10,6 +10,7 @@ clone SD as SDF with
    type init <- unit,
    type input <- F.t,
    type output <- F.t,
+   type adv_output <- unit,
    op witness <- F.zero
    proof finite_output.
 realize finite_output. 
@@ -118,32 +119,32 @@ section.
   qed.
 
   lemma SD_conseq_abs (A <: SDF.SD_Adv{SDF.SDNquery.Count}) &m
-     (EV : (glob A) -> SDF.adv_output -> bool) :
-     `|Pr[SDF.SDNquery.SD(A, S).main(tt) @ &m : EV (glob A) res] -
-        Pr[SDF.SDNquery.SD(A, SE).main(tt) @ &m : EV (glob A) res]| <=
+     (EV : (glob A) -> unit -> bool) :
+     `|Pr[SDF.SDNquery.SD(A, S).main(tt) @ &m : EV (glob A) res ] -
+        Pr[SDF.SDNquery.SD(A, SE).main(tt) @ &m : EV (glob A) res ]| <=
       SDF.SDNquery.q%r /q%r.
   proof.
    cut -> : 
-     Pr[SDF.SDNquery.SD(A, S).main(tt) @ &m : EV (glob A) res] = 
+     Pr[SDF.SDNquery.SD(A, S).main(tt) @ &m : EV (glob A) res ] = 
      Pr[SDF.SDNquery.SD(A, SDF.S1(S2)).main(tt) @ &m : EV (glob A) res].
     byequiv (_ : ={glob A} ==> ={glob A,res}) => //;sim.
    cut -> : 
      Pr[SDF.SDNquery.SD(A, SE).main(tt) @ &m : EV (glob A) res] = 
-     Pr[SDF.SDNquery.SD(A, SDF.S2(S2)).main(tt) @ &m : EV (glob A) res].
+     Pr[SDF.SDNquery.SD(A, SDF.S2(S2)).main(tt) @ &m : EV (glob A) res ].
     byequiv (_ : ={glob A} ==> ={glob A,res}) => //;sim.
    apply (SDF.SDNquery.SD_conseq_abs S2 (1%r/q%r) (fun x, true) _ _ _ _ A &m EV);auto.
    apply pr_sum.
   qed.
 
   lemma SD_conseq_add (A <: SDF.SD_Adv{SDF.SDNquery.Count}) &m
-      (EV : (glob A) -> SDF.adv_output -> bool) :
+      (EV : (glob A) -> unit -> bool) :
       Pr[SDF.SDNquery.SD(A, S).main(tt) @ &m : EV (glob A) res] <= 
          Pr[SDF.SDNquery.SD(A, SE).main(tt) @ &m : EV (glob A) res] + 
          SDF.SDNquery.q%r /q%r.
   proof. cut H5 := SD_conseq_abs A &m EV => //;smt. qed.
 
   lemma SD_conseq_add_E (A <: SDF.SD_Adv{SDF.SDNquery.Count}) &m
-      (EV : (glob A) -> SDF.adv_output -> bool) :
+      (EV : (glob A) -> unit -> bool) :
       Pr[SDF.SDNquery.SD(A, SE).main(tt) @ &m : EV (glob A) res] <= 
          Pr[SDF.SDNquery.SD(A, S).main(tt) @ &m : EV (glob A) res] + 
          SDF.SDNquery.q%r /q%r.
@@ -151,7 +152,7 @@ section.
 
   lemma SD1_conseq_abs
     (A <: SDF.SD1query.SD1_Adv{SDF.SD1query.SDN.Count}) &m 
-    (EV : (glob A) -> SDF.adv_output -> bool):
+    (EV : (glob A) -> unit -> bool):
       `|Pr[SDF.SD1query.SD1(A, S).main(tt) @ &m : EV (glob A) res] -
         Pr[SDF.SD1query.SD1(A, SE).main(tt) @ &m : EV (glob A) res]| <=
       1%r/q%r.
@@ -170,7 +171,7 @@ section.
 
   lemma SD1_conseq_add
     (A <: SDF.SD1query.SD1_Adv{SDF.SD1query.SDN.Count}) &m 
-    (EV : (glob A) -> SDF.adv_output -> bool):
+    (EV : (glob A) -> unit -> bool):
       Pr[SDF.SD1query.SD1(A, S).main(tt) @ &m : EV (glob A) res] <= 
       Pr[SDF.SD1query.SD1(A, SE).main(tt) @ &m : EV (glob A) res] + 
       1%r/q%r.
@@ -178,7 +179,7 @@ section.
    
   lemma SD1_conseq_add_E
     (A <: SDF.SD1query.SD1_Adv{SDF.SD1query.SDN.Count}) &m 
-    (EV : (glob A) -> SDF.adv_output -> bool):
+    (EV : (glob A) -> unit -> bool):
       Pr[SDF.SD1query.SD1(A, SE).main(tt) @ &m : EV (glob A) res] <= 
       Pr[SDF.SD1query.SD1(A, S).main(tt) @ &m : EV (glob A) res] + 
       1%r/q%r.

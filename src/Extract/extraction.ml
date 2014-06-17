@@ -898,35 +898,101 @@ let extract_rnd_indep file side pos ju =
   let lemma = add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
   lemma, pr, cmp_le, bound
 
-let extract_except file pos l pft pft' = 
+let extract_except file pos _l pft pft' = 
   let ju = pft.dr_ju in
   let ju' = pft'.dr_ju in
   let pr = extract_pr file mem ju in
   let pr' = extract_pr file mem ju' in
   let g = game file pft.dr_ju.ju_gdef in 
   let g' = game file pft'.dr_ju.ju_gdef in
+  let side, adv =
+    let comp = match g.mod_body with 
+      | Mod_def cmp -> cmp 
+      | _ -> assert false in
+    let comp, f = 
+      match List.rev comp with 
+      | MCfun f :: r -> List.rev r, f
+      | _ -> assert false in
+   
+    let side, x, ex =
+      match List.nth ju.ju_gdef pos, List.nth ju'.ju_gdef pos with 
+      | GSamp(x,(_ty,[])), GSamp(x',(_ty',[e])) -> 
+        assert (Vsym.equal x x'); (* FIXME: check ty *)
+        `LeftToRight, x, e
+      | GSamp(x,(_ty,[e])), GSamp(x',(_ty',[])) ->
+        assert (Vsym.equal x x');
+        `RightToLeft, x, e
+      | _, _ -> assert false in
+    let hd,_,tl = Util.split_n pos f.f_body in
+    let a1 = 
+      let res = ([], "_res") in
+      let dres = res, mk_Fq in
+      let ex = expression file ex in
+      { f_name = "a1";
+        f_param = [];
+        f_local = [dres];
+        f_res   = Some dres;
+        f_body  = List.rev_append hd [Iasgn([res],ex)] } in
+    let a2 = 
+      let arg = ([], "_arg") in
+      let darg = arg, mk_Fq in
+      {
+        f_name = "a2";
+        f_param = [darg];
+        f_local = [];
+        f_res   = None;
+        f_body  = Iasgn([pvar [] x], Epv arg)::tl } in
+    let advname = top_name file ("SDadv") in 
+    side, { mod_name = advname;
+      mod_param = [];
+      mod_body = Mod_def (comp @ [MCfun a1; MCfun a2]) } in
+  file.loca_decl <- Cmod adv :: file.loca_decl;
+
   let eps = f_rinv (Frofi f_Fq) in
   let bound = f_radd pr' (f_rinv (Frofi f_Fq)) in
-  let proof = pr_admit "" in
-(* intros &m.
-   cut -> : Pr[M5(A).main() @ &m: M5.b = M5.b'] =
-            Pr[SDF.SD1query.SD1(SDadv, S).main() @ &m : SDadv.b = SDadv.b'].
-     byequiv (_ : ={glob A} ==> M5.b{1} =  SDadv.b{2} /\ M5.b'{1} =  SDadv.b'{2}) => //.
-     proc;inline *;sim.
-   cut -> : Pr[M4(A).main() @ &m: M4.b = M4.b'] =
-            Pr[SDF.SD1query.SD1(SDadv, SE).main() @ &m : SDadv.b = SDadv.b'].
-     byequiv (_ : ={glob A} ==> M4.b{1} =  SDadv.b{2} /\ M4.b'{1} =  SDadv.b'{2}) => //.
-     proc;inline *;sim.
-     rnd. wp 2 3 => /=. 
-     conseq (_ : _ ==> 
-       ={glob A} /\  M4.w{1} =  SDadv.w{2} /\ M4.u{1} =  SDadv.u{2}) => //.
-     sim.
-   pose EV :=
-     fun (g:glob SDadv) (u:unit),
-       let (b',m1,m0,x1,v,u,z1,z2,y1,y2,b,x2,w,gA) = g in
-       b =  b'.
-   apply ( SDFu.SD1_conseq_add SDadv &m EV).
-       *)
+  let pr1, pr2 = if side = `LeftToRight then pr, pr' else pr', pr in
+  let g1, g2 = if side = `LeftToRight then g, g' else g', g in
+
+  let proof fmt () = 
+    Format.fprintf fmt "intros &m.@ ";
+    let ev = formula file [adv.mod_name] None ju.ju_ev in 
+    let mk_eqs g fv = 
+      let mk_eq e = 
+        f_eq (formula file [g] (Some "1") e) 
+          (formula file [adv.mod_name] (Some "2") e) in
+      match Se.elements fv with
+      | [] -> f_true
+      | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
+    let fv = Expr.e_vars ju.ju_ev in
+    Format.fprintf fmt 
+      "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, S).main() @@ &m :@ %a]@].@ " 
+      pp_form pr1 adv.mod_name pp_form ev;
+    Format.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
+      pp_form (mk_eqs g1.mod_name fv);
+    Format.fprintf fmt "  proc;inline *;sim.@ ";
+    
+    Format.fprintf fmt 
+      "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, SE).main() @@ &m :@ %a]@].@ " 
+      pp_form pr2 adv.mod_name pp_form ev;
+    Format.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
+      pp_form (mk_eqs g2.mod_name fv);
+    Format.fprintf fmt "  proc;inline *;sim.@ ";
+    Format.fprintf fmt "  rnd; wp %i %i => /=.@ " pos (pos + 1);
+    Format.fprintf fmt "  conseq (_ : _ ==> ={glob A} /\\ %a) => //.@ "
+    pp_form (mk_eqs g2.mod_name (write_gcmds (Util.take pos ju.ju_gdef)));
+    Format.fprintf fmt "  sim.@ ";
+    Format.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
+    List.iter (fun e -> 
+      let v = destr_V e in
+      Format.fprintf fmt "  let %a = g.`%s.%a in@ "
+        Vsym.pp v adv.mod_name Vsym.pp v) (Se.elements fv);
+    Format.fprintf fmt "  @[%a@].@ "
+      pp_form (formula file [] None ju.ju_ev);
+    Format.fprintf fmt "apply (SDField.%s %s &m EV)." 
+      (if side = `LeftToRight then "SD1_conseq_add" else "SD1_conseq_add_E")
+      adv.mod_name
+  in
+  
   let lemma = add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
   lemma, pr, cmp_le, eps
   
