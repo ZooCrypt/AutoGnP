@@ -1,0 +1,29 @@
+S src
+S src/CAS/
+S src/Expr/
+S src/Extract/
+S src/Game/
+S src/Logic/
+S src/Main/
+S src/Parser/
+S src/Symbolic/
+S src/Tactic/
+S src/Test/
+S src/Type/
+S src/Util/
+
+B _build/src
+B _build/src/CAS/
+B _build/src/Expr/
+B _build/src/Extract/
+B _build/src/Game/
+B _build/src/Logic/
+B _build/src/Main/
+B _build/src/Parser/
+B _build/src/Symbolic/
+B _build/src/Tactic/
+B _build/src/Test/
+B _build/src/Type/
+B _build/src/Util/
+
+PKG unix websocket yojson
