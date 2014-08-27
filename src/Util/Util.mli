@@ -33,6 +33,9 @@ module StructMake : functor (X:Tagged) ->
     module H : Hashtbl.S with type key = T.t
   end
 
+module L : module type of List
+module F : module type of Format
+
 module Mint : Map.S with type key = int
 module Sint : Set.S with type elt = int
 module Hint : Hashtbl.S with type key = int

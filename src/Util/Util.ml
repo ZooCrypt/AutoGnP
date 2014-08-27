@@ -31,6 +31,9 @@ module Ints = StructMake (struct
   let tag x = x
 end)
 
+module L = List
+module F = Format
+
 module Mint = Ints.M
 module Sint = Ints.S
 module Hint = Ints.H
