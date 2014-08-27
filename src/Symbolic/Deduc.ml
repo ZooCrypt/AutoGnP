@@ -165,19 +165,20 @@ let invert from to_ =
     | _ -> assert false in
 
   (* Initialisation *)
-    try
-      let init_from (e,i) =
-        let e = Norm.norm_expr e in
-        build_tbl false e;
-        add e i in
-      List.iter init_from from;
-      build_tbl false to_;    
-      while !progress do
-        progress := false;
-        Se.iter do_construct !sub;
-        if not (!progress) then Hty.iter do_solver tytbl 
-      done;
-      raise Not_found 
+  try
+    let init_from (e,i) =
+      let e = Norm.norm_expr e in
+      build_tbl false e;
+      add e i
+    in
+    List.iter init_from from;
+    build_tbl false to_;
+    while !progress do
+      progress := false;
+      Se.iter do_construct !sub;
+      if not (!progress) then Hty.iter do_solver tytbl
+    done;
+    raise Not_found
     with Found inv -> inv
     
     
