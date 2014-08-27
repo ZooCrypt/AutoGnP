@@ -1,6 +1,7 @@
 (** Bilinear map function symbols. *)
 open Type
 open IdType
+open Util
 
 type 'a gt = private { id : 'a Id.gid;
                        source1 : 'a Groupvar.gid;
@@ -13,7 +14,7 @@ val hash : t -> int
 val equal : t -> t -> bool
 val mk : string -> Groupvar.id -> Groupvar.id -> Groupvar.id -> t
 val mke : string -> int -> Groupvar.eid -> Groupvar.eid -> Groupvar.eid -> et
-val pp : Format.formatter -> 'a gt -> unit
+val pp : F.formatter -> 'a gt -> unit
 val name : 'a gt -> string
 module M : Map.S with type key = t
 module S : Set.S with type elt = t

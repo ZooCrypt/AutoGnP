@@ -1,5 +1,7 @@
 (** Type for exported and internal (abstract) identifiers. *)
 
+open Util
+
 (*  Note: This should be an [mli], but then we get a linking
     error. *)
 
@@ -22,7 +24,7 @@ module type ID = sig
   val tag : 'a gid -> int
 
   (** Pretty printer for {!gid}. *)
-  val pp : Format.formatter -> 'a gid -> unit
+  val pp : F.formatter -> 'a gid -> unit
 
   (** internal identifiers. *)
   type id = internal gid

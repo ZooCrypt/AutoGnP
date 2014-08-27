@@ -2,8 +2,6 @@ open Type
 open Util
 open IdType
 
-module F = Format
-
 (* ----------------------------------------------------------------------- *)
 (** {1 Expressions} *)
 
@@ -237,6 +235,8 @@ let is_Nary o e = match e.e_node with Nary(o',_) -> o' = o | _ -> false
 let is_FPlus e = is_Nary FPlus e
 
 let is_FMult e = is_Nary FMult e
+
+let is_Xor e = is_Nary Xor e
 
 let is_Land e = is_Nary Land e
 

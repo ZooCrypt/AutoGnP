@@ -38,7 +38,7 @@ let mk name ro dom codom =
 let mke name i ro dom codom = 
   { id = Id.mke name i; ro; dom; codom}
 
-let pp fmt hs = Format.fprintf fmt "%s" (Id.name hs.id)
+let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
 let tostring hs = Id.name hs.id
 
 let is_ro hs = hs.ro

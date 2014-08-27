@@ -1,6 +1,7 @@
 (** Hash function symbols. *)
 open Type
 open IdType
+open Util
 
 type 'a gt = private { 
   id    : 'a Id.gid; 
@@ -16,7 +17,7 @@ val hash : t -> int
 val equal : t -> t -> bool
 val mk : string -> bool -> ty -> ty -> t
 val mke : string -> int -> bool -> ety -> ety -> et
-val pp : Format.formatter -> 'a gt -> unit
+val pp : F.formatter -> 'a gt -> unit
 val tostring : 'a gt -> string
 val is_ro : 'a gt -> bool
 

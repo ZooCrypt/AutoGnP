@@ -1,7 +1,7 @@
 (** Cryptographic game definitions. *)
 
 open Expr
-open Format
+open Util
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Types} *)
@@ -30,31 +30,31 @@ type judgment = { ju_gdef : gdef; ju_ev : ev; }
 (* ----------------------------------------------------------------------- *)
 (** {2 Pretty printing} *)
 
-val pp_distr : formatter -> 'a Type.gty * 'b gexpr list -> unit
+val pp_distr : F.formatter -> 'a Type.gty * 'b gexpr list -> unit
 
-val pp_v : formatter -> 'a Vsym.gt -> unit
+val pp_v : F.formatter -> 'a Vsym.gt -> unit
 
-val pp_binder : formatter -> 'a Vsym.gt list -> unit
+val pp_binder : F.formatter -> 'a Vsym.gt list -> unit
 
-val pp_lcmd : formatter -> lcmd -> unit
+val pp_lcmd : F.formatter -> lcmd -> unit
 
-val pp_ilcmd : formatter -> int * lcmd -> unit
+val pp_ilcmd : F.formatter -> int * lcmd -> unit
 
 val num_list : 'a list -> (int * 'a) list
 
-val pp_lcomp : formatter -> 'a gexpr * lcmd list -> unit
+val pp_lcomp : F.formatter -> 'a gexpr * lcmd list -> unit
 
-val pp_odef : formatter -> odef -> unit
+val pp_odef : F.formatter -> odef -> unit
 
-val pp_gcmd : formatter -> gcmd -> unit
+val pp_gcmd : F.formatter -> gcmd -> unit
 
-val pp_igcmd : formatter -> int * gcmd -> unit
+val pp_igcmd : F.formatter -> int * gcmd -> unit
 
-val pp_gdef : formatter -> gdef -> unit
+val pp_gdef : F.formatter -> gdef -> unit
 
-val pp_ju : formatter -> judgment -> unit
+val pp_ju : F.formatter -> judgment -> unit
 
-val pp_ps : formatter -> judgment list -> unit
+val pp_ps : F.formatter -> judgment list -> unit
 
 (* ----------------------------------------------------------------------- *)
 (** {3 Generic functions} *)

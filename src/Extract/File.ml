@@ -103,7 +103,7 @@ let get_pr_ev = function
   | Fpr(_,_,_,ev) -> ev
   | _ -> assert false
 
-type proof = Format.formatter -> unit -> unit
+type proof = F.formatter -> unit -> unit
 
 type cmd = 
   | Cmod   of mod_def

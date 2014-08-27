@@ -1,9 +1,8 @@
 open Expr
 open Poly
+open Util
 open CASLexer
 
-module F = Format
-module L = List
 module Ht = Hashtbl
 module YS = Yojson.Safe
 

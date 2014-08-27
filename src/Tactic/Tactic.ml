@@ -6,7 +6,6 @@ open Util
 open TheoryState
 
 module Ht = Hashtbl
-module F  = Format
 module PU = ParserUtil
 
 let fail_unless c s =
@@ -86,7 +85,7 @@ let handle_tactic ts tac =
     let e = PU.expr_of_parse_expr ts e in
     apply_rule (t_case_ev e) ts
 
-  | PU.Rindep -> apply_rule t_random_indep ts
+  | PU.Rindep -> apply_rule Rules.t_random_indep ts
 
   | PU.Rremove_ev(is) -> apply_rule (t_remove_ev is) ts
 
@@ -247,10 +246,10 @@ let handle_tactic ts tac =
   
 let pp_jus fmt jus =  
   match jus with
-  | [] -> Format.printf "No remaining goals, proof completed.@\n"
+  | [] -> F.printf "No remaining goals, proof completed.@\n"
   | jus ->
     let pp_goal i ju =
-      Format.fprintf fmt "goal %i:@\n%a@\n@\n" (i + 1) Game.pp_ju ju in
+      F.fprintf fmt "goal %i:@\n%a@\n@\n" (i + 1) Game.pp_ju ju in
     List.iteri pp_goal jus 
 
 let handle_instr ts instr =

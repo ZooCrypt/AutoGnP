@@ -1,7 +1,7 @@
 (** Typed algebraic expression: We distinguish
     internal/hashconsed and exported expressions.  *)
 open Type
-open Format
+open Util
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Expressions} *)
@@ -100,6 +100,7 @@ val is_some_Nary : 'a gexpr -> bool
 val is_Nary : nop -> 'a gexpr -> bool
 val is_FPlus : 'a gexpr -> bool
 val is_FMult : 'a gexpr -> bool
+val is_Xor : 'a gexpr -> bool  
 val is_Exists : 'a gexpr -> bool
 val is_Eq    : 'a gexpr -> bool
 val is_field_op : 'a gop -> bool
@@ -212,12 +213,12 @@ module EConstructors :
 (* ----------------------------------------------------------------------- *)
 (** {5 Pretty printing} *)
 
-val pp_cnst : formatter -> cnst -> 'a Type.gty -> unit
-val pp_exp  : formatter -> 'a gexpr -> unit
-val pp_op   : formatter -> 'a gop * 'a gexpr list -> unit
-val pp_nop  : formatter -> nop * 'a gexpr list -> unit
+val pp_cnst : F.formatter -> cnst -> 'a Type.gty -> unit
+val pp_exp  : F.formatter -> 'a gexpr -> unit
+val pp_op   : F.formatter -> 'a gop * 'a gexpr list -> unit
+val pp_nop  : F.formatter -> nop * 'a gexpr list -> unit
 
-val pp_exp_tnp  : formatter -> 'a gexpr -> unit
+val pp_exp_tnp  : F.formatter -> 'a gexpr -> unit
 
 (* ----------------------------------------------------------------------- *)
 (** {6 Generic functions on [expr]} *)

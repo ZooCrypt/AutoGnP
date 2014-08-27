@@ -1,11 +1,12 @@
 open Type
 open Expr
+open Util
 
 let mk_gexp gv p = mk_GExp (mk_GGen gv) p
 
 let destr_gexp gv g = 
   let (g1,p) = try destr_GExp g with _ -> 
-    Format.printf "destr_gexp %a@." pp_exp g;
+    F.printf "destr_gexp %a@." pp_exp g;
     assert false
   in
   assert (e_equal g1 (mk_GGen gv));
@@ -78,7 +79,7 @@ and mk_simpl_nop op l =
       | [] | [_] -> l
       | e1::((e2::l) as l1) -> 
         if e_equal e1 e2 then aux l else e1 :: aux l1 in
-    List.iter (fun e -> Format.printf "%a " pp_exp e) l;
+    L.iter (fun e -> F.printf "%a " pp_exp e) l;
     let l = aux l in
     let l = List.filter (fun e -> not (is_Zero e)) l in
     if l = [] then mk_Zero e.e_ty 

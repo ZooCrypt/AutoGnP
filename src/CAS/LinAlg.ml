@@ -3,8 +3,6 @@
 open Util
 open Array
 
-module F = Format
-
 (* ----------------------------------------------------------------------- *)
 (** {1 Types and utility functions} *)
 

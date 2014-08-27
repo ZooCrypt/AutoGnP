@@ -101,8 +101,8 @@ let rec ty_export ty =
 
 let rec pp_ty fmt ty =
   match ty.ty_node with
-  | BS lv   -> Format.fprintf fmt "BS_%s" (Lenvar.name lv)
-  | Bool    -> Format.fprintf fmt "Bool"
-  | G gv    -> Format.fprintf fmt "G_%s" (Groupvar.name gv)
-  | Fq      -> Format.fprintf fmt "Fq"
-  | Prod ts -> Format.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts
+  | BS lv   -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
+  | Bool    -> F.fprintf fmt "Bool"
+  | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
+  | Fq      -> F.fprintf fmt "Fq"
+  | Prod ts -> F.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts

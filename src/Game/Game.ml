@@ -3,8 +3,6 @@ open Util
 open Type
 open Expr
 
-module F = Format
-
 (* ----------------------------------------------------------------------- *)
 (** {1 Types} *)
 
@@ -70,7 +68,7 @@ let pp_lcmd fmt lc =
   | LGuard(e)   -> pp_exp fmt e
 
 let pp_ilcmd fmt (i,lc) =
-  Format.fprintf fmt "%i: %a" i pp_lcmd lc
+  F.fprintf fmt "%i: %a" i pp_lcmd lc
 
 let num_list l = List.mapi (fun i a -> i+1,a) l 
 
@@ -99,7 +97,7 @@ let pp_gcmd fmt gc = match gc with
       (pp_list ";@ " pp_odef) os
 
 let pp_igcmd fmt (i,gc) = 
-  Format.fprintf fmt "@[%i: %a@]" i pp_gcmd gc 
+  F.fprintf fmt "@[%i: %a@]" i pp_gcmd gc 
 
 let pp_gdef fmt gd =
   pp_list ";@." pp_igcmd fmt (num_list gd)

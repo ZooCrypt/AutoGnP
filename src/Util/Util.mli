@@ -89,11 +89,11 @@ val exc_to_opt : (unit -> 'a) -> 'a option
 val map_opt : ('a -> 'b) -> 'a option -> 'b option
 
 (** [format_to_string f] executes [f ()] and returns the resulting string. *)
-val format_to_string : (Format.formatter -> unit) -> string
+val format_to_string : (F.formatter -> unit) -> string
 
 (** [fsprintf f] executes the format function with the standard
     string formatter. *)
-val fsprintf : ('a, Format.formatter, unit, string) format4 -> 'a
+val fsprintf : ('a, F.formatter, unit, string) format4 -> 'a
 
 val replicate_r : 'a list -> int -> 'a -> 'a list
 val replicate   : int -> 'a -> 'a list
@@ -111,15 +111,15 @@ val compare_on : ('a -> 'b) -> 'a -> 'a -> int
     [sep], and a pretty printer for ['e] and returns a
     pretty printer for lists of elements from ['e] *)
 val pp_list : ('a, 'b, 'c, 'd, 'd, 'a) format6 ->
-  (Format.formatter -> 'e -> unit) -> Format.formatter -> 'e list -> unit
+  (F.formatter -> 'e -> unit) -> F.formatter -> 'e list -> unit
 
 (** [pplist_c] is equivalent to [pp_list ","] *)
-val pp_list_c : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
+val pp_list_c : (F.formatter -> 'a -> unit) -> F.formatter -> 'a list -> unit
 
 (** [pplist_s] pretty prints a list of strings *)
-val pp_list_s : Format.formatter -> string list -> unit
+val pp_list_s : F.formatter -> string list -> unit
 
-val pp_string : Format.formatter -> string -> unit
+val pp_string : F.formatter -> string -> unit
 
 val input_file : string -> string
 
@@ -156,6 +156,6 @@ val split : string -> char -> (string * string) option
 exception Invalid_rule of string 
 
 (** [tacerror s] raises a rule application error with information [s]. *)
-val tacerror : ('a, Format.formatter, unit, 'b) format4 -> 'a
+val tacerror : ('a, F.formatter, unit, 'b) format4 -> 'a
 
 

@@ -329,14 +329,14 @@ let get_game file g =
   with Not_found -> assert false
 
 let pr_admit s fmt () =
-  Format.fprintf fmt "(* %s *) admit." s
+  F.fprintf fmt "(* %s *) admit." s
 
 let pp_swap side fmt (p,i) = 
-  Format.fprintf fmt "swap{%i} %i %i" side (p+1) i
+  F.fprintf fmt "swap{%i} %i %i" side (p+1) i
 
 let pp_swaps side fmt sw = 
   if sw <> [] then
-    Format.fprintf fmt "@[%a.@]@ " (pp_list ";@ " (pp_swap side)) sw
+    F.fprintf fmt "@[%a.@]@ " (pp_list ";@ " (pp_swap side)) sw
 
 let init_same file ju1 ju2 = 
   let g1 = get_game file ju1.ju_gdef in
@@ -345,18 +345,18 @@ let init_same file ju1 ju2 =
   let ev2 = formula file [g2.mod_name] (Some "2") ju2.ju_ev in
   let ev  = f_eq ev1 ev2 in 
   let open_pp fmt () = 
-    Format.fprintf fmt "@[<v>intros &m;byequiv (_: ={glob A} ==> %a);@ "
+    F.fprintf fmt "@[<v>intros &m;byequiv (_: ={glob A} ==> %a);@ "
       pp_form ev;
-    Format.fprintf fmt "  [ proc | by [] | by intros &m1 &m2 ->].@ " in
+    F.fprintf fmt "  [ proc | by [] | by intros &m1 &m2 ->].@ " in
   let close_pp fmt () = 
-    Format.fprintf fmt "@]" in
+    F.fprintf fmt "@]" in
   g1,g2,open_pp,close_pp
 
 let pr_swap file sw ju1 ju2 fmt () =
   let _,_,open_pp, close_pp = init_same file ju1 ju2 in
   open_pp fmt ();
   pp_swaps 1 fmt sw;
-  Format.fprintf fmt "sim.";
+  F.fprintf fmt "sim.";
   close_pp fmt ()
 
 let invert_swap sw = 
@@ -434,43 +434,43 @@ let t_pr_if =
   ]
 
 let rec pp_tac fmt = function
-  | Admit     -> Format.fprintf fmt "admit" 
-  | Rnd       -> Format.fprintf fmt "rnd" 
-  | Skip      -> Format.fprintf fmt "skip"
-  | Wp(i1,i2) -> Format.fprintf fmt "wp %i %i" i1 i2
-  | Auto      -> Format.fprintf fmt "auto" 
+  | Admit     -> F.fprintf fmt "admit" 
+  | Rnd       -> F.fprintf fmt "rnd" 
+  | Skip      -> F.fprintf fmt "skip"
+  | Wp(i1,i2) -> F.fprintf fmt "wp %i %i" i1 i2
+  | Auto      -> F.fprintf fmt "auto" 
   | Progress s-> 
-    if s = [] then Format.fprintf fmt "progress" 
+    if s = [] then F.fprintf fmt "progress" 
     else 
-      Format.fprintf fmt "progress @[[%a]@]" 
-        (pp_list "@ " (fun fmt -> Format.fprintf fmt "%s")) s
-  | Algebra   -> Format.fprintf fmt "algebra"
-  | Smt       -> Format.fprintf fmt "smt"
-  | Call inv  -> Format.fprintf fmt "call (_:%a)" pp_form inv
-  | If        -> Format.fprintf fmt "if" 
-  | Proc      -> Format.fprintf fmt "proc"
+      F.fprintf fmt "progress @[[%a]@]" 
+        (pp_list "@ " (fun fmt -> F.fprintf fmt "%s")) s
+  | Algebra   -> F.fprintf fmt "algebra"
+  | Smt       -> F.fprintf fmt "smt"
+  | Call inv  -> F.fprintf fmt "call (_:%a)" pp_form inv
+  | If        -> F.fprintf fmt "if" 
+  | Proc      -> F.fprintf fmt "proc"
   | Seq (i1,i2,f) -> 
-    Format.fprintf fmt "@[seq %i %i :@ (@[%a@])@]" i1 i2 pp_form f
-  | Apply s   -> Format.fprintf fmt "apply %s" s
-  | TOr(t1,t2) -> Format.fprintf fmt "(@[%a ||@ %a@])" pp_tac t1 pp_tac t2
-  | TRepeat t -> Format.fprintf fmt "do ?%a" pp_tac t
+    F.fprintf fmt "@[seq %i %i :@ (@[%a@])@]" i1 i2 pp_form f
+  | Apply s   -> F.fprintf fmt "apply %s" s
+  | TOr(t1,t2) -> F.fprintf fmt "(@[%a ||@ %a@])" pp_tac t1 pp_tac t2
+  | TRepeat t -> F.fprintf fmt "do ?%a" pp_tac t
   | TSeq lt   -> 
     if lt <> [] then
-      Format.fprintf fmt "@[<hov>(%a)@]" (pp_list ";@ " pp_tac) lt 
+      F.fprintf fmt "@[<hov>(%a)@]" (pp_list ";@ " pp_tac) lt 
   | TSeqSub(t, ts) ->
-    Format.fprintf fmt "@[<hov 2>%a;@ [ @[<hov 0>%a@]]@]" 
+    F.fprintf fmt "@[<hov 2>%a;@ [ @[<hov 0>%a@]]@]" 
       pp_tac t
       (pp_list " |@ " pp_tac) ts
 
 
 let rec pp_cmd fmt = function
-  | Tac t -> Format.fprintf fmt "%a." pp_tac t
+  | Tac t -> F.fprintf fmt "%a." pp_tac t
   | TSub ts -> 
-    Format.fprintf fmt "  @[<v>%a@]" 
+    F.fprintf fmt "  @[<v>%a@]" 
       (pp_list "@ @ " pp_cmds) ts
       
 and pp_cmds fmt tacs=
-  Format.fprintf fmt "@[<v>%a@]" (pp_list "@ " pp_cmd) tacs 
+  F.fprintf fmt "@[<v>%a@]" (pp_list "@ " pp_cmd) tacs 
 
 
 
@@ -552,27 +552,27 @@ let mk_eq_exprs file ?(local=Vsym.S.empty) g1 g2 es =
 let pp_inv file ?(local=Vsym.S.empty) g fmt (x,inv) = 
   let flocal = Vsym.S.singleton x in
   let f = formula file [g.mod_name] (Some "2") ~local ~flocal inv in
-  Format.fprintf fmt "@[<hov 2>(fun (%a:%a),@ %a)@]"
+  F.fprintf fmt "@[<hov 2>(fun (%a:%a),@ %a)@]"
     Vsym.pp x (pp_type file) x.Vsym.ty pp_form f 
 
 let mu_x_def file fmt ty = 
   match ty.ty_node with
   | BS lv -> 
-    Format.fprintf fmt "%a.Dword.mu_x_def" pp_mod_name (mod_lvar file lv)
+    F.fprintf fmt "%a.Dword.mu_x_def" pp_mod_name (mod_lvar file lv)
   | Bool ->
-    Format.fprintf fmt "Bool.Dbool.mu_x_def"
+    F.fprintf fmt "Bool.Dbool.mu_x_def"
   | G _gv -> assert false (* FIXME *)
-  | Fq    -> Format.fprintf fmt "FDistr.mu_x_def_in"
+  | Fq    -> F.fprintf fmt "FDistr.mu_x_def_in"
   | Prod _ -> assert false (* FIXME *) 
 
 let supp_def file fmt ty = 
   match ty.ty_node with
   | BS lv -> 
-    Format.fprintf fmt "%a.Dword.in_supp_def" pp_mod_name (mod_lvar file lv)
+    F.fprintf fmt "%a.Dword.in_supp_def" pp_mod_name (mod_lvar file lv)
   | Bool ->
-    Format.fprintf fmt "Bool.Dbool.supp_def"
+    F.fprintf fmt "Bool.Dbool.supp_def"
   | G _gv -> assert false (* FIXME *)
-  | Fq    -> Format.fprintf fmt "FDistr.supp_def"
+  | Fq    -> F.fprintf fmt "FDistr.supp_def"
   | Prod _ -> assert false (* FIXME *) 
 
 let build_proof file g1 g2 lc1 lc2 = 
@@ -663,18 +663,18 @@ let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
   let lc1 = Util.take pos ju1.ju_gdef in
   let lc2 = Util.take pos ju2.ju_gdef in
   let info =  build_proof file g1 g2 lc1 lc2 in 
-  Format.fprintf fmt "sim.@ ";
-  Format.fprintf fmt "wp %i %i.@ " (pos + 1) (pos + 1);
-  Format.fprintf fmt "@[<hov 2>rnd@ %a@ %a.@]@ "
+  F.fprintf fmt "sim.@ ";
+  F.fprintf fmt "wp %i %i.@ " (pos + 1) (pos + 1);
+  F.fprintf fmt "@[<hov 2>rnd@ %a@ %a.@]@ "
     (pp_inv file g2) inv2 (pp_inv file g2) inv1;
-  Format.fprintf fmt "@[<hov 2>conseq (_: _ ==>@ %a /\\ ={glob A}).@]@ " 
+  F.fprintf fmt "@[<hov 2>conseq (_: _ ==>@ %a /\\ ={glob A}).@]@ " 
     pp_form info.invs;
   let ty = (fst inv1).Vsym.ty in 
-  Format.fprintf fmt "  progress.@ ";
-  Format.fprintf fmt "    by algebra.@ ";
-  Format.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
-  Format.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
-  Format.fprintf fmt "    by algebra.@ ";
+  F.fprintf fmt "  progress.@ ";
+  F.fprintf fmt "    by algebra.@ ";
+  F.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
+  F.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
+  F.fprintf fmt "    by algebra.@ ";
   pp_cmds fmt info.tacs;
   close_pp fmt ()
 
@@ -689,21 +689,21 @@ let pr_random_orcl file (pos, inv1, inv2,_newx) ju1 ju2 fmt () =
   let write2 = write_gcmds jctxt.juc_right in
   let write = Se.union write1c write2 in
   open_pp fmt ();
-  Format.fprintf fmt "conseq (_: _ ==> @[%a@]) => //.@ "
+  F.fprintf fmt "conseq (_: _ ==> @[%a@]) => //.@ "
     pp_form (mk_eq_exprs file g1 g2 write);
   let len = List.length jctxt.juc_left in
-  Format.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " len len
+  F.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " len len
       pp_form (mk_eq_exprs file g1 g2 write1);
-  Format.fprintf fmt "  [ by sim | ].@ ";
+  F.fprintf fmt "  [ by sim | ].@ ";
   if jctxt.juc_right <> [] then begin
-    Format.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " 
+    F.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " 
       1 1
       pp_form (mk_eq_exprs file g1 g2 write1c);
-    Format.fprintf fmt "  [ | by sim ].@ "
+    F.fprintf fmt "  [ | by sim ].@ "
   end;
-  Format.fprintf fmt "call (_: @[%a@]).@ "
+  F.fprintf fmt "call (_: @[%a@]).@ "
     pp_form (mk_eq_exprs file g1 g2 write1);
-  List.iter (fun _ -> Format.fprintf fmt "  sim.@ ") ctxt.juoc_oleft;
+  List.iter (fun _ -> F.fprintf fmt "  sim.@ ") ctxt.juoc_oleft;
   (* The proof of the oracle *)
   let ginv = mk_eq_exprs file g1 g2 write1 in
   let p1 = ctxt.juoc_oargs and p2 = ctxt2.juoc_oargs in
@@ -742,33 +742,33 @@ let pr_random_orcl file (pos, inv1, inv2,_newx) ju1 ju2 fmt () =
         tacs = [];
         invs  = iinv } in
   let info = aux ctxt.juoc_cleft ctxt2.juoc_cleft info in
-  Format.fprintf fmt "  proc;seq 1 1 : (@[%a@]);[by sim | ].@ "
+  F.fprintf fmt "  proc;seq 1 1 : (@[%a@]);[by sim | ].@ "
     pp_form iinv;
-  Format.fprintf fmt "  @[%a@]@ " pp_cmds info.tacs;
-  Format.fprintf fmt "  sim.@ ";
-  Format.fprintf fmt "  wp 1 1.@ ";
-  Format.fprintf fmt "  @[<hov 2>rnd@ %a@ %a.@]@ "
+  F.fprintf fmt "  @[%a@]@ " pp_cmds info.tacs;
+  F.fprintf fmt "  sim.@ ";
+  F.fprintf fmt "  wp 1 1.@ ";
+  F.fprintf fmt "  @[<hov 2>rnd@ %a@ %a.@]@ "
     (pp_inv file ~local:info.loc2 g2) inv2 (pp_inv file ~local:info.loc2 g2)
     inv1;
-  Format.fprintf fmt "  @[<hov 2>conseq (_: _ ==>@ %a).@]@ " 
+  F.fprintf fmt "  @[<hov 2>conseq (_: _ ==>@ %a).@]@ " 
     pp_form info.invs;
   let ty = (fst inv1).Vsym.ty in 
-  Format.fprintf fmt "    progress.@ ";
-  Format.fprintf fmt "      by algebra.@ ";
-  Format.fprintf fmt "      by rewrite !%a.@ " (mu_x_def file) ty;
-  Format.fprintf fmt "      by apply %a.@ " (supp_def file) ty;
-  Format.fprintf fmt "      by algebra.@ ";
-  Format.fprintf fmt "    auto.@ ";
+  F.fprintf fmt "    progress.@ ";
+  F.fprintf fmt "      by algebra.@ ";
+  F.fprintf fmt "      by rewrite !%a.@ " (mu_x_def file) ty;
+  F.fprintf fmt "      by apply %a.@ " (supp_def file) ty;
+  F.fprintf fmt "      by algebra.@ ";
+  F.fprintf fmt "    auto.@ ";
 
 (* End proof of the oracle *)
-  List.iter (fun _ -> Format.fprintf fmt "  sim.@ ") ctxt.juoc_oright;
-  Format.fprintf fmt "auto.";
+  List.iter (fun _ -> F.fprintf fmt "  sim.@ ") ctxt.juoc_oright;
+  F.fprintf fmt "auto.";
   close_pp fmt ()
   
   
 
 let pr_intr_rw1_app lemma1 lemma2 fmt () = 
-  Format.fprintf fmt "intros &m; rewrite {1}(%s &m);apply (%s &m)."
+  F.fprintf fmt "intros &m; rewrite {1}(%s &m);apply (%s &m)."
     lemma1 lemma2 
 
 let extract_assum file dir subst ainfo pft pft' =
@@ -826,10 +826,10 @@ let extract_assum file dir subst ainfo pft pft' =
   let pra, pra' = if dir = LeftToRight then pra1, pra2 else pra2, pra1 in
   let proof_ass g ev fmt () = 
     let ev = formula file [g.mod_name] (Some "1") ev in
-    Format.fprintf fmt 
+    F.fprintf fmt 
       "@[<v> intros &m; byequiv (_: @[={glob A} ==>@ %a@]) => //.@ "
       pp_form (f_eq ev (Fv(([], "res"), Some "2")));
-    Format.fprintf fmt
+    F.fprintf fmt
       "by proc; inline{2} %a; wp; sim.@]"
       pp_fun_name (fa,"main") in
   let lemma = 
@@ -840,7 +840,7 @@ let extract_assum file dir subst ainfo pft pft' =
       (Some (proof_ass g' pft'.dr_ju.ju_ev)) in
   let abs = Fabs (f_rsub pra1 pra2) in
   let proof fmt () = 
-    Format.fprintf fmt 
+    F.fprintf fmt 
       "intros &m;rewrite (%s &m) (%s &m);apply ZooUtil.le_abs_add%i."  
       lemma lemma' (if dir = LeftToRight then 1 else 2) in
   let concl = 
@@ -883,18 +883,18 @@ let extract_rnd_indep file side pos ju =
   let pr = extract_pr file mem ju in
   let bound, ev, lemma = bound_rnd_indep file pos ju in
   let proof fmt () = 
-    Format.fprintf fmt "@[<v>intros &m; byphoare (_ : true ==> %a) => //.@ "
+    F.fprintf fmt "@[<v>intros &m; byphoare (_ : true ==> %a) => //.@ "
       pp_form (formula file [g.mod_name] None ev);
     if is_Eq ev then
       let e1,e2 = destr_Eq ev in
       let e = if side then e2 else e1 in
-      Format.fprintf fmt 
+      F.fprintf fmt 
         "proc; rnd ((=) %a); conseq (_ : _ ==> true); last by [].@ "
         pp_form (formula file [g.mod_name] None e);
-      Format.fprintf fmt "simplify; intros &m1;progress.@ ";
-      Format.fprintf fmt "apply Real.eq_le;apply %s." lemma
+      F.fprintf fmt "simplify; intros &m1;progress.@ ";
+      F.fprintf fmt "apply Real.eq_le;apply %s." lemma
     else assert false;
-    Format.fprintf fmt "@]" in
+    F.fprintf fmt "@]" in
   let lemma = add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
   lemma, pr, cmp_le, bound
 
@@ -954,7 +954,7 @@ let extract_except file pos _l pft pft' =
   let g1, g2 = if side = `LeftToRight then g, g' else g', g in
 
   let proof fmt () = 
-    Format.fprintf fmt "intros &m.@ ";
+    F.fprintf fmt "intros &m.@ ";
     let ev = formula file [adv.mod_name] None ju.ju_ev in 
     let mk_eqs g fv = 
       let mk_eq e = 
@@ -964,31 +964,31 @@ let extract_except file pos _l pft pft' =
       | [] -> f_true
       | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
     let fv = Expr.e_vars ju.ju_ev in
-    Format.fprintf fmt 
+    F.fprintf fmt 
       "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, S).main() @@ &m :@ %a]@].@ " 
       pp_form pr1 adv.mod_name pp_form ev;
-    Format.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
+    F.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
       pp_form (mk_eqs g1.mod_name fv);
-    Format.fprintf fmt "  proc;inline *;sim.@ ";
+    F.fprintf fmt "  proc;inline *;sim.@ ";
     
-    Format.fprintf fmt 
+    F.fprintf fmt 
       "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, SE).main() @@ &m :@ %a]@].@ " 
       pp_form pr2 adv.mod_name pp_form ev;
-    Format.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
+    F.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
       pp_form (mk_eqs g2.mod_name fv);
-    Format.fprintf fmt "  proc;inline *;sim.@ ";
-    Format.fprintf fmt "  rnd; wp %i %i => /=.@ " pos (pos + 1);
-    Format.fprintf fmt "  conseq (_ : _ ==> ={glob A} /\\ %a) => //.@ "
+    F.fprintf fmt "  proc;inline *;sim.@ ";
+    F.fprintf fmt "  rnd; wp %i %i => /=.@ " pos (pos + 1);
+    F.fprintf fmt "  conseq (_ : _ ==> ={glob A} /\\ %a) => //.@ "
     pp_form (mk_eqs g2.mod_name (write_gcmds (Util.take pos ju.ju_gdef)));
-    Format.fprintf fmt "  sim.@ ";
-    Format.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
+    F.fprintf fmt "  sim.@ ";
+    F.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
     List.iter (fun e -> 
       let v = destr_V e in
-      Format.fprintf fmt "  let %a = g.`%s.%a in@ "
+      F.fprintf fmt "  let %a = g.`%s.%a in@ "
         Vsym.pp v adv.mod_name Vsym.pp v) (Se.elements fv);
-    Format.fprintf fmt "  @[%a@].@ "
+    F.fprintf fmt "  @[%a@].@ "
       pp_form (formula file [] None ju.ju_ev);
-    Format.fprintf fmt "apply (SDField.%s %s &m EV)." 
+    F.fprintf fmt "apply (SDField.%s %s &m EV)." 
       (if side = `LeftToRight then "SD1_conseq_add" else "SD1_conseq_add_E")
       adv.mod_name
   in
@@ -997,12 +997,12 @@ let extract_except file pos _l pft pft' =
   lemma, pr, cmp_le, eps
   
 let default_proof file mem s pft = 
-  Format.eprintf "WARNING rule %s not extracted@." s;
+  F.eprintf "WARNING rule %s not extracted@." s;
   let pr = extract_pr ~local:false file mem pft.dr_ju in
   let lemma = add_pr_lemma file (mk_cmp pr cmp_eq pr) 
     (Some (fun fmt () -> 
-      Format.fprintf fmt "(* %s *)@ " s;
-      Format.fprintf fmt "trivial.@ ")) in
+      F.fprintf fmt "(* %s *)@ " s;
+      F.fprintf fmt "trivial.@ ")) in
   lemma, pr, cmp_eq, pr 
 
 let rec extract_proof file pft = 
@@ -1045,14 +1045,14 @@ let rec extract_proof file pft =
       try Ht.find file.assump assum.ad_name with Not_found -> assert false in
     let lemma2, pr, abs = extract_assum file dir subst ainfo pft pft' in
     let proof fmt () = 
-      Format.fprintf fmt "@[<v>intros &m.@ ";
-      Format.fprintf fmt "@[apply (real_le_trans@ %a@ %a@ %a).@]@ "
+      F.fprintf fmt "@[<v>intros &m.@ ";
+      F.fprintf fmt "@[apply (real_le_trans@ %a@ %a@ %a).@]@ "
         (pp_form_lvl min_lvl) pr 
         (pp_form_lvl min_lvl) (f_radd abs pr') 
         (pp_form_lvl min_lvl) (f_radd abs bound);
-      Format.fprintf fmt "apply (%s &m).@ " lemma2;
-      Format.fprintf fmt "apply Real.addleM; first by [].@ ";
-      Format.fprintf fmt "by %s (%s &m).@]"
+      F.fprintf fmt "apply (%s &m).@ " lemma2;
+      F.fprintf fmt "apply Real.addleM; first by [].@ ";
+      F.fprintf fmt "by %s (%s &m).@]"
         (if cmp = cmp_eq then "rewrite" else "apply") lemma1 in
     let bound = f_radd abs bound in
     let lemma3 = 
@@ -1067,12 +1067,12 @@ let rec extract_proof file pft =
     (* pr <= pr' + eps *)
     let bound = f_radd bound eps in
     let proof fmt () = 
-      Format.fprintf fmt "@[<v>intros &m.@ ";
-      Format.fprintf fmt "@[apply (real_le_trans@ _@ %a@ _).@]@ "
+      F.fprintf fmt "@[<v>intros &m.@ ";
+      F.fprintf fmt "@[apply (real_le_trans@ _@ %a@ _).@]@ "
         (pp_form_lvl min_lvl) (f_radd pr' eps);
-      Format.fprintf fmt "apply (%s &m).@ " lemma2;
-      Format.fprintf fmt "apply Real.addleM; last by [].@ ";
-      Format.fprintf fmt "by %s (%s &m).@]"
+      F.fprintf fmt "apply (%s &m).@ " lemma2;
+      F.fprintf fmt "apply Real.addleM; last by [].@ ";
+      F.fprintf fmt "by %s (%s &m).@]"
         (if cmp = cmp_eq then "rewrite" else "apply") lemma1 in
     let lemma3 = 
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
@@ -1118,7 +1118,7 @@ let extract_file ts =
   let name = top_name file "conclusion" in
   let body = forall_mem (mk_cmp pr cmp bound) in
   let proof fmt () = 
-    Format.fprintf fmt "apply %s." lemma in
+    F.fprintf fmt "apply %s." lemma in
     
   file.loca_decl <- Clemma(false, name,body, Some proof) :: file.loca_decl;
   file
@@ -1126,7 +1126,7 @@ let extract_file ts =
 let extract ts filename = 
   let file = extract_file ts in
   let out = open_out filename in
-  let fmt = Format.formatter_of_out_channel out in
+  let fmt = F.formatter_of_out_channel out in
   Printer.pp_file fmt file;
   close_out out
 

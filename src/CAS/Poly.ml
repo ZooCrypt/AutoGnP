@@ -2,9 +2,7 @@
 open Expr
 open Util
 
-module F = Format
 module S = String
-module L = List
 
 (* ----------------------------------------------------------------------- *)
 (** {1 Define and check normal-form for field-expressions } *)

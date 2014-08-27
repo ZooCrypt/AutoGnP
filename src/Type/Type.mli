@@ -1,6 +1,8 @@
 (** Types: {!ty} is hashconsed and contains internal {!id}s while {!ety} is not
     hashconsed and contains exported {!eid}s. *)
 
+open Util
+
 (* length variables for bitstrings *)
 module Lenvar : IdType.ID
 
@@ -50,4 +52,4 @@ val mk_ety : IdType.exported gty_node -> ety
 
 val ty_export : ty -> ety
 
-val pp_ty : Format.formatter -> 'a gty -> unit
+val pp_ty : F.formatter -> 'a gty -> unit

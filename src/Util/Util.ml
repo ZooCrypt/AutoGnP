@@ -102,13 +102,13 @@ let list_from_to i j = (* [i,j), i.e., excluding j *)
 (* let (|>) x f = f x *)
 
 let format_to_string f = 
-  ignore (Format.flush_str_formatter ());
-  f Format.str_formatter;
-  Format.flush_str_formatter ()
+  ignore (F.flush_str_formatter ());
+  f F.str_formatter;
+  F.flush_str_formatter ()
 
-(* let fsprintf fm = Format.fprintf Format.str_formatter fm *)
+(* let fsprintf fm = F.fprintf F.str_formatter fm *)
 
-(* let fsget _ = Format.flush_str_formatter () *)
+(* let fsget _ = F.flush_str_formatter () *)
 
 let compare_on f x y = compare (f x) (f y)
 
@@ -143,12 +143,12 @@ let rec pp_list sep pp_elt f l =
   match l with
   | [] -> ()
   | [e] -> pp_elt f e
-  | e::l -> Format.fprintf f "%a%(%)%a" pp_elt e sep (pp_list sep pp_elt) l
+  | e::l -> F.fprintf f "%a%(%)%a" pp_elt e sep (pp_list sep pp_elt) l
 
 let pp_list_c pe = (pp_list "," pe)
-let pp_list_s = pp_list_c (fun fmt -> Format.fprintf fmt "%s")
+let pp_list_s = pp_list_c (fun fmt -> F.fprintf fmt "%s")
 
-let pp_string fmt s = Format.fprintf fmt "%s" s
+let pp_string fmt s = F.fprintf fmt "%s" s
 
 let input_file file_name =
   let in_channel = open_in file_name in
@@ -277,18 +277,18 @@ exception Invalid_rule of string
 
 let tacerror fmt =
   let buf  = Buffer.create 127 in
-  let fbuf = Format.formatter_of_buffer buf in
-  Format.kfprintf
+  let fbuf = F.formatter_of_buffer buf in
+  F.kfprintf
     (fun _ ->
-      Format.pp_print_flush fbuf ();
+      F.pp_print_flush fbuf ();
       raise (Invalid_rule (Buffer.contents buf)))
     fbuf fmt
 
 let fsprintf fmt =
   let buf  = Buffer.create 127 in
-  let fbuf = Format.formatter_of_buffer buf in
-  Format.kfprintf
+  let fbuf = F.formatter_of_buffer buf in
+  F.kfprintf
     (fun _ ->
-      Format.pp_print_flush fbuf ();
+      F.pp_print_flush fbuf ();
       (Buffer.contents buf))
     fbuf fmt

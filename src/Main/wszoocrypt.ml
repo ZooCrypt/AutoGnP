@@ -5,7 +5,6 @@ open CoreRules
 open TheoryState
 
 module YS = Yojson.Safe
-module F = Format
 module PU = ParserUtil
 
 let (>>=) = Lwt.bind
@@ -97,9 +96,9 @@ let split_proof_script s =
 
 let process_eval proofscript =
   let l = split_proof_script proofscript in
-  F.printf "Eval: ``%a''\n%!" (pp_list ";" pp_string) l;  
+  (* F.printf "Eval: ``%a''\n%!" (pp_list ";" pp_string) l; *)
   let ((ts0, msgs0), handled_cmds, rem_cmds) = lookup_ts_cache l in
-  F.printf "Eval: ``%s''\n%!" proofscript;
+  (* F.printf "Eval: ``%s''\n%!" proofscript; *)
   F.printf "executing %i remaining commands\n%!" (List.length rem_cmds);
   let rhandled = ref handled_cmds in
   let rts = ref ts0 in
@@ -157,7 +156,7 @@ let process_eval proofscript =
 
 let process_frame frame =
   let inp = Frame.content frame in
-  F.printf "Command: ``%s''\n%!" inp;
+  (* F.printf "Command: ``%s''\n%!" inp; *)
   match YS.from_string inp with
   | `Assoc l ->
      (try
