@@ -133,23 +133,7 @@ prove
 (* We have a test of the form "var = expr".
    We always rewrite with such tests.
 *)
-  rrewrite_oracle (12,1,1) <-. rnorm.
-  rlet_abstract 14 l log(ga).
-  rlet_abstract 14 hc H(g^u,g^v,g^z2).
-  rlet_abstract 14 hb H(ga, ga', gc).
-  rswap 10 6.
-  rctxt_ev (qq -> log(qq)) 3.
-  rnorm_nounfold.
-  rctxt_ev
-    (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
-           - x1*u*log(ga') - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*log(ga')*hc + (x2*log(ga')*2))
-          /
-          (-(w*w*u*l*hb) + w*u*log(ga')*hb + w*v*l*hb + -(v*log(ga')*hb) + w*w*u*l*hc +
-          -(w*u*log(ga')*hc) + -(w*v*l*hc) + v*log(ga')*hc))
-    3.
-  rlet_unfold 15.
-  rnorm_nounfold.
-  rindep.
+  rrewrite_oracle (12,1,1) <-. rindep.
 
 (* We now add the user-provided validity check "a^w = a'" in Dec.
    Why now?
@@ -163,28 +147,11 @@ prove
 (* We have a test of the form "var = expr".
    We always rewrite with such tests.
 *)
-  rrewrite_oracle (12,1,1) <-. rnorm.
-  rswap 8 4. rindep.
+  rrewrite_oracle (12,1,1) <-. rindep.
 
 (* We have a test of the form "var = expr".
    We always rewrite with such tests.
 *)
-  rrewrite_oracle (12,1,1) <-. rnorm.
-  rlet_abstract 14 l log(ga).
-  rlet_abstract 14 hc H(g^u,g^v,g^z2).
-  rlet_abstract 14 hb H(ga, ga', gc).
-  rswap 10 6.
-  rctxt_ev (q -> log(q)) 3.
-  rnorm_nounfold.
-  rctxt_ev
-    (r -> (r * (w*u -v) - w*x2*l + (x1*v*l) -(x2*log(ga'))
-           - x1*u*log(ga') - w*y1*u*l*hb + (y1*v*l*hb) + (w*y1*u*l*hc) - y1*u*log(ga')*hc + (x2*log(ga')*2))
-          /
-          (-(w*w*u*l*hb) + w*u*log(ga')*hb + w*v*l*hb + -(v*log(ga')*hb) + w*w*u*l*hc +
-          -(w*u*log(ga')*hc) + -(w*v*l*hc) + v*log(ga')*hc))
-    3.
-  rlet_unfold 15.
-  rnorm_nounfold.
-  rindep.
-  
+  rrewrite_oracle (12,1,1) <-. rindep.
+
   extract "cramer_shoup.ec".
