@@ -246,7 +246,7 @@ type tactic =
   | Rswap of int * int
   | Rswap_oracle of G.ocmd_pos * int  
   | Rctxt_ev of string * parse_expr * int
-  | Rrandom of int * (string * parse_expr) option * string * parse_expr * string
+  | Rrandom of int * (string * parse_expr) option * (string * parse_expr) option * string
   | Rrandom_oracle of G.ocmd_pos * (string * parse_expr) option * string * parse_expr * string
   | Requiv of gdef * parse_expr option
   | Rassm_decisional of direction * string * string list

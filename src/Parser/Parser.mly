@@ -342,10 +342,13 @@ instr :
 | REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_oracle(op,es)) }
 | RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN
                   LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  i3 = ID { Apply(Rrandom(i-1,Some(i1,e1),i2,e2,i3)) }
+                  i3 = ID { Apply(Rrandom(i-1,Some(i1,e1),Some(i2,e2),i3)) }
 | RRANDOM i = NAT UNDERSCORE
                   LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  i3 = ID { Apply(Rrandom(i-1,None,i2,e2,i3)) }
+                  i3 = ID { Apply(Rrandom(i-1,None,Some(i2,e2),i3)) }
+| RRANDOM i = NAT UNDERSCORE
+                  UNDERSCORE
+                  i3 = ID { Apply(Rrandom(i-1,None,None,i3)) }
 | RRANDOM_ORACLE op = opos
                  LPAREN i1 = ID TO e1 = expr0 RPAREN
                  LPAREN i2 = ID TO e2 = expr0 RPAREN

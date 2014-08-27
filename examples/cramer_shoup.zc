@@ -63,7 +63,7 @@ prove
    Prefer applications where both contexts are division-free.
 *)
   (* make g ^ (w*x2 + x1) random using x1 / _ - x1 does not require division *)
-  rswap 4 1. rrandom 5 _ (y -> w*x2 + y) tmp. rnorm.
+  rswap 4 1. rrandom 5 _ _ tmp. rnorm.
     (* support _ in second position:
        let x1 random variable in line 5,
        list of terms in gdef,
@@ -71,8 +71,8 @@ prove
        use (x1 -> fe)
        move everything before so that bijection defined
     *)
-  rswap 6 1. rrandom 7 _ (y -> w*y2 + y) tmp. rnorm.
-  rswap 8 1. rrandom 9 _ (y -> w*z2 + y) tmp. rnorm.
+  rswap 6 1. rrandom 7 _ _ tmp. rnorm.
+  rswap 8 1. rrandom 9 _ _ tmp. rnorm.
   rswap 4 7. rswap 5 6. rswap 6 3.
 
 (* If we try to apply rrandom to z2, we notice that the inequality
@@ -80,14 +80,13 @@ prove
    excepted.
 *)
   rexcept 3 u*w.
-  rrandom 9 _ (y -> z1*u + y*v + log(b?m0:m1) - w*y*u) tmp. rnorm.
+  rrandom 9 _ _ tmp. rnorm.
 
 (* The two remaining random variables to which we could apply rrandom are x2 and y2:
     x2 has coefficient (v - u*w), y2 has coefficient H(g^u, g^v, g^z2)*...,
     in the first exponent, so we pick x2 since (v - u*w) is nonzero. *)
   rswap 10 1.
-  rrandom 11 _ (y -> x1*u + y*v - w*y*u - w*y2*u*H(g^u,g^v,g^z2) +
-                     y1*u*H(g^u,g^v,g^z2) + y2*v*H(g^u,g^v,g^z2)) r_x2. rnorm.
+  rrandom 11 _ _ r_x2. rnorm.
 
 (* We notice that input to hash function is completely random now,
    we can add a test to Dec because the bad case can be discharged

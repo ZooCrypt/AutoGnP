@@ -782,6 +782,17 @@ let e_find_all f e =
 
 let e_vars = e_find_all is_V
 
+let e_ty_outermost ty e =
+  let res = ref [] in
+  let rec go e =
+    if Type.ty_equal e.e_ty ty && not (L.mem e !res) then
+      res := e::!res
+    else
+      e_sub_iter go e
+  in
+  go e;
+  L.rev !res
+
 let has_log e = e_exists (fun e -> is_GLog e) e
 
 (* TODO : FIXME did we need more ? *)

@@ -139,15 +139,34 @@ let handle_tactic ts tac =
   | PU.Rlet_unfold(i) ->
     apply_rule (Rules.t_let_unfold i) ts
 
-  | PU.Rrandom(i,mctxt1,sv2,e2,svlet) ->
-    let ty =
+  | PU.Rrandom(i,mctxt1,mctxt2,svlet) ->
+    let (ty,rv) =
       match Game.get_ju_gcmd ju i with
-      | Game.GSamp(v,_) -> v.Vsym.ty
+      | Game.GSamp(v,_) -> (v.Vsym.ty, v)
       | _ -> tacerror "Line %i is not a sampling." i
     in
     let ts' = ts_copy ts in
-    let v2 = create_var false ts' sv2 ty in
-    let e2 = PU.expr_of_parse_expr ts' e2 in
+    let (v2,e2) =
+      match mctxt2 with
+      | Some (sv2,e2) ->
+        let v2 = create_var false ts' sv2 ty in
+        (v2,PU.expr_of_parse_expr ts' e2)
+      | None ->
+        (* field expressions containing the sampled variable *)
+        let es = ref [] in
+        let add_subterms e =
+          L.iter
+            (fun fe ->
+               if Expr.Se.mem (mk_V rv) (Expr.e_vars fe) then es := !es @ [fe])
+            (e_ty_outermost Type.mk_Fq e)
+        in
+        Game.iter_gdef_exp add_subterms ju.Game.ju_gdef;
+        add_subterms ju.Game.ju_ev;
+        (* FIXME: it might be useful to refer to the ith expression using _i *)
+        match !es with
+        | e::_ -> (rv,e)
+        | []   -> tacerror "Sampled random variable does not occur in game."
+    in
     let (v1,e1) =
       match mctxt1 with
       | Some(sv1,e1) ->
