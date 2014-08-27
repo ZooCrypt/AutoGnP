@@ -212,7 +212,9 @@ let simp_plus er e c =
   if is_FPlus e then
     let (er_es, no_er_es) = L.partition er_occurs (destr_FPlus e) in
     let c = (fst c, mk_FMinus (snd c) (mk_FPlus no_er_es)) in
-    mk_FPlus er_es, c
+    match er_es with
+    | [] -> e, c
+    | _  -> mk_FPlus er_es, c
   else
     e, c
 
@@ -233,7 +235,7 @@ let simp_xor er e c =
 
 let simp_mult er e c =
   let er_occurs e = Se.mem er (e_vars e) in
-  if Type.is_Fq e.e_ty then (
+  if Type.is_Fq e.e_ty && Type.is_Fq er.e_ty then (
     let coeff = norm_expr (mk_FDiv e er) in
     if er_occurs coeff
     then e, c

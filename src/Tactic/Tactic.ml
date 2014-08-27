@@ -1,5 +1,6 @@
 (** Tactic engine: transformations of proof states. *)
 open CoreRules
+open Rules
 open Expr
 open Type
 open Util
@@ -145,11 +146,11 @@ let handle_tactic ts tac =
       | _ -> tacerror "Line %i is not a sampling." i
     in
     let ts' = ts_copy ts in
-    let (v2,e2) =
+    let (v2,e2,forward) =
       match mctxt2 with
       | Some (sv2,e2) ->
         let v2 = create_var false ts' sv2 ty in
-        (v2,PU.expr_of_parse_expr ts' e2)
+        (v2,PU.expr_of_parse_expr ts' e2,0)
       | None ->
         (* field expressions containing the sampled variable *)
         let es = ref [] in
@@ -163,7 +164,19 @@ let handle_tactic ts tac =
         add_subterms ju.Game.ju_ev;
         (* FIXME: it might be useful to refer to the ith expression using _i *)
         match !es with
-        | e::_ -> (rv,e)
+        | e::_ ->
+          let rec aux j =
+            if L.length ju.Game.ju_gdef <= i+j then (
+              j - 1
+            ) else (
+              let gcmd = Game.get_ju_gcmd ju (i+j) in
+              if Vsym.S.mem rv (Game.gcmd_all_vars gcmd)
+              then j - 1
+              else aux (j+1)
+            )
+          in
+          let forward = aux 1 in
+          (rv,e,forward)
         | []   -> tacerror "Sampled random variable does not occur in game."
     in
     let (v1,e1) =
@@ -179,7 +192,13 @@ let handle_tactic ts tac =
         tacerror "invert only implemented for Fq"
     in
     let vlet = create_var false ts svlet ty in
-    apply_rule (t_random i (v1,e1) (v2,e2) vlet) ts
+    let ru_rand = t_random (i + forward) (v1,e1) (v2,e2) vlet in
+    F.printf ">>> forward %i\n" forward;
+    let ru =
+      if forward = 0 then ru_rand
+      else ( t_swap i forward @. ru_rand @. t_norm @. t_swap (i+forward) (-forward))
+    in
+    apply_rule ru ts
 
   | PU.Rrandom_oracle((i,j,k),mctxt1,sv2,e2,svlet) ->
     let ty =

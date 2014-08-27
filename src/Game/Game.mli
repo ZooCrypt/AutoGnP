@@ -203,6 +203,8 @@ val gdef_equal : gdef -> gdef -> bool
 
 val ju_equal : judgment -> judgment -> bool
 
+val gcmd_all_vars : gcmd -> Vsym.S.t
+
 val gdef_all_vars : gdef -> Vsym.S.t
 
 val ju_all_vars : judgment -> Vsym.S.t

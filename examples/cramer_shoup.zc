@@ -44,6 +44,13 @@ prove
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
   ] : b = b'.
 
+(* we could sample here, but then we cannot perform DDH *)
+(*
+  rrandom 2 _ _ tmp.
+  rrandom 4 _ _ tmp.
+  rrandom 6 _ _ tmp.
+*)
+
 (* apply DDH
      we try to bring the game into DDH-form for all pairs
      of distinct random variables.
@@ -57,36 +64,18 @@ prove
   rlet_abstract 5 gwu g^(w*u).
   assumption_decisional -> ddh v. rnorm.
 
-(* Perform "safe" applications of the random rule from start-of-main
-   to end-of-main using the field-expression where the random
-   variable occurs first as bijection and computing the inverse.
-   Prefer applications where both contexts are division-free.
-*)
-  (* make g ^ (w*x2 + x1) random using x1 / _ - x1 does not require division *)
-  rswap 4 1. rrandom 5 _ _ tmp. rnorm.
-    (* support _ in second position:
-       let x1 random variable in line 5,
-       list of terms in gdef,
-       find first field_expressions fe that contains x1 (in outermost field context),
-       use (x1 -> fe)
-       move everything before so that bijection defined
-    *)
-  rswap 6 1. rrandom 7 _ _ tmp. rnorm.
-  rswap 8 1. rrandom 9 _ _ tmp. rnorm.
-  rswap 4 7. rswap 5 6. rswap 6 3.
+(* perform rrandom for samplings of random variables r starting from the first line,
+   skip lines for which r occurs on its own somewhere else and delay lines where
+   inequality (enforced by excepted sampling) is required *)
+  (* lines 1 - 3: random variables occur on their own somewhere else *)
+  rrandom 4 _ _ tmp. (* line 5/x2 requires w*u + -v <> 0 *)
+  rrandom 6 _ _ tmp. (* line 7/y2 requires that complicated expression <> 0 *)
+  rrandom 8 _ _ tmp. (* line 9/z requires w*u + -v <> 0 *)
 
-(* If we try to apply rrandom to z2, we notice that the inequality
-   'u*w <> v' is required. We therefore make the sampling of v
-   excepted.
-*)
+(* No we add the simpler inequality and continue randomizing *)
   rexcept 3 u*w.
-  rrandom 9 _ _ tmp. rnorm.
-
-(* The two remaining random variables to which we could apply rrandom are x2 and y2:
-    x2 has coefficient (v - u*w), y2 has coefficient H(g^u, g^v, g^z2)*...,
-    in the first exponent, so we pick x2 since (v - u*w) is nonzero. *)
-  rswap 10 1.
-  rrandom 11 _ _ r_x2. rnorm.
+  rrandom 5 _ _ tmp.
+  rrandom 9 _ _ tmp.
 
 (* We notice that input to hash function is completely random now,
    we can add a test to Dec because the bad case can be discharged

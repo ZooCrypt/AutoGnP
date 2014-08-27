@@ -392,24 +392,39 @@ let ju_equal ju1 ju2 =
 let fold_union_vs f xs =
   List.fold_right Vsym.S.union (List.map f xs) Vsym.S.empty
 
+let expr_vars e =
+  Se.fold (fun e s -> Vsym.S.add (destr_V e) s) (e_vars e) Vsym.S.empty
+
+let exprs_vars es =
+  List.fold_left
+    (fun vset e -> Vsym.S.union vset (expr_vars e))
+    Vsym.S.empty
+    es
+
 let lcmd_vars = function 
-  | LLet(v,_) | LSamp(v,_) -> Vsym.S.singleton v
+  | LLet(v,e)   -> Vsym.S.add v (expr_vars e)
+  | LSamp(v,d)  -> Vsym.S.add v (exprs_vars (snd d))
   | LBind(vs,_) -> List.fold_right Vsym.S.add vs Vsym.S.empty
-  | _ -> Vsym.S.empty
+  | LGuard(e)   -> expr_vars e
 
 let lcmds_vars c = fold_union_vs lcmd_vars c
 
-let odef_vars (_,vs,cmd,_) = 
+let odef_vars (_,vs,cmd,e) =
   Vsym.S.union
     (List.fold_right Vsym.S.add vs Vsym.S.empty)
-    (lcmds_vars cmd)
+    (Vsym.S.union
+       (expr_vars e)
+       (lcmds_vars cmd))
 
 let gcmd_all_vars = function
-  | GLet(v,_) | GSamp(v,_) -> Vsym.S.singleton v
-  | GCall(vs,_,_,odefs) ->
+  | GLet(v,e) -> Vsym.S.add v (expr_vars e)
+  | GSamp(v,d) -> Vsym.S.add v (exprs_vars (snd d))
+  | GCall(vs,_,e,odefs) ->
     Vsym.S.union
       (List.fold_right Vsym.S.add vs Vsym.S.empty)
-      (fold_union_vs odef_vars odefs)
+      (Vsym.S.union
+         (Se.fold (fun e s -> Vsym.S.add (destr_V e) s) (e_vars e) Vsym.S.empty)
+         (fold_union_vs odef_vars odefs))
 
 let gdef_all_vars gdef = fold_union_vs gcmd_all_vars gdef
 
