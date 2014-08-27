@@ -37,6 +37,7 @@ val mk_Bool : ty
 val mk_Prod : ty list -> ty
 
 val is_G : 'a gty -> bool
+val is_Fq : 'a gty -> bool
 val destr_G : 'a gty -> 'a Groupvar.gid
 val destr_BS : 'a gty -> 'a Lenvar.gid
 val destr_Prod : 'a gty -> 'a gty list
