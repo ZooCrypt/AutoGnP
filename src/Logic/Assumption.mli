@@ -1,3 +1,5 @@
+(** Decisional and computational assumptions. *)
+
 (** Decisional assumptions. *)
 type assumption_decision = private
   { ad_name     : string;

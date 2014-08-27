@@ -155,7 +155,7 @@ and wf_exp ctype wfs e0 =
       | V v ->
         assert_msg (Vsym.S.mem v wfs.wf_bvars)
           (fsprintf "wf_exp: Variable %a undefined in %a"
-             Vsym.pp v pp_exp e0 |> fsget);
+             Vsym.pp v pp_exp e0);
         assert (ty_equal v.Vsym.ty e.e_ty);
         v.Vsym.ty
       | Nary(Land,es) ->
@@ -186,7 +186,7 @@ and wf_exp ctype wfs e0 =
           (List.for_all
             (fun i -> check_nonzero ctype wfs (List.nth es i)) nz)
           (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp)
-            (List.map (fun i -> List.nth es i) nz) |> fsget);
+            (List.map (fun i -> List.nth es i) nz));
         assert (ty_equal rty e.e_ty);
         rty
     in ty

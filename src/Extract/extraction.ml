@@ -80,10 +80,10 @@ let op_of_nop ty = function
   | GMult -> Omul
 
 let string_of_cnst file ty = function
-  | GGen   -> fsprintf "%s.g" (gvar_mod file (destr_G ty)) |> fsget
-  | FNat i -> fsprintf "(F.ofint %i)" i |> fsget
-  | Z      -> fsprintf "%s.zeros" (lvar_mod file (destr_BS ty)) |> fsget
-  | B b    -> fsprintf "%b" b |> fsget
+  | GGen   -> fsprintf "%s.g" (gvar_mod file (destr_G ty))
+  | FNat i -> fsprintf "(F.ofint %i)" i
+  | Z      -> fsprintf "%s.zeros" (lvar_mod file (destr_BS ty))
+  | B b    -> fsprintf "%b" b
 
 let rec expression file e = 
   match e.e_node with 

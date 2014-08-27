@@ -66,7 +66,7 @@ let _test_solve_xor_1 () =
   let p1 = mk_V (Vsym.mk "p1" t) in
   let p2 = mk_V (Vsym.mk "p2" t) in  
   let c = solve_xor [(p1,a); (p2,b)] c in
-  failwith (fsprintf "Deduced context %a\n%!" pp_exp c |> fsget)
+  failwith (fsprintf "Deduced context %a\n%!" pp_exp c)
 
 let _test_solve_xor_2 () =
   let l = Lenvar.mk "l" in
@@ -81,7 +81,7 @@ let _test_solve_xor_2 () =
   let p1 = mk_V (Vsym.mk "p1" t) in
   let p2 = mk_V (Vsym.mk "p2" t) in  
   let c = solve_xor [(p1,a); (p2,b)] c in
-  failwith (fsprintf "Deduced context %a\n%!" pp_exp c |> fsget)
+  failwith (fsprintf "Deduced context %a\n%!" pp_exp c)
 
 let _test_solve_xor_3 () =
   let l = Lenvar.mk "l" in
@@ -98,5 +98,5 @@ let _test_solve_xor_3 () =
   let p2 = mk_V (Vsym.mk "p2" t) in  
   let p3 = mk_V (Vsym.mk "p3" t) in    
   let s = solve_xor [(p1,a); (p2,b); (p3,c)] d in
-  failwith (fsprintf "3. Deduced context %a\n%!" pp_exp s |> fsget)
+  failwith (fsprintf "3. Deduced context %a\n%!" pp_exp s)
 

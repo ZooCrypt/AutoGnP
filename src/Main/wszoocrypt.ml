@@ -144,7 +144,6 @@ let process_eval proofscript =
           (let rem = 
              List.length gs.CoreRules.subgoals - 1 in if rem = 0 then "" else
           string_of_int rem^" other goals")
-        |> fsget
     in `Assoc [ ("cmd", `String "setGoal");
                 ("ok_upto", `Int (ok_upto ()));
                 ("err", error);

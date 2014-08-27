@@ -320,7 +320,7 @@ let handle_instr ts instr =
   | PU.PrintGoals(s) ->
     begin match ts.ts_ps with
     | ActiveProof(g) -> 
-      let msg = fsprintf "@[<v>Proof state %s:@\n%a@." s pp_jus g.subgoals |> fsget in
+      let msg = fsprintf "@[<v>Proof state %s:@\n%a@." s pp_jus g.subgoals in
       (ts, msg)
     | BeforeProof -> (ts, "No proof started yet.")
     | ClosedTheory -> (ts, "Theory closed.")
@@ -333,7 +333,6 @@ let handle_instr ts instr =
         s
         pp_jus
         (Util.take 1 g.subgoals)
-    |> fsget
       in
       (ts, msg)
     | BeforeProof -> (ts, "No proof started yet.")

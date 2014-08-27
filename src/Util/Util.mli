@@ -90,12 +90,7 @@ val format_to_string : (Format.formatter -> unit) -> string
 
 (** [fsprintf f] executes the format function with the standard
     string formatter. *)
-val fsprintf : ('a, Format.formatter, unit) format -> 'a
-
-(** [fsget a] ignores its argument and extracts the string
-    from the standard string formatter. It is usually used
-    as in [fsprintf .. |> fsget] *)
-val fsget : unit -> string
+val fsprintf : ('a, Format.formatter, unit, string) format4 -> 'a
 
 val replicate_r : 'a list -> int -> 'a -> 'a list
 val replicate   : int -> 'a -> 'a list

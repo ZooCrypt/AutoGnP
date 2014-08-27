@@ -103,9 +103,9 @@ let format_to_string f =
   f Format.str_formatter;
   Format.flush_str_formatter ()
 
-let fsprintf fm = Format.fprintf Format.str_formatter fm
+(* let fsprintf fm = Format.fprintf Format.str_formatter fm *)
 
-let fsget _ = Format.flush_str_formatter ()
+(* let fsget _ = Format.flush_str_formatter () *)
 
 let compare_on f x y = compare (f x) (f y)
 
@@ -279,4 +279,13 @@ let tacerror fmt =
     (fun _ ->
       Format.pp_print_flush fbuf ();
       raise (Invalid_rule (Buffer.contents buf)))
+    fbuf fmt
+
+let fsprintf fmt =
+  let buf  = Buffer.create 127 in
+  let fbuf = Format.formatter_of_buffer buf in
+  Format.kfprintf
+    (fun _ ->
+      Format.pp_print_flush fbuf ();
+      (Buffer.contents buf))
     fbuf fmt

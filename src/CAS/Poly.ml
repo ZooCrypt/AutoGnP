@@ -122,7 +122,7 @@ let factor_out a p =
          match L.partition (fun (e,_) -> e_equal e a) es with
          | ([(_,1)],others) -> Left(c,others)
          | ([],others)      -> Right(c,others)
-         | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a |> fsget))
+         | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a))
       p)
 
 (* ----------------------------------------------------------------------- *)

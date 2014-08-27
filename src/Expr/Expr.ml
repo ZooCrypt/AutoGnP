@@ -455,7 +455,7 @@ let destr_GLog   e =
 let destr_EMap   e =
   match e.e_node with 
   | App(EMap es,[e1;e2]) -> es,e1,e2
-  | _ -> raise (Destr_failure (fsprintf "EMap for %a" pp_exp e |> fsget))
+  | _ -> raise (Destr_failure (fsprintf "EMap for %a" pp_exp e))
 
 let destr_FOpp   e = destr_App_uop "FOpp"   FOpp e
 let destr_FMinus e = destr_App_bop "FMinus" FMinus e
@@ -563,7 +563,7 @@ struct
     match ty.ty_node with
     | G gv -> gv
     | _    ->
-      failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty |> fsget)
+      failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
   let ty_G gv = E.mk_ty (G gv)
   let ty_Fq = E.mk_ty Fq
