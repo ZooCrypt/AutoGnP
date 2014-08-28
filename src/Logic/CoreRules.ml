@@ -410,16 +410,17 @@ let radd_test p tnew asym fvs ju =
       { juoc with (* we add the new test first *)
         juoc_cleft = juoc.juoc_cleft @ [ LGuard(tnew)] }
     in
-    Radd_test(p, tnew, asym, fvs), [ set_ju_octxt [ LGuard(t) ] juoc;
-      set_ju_octxt [ LGuard(t) ]
-        { juoc with
-          juoc_juc =
-            { juoc.juoc_juc with
-              juc_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
-              juc_right = [ GCall(fvs,asym,mk_Tuple [],[]) ]
-            }
-        };
-    ]
+    Radd_test(p, tnew, asym, fvs),
+      [ set_ju_octxt [ LGuard(t) ]
+          { juoc with
+            juoc_juc =
+              { juoc.juoc_juc with
+                juc_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
+                juc_right = [ GCall(fvs,asym,mk_Tuple [],[]) ]
+              }
+          };
+        set_ju_octxt [ LGuard(t) ] juoc
+      ]
   | _ -> tacerror "rexcept_oracle: position given is not a sampling"
 
 let t_add_test p tnew asym fvs ju = 
