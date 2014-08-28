@@ -25,6 +25,7 @@ prove
     y2 <-$ Fq;
     z1 <-$ Fq;
     z2 <-$ Fq;
+    (* secret key is x1,x2,y1,y2,z1,z2 *)
     let p1 = g^(x1+w*x2);
     let p2 = g^(y1+w*y2);
     let p3 = g^(z1+w*z2);
@@ -32,11 +33,14 @@ prove
     (m0,m1) <- A1(p1,p2,p3,p4);
     b <-$ Bool;
     let mb = (b?m0:m1);
+    (* randomness for encryption is u *)
     u <-$ Fq;
-    let sa = g^u;
+    (* we break the connection between sa' and the rest using DDH *)
+    (* sc and sa are required for decryption *)
+    let sa  = g^u;
     let sa' = p4^u;
-    let sc = mb * p3^u;
-    let sd = p1^u * p2^(u*H(sa,sa',sc));
+    let sc  = mb * p3^u;
+    let sd  = p1^u * p2^(u*H(sa,sa',sc));
     b' <- A2(sa,sa',sc,sd) with
       Dec(a,a',c,d) =
         [ c * (a^z1 * a'^z2)^(-1)
@@ -45,102 +49,36 @@ prove
   ] : b = b'.
 
 (* we could sample here, but then we cannot perform DDH *)
-(*
-  rrandom 2 _ _ tmp.
-  rrandom 4 _ _ tmp.
-  rrandom 6 _ _ tmp.
-*)
 
-(* apply DDH
-     we try to bring the game into DDH-form for all pairs
-     of distinct random variables.
-     z1, z2, x1, x2, y1, y2 used in decryption as exponent
-     ==> only u,v work
-*)
-  rswap 15 -13.
-  rnorm. rnorm_unknown u w.
-  rlet_abstract 3 gw g^w.
-  rlet_abstract 4 gu g^u.
-  rlet_abstract 5 gwu g^(w*u).
-  assumption_decisional -> ddh v. rnorm.
+  (* apply DDH *)
+  rswap 15 -13. rnorm. rnorm_unknown u w.
+  rlet_abstract 3 gw g^w. rlet_abstract 4 gu g^u. rlet_abstract 5 gwu g^(w*u).
+  assumption_decisional -> ddh v. rnorm. (* assumption DDH *)
 
-(* perform rrandom for samplings of random variables r starting from the first line,
-   skip lines for which r occurs on its own somewhere else and delay lines where
-   inequality (enforced by excepted sampling) is required *)
-  (* lines 1 - 3: random variables occur on their own somewhere else *)
-  rrandom 4 _ _ tmp. (* line 5/x2 requires w*u + -v <> 0 *)
-  rrandom 6 _ _ tmp. (* line 7/y2 requires that complicated expression <> 0 *)
-  rrandom 8 _ _ tmp. (* line 9/z requires w*u + -v <> 0 *)
-
-(* No we add the simpler inequality and continue randomizing *)
-  rexcept 3 u*w.
-  rrandom 5 _ _ tmp.
-  rrandom 9 _ _ tmp.
-
-(* We notice that input to hash function is completely random now,
-   we can add a test to Dec because the bad case can be discharged
-   using TCR later on.
-*)
-  radd_test (12,1,2) (not (H(a,a',c) = H(g^u, g^v,g^z2))) A3 ba ba' bc bd.
-
-(* We first focus on the bad case:
-   For a reduction to TCR, the inputs u,v,z2 must be uniformly sampled.
-   We therefore first remove the excepted distribution transformer from 
-   the sampling of v.
-*)
-  last.
-  (* adapt the event to get the right inequality *)
-  rcase_ev ((ba,ba',bc) = (g^u,g^v,g^z2)). rnorm.
-  rsplit_ev 4.
-  rrewrite_ev 4 ->.
-  rrewrite_ev 5 ->.
-  rrewrite_ev 6 ->.
-  rnorm.
-  rrewrite_ev 3 ->.
-  rnorm.
-  rfalse_ev.
+  (* perform all possible rrandom applications *)
+  rexcept 3 u*w. rrandom 4 _ _ tmp. rrandom 5 _ _ tmp. rrandom 6 _ _ tmp. rrandom 8 _ _ tmp. rrandom 9 _ _ tmp.
   
-  rremove_ev 1. rremove_ev 1.
-  
-  radd_test (12,1,3) (a^w  = a') A4 ga ga' gc gd.
-  rnorm.
-
-  (* We have a test of the form "var = expr".
-     We always rewrite with such tests.
-  *)
+  (* if a^w = a' for all queries, b not used in game anymore *)
+  radd_test (12,1,2) (a^w = a') A3 ga ga' gc gd.
+    last. rrewrite_oracle (12,1,1) <-. rnorm. rindep.
   rrewrite_oracle (12,1,1) <-. rnorm.
-  rnorm_unknown u v z2.
-  rswap 2 -1.
-  rexcept 3.
-  rswap 3 -1.
-  rswap 9 -6.
-  rlet_abstract 4 tu g^u.
-  rlet_abstract 5 tv g^v.
-  rlet_abstract 6 tz g^z2.
-  assumption_computational tcr (ba,ba',bc).
-
-(* We have a test of the form "var = expr".
-   We always rewrite with such tests.
-*)
-  rrewrite_oracle (12,1,1) <-. rindep.
-
-(* We now add the user-provided validity check "a^w = a'" in Dec.
-   Why now?
-   EITHER because we tried to add the test before every
-   earlier step and had to backtrack
-   OR because we are stuck now.
-*)
-  radd_test (12,1,3) (a^w  = a') A5 ga ga' gc gd.
+  
+  (* we just use the rlet to simplify terms for the manual proof *)
+  rlet_abstract 13 h1 H(g ^ u,g ^ v,g ^ z2). rlet_abstract 15 h2 H(ga,ga',gc).
+  rlet_abstract 15 la1 log(ga). rlet_abstract 15 la2 log(ga').
+  (* try: rrandom 7 _ _ tmp.
+     get: w*w*u*h1*la1 - w*v*h1*la1 - w*u*h1*la2 + v*h1*la2 - w*w*u*h2*la1 + w*u*h2*la2 + w*v*h2*la1 - v*h2*la2
+     factored: (-1) * (h2 - -h1) * (la2 - -w*la1) * (v - -w*u)
+     we already have everything except (h2 - -h1)
+  *)
+  rcase_ev h2 = h1.
+    last. rnorm. rindep.
   rnorm.
-
-(* We have a test of the form "var = expr".
-   We always rewrite with such tests.
-*)
-  rrewrite_oracle (12,1,1) <-. rindep.
-
-(* We have a test of the form "var = expr".
-   We always rewrite with such tests.
-*)
-  rrewrite_oracle (12,1,1) <-. rindep.
+  (* if EV ==> not ((ga,ga',gc) = (g ^ u,g ^ v,g ^ z2)) /\ H(ga,ga',gc) = H(g ^ u,g ^ v,g ^ z2), we can apply TCR *)
+  rcase_ev (ga,ga',gc) = (g ^ u,g ^ v,g ^ z2).
+    rsplit_ev 5. rrewrite_ev 5 ->. rrewrite_ev 6 ->. rrewrite_ev 7 ->. rrewrite_ev 3 ->. rnorm. rfalse_ev.
+   rremove_ev 1. rremove_ev 1. rremove_ev 1. rnorm_unknown u v z2. rswap 2 -1. rexcept 3. rswap 3 -1.
+      rswap 9 -6. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
+      assumption_computational tcr (ga,ga',gc). (* apply TCR assumption *)
 
   extract "cramer_shoup.ec".
