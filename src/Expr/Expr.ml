@@ -242,8 +242,6 @@ let is_Land e = is_Nary Land e
 
 let is_Exists e = match e.e_node with Exists _ -> true | _ -> false
 
-
-
 let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
 let is_Eq e = is_App Eq e
@@ -299,17 +297,28 @@ let pp_if c pp1 pp2 fmt x =
   | true  -> pp1 fmt x
   | false -> pp2 fmt x
 
+(*
 let pp_maybe c tx pp fmt x =
   pp_if c (tx pp) pp fmt x
+*)
 
-let pp_enclose ~pre ~post pp fmt x =
-  F.fprintf fmt "%(%)%a%(%)" pre pp x post
+let pp_enclose hv ~pre ~post pp fmt x =
+  if hv then
+    F.fprintf fmt "%(%)@[<hv>%a@]%(%)" pre pp x post
+  else
+    F.fprintf fmt "%(%)@[<hov>%a@]%(%)" pre pp x post
 
-let pp_paren pp fmt x =
-  pp_enclose ~pre:"(" ~post:")" pp fmt x
+let pp_paren hv pp fmt x =
+  pp_enclose hv ~pre:"(" ~post:")" pp fmt x
 
-let pp_maybe_paren c pp =
-  pp_maybe c pp_paren pp
+let pp_box hv pp fmt =
+  if hv then
+    F.fprintf fmt "@[<hv>%a@]" pp
+  else
+    F.fprintf fmt "@[<hov>%a@]" pp
+
+let pp_maybe_paren hv c pp =
+   pp_if c (pp_paren hv) (pp_box hv) pp
 
 (* above does not have separators that allow to leave out parentheses *)
 let notsep above = above <> Top && above <> PrefixApp && above <> Tup
@@ -320,11 +329,11 @@ let rec pp_exp_p above fmt e =
     (* F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
     F.fprintf fmt "%a" Vsym.pp v
   | H(h,e)     -> 
-    F.fprintf fmt "%a(%a)" Hsym.pp h (pp_exp_p PrefixApp) e
+    F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p PrefixApp) e
   | Tuple(es)  -> 
     let pp fmt = 
-      F.fprintf fmt "@[<hov>%a@]" (pp_list ",@ " (pp_exp_p Tup)) in
-    pp_maybe_paren (above <> PrefixApp) pp fmt es
+      F.fprintf fmt "@[<hov>%a@]" (pp_list ",@," (pp_exp_p Tup)) in
+    pp_maybe_paren false (above <> PrefixApp) pp fmt es
   | Proj(i,e)  -> 
     F.fprintf fmt "%a%s%i" (pp_exp_p PrefixApp) e "\\" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
@@ -332,22 +341,23 @@ let rec pp_exp_p above fmt e =
   | Nary(o,es) -> pp_nop_p above fmt (o,es)
   | Exists(e1,e2,h) ->
     let pp fmt () = 
-      F.fprintf fmt "@[<hov 2>exists %a,@ %a =@ %a@]"
+      F.fprintf fmt "@[<hv 2>exists %a,@ %a =@ %a@]"
         (pp_list ",@ " (fun fmt (v,h) ->
           F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h 
         (pp_exp_p Top) e1 (pp_exp_p Top) e2 in
-    pp_maybe_paren (notsep above && above<>NInfix(Land)) pp fmt ()
+    pp_maybe_paren true (notsep above && above<>NInfix(Land)) pp fmt ()
 
 and pp_op_p above fmt (op, es) =
   let pp_bin p op ops a b =
     let pp fmt () = 
-      F.fprintf fmt "@[<hov>%a %s@ %a@]"
+      F.fprintf fmt "@[<hv>%a@ %s %a@]"
         (pp_exp_p (Infix(op,0))) a ops
         (pp_exp_p (Infix(op,1))) b in
-    pp_maybe_paren p pp fmt () in
-
+    pp_maybe_paren true p pp fmt ()
+  in
   let pp_prefix op before after a =
-    F.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after in
+    F.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after
+  in
   match op, es with
   | GExp _,   [a;b] -> 
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult))
@@ -358,9 +368,9 @@ and pp_op_p above fmt (op, es) =
     pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "-" a b
   | Eq,     [a;b] -> 
     pp_bin (notsep above && above<>NInfix(Land)) Eq "=" a b
-  | GLog _, [a]   -> 
-    pp_prefix op "log("  ")"   a
-  | FOpp,   [a]   -> 
+  | GLog _, [a]   ->
+    F.fprintf fmt "@[<hov>log(%a)@]" (pp_exp_p PrefixApp) a
+  | FOpp,   [a]   ->
     pp_prefix FOpp  "-"     ""    a
   | FInv,   [a]   -> 
     pp_prefix FInv  ""      "^-1" a
@@ -372,24 +382,25 @@ and pp_op_p above fmt (op, es) =
   | Ifte, [a;b;d] ->
     let ppe i = pp_exp_p (Infix(Ifte,i)) in
     let pp fmt () = 
-      F.fprintf fmt "@[%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d in
-    pp_maybe_paren (notsep above) pp fmt () 
+      F.fprintf fmt "@[<hv>%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d
+    in
+    pp_maybe_paren true (notsep above) pp fmt ()
   | _             -> failwith "pp_op: invalid expression"
 
 and pp_nop_p above fmt (op,es) =
-  let pp_nary op ops p =
-    pp_maybe_paren p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es in
+  let pp_nary hv op ops p =
+    pp_maybe_paren hv p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es in
   match op with
-  | GMult  -> pp_nary GMult  " * "   (notsep above) 
-  | FPlus  -> pp_nary FPlus  " + "   (notsep above)
-  | Xor    -> pp_nary Xor    " ++ " (notsep above)
-  | Land   -> pp_nary Land   " /\\ " (notsep above)
+  | GMult  -> pp_nary true GMult  "@ * "   (notsep above)
+  | FPlus  -> pp_nary true FPlus  "@ + "   (notsep above)
+  | Xor    -> pp_nary true Xor    "@ ++ " (notsep above)
+  | Land   -> pp_nary true Land   "@ /\\ " (notsep above)
   | FMult  ->
     let p = 
       match above with
       | NInfix(FPlus) | Infix(FMinus,_) -> false
       | _ -> notsep above in
-    pp_nary FMult "*" p
+    pp_nary false FMult "@,*" p
 
 let pp_exp fmt e = pp_exp_p Top fmt e
 let pp_op  fmt x = pp_op_p  Top fmt x
