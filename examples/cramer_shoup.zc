@@ -1,6 +1,7 @@
 adversary A1 : (G * G * G * G) -> (G * G).
 adversary A2 : (G * G * G * G) -> Bool.
-oracle Dec : (G * G * G * G) -> G.
+oracle Dec1 : (G * G * G * G) -> G.
+oracle Dec2 : (G * G * G * G) -> G.
 
 operator H : ( G * G * G) -> Fq.
 
@@ -30,7 +31,10 @@ prove
     let p2 = g^(y1+w*y2);
     let p3 = g^(z1+w*z2);
     let p4 = g^w;
-    (m0,m1) <- A1(p1,p2,p3,p4);
+    (m0,m1) <- A1(p1,p2,p3,p4) with
+      Dec1(a_,a'_,c_,d_) =
+        [ c_ * (a_^z1 * a'_ ^z2)^(-1)
+        | d_ = a_^(x1+H(a_,a'_,c_)*y1) * a'_^(x2+H(a_,a'_,c_)*y2) ];
     b <-$ Bool;
     let mb = (b?m0:m1);
     (* randomness for encryption is u *)
@@ -42,11 +46,21 @@ prove
     let sc  = mb * p3^u;
     let sd  = p1^u * p2^(u*H(sa,sa',sc));
     b' <- A2(sa,sa',sc,sd) with
-      Dec(a,a',c,d) =
+      Dec2(a,a',c,d) =
         [ c * (a^z1 * a'^z2)^(-1)
         | not ((a,a',c,d) = (sa,sa',sc,sd)),
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
   ] : b = b'.
+  
+  (*
+  ddh.
+  rrandom*.
+  rindep_progress. closes current goal, generates a new subgoal for test a^w = a'
+  rindep.
+  try rindep with Require(i) -> find_tactic(i). last. rindep.
+  rindep_progress. closes current goal, generates a new subgoal for h(x) = h(y)
+  tcr.
+  *)
 
 (* we could sample here, but then we cannot perform DDH *)
 
@@ -56,29 +70,39 @@ prove
   assumption_decisional -> ddh v. rnorm. (* assumption DDH *)
 
   (* perform all possible rrandom applications *)
-  rexcept 3 u*w. rrandom 4 _ _ tmp. rrandom 5 _ _ tmp. rrandom 6 _ _ tmp. rrandom 8 _ _ tmp. rrandom 9 _ _ tmp.
+  rexcept 3 u*w. rrandom 4 _ _ tmp. rrandom 6 _ _ tmp. rrandom 8 _ _ tmp.
   
   (* if a^w = a' for all queries, b not used in game anymore *)
-  radd_test (12,1,2) (a^w = a') A3 ga ga' gc gd.
+  radd_test (10,1,1) (a_^w = a'_) A3 ga ga' gc gd.
+    rrewrite_oracle (10,1,1) <-. rnorm.
+    rswap 5 6.
+    rnorm_unknown.
+    rindep.
+  rrewrite_oracle (10,1,1) <-. rnorm.
+  rrandom 5 _ _ tmp.
+  rrandom 9 _ _ tmp.
+  
+  radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
     last. rrewrite_oracle (12,1,1) <-. rnorm. rindep.
   rrewrite_oracle (12,1,1) <-. rnorm.
   
   (* we just use the rlet to simplify terms for the manual proof *)
-  rlet_abstract 13 h1 H(g ^ u,g ^ v,g ^ z2). rlet_abstract 15 h2 H(ga,ga',gc).
-  rlet_abstract 15 la1 log(ga). rlet_abstract 15 la2 log(ga').
-  (* try: rrandom 7 _ _ tmp.
+  rlet_abstract 13 h1 H(g ^ u,g ^ v,g ^ z2). rlet_abstract 15 h2 H(ea,ea',ec).
+  rlet_abstract 15 la1 log(ea). rlet_abstract 15 la2 log(ea').
+  (* try: rnorm. rindep.
      get: w*w*u*h1*la1 - w*v*h1*la1 - w*u*h1*la2 + v*h1*la2 - w*w*u*h2*la1 + w*u*h2*la2 + w*v*h2*la1 - v*h2*la2
-     factored: (-1) * (h2 - -h1) * (la2 - -w*la1) * (v - -w*u)
+     factored: (-1) * (h2 - h1) * (la2 - -w*la1) * (v - -w*u)
      we already have everything except (h2 - -h1)
   *)
   rcase_ev h2 = h1.
     last. rnorm. rindep.
   rnorm.
+  
   (* if EV ==> not ((ga,ga',gc) = (g ^ u,g ^ v,g ^ z2)) /\ H(ga,ga',gc) = H(g ^ u,g ^ v,g ^ z2), we can apply TCR *)
-  rcase_ev (ga,ga',gc) = (g ^ u,g ^ v,g ^ z2).
+  rcase_ev (ea,ea',ec) = (g ^ u,g ^ v,g ^ z2).
     rsplit_ev 5. rrewrite_ev 5 ->. rrewrite_ev 6 ->. rrewrite_ev 7 ->. rrewrite_ev 3 ->. rnorm. rfalse_ev.
    rremove_ev 1. rremove_ev 1. rremove_ev 1. rnorm_unknown u v z2. rswap 2 -1. rexcept 3. rswap 3 -1.
       rswap 9 -6. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
-      assumption_computational tcr (ga,ga',gc). (* apply TCR assumption *)
+      assumption_computational tcr (ea,ea',ec). (* apply TCR assumption *)
 
   extract "cramer_shoup.ec".
