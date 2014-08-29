@@ -157,7 +157,19 @@ let iter_gcmd_exp f gcmd = match gcmd with
   | GSamp(_,d)    -> iter_distr_exp f d
   | GCall(_,_,e,os) -> f e; List.iter (iter_odef_exp f) os
 
-let iter_gdef_exp f gdef = List.iter (iter_gcmd_exp f) gdef
+let iter_gcmd_exp_orcl f gcmd = match gcmd with
+  | GLet(_,_)     -> ()
+  | GSamp(_,_)    -> ()
+  | GCall(_,_,_,os) -> List.iter (iter_odef_exp f) os
+
+let iter_gcmd_exp_no_orcl f gcmd = match gcmd with
+  | GLet(_,e)     -> f e
+  | GSamp(_,d)    -> iter_distr_exp f d
+  | GCall(_,_,e,_) -> f e
+
+let iter_gdef_exp f gdef =
+  List.iter (iter_gcmd_exp_no_orcl f) gdef;
+  List.iter (iter_gcmd_exp_orcl f) gdef
 
 let iter_ju_exp f ju =
   iter_gdef_exp f ju.ju_gdef; f ju.ju_ev
