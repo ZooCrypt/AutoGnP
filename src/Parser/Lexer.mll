@@ -29,9 +29,9 @@ rule lex = parse
   | "0_"(['a'-'z']['0'-'9']* as s) { ZBS(s) }
   | "Bool" { TBOOL }
   | "g" { GEN("") }
-  | "g_"(['a'-'z']['0'-'9']* as s) { GEN(s) }
+  | "g_"(['a'-'z''0'-'9']* as s) { GEN(s) }
   | "G" { TG("") }
-  | "G_"(['a'-'z']['0'-'9']* as s) { TG(s) } 
+  | "G_"(['a'-'z''0'-'9']* as s) { TG(s) } 
   | "Fq"    { TFQ }
   | "not"   { NOT }
   | "log"   { LOG }
