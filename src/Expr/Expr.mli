@@ -224,10 +224,10 @@ val pp_exp_tnp  : F.formatter -> 'a gexpr -> unit
 (** {6 Generic functions on [expr]} *)
 
 (** [e_sub_map f e] non-recursively applies [f] to all direct sub-expressions of [e], e.g.,
-     if [e=Xor(a,b)] the a new term [Xor(f a, f b)] is returned.
-     [e_sub_map] saves hashcons calls by detecting when [f] returns
-     its argument unchanged.
-     [e_sub_map] raises an exception if [f] changes the type. *)
+    if [e=Xor(a,b)] the a new term [Xor(f a, f b)] is returned.
+    [e_sub_map] saves hashcons calls by detecting when [f] returns
+    its argument unchanged.
+    [e_sub_map] raises an exception if [f] changes the type. *)
 val e_sub_map : (expr -> expr) -> expr -> expr
 
 (** [e_fold f acc e] applies [f] to all direct sub-expressions of [e], e.g.,
@@ -235,15 +235,15 @@ val e_sub_map : (expr -> expr) -> expr -> expr
 val e_sub_fold : ('a -> 'b gexpr -> 'a) -> 'a -> 'b gexpr -> 'a
 
 (** [e_sub_iter f e] executes [f] for all direct sub-expressions of [e]
-     for [f]s side-effects. *)
+    for [f]s side-effects. *)
 val e_sub_iter : ('a gexpr -> unit) -> 'a gexpr -> unit
 
 (** [e_iter f e] executes [f] for all sub-expressions of [e] (including e)
-     for [f]s side-effects. *)
+    for [f]s side-effects. *)
 val e_iter : ('a gexpr -> 'b) -> 'a gexpr -> unit
 
 (** [e_exists p e] returns [true] if there is a subterms of [e] (including
-     [e] itself) that satisfies [p]. *)
+    [e] itself) that satisfies [p]. *)
 val e_exists : ('a gexpr -> bool) -> 'a gexpr -> bool
 
 (** [e_forall p e] returns [true] if all subterms of [e]
@@ -251,15 +251,15 @@ val e_exists : ('a gexpr -> bool) -> 'a gexpr -> bool
 val e_forall : ('a gexpr -> bool) -> 'a gexpr -> bool
 
 (** [e_find p e] return the first [e'] that is a subterm of [e] and satisfies [p].
-     If there is no such [e'], then {!Not_found} is raised *)
+    If there is no such [e'], then {!Not_found} is raised *)
 val e_find : ('a gexpr -> bool) -> 'a gexpr -> 'a gexpr
 
 (** [e_find_all p e] returns the the set of all [e'] that are subterms
-     of [e] and satisfy [p]. *)
+    of [e] and satisfy [p]. *)
 val e_find_all : (expr -> bool) -> expr -> Se.t
 
 (** [e_map f e] applies [f] recursively to all subterms of [e] proceeding
-     in a bottom-up fashion. *)
+    in a bottom-up fashion. *)
 val e_map : (expr -> expr) -> expr -> expr
 
 (** [e_ty_outermost ty e] returns the list of outmost subterms of [e] of
@@ -268,9 +268,9 @@ val e_ty_outermost : ty -> expr -> expr list
 
 
 (** [e_map_top f e] applies [f] recursively to all subterms of [e] proceeding
-     in a top-down fashion. If [f] raises {!Not_found}, then [e_map_top]
-     proceeds by applying [f] to the direct sub-expressions of the given
-     expression. Otherwise, it returns without applying [f] to the subexpressions.  *)
+    in a top-down fashion. If [f] raises {!Not_found}, then [e_map_top]
+    proceeds by applying [f] to the direct sub-expressions of the given
+    expression. Otherwise, it returns without applying [f] to the subexpressions.  *)
 val e_map_top : (expr -> expr) -> expr -> expr
 
 (** [e_replace e1 e2 e] replaces all occurences of [e1] in [e] with [e2] *)
@@ -296,17 +296,16 @@ type ctxt = Vsym.t * expr
 
 val inst_ctxt : ctxt -> expr -> expr
 
-(* A generic subtraction function:
-   [sub t] return a ctxt [(x1,x2,c)] and a [zero]
-   such that forall e1 e2:t , [inst_ctxt c e1 e2] =E [e1 - e2]
-                          and [inst_ctxt c e2 e2] = [zero] 
-*)
+(** [sub t is a generic subtraction function that
+    returns context [(x1,x2,c)] and a [zero]
+    such that forall e1 e2:t , [inst_ctxt c e1 e2] =E [e1 - e2]
+    and [inst_ctxt c e2 e2] = [zero] *)
 val sub : ty -> (Vsym.t * ctxt) * expr
-val mk_Zero : ty -> expr
+
 val is_Zero : expr -> bool
+val mk_Zero   : ty -> expr
 
 val typeError_to_string :
   ty * ty * expr * expr option * string -> string
 
 val catch_TypeError : (unit -> 'a) -> 'a
-

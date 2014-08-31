@@ -65,7 +65,7 @@ let nop_hash = function
 
 type 'a gexpr = {
   e_node : 'a gexpr_node;
-  e_ty : 'a gty;
+  e_ty   : 'a gty;
   e_tag  : int
 }
 and 'a gexpr_node =
@@ -75,10 +75,9 @@ and 'a gexpr_node =
   | Proj  of int * 'a gexpr             (* projection *)
   | Cnst  of cnst                       (* constants *)
   | App   of 'a gop * 'a gexpr list     (* fixed arity operators *)
-  | Nary  of nop * 'a gexpr list     (* variable arity AC operators *)
+  | Nary  of nop * 'a gexpr list        (* variable arity AC operators *)
   | Exists of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
-          (* Exists(e1,e2,[(x1,L_Hh1)...]:
-              exists  x1 <- L_Hh1, e1 = e2 *)
+    (* Exists(e1,e2,[(x1,L_Hh1)...]: exists  x1 <- L_Hh1, e1 = e2 *)
 
 
 type expr = internal gexpr
@@ -88,12 +87,8 @@ type eexpr = exported gexpr
 type eexpr_node = exported gexpr_node
 
 let e_equal : expr -> expr -> bool = (==) 
-(*let e_equal e1 e2 = 
-  e1 == e2 || e1 = e2 *)
-let e_hash (e:expr) = e.e_tag
-let e_compare (e1:expr) (e2:expr) = 
-(*  compare e1 e2 *)
- e1.e_tag - e2.e_tag 
+let e_hash e = e.e_tag
+let e_compare e1 e2 = e1.e_tag - e2.e_tag 
 
 module Hse = Hashcons.Make (struct
   type t = expr
@@ -182,17 +177,6 @@ module Me = E.M
 module Se = E.S
 module He = E.H
 
-
-(*module EOrder = struct
-  type t = expr
-  let equal = e_equal
-  let compare = e_compare
-  let hash : t -> int = Hashtbl.hash
-end
-module Me = Map.Make(EOrder)
-module Se = Set.Make(EOrder)
-module He = Hashtbl.Make(EOrder)
-*)
 (* ----------------------------------------------------------------------- *)
 (** {2 Indicator functions} *)
 
@@ -296,11 +280,6 @@ let pp_if c pp1 pp2 fmt x =
   match c with
   | true  -> pp1 fmt x
   | false -> pp2 fmt x
-
-(*
-let pp_maybe c tx pp fmt x =
-  pp_if c (tx pp) pp fmt x
-*)
 
 let pp_enclose hv ~pre ~post pp fmt x =
   if hv then
@@ -700,9 +679,6 @@ struct
          | _ -> assert false)
     | _ -> assert false
 
-(*   let mk_GTGen es =
-    mk_EMap es (mk_GGen es.Esym.source1) (mk_GGen es.Esym.source2)
- *)
 end
 
 module Constructors : S with type t = internal = Make(ExprBuild) 
@@ -806,7 +782,7 @@ let e_ty_outermost ty e =
 
 let has_log e = e_exists (fun e -> is_GLog e) e
 
-(* TODO : FIXME did we need more ? *)
+(* FIXME: is this sufficient? *)
 let is_ppt e = not (has_log e)
 
 let e_map f = 
@@ -862,12 +838,6 @@ let catch_TypeError f =
     print_string (typeError_to_string (ty1,ty2,e1,me2,s));
     raise (Constructors.TypeError(ty1,ty2,e1,me2,s))
 
-
-(* A generic subtraction function:
-   [sub t] return a ctxt [(x1,x2,c)] and a [zero]
-   such that forall e1 e2:t , [inst_ctxt c e1 e2] =E [e1 - e2]
-                          and [inst_ctxt c e2 e2] = [zero] 
-*)
 let sub t = 
   let rec aux e1 e2 = 
     match e2.e_ty.ty_node with
