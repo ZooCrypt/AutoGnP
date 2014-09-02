@@ -1,14 +1,19 @@
-(** Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
+(*s Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
+
+(*i*)
 open TheoryState
 open Expr
 open Type
 open Game
+open Syms
+open Gsyms
+(*i*)
 
 exception ParseError of string
 
 val fail_parse : string -> 'a
 
-val create_var : bool -> theory_state -> string -> ty -> Vsym.t
+val create_var : vmap -> string -> ty -> Vsym.t
 
 type parse_ty =
   | BS of string
@@ -64,54 +69,49 @@ val ty_of_parse_ty : theory_state -> parse_ty -> ty
 val mk_Tuple : expr list -> expr
 
 val bind_of_parse_bind :
-  theory_state -> (string * string) list -> (Vsym.t * Hsym.t) list
+  vmap -> theory_state -> (string * string) list -> (Vsym.t * Hsym.t) list
 
-val expr_of_parse_expr : theory_state -> parse_expr -> expr
+val expr_of_parse_expr : vmap -> theory_state -> parse_expr -> expr
 
-val lcmd_of_parse_lcmd : bool -> theory_state -> lcmd -> Game.lcmd
+val lcmd_of_parse_lcmd : vmap -> theory_state -> lcmd -> Game.lcmd
 
 val odef_of_parse_odef :
-  bool ->
-  theory_state ->
+  vmap -> theory_state ->
   string * string list * (lcmd list * parse_expr) ->
   Osym.t * Vsym.t list * Game.lcmd list * expr
 
-val gcmd_of_parse_gcmd : bool -> theory_state -> gcmd -> Game.gcmd
+val gcmd_of_parse_gcmd : vmap -> theory_state -> gcmd -> Game.gcmd
 
-val gdef_of_parse_gdef :
-  bool -> theory_state -> gcmd list -> Game.gcmd list
+val gdef_of_parse_gdef : vmap -> theory_state -> gcmd list -> Game.gcmd list
 
-val ju_of_parse_ju :
-  bool -> theory_state -> gcmd list -> parse_expr -> judgment
+val ju_of_parse_ju : vmap -> theory_state -> gcmd list -> parse_expr -> judgment
 
 type tactic =
   | Rnorm
+  | Rsimp
   | Rfalse_ev
   | Rnorm_nounfold
-  | Rnorm_unknown    of string list
-  | Rswap            of int * int
-  | Rswap_oracle     of ocmd_pos * int
-  | Rctxt_ev         of string * parse_expr * int
-  | Rrandom          of int * (string * parse_expr) option *
-                        (string * parse_expr) option * string
-  | Rrandom_oracle   of ocmd_pos * (string * parse_expr) option * string *
-                       parse_expr * string
-  | Requiv           of gdef * parse_expr option
-  | Rassm_decisional of Util.direction * string * string list
-  | Rassm_computational of string * parse_expr  
-  | Rlet_abstract    of int * string * parse_expr
-  | Rlet_unfold      of int
+  | Rnorm_unknown  of string list
+  | Rswap          of int * int
+  | Rswap_oracle   of ocmd_pos * int
+  | Rctxt_ev       of string * parse_expr * int
+  | Rrnd           of int * (string * parse_expr) option * (string * parse_expr) option * string
+  | Rrnd_orcl      of ocmd_pos * (string * parse_expr) option * string * parse_expr * string
+  | Requiv         of gdef * parse_expr option
+  | Rassm_dec      of Util.direction * string * string list
+  | Rassm_comp     of string * parse_expr  
+  | Rlet_abstract  of int * string * parse_expr
+  | Rlet_unfold    of int
   | Rindep
-  | Rbad             of int * string
-  | Rexcept          of int * parse_expr list
-  | Rexcept_oracle   of ocmd_pos * parse_expr list
-  | Radd_test        of ocmd_pos * parse_expr * string * string list
-  | Rrewrite_oracle  of ocmd_pos * Util.direction
-  | Rcase_ev         of parse_expr
-  | Rremove_ev       of int list
-  | Rrewrite_ev of int * Util.direction
-  | Rsplit_ev of int
-
+  | Rbad           of int * string
+  | Rexcept        of int * parse_expr list
+  | Rexcept_orcl   of ocmd_pos * parse_expr list
+  | Radd_test      of ocmd_pos * parse_expr * string * string list
+  | Rrewrite_orcl  of ocmd_pos * Util.direction
+  | Rcase_ev       of parse_expr
+  | Rremove_ev     of int list
+  | Rrewrite_ev    of int * Util.direction
+  | Rsplit_ev      of int
 
 type instr =
   | RODecl     of string * bool * parse_ty * parse_ty

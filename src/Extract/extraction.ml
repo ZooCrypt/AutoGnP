@@ -7,6 +7,8 @@ open TheoryState
 open CoreRules
 open File
 open Printer
+open Syms
+open Gsyms
 
 module Ht = Hashtbl
 
@@ -15,10 +17,10 @@ module Ht = Hashtbl
 (** game translation *)
 
 let pvar modn v = 
-  modn, Vsym.tostring v
+  modn, Vsym.to_string v
 
 let globals gdef = 
-  let glob = gdef_vars gdef in
+  let glob = gdef_global_vars gdef in
   List.map (fun e ->
      let v = destr_V e in 
      MCvar(pvar [] v, v.Vsym.ty)) (Se.elements glob) 
@@ -167,7 +169,7 @@ let oracle file (osym,param,lc,ret) =
     let e = expression file (init_res_expr osym.Osym.codom) in
     Iasgn([vres], e) :: lc in
   {
-    f_name = "o" ^ Osym.tostring osym;
+    f_name = "o" ^ Osym.to_string osym;
     f_param = List.map (fun v -> pvar [] v, v.Vsym.ty) param;
     f_local = (vres, osym.Osym.codom) :: 
       List.map (fun e ->  
@@ -181,7 +183,7 @@ let ginstr file adv = function
   | GLet (v,e) -> Iasgn ([pvar [] v],expression file e)
   | GSamp(v,(ty,r)) -> 
     Irnd ([pvar [] v], ty, List.map (expression file) r)
-  | GCall(vs,a,e,_) -> Icall(List.map (pvar []) vs, (adv, "a"^Asym.tostring a),
+  | GCall(vs,a,e,_) -> Icall(List.map (pvar []) vs, (adv, "a"^Asym.to_string a),
                              expression file e)
 
 let instructions file adv gdef =   
@@ -257,7 +259,7 @@ let add_assumption file name assum =
       Se.fold (fun e l ->
         let v = destr_V e in
         if Vsym.S.mem v pub then l else
-        (pvar [] v, v.Vsym.ty) :: l) (gdef_vars gdef) [] in 
+        (pvar [] v, v.Vsym.ty) :: l) (gdef_global_vars gdef) [] in 
 
     let res = ([],"_res") in
     let init = instructions file (mod_name "A" []) gdef in
@@ -300,7 +302,7 @@ let init_file ts pft =
   add_bilinears file ts;
   add_hashs     file ts;
   add_assumptions file ts;
-  let _ = game ~local:false file pft.dr_ju.ju_gdef in
+  let _ = game ~local:false file pft.pt_ju.ju_gdef in
   file
 
 let extract_pr ?(local=true) file mem ju =
@@ -772,9 +774,9 @@ let pr_intr_rw1_app lemma1 lemma2 fmt () =
     lemma1 lemma2 
 
 let extract_assum file dir subst ainfo pft pft' =
-  let g  = game file pft.dr_ju.ju_gdef in
-  let g'  = game file pft'.dr_ju.ju_gdef in
-  let ev = pft.dr_ju.ju_ev in
+  let g  = game file pft.pt_ju.ju_gdef in
+  let g'  = game file pft'.pt_ju.ju_gdef in
+  let ev = pft.pt_ju.ju_ev in
   let len = if dir = LeftToRight then ainfo.a_len1 else ainfo.a_len2 in
   let fadv =
     let comp = match g.mod_body with 
@@ -786,7 +788,7 @@ let extract_assum file dir subst ainfo pft pft' =
       | _ -> assert false in
     let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
     let priv = 
-      Vsym.S.fold (fun v p -> Sstring.add (Vsym.tostring (subst_v v)) p)
+      Vsym.S.fold (fun v p -> Sstring.add (Vsym.to_string (subst_v v)) p)
         ainfo.a_priv Sstring.empty in
     (* The private variables should be remove *)
     let tokeep = function
@@ -795,7 +797,7 @@ let extract_assum file dir subst ainfo pft pft' =
     let comp = List.filter tokeep comp in
     let main = 
       let mk_param v = 
-        (([], "_" ^ Vsym.tostring v), v.Vsym.ty) in
+        (([], "_" ^ Vsym.to_string v), v.Vsym.ty) in
       let param = List.map mk_param ainfo.a_param in
       let glob = List.map subst_v ainfo.a_param in
       let assign_global = 
@@ -819,8 +821,8 @@ let extract_assum file dir subst ainfo pft pft' =
   let fa = mod_name fadv.mod_name [mod_name (adv_name file) []] in
   let a1 = mod_name ainfo.a_cmd1.mod_name [fa] in
   let a2 = mod_name ainfo.a_cmd2.mod_name [fa] in
-  let pr = extract_pr file mem pft.dr_ju in
-  let pr' = extract_pr file mem pft'.dr_ju in
+  let pr = extract_pr file mem pft.pt_ju in
+  let pr' = extract_pr file mem pft'.pt_ju in
   let pra1 = Fpr((a1,"main"), mem, [], Fv(([],"res"),None)) in
   let pra2 = Fpr((a2,"main"), mem, [], Fv(([],"res"),None)) in
   let pra, pra' = if dir = LeftToRight then pra1, pra2 else pra2, pra1 in
@@ -834,10 +836,10 @@ let extract_assum file dir subst ainfo pft pft' =
       pp_fun_name (fa,"main") in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
-      (Some (proof_ass g pft.dr_ju.ju_ev)) in
+      (Some (proof_ass g pft.pt_ju.ju_ev)) in
   let lemma' = 
     add_pr_lemma file (mk_cmp pr' cmp_eq pra') 
-      (Some (proof_ass g' pft'.dr_ju.ju_ev)) in
+      (Some (proof_ass g' pft'.pt_ju.ju_ev)) in
   let abs = Fabs (f_rsub pra1 pra2) in
   let proof fmt () = 
     F.fprintf fmt 
@@ -850,14 +852,14 @@ let extract_assum file dir subst ainfo pft pft' =
   concl, pr, abs 
 
 let rec skip_conv pft = 
-  match pft.dr_rule with
-  | Rconv -> skip_conv (List.hd pft.dr_subgoal)
+  match pft.pt_rule with
+  | Rconv -> skip_conv (List.hd pft.pt_subgoal)
   | _ -> pft
 
 let skip_swap pft = 
   let rec aux sw pft = 
-    match pft.dr_rule with
-    | Rswap(p,i) -> aux ((p,i)::sw) (List.hd pft.dr_subgoal)
+    match pft.pt_rule with
+    | Rswap(p,i) -> aux ((p,i)::sw) (List.hd pft.pt_subgoal)
     | _ -> List.rev sw, pft in
   aux [] pft
 
@@ -899,12 +901,12 @@ let extract_rnd_indep file side pos ju =
   lemma, pr, cmp_le, bound
 
 let extract_except file pos _l pft pft' = 
-  let ju = pft.dr_ju in
-  let ju' = pft'.dr_ju in
+  let ju = pft.pt_ju in
+  let ju' = pft'.pt_ju in
   let pr = extract_pr file mem ju in
   let pr' = extract_pr file mem ju' in
-  let g = game file pft.dr_ju.ju_gdef in 
-  let g' = game file pft'.dr_ju.ju_gdef in
+  let g = game file pft.pt_ju.ju_gdef in 
+  let g' = game file pft'.pt_ju.ju_gdef in
   let side, adv =
     let comp = match g.mod_body with 
       | Mod_def cmp -> cmp 
@@ -998,7 +1000,7 @@ let extract_except file pos _l pft pft' =
   
 let default_proof file mem s pft = 
   F.eprintf "WARNING rule %s not extracted@." s;
-  let pr = extract_pr ~local:false file mem pft.dr_ju in
+  let pr = extract_pr ~local:false file mem pft.pt_ju in
   let lemma = add_pr_lemma file (mk_cmp pr cmp_eq pr) 
     (Some (fun fmt () -> 
       F.fprintf fmt "(* %s *)@ " s;
@@ -1006,40 +1008,40 @@ let default_proof file mem s pft =
   lemma, pr, cmp_eq, pr 
 
 let rec extract_proof file pft = 
-  match pft.dr_rule with
+  match pft.pt_rule with
   | Rconv -> extract_conv file pft [] pft
   | Rctxt_ev _ ->
-    let pft' = List.hd pft.dr_subgoal in
+    let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' (pr_admit "ctxt_ev")
   | Rremove_ev _ -> assert false
   | Rmerge_ev _ -> 
-    let pft' = List.hd pft.dr_subgoal in
+    let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' (pr_admit "merge_ev")
-  | Rrandom (pos,inv1,inv2,newx) ->
-    let pft' = List.hd pft.dr_subgoal in
+  | Rrnd (pos,inv1,inv2,newx) ->
+    let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' 
-      (pr_random file (pos,inv1,inv2,newx) pft.dr_ju pft'.dr_ju)
+      (pr_random file (pos,inv1,inv2,newx) pft.pt_ju pft'.pt_ju)
   | Rrnd_orcl (pos, inv1, inv2, newx) ->
-    let pft' = List.hd pft.dr_subgoal in
+    let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' 
-      (pr_random_orcl file (pos,inv1,inv2,newx) pft.dr_ju pft'.dr_ju)
+      (pr_random_orcl file (pos,inv1,inv2,newx) pft.pt_ju pft'.pt_ju)
 
   | Rswap _ ->
     let sw1, pft' = skip_swap pft in
-    begin match pft'.dr_rule with
+    begin match pft'.pt_rule with
     | Rconv -> extract_conv file pft sw1 pft'
     | _ ->
       (* FIXME *)
-      extract_proof_sb1 file pft pft' (pr_swap file sw1 pft.dr_ju pft'.dr_ju)
+      extract_proof_sb1 file pft pft' (pr_swap file sw1 pft.pt_ju pft'.pt_ju)
     end
   | Rswap_orcl _ ->
-    let pft' = List.hd pft.dr_subgoal in
+    let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' (pr_admit "swap oracle")
   | Rrnd_indep (side, pos) -> 
-    extract_rnd_indep file side pos pft.dr_ju 
+    extract_rnd_indep file side pos pft.pt_ju 
     
   | Rassm_dec (dir,subst, assum) ->
-    let pft' = List.hd pft.dr_subgoal in
+    let pft' = List.hd pft.pt_subgoal in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
     let ainfo = 
       try Ht.find file.assump assum.ad_name with Not_found -> assert false in
@@ -1059,8 +1061,8 @@ let rec extract_proof file pft =
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
     lemma3, pr, cmp_le, bound 
 
-  | Rexcept (pos,l)   -> 
-    let pft' = List.hd pft.dr_subgoal in
+  | Rexc (pos,l)   -> 
+    let pft' = List.hd pft.pt_subgoal in
     let (lemma1, pr', cmp, bound) = extract_proof file pft' in
     (* pr' cmp bound *)
     let (lemma2, pr, _, eps) = extract_except file pos l pft pft' in
@@ -1096,11 +1098,11 @@ and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in
   let sw2, pft' = skip_swap pft2 in 
   extract_proof_sb1 file pft pft' 
-    (pr_conv file sw1 pft.dr_ju pft1.dr_ju pft2.dr_ju pft'.dr_ju sw2)
+    (pr_conv file sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2)
 
 and extract_proof_sb1 file pft pft' proof = 
   let (lemma1, pr',cmp,bound) = extract_proof file pft' in
-  let pr = extract_pr file mem pft.dr_ju in
+  let pr = extract_pr file mem pft.pt_ju in
   let lemma2 = 
     add_pr_lemma file (mk_cmp pr cmp_eq pr') 
       (Some proof) in

@@ -1,4 +1,4 @@
-(** Interface to computer algebra systems Singular and Macaulay. *)
+(*s Interface to computer algebra systems Singular and Macaulay. *)
 
 open Expr
 
@@ -9,7 +9,7 @@ open Expr
     non-field subexpressions. *)
 val mod_reduce : expr -> expr -> bool
 
-(** [norm f e] returns the normal form of [e]
+(** [norm f e] returns the normal-form of [e]
     using [f] recursively to normalize all non-field
     subexpressions. *)
 val norm : (expr -> expr) -> expr -> expr 

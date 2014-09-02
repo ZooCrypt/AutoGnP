@@ -1,71 +1,90 @@
+(*s Derived higher-level tactics. *)
 
-
+(*i*)
 open Game
 open Expr
 open Assumption
 open Util
+open Syms
+open Gsyms
+(*i*)
 
-(** {1 Proofs representation. } *)
+(* \subsection{Proofs representation} *)
+
+(** Renaming of variables *)
+type renaming = vs Vsym.M.t
+
+(** Low-level rules (extractable to EasyCrypt). *)
 type rule_name = 
-  | Radmit 
+
+  (*c equivalence/small statistical distance: main *)
   | Rconv
-  | Rfalse_ev
-  | Rctxt_ev   of int * ctxt 
-  | Rremove_ev of int list
-  | Rmerge_ev  of int * int 
-  | Rrandom    of gcmd_pos * ctxt * ctxt * Vsym.t
-  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt * Vsym.t
-  | Rexcept    of gcmd_pos * expr list
-  | Rexc_orcl  of ocmd_pos * expr list 
-  | Radd_test  of ocmd_pos * expr * Asym.t * Vsym.t list 
+  | Rswap of gcmd_pos * int 
+  | Rrnd  of gcmd_pos * ctxt * ctxt * vs
+  | Rexc  of gcmd_pos * expr list
+
+  (*c equivalence/small statistical distance: oracle *)
   | Rrw_orcl   of ocmd_pos * direction
-  | Rswap      of gcmd_pos * int 
   | Rswap_orcl of ocmd_pos * int 
-  | Rrnd_indep of bool * int
-  | Rassm_dec  of direction * Vsym.t Vsym.M.t * assumption_decision
-  | Rassm_comp of expr * Vsym.t Vsym.M.t * assumption_computational
-  | Rbad       of gcmd_pos * Vsym.t 
+  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt * vs
+  | Rexc_orcl  of ocmd_pos * expr list 
+
+  (*c case distinctions, up-to *)
   | Rcase_ev   of expr
+  | Radd_test  of ocmd_pos * expr * ads * vs list 
+  | Rbad       of gcmd_pos * vs
+
+  (*c logical rules event *)
+  | Rctxt_ev   of gcmd_pos * ctxt 
+  | Rremove_ev of int list
+  | Rmerge_ev  of int * int
   | Rsplit_ev  of int
   | Rrw_ev     of int * direction
 
-type proof_tree = private  
-  { dr_subgoal : proof_tree list;
-    dr_rule    : rule_name;
-    dr_ju      : judgment; }
+  (*c apply assumption *)
+  | Rassm_dec  of direction * renaming  * assm_dec
+  | Rassm_comp of expr * renaming * assm_comp
+
+  (*c terminal rules *)
+  | Radmit
+  | Rfalse_ev
+  | Rrnd_indep of bool * int
+
+type proof_tree = private {
+  pt_subgoal : proof_tree list;
+  pt_rule    : rule_name;
+  pt_ju      : judgment;
+}
+
+type goal = judgment
 
 type rule = judgment -> rule_name * judgment list
 
 type validation = proof_tree list -> proof_tree
 
-type goal = judgment
-
-type goals = {
+type proof_state = {
   subgoals   : judgment list;
   validation : validation
 }
 
-type tactic = goal -> goals
-type proof_state = goals
+type tactic = goal -> proof_state
 
 exception NoOpenGoal 
 
-(** {2 Basic manipulation tactic}  *)
+(* \subsection{Basic manipulation tactics}  *)
 val get_proof : proof_state -> proof_tree  
-val t_first_last : goals -> goals 
-val t_on_n : int -> tactic -> goals -> goals
-val t_last : tactic -> goals -> goals
-val t_first : tactic -> goals -> goals
+val t_first_last : proof_state -> proof_state 
+val t_on_n : int -> tactic -> proof_state -> proof_state
+val t_first : tactic -> proof_state -> proof_state
 
 val t_id : tactic
 val t_seq : tactic -> tactic -> tactic
-val t_subgoal : tactic list -> goals -> goals
+val t_subgoal : tactic list -> proof_state -> proof_state
 
 val t_try : tactic -> tactic
 val t_or  : tactic -> tactic -> tactic
 
-
-(** {3 Core rules of the logic. } *)
+(* \subsection{Core rules of the logic} *)
 
 val radmit : rule
 val t_admit : tactic
@@ -107,16 +126,16 @@ val t_merge_ev  : int -> int -> tactic
     with [r <- d; let v = ctx1[r]] and substituting v for r
     in the judgment. The rule checks that [ctx2] is the inverse
     of [ctx1]. *)
-val rrandom  : gcmd_pos -> ctxt -> ctxt -> Vsym.t -> rule
-val t_random : gcmd_pos -> ctxt -> ctxt -> Vsym.t -> tactic
+val rrandom  : gcmd_pos -> ctxt -> ctxt -> vs -> rule
+val t_random : gcmd_pos -> ctxt -> ctxt -> vs -> tactic
 
 (** [rrandom p ctx1 ctx2 v ju] returns the judgment resulting
     from replacing the sampling [r <- d] at oracle position [p]
     with [r <- d; let v = ctx1[r]] and substituting v for r
     in the judgment. The rule checks that [ctx2] is the inverse
     of [ctx1]. *)
-val rrandom_oracle  : ocmd_pos -> ctxt -> ctxt -> Vsym.t -> rule 
-val t_random_oracle : ocmd_pos -> ctxt -> ctxt -> Vsym.t -> tactic
+val rrandom_oracle  : ocmd_pos -> ctxt -> ctxt -> vs -> rule 
+val t_random_oracle : ocmd_pos -> ctxt -> ctxt -> vs -> tactic
 
 (** [rexcept p es ju] returns the judgment resulting from replacing
     the sampling [r <- d \ es'] at position [p] in [ju] with the
@@ -139,8 +158,8 @@ val t_except_oracle : ocmd_pos -> expr list -> tactic
     and (2) [ G'_{1..i}; vs <- A() : t /\ not tnew]
     where [G'_{1..i}] is the prefix of [G'] including [i] and [t] is
     the original test in the oracle. *)
-val radd_test  : ocmd_pos -> expr -> Asym.t -> Vsym.t list -> rule 
-val t_add_test : ocmd_pos -> expr -> Asym.t -> Vsym.t list -> tactic
+val radd_test  : ocmd_pos -> expr -> Asym.t -> vs list -> rule 
+val t_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> tactic
 
 (** [rrewrite_oracle p d j] returns the judgment resulting from rewriting
     commands after oracle position [p] with the equality at position [p]
@@ -166,16 +185,14 @@ val t_swap_oracle : ocmd_pos -> int -> tactic
 val rrandom_indep  : rule 
 val t_random_indep : tactic
 
-(** [rassm_decision dir vmap assm ju] returns the judgment resulting from
+(** [rassm_dec dir vmap assm ju] returns the judgment resulting from
     applying the decisional assumption [assm] with the variable renaming
     [vmap] in direction [dir] to [ju]. *)
-val rassm_decision  :
-  direction -> Vsym.t Vsym.M.t -> assumption_decision -> rule
-val t_assm_decision : 
-  direction -> Vsym.t Vsym.M.t -> assumption_decision -> tactic
+val rassm_dec  : direction -> renaming -> assm_dec -> rule
+val t_assm_dec : direction -> renaming -> assm_dec -> tactic
 
-val rassm_comp  : assumption_computational -> expr -> Vsym.t Vsym.M.t -> rule
-val t_assm_comp : assumption_computational -> expr -> Vsym.t Vsym.M.t-> tactic
+val rassm_comp  : assm_comp -> expr -> renaming -> rule
+val t_assm_comp : assm_comp -> expr -> renaming -> tactic
 
 (** [rbad p vsx ju] returns the judgment resulting from
     applying an up-to bad step with respect to a hash-query
@@ -183,5 +200,5 @@ val t_assm_comp : assumption_computational -> expr -> Vsym.t Vsym.M.t-> tactic
     hash query is replaced by [y <- d ]. The first judgment
     keeps the event and the second judgment uses the event
     [e in \[ x | x <- Lh\]] with variable [vsx]. *)
-val rbad  : int -> Vsym.t -> rule
-val t_bad : int -> Vsym.t -> tactic 
+val rbad  : int -> vs -> rule
+val t_bad : int -> vs -> tactic 

@@ -1,60 +1,42 @@
-adversary A1 : () -> Fq.
-adversary A2 : (G * G * G) -> (G_t * G_t).
-adversary A3 : (G_t * G * G) -> Bool.
-oracle Kg1 : Fq -> (G * G).
-oracle Kg2 : Fq -> (G * G).
-bilinear map e : G * G -> G_t.
+adversary A1 : G -> (BS_k * BS_k).
+adversary A2 : (G * BS_k) -> Bool.
 
-assumption_decisional bddh
-  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
-    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; let t = g_t^(a*b*c); ]
-  [ a <-$ Fq; b <-$ Fq; c <-$ Fq; d <-$ Fq;
-    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; let t = g_t^d; ]
-    a b c d.
+random oracle H : G -> BS_k.
+
+assumption_decisional ddh
+  [ x <-$ Fq; y <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
+    x y z.
 
 prove
-  [ i' <- A1();
-    c <-$ Fq;
-    d <-$ Fq;
-    h <-$ Fq;
-    let pk1 = g^c;
-    let pk2 = g^d;
-    let pk3 = g^h;
-    (m0,m1) <- A2(pk1,pk2,pk3)  with
-      Kg1(i1) = [ (g^(c*d + r*(d*i1 + h)), g^r)
-                | not (i1=i'), r <-$ Fq];
+  [ sk <-$ Fq;
+    let pk = g ^ sk;
+    (m0,m1) <- A1(pk);
     b <-$ Bool;
     let mb = (b?m0:m1);
-    e' <-$ Fq;
-    b' <- A3(mb * e(pk1,pk2)^e', g^e', (pk2^i'*pk3)^e') with
-      Kg2(i2) = [ (g^(c*d + r2*(d*i2 + h)), g^r2)
-                | not (i2=i'), r2 <-$ Fq];
-  ] : b = b'.
-  
-  rnorm. rswap 7 -3.
+    y <-$ Fq;
+    let he = H(pk ^ y);
+    let c  = (g ^ y, he ++ mb);
+    b' <- A2(c);
+  ] : b = b'.  
 
-  rrandom 5 _ (x -> x + d * i') z.
-  rnorm.
+rbad 7 x.
+rrandom 7 (v -> v ++ mb) (v -> v ++ mb) z1.
+rnorm.
+rswap 3 3. rindep. 
+rnorm.
+rswap 4 -2.
+rlet_abstract 2 gsk (g^sk).
+rlet_abstract 4 gy (g^y).
+rlet_abstract 5 gsky (g^(sk*y)).
+assumption -> ddh u.
+rnorm.
+rswap 3 4.
+(* FIXME: this is not handled yet *)
+rctxt_ev (v -> log(v)).
+rnorm.
+rindep.
 
-  rrandom_oracle (6,1,2) _ (x -> x * (i1 - i') + c) zz.
-  rnorm.
-
-  rrandom_oracle (8,1,2) _ (x -> x * (i2 - i') + c) zzz.
-  rnorm.
-
-  rswap 1 3.
-  rnorm_unknown c d e'.
-
-  rlet_abstract 4 xc (g ^ c).
-  rlet_abstract 5 xd (g ^ d).
-  rlet_abstract 6 xe (g ^ e').
-  rlet_abstract 7 t (g_t^(c*d*e')).
-
-  assumption_decisional -> bddh u. rnorm. rswap 4 4.
-
-  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)) zzzz.
-  rnorm. rswap 7 2.
-
-  rindep.
-
-extract "bb1.ec".
+(* extract "helgamal_ro.ec". *)

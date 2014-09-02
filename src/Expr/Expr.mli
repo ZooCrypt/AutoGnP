@@ -1,12 +1,16 @@
-(** Typed algebraic expression: We distinguish
-    internal/hashconsed and exported expressions.  *)
+(*s Typed algebraic expression: We distinguish
+    internal/hashconsed and exported expressions. *)
+
+(*i*)
 open Type
 open Util
+open Syms
+(*i*)
 
-(* ----------------------------------------------------------------------- *)
-(** {1 Expressions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Expressions} *)
 
-type 'a proj_type = 'a Type.gty * 'a Type.gty * 'a Type.gty
+type proj_type = Type.ty * Type.ty * Type.ty
 
 type cnst =
     GGen
@@ -16,9 +20,9 @@ type cnst =
 
 val cnst_hash : cnst -> int
 
-type 'a gop =
-    GExp of 'a Groupvar.gid
-  | GLog of 'a Groupvar.gid
+type op =
+    GExp of Groupvar.id
+  | GLog of Groupvar.id
   | FOpp
   | FMinus
   | FInv
@@ -26,10 +30,7 @@ type 'a gop =
   | Eq
   | Not
   | Ifte
-  | EMap of 'a Esym.gt
-
-type op = IdType.internal gop
-type eop = IdType.exported gop
+  | EMap of Esym.t
 
 val op_hash : op -> int
 
@@ -42,24 +43,16 @@ type nop =
 
 val nop_hash : nop -> int
 
-type 'a gexpr = { e_node : 'a gexpr_node; e_ty : 'a Type.gty; e_tag : int; }
-and 'a gexpr_node =
-    V of 'a Vsym.gt
-  | H of 'a Hsym.gt * 'a gexpr
-  | Tuple of 'a gexpr list
-  | Proj of int * 'a gexpr
+type expr = { e_node : expr_node; e_ty : Type.ty; e_tag : int; }
+and expr_node =
+    V of Vsym.t
+  | H of Hsym.t * expr
+  | Tuple of expr list
+  | Proj of int * expr
   | Cnst of cnst
-  | App of 'a gop * 'a gexpr list
-  | Nary of nop * 'a gexpr list
-  | Exists of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
-
-type expr = IdType.internal gexpr
-
-type expr_node = IdType.internal gexpr_node
-
-type eexpr = IdType.exported gexpr
-
-type eexpr_node = IdType.exported gexpr_node
+  | App of op * expr list
+  | Nary of nop * expr list
+  | Exists of expr * expr * (Vsym.t * Hsym.t) list
 
 val e_equal : expr -> expr -> bool
 val e_hash : expr -> int
@@ -68,78 +61,75 @@ val e_compare : expr -> expr -> int
 module Hse : Hashcons.S with type t = expr
 
 val mk_e : expr_node -> ty -> expr
-val mk_ee : eexpr_node -> ety -> eexpr
-
-val e_export : expr -> eexpr
 
 module Se : Set.S with type elt = expr
 module He : Hashtbl.S with type key = expr
 module Me : Map.S with type key = expr
 
-(* ----------------------------------------------------------------------- *)
-(** {2 Indicator functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Indicator functions} *)
 
-val is_V : 'a gexpr -> bool
-val is_H : 'a gexpr -> bool
-val is_Tuple : 'a gexpr -> bool
-val is_Proj : 'a gexpr -> bool
-val is_some_Cnst : 'a gexpr -> bool
-val is_Cnst : cnst -> 'a gexpr -> bool
-val is_FNat : 'a gexpr -> bool
-val is_FOne : 'a gexpr -> bool
-val is_FZ : 'a gexpr -> bool
-val is_True : 'a gexpr -> bool
-val is_False : 'a gexpr -> bool
-val is_GGen : 'a gexpr -> bool
-val is_GLog : 'a gexpr -> bool
-val is_some_App : 'a gexpr -> bool
-val is_App : 'a gop -> 'a gexpr -> bool
-val is_FDiv : 'a gexpr -> bool
-val is_FOpp : 'a gexpr -> bool
-val is_some_Nary : 'a gexpr -> bool
-val is_Nary : nop -> 'a gexpr -> bool
-val is_FPlus : 'a gexpr -> bool
-val is_FMult : 'a gexpr -> bool
-val is_Xor : 'a gexpr -> bool  
-val is_Exists : 'a gexpr -> bool
-val is_Eq    : 'a gexpr -> bool
-val is_field_op : 'a gop -> bool
+val is_V : expr -> bool
+val is_H : expr -> bool
+val is_Tuple : expr -> bool
+val is_Proj : expr -> bool
+val is_some_Cnst : expr -> bool
+val is_Cnst : cnst -> expr -> bool
+val is_FNat : expr -> bool
+val is_FOne : expr -> bool
+val is_FZ : expr -> bool
+val is_True : expr -> bool
+val is_False : expr -> bool
+val is_GGen : expr -> bool
+val is_GLog : expr -> bool
+val is_some_App : expr -> bool
+val is_App : op -> expr -> bool
+val is_FDiv : expr -> bool
+val is_FOpp : expr -> bool
+val is_some_Nary : expr -> bool
+val is_Nary : nop -> expr -> bool
+val is_FPlus : expr -> bool
+val is_FMult : expr -> bool
+val is_Xor : expr -> bool  
+val is_Exists : expr -> bool
+val is_Eq    : expr -> bool
+val is_field_op : op -> bool
 val is_field_nop : nop -> bool
-val is_field_exp : 'a gexpr -> bool
-val is_Land : 'a gexpr -> bool
+val is_field_exp : expr -> bool
+val is_Land : expr -> bool
 
-(* ----------------------------------------------------------------------- *)
-(** {3 Destructor functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Destructor functions} *)
 
 exception Destr_failure of string
 
-val destr_V      : 'a gexpr -> 'a Vsym.gt
-val destr_H      : 'a gexpr -> 'a Hsym.gt * 'a gexpr
-val destr_Tuple  : 'a gexpr -> 'a gexpr list
-val destr_Proj   : 'a gexpr -> int * 'a gexpr
-val destr_Cnst   : 'a gexpr -> cnst
-val destr_FNat   : 'a gexpr -> int
-val destr_App    : 'a gexpr -> 'a gop * 'a gexpr list
-val destr_GMult  : 'a gexpr -> ('a gexpr) list
-val destr_GExp   : 'a gexpr -> 'a gexpr * 'a gexpr
-val destr_GLog   : 'a gexpr -> 'a gexpr
-val destr_EMap   : 'a gexpr -> 'a Esym.gt * 'a gexpr * 'a gexpr
-val destr_FOpp   : 'a gexpr -> 'a gexpr
-val destr_FMinus : 'a gexpr -> 'a gexpr * 'a gexpr
-val destr_FInv   : 'a gexpr -> 'a gexpr
-val destr_FDiv   : 'a gexpr -> 'a gexpr * 'a gexpr
-val destr_Eq     : 'a gexpr -> 'a gexpr * 'a gexpr
-val destr_Not    : 'a gexpr -> 'a gexpr
-val destr_Ifte   : 'a gexpr -> 'a gexpr * 'a gexpr * 'a gexpr
-val destr_FPlus  : 'a gexpr -> 'a gexpr list
-val destr_FMult  : 'a gexpr -> 'a gexpr list
-val destr_Xor    : 'a gexpr -> 'a gexpr list
-val destr_Land   : 'a gexpr -> 'a gexpr list
-val destruct_Land : 'a gexpr -> 'a gexpr list
-val destr_Exists  : 'a gexpr -> 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
+val destr_V      : expr -> Vsym.t
+val destr_H      : expr -> Hsym.t * expr
+val destr_Tuple  : expr -> expr list
+val destr_Proj   : expr -> int * expr
+val destr_Cnst   : expr -> cnst
+val destr_FNat   : expr -> int
+val destr_App    : expr -> op * expr list
+val destr_GMult  : expr -> (expr) list
+val destr_GExp   : expr -> expr * expr
+val destr_GLog   : expr -> expr
+val destr_EMap   : expr -> Esym.t * expr * expr
+val destr_FOpp   : expr -> expr
+val destr_FMinus : expr -> expr * expr
+val destr_FInv   : expr -> expr
+val destr_FDiv   : expr -> expr * expr
+val destr_Eq     : expr -> expr * expr
+val destr_Not    : expr -> expr
+val destr_Ifte   : expr -> expr * expr * expr
+val destr_FPlus  : expr -> expr list
+val destr_FMult  : expr -> expr list
+val destr_Xor    : expr -> expr list
+val destr_Land   : expr -> expr list
+val destruct_Land : expr -> expr list
+val destr_Exists  : expr -> expr * expr * (Vsym.t * Hsym.t) list
 
-(* ----------------------------------------------------------------------- *)
-(** {4 Constructor functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Constructor functions} *)
 
 exception TypeError of (ty *  ty * expr * expr option * string)
 
@@ -172,59 +162,21 @@ val mk_FMult  : expr list -> expr
 val mk_Xor    : expr list -> expr
 val mk_Land   : expr list -> expr
 
-(** Constructors for exported expressions *)
-module EConstructors :
-  sig
-    type t = IdType.exported
-    exception TypeError of
-                (ety * ety * eexpr * eexpr option * string)
-    val ensure_ty_equal :
-      ety -> ety -> eexpr -> eexpr option -> string -> unit
-    val mk_V      : Vsym.et -> eexpr
-    val mk_H      : Hsym.et -> eexpr -> eexpr
-    val mk_Tuple  : eexpr list -> eexpr
-    val mk_Proj   : int -> eexpr -> eexpr
-    val mk_Exists : eexpr -> eexpr -> (Vsym.et * Hsym.et) list -> eexpr
-    val mk_GGen   : Groupvar.eid -> eexpr
-    val mk_FNat   : int -> eexpr
-    val mk_FOne   : eexpr
-    val mk_FZ     : eexpr
-    val mk_Z      : t Type.Lenvar.gid -> eexpr
-    val mk_B      : bool -> eexpr
-    val mk_True   : eexpr
-    val mk_False  : eexpr
-    val mk_GMult  : eexpr list -> eexpr
-    val mk_GExp   : eexpr -> eexpr -> eexpr
-    val mk_GLog   : eexpr -> eexpr
-    val mk_EMap   : Esym.et -> eexpr -> eexpr -> eexpr
-    val mk_FOpp   : eexpr -> eexpr
-    val mk_FMinus : eexpr -> eexpr -> eexpr
-    val mk_FInv   : eexpr -> eexpr
-    val mk_FDiv   : eexpr -> eexpr -> eexpr
-    val mk_Eq     : eexpr -> eexpr -> eexpr
-    val mk_Not    : eexpr -> eexpr
-    val mk_Ifte   : eexpr -> eexpr -> eexpr -> eexpr
-    val mk_FPlus  : eexpr list -> eexpr
-    val mk_FMult  : eexpr list -> eexpr
-    val mk_Xor    : eexpr list -> eexpr
-    val mk_Land   : eexpr list -> eexpr
-  end
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Pretty printing} *)
 
-(* ----------------------------------------------------------------------- *)
-(** {5 Pretty printing} *)
+val pp_cnst : F.formatter -> cnst -> Type.ty -> unit
+val pp_exp  : F.formatter -> expr -> unit
+val pp_op   : F.formatter -> op * expr list -> unit
+val pp_nop  : F.formatter -> nop * expr list -> unit
 
-val pp_cnst : F.formatter -> cnst -> 'a Type.gty -> unit
-val pp_exp  : F.formatter -> 'a gexpr -> unit
-val pp_op   : F.formatter -> 'a gop * 'a gexpr list -> unit
-val pp_nop  : F.formatter -> nop * 'a gexpr list -> unit
+val pp_exp_tnp  : F.formatter -> expr -> unit
 
-val pp_exp_tnp  : F.formatter -> 'a gexpr -> unit
-
-(* ----------------------------------------------------------------------- *)
-(** {6 Generic functions on [expr]} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Generic functions on [expr]} *)
 
 (** [e_sub_map f e] non-recursively applies [f] to all direct sub-expressions of [e], e.g.,
-    if [e=Xor(a,b)] the a new term [Xor(f a, f b)] is returned.
+    if [e=Xor(a,b)] then a new term [Xor(f a, f b)] is returned.
     [e_sub_map] saves hashcons calls by detecting when [f] returns
     its argument unchanged.
     [e_sub_map] raises an exception if [f] changes the type. *)
@@ -232,27 +184,27 @@ val e_sub_map : (expr -> expr) -> expr -> expr
 
 (** [e_fold f acc e] applies [f] to all direct sub-expressions of [e], e.g.,
     the results for [e=Xor(a,b)] is [f (f acc a) b]. *)
-val e_sub_fold : ('a -> 'b gexpr -> 'a) -> 'a -> 'b gexpr -> 'a
+val e_sub_fold : ('a -> expr -> 'a) -> 'a -> expr -> 'a
 
 (** [e_sub_iter f e] executes [f] for all direct sub-expressions of [e]
-    for [f]s side-effects. *)
-val e_sub_iter : ('a gexpr -> unit) -> 'a gexpr -> unit
+    for [f] s side-effects. *)
+val e_sub_iter : (expr -> unit) -> expr -> unit
 
 (** [e_iter f e] executes [f] for all sub-expressions of [e] (including e)
-    for [f]s side-effects. *)
-val e_iter : ('a gexpr -> 'b) -> 'a gexpr -> unit
+    for [f] s side-effects. *)
+val e_iter : (expr -> 'b) -> expr -> unit
 
 (** [e_exists p e] returns [true] if there is a subterms of [e] (including
     [e] itself) that satisfies [p]. *)
-val e_exists : ('a gexpr -> bool) -> 'a gexpr -> bool
+val e_exists : (expr -> bool) -> expr -> bool
 
 (** [e_forall p e] returns [true] if all subterms of [e]
-    (including [e] itself satisfy [p]. *)
-val e_forall : ('a gexpr -> bool) -> 'a gexpr -> bool
+    (including [e] itself) satisfy [p]. *)
+val e_forall : (expr -> bool) -> expr -> bool
 
 (** [e_find p e] return the first [e'] that is a subterm of [e] and satisfies [p].
-    If there is no such [e'], then {!Not_found} is raised *)
-val e_find : ('a gexpr -> bool) -> 'a gexpr -> 'a gexpr
+    If there is no such [e'], then [Not_found] is raised *)
+val e_find : (expr -> bool) -> expr -> expr
 
 (** [e_find_all p e] returns the the set of all [e'] that are subterms
     of [e] and satisfy [p]. *)
@@ -268,7 +220,7 @@ val e_ty_outermost : ty -> expr -> expr list
 
 
 (** [e_map_top f e] applies [f] recursively to all subterms of [e] proceeding
-    in a top-down fashion. If [f] raises {!Not_found}, then [e_map_top]
+    in a top-down fashion. If [f] raises [Not_found], then [e_map_top]
     proceeds by applying [f] to the direct sub-expressions of the given
     expression. Otherwise, it returns without applying [f] to the subexpressions.  *)
 val e_map_top : (expr -> expr) -> expr -> expr
@@ -283,8 +235,8 @@ val e_subst : expr Me.t -> expr -> expr
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
 
-(* ----------------------------------------------------------------------- *)
-(** {7 Useful functions on [expr]} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Useful functions on [expr]} *)
 
 val se_of_list : expr list -> Se.t
 
@@ -296,16 +248,15 @@ type ctxt = Vsym.t * expr
 
 val inst_ctxt : ctxt -> expr -> expr
 
-(** [sub t is a generic subtraction function that
+(** [sub t] is a generic subtraction function that
     returns context [(x1,x2,c)] and a [zero]
-    such that forall e1 e2:t , [inst_ctxt c e1 e2] =E [e1 - e2]
-    and [inst_ctxt c e2 e2] = [zero] *)
+    such that forall e1 e2:t, [inst_ctxt c e1 e2] =E [e1 - e2]
+    and [inst_ctxt c e2 e2] = [zero]. *)
 val sub : ty -> (Vsym.t * ctxt) * expr
 
 val is_Zero : expr -> bool
 val mk_Zero   : ty -> expr
 
-val typeError_to_string :
-  ty * ty * expr * expr option * string -> string
+val typeError_to_string : ty * ty * expr * expr option * string -> string
 
 val catch_TypeError : (unit -> 'a) -> 'a

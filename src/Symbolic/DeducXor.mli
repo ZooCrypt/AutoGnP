@@ -1,5 +1,8 @@
-(** Deducibility of Xor expressions. *)
+(*s Deducibility of Xor expressions. *)
+
+(*i*)
 open Expr
+(*i*)
 
 (** [solve_xor ecs e] tries to compute an xor context that
     deduces [e] from [List.map snd es] and returns the

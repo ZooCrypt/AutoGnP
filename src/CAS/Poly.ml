@@ -1,13 +1,17 @@
-(* Internal module for Singular interface *)
+(*s Internal module for Singular interface *)
+
+(*i*)
 open Expr
 open Util
+(*i*)
 
 module S = String
 
-(* ----------------------------------------------------------------------- *)
-(** {1 Define and check normal-form for field-expressions } *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Define and check normal-form for field-expressions } *)
 
 (* Field-expression in normal-form are captured by the following grammar:
+   \begin{verbatim}
    fe ::= fe0 / fe0 | fe0
    fe0 ::= mon | mon + .. + mon
    mon ::= - mon0 | mon0
@@ -15,6 +19,7 @@ module S = String
          |  NAT * NFE * .. * NFE
          |  NFE * ... * NFE
          |  NFE
+  \end{verbatim}
 *)
 let rec is_norm_field_exp e =
   if is_FDiv e then
@@ -43,12 +48,12 @@ and is_mon0 e =
      | _ -> false)
   else (is_FNat e || not (is_field_exp e))
 
-(* ----------------------------------------------------------------------- *)
-(** {2 Field expressions as polynomials (fe = f / g) } *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Field expressions as polynomials ($fe = f / g$) } *)
 
-type 'a monom = ('a * int) list (* m_i = x_i^j_i *)
+type 'a monom = ('a * int) list (*i m_i = x_i^j_i i*)
 type coeff = int
-type 'a poly = (coeff * 'a monom) list (* a_1 * m_1 + .. + a_k * m_k *)
+type 'a poly = (coeff * 'a monom) list (*i a_1 * m_1 + .. + a_k * m_k i*)
 
 let map_poly f p =
   L.map (fun (c,m) -> (c, L.map (fun (x,e) -> (f x,e)) m)) p
@@ -74,8 +79,8 @@ let exp_of_poly p =
   assert (is_norm_field_exp e);
   e
 
-(* takes a term in normal form and returns the corresponding polynomial 
-   fails if given term is not in normal-form *)
+(** Takes a term in normal form and returns the corresponding polynomial 
+    fails if given term is not in normal-form. *)
 let polys_of_field_expr e =
   let rec conv_fe0 e =
     if is_FPlus e
@@ -110,8 +115,8 @@ let polys_of_field_expr e =
     (conv_fe0 e1, Some(conv_fe0 e2))
   else (conv_fe0 e, None)
 
-(* ----------------------------------------------------------------------- *)
-(** {3 Factoring out polynomials} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Factoring out polynomials} *)
 
 let factor_out a p =
   lefts_rights
@@ -123,8 +128,9 @@ let factor_out a p =
          | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a))
       p)
 
+(*i*)
 (* ----------------------------------------------------------------------- *)
-(** {4 For debugging only } *)
+(* \subsection{For debugging only} *)
 
 let string_of_monom m =
   let go acc (i,k) =
@@ -139,3 +145,5 @@ let _string_of_poly p =
   S.concat " + "
     (L.map (fun (i,m) ->  (if i = 1 then "" else string_of_int i)
                             ^(string_of_monom m)) p)
+
+(*i*)

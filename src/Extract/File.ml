@@ -1,7 +1,9 @@
 open Util
 open Type
 open Expr 
-open Game 
+open Game
+open Syms
+open Gsyms
 open TheoryState 
 
 module Ht = Hashtbl
@@ -286,7 +288,7 @@ let add_hash file h =
   if Hsym.is_ro h then 
     assert false (* FIXME *)
   else
-    let name = top_name file (Hsym.tostring h) in
+    let name = top_name file (Hsym.to_string h) in
     let info = { 
       h_kind = Hop {o_name = name };
       h_eget = (fun e -> Eapp(Ostr name, [e]));

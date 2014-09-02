@@ -1,0 +1,2 @@
+all:
+	tsc zoocrypt.ts

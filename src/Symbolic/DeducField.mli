@@ -1,5 +1,8 @@
-(** Deducibility of Xor expressions. *)
+(*s Deducibility for field expressions. *)
+
+(*i*)
 open Expr
+(*i*)
 
 (** [solve_fq ecs e] tries to compute a field context that
     deduces [e] from [List.map snd es] and returns the

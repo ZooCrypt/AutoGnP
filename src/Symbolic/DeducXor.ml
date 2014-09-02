@@ -1,6 +1,11 @@
+(*s Deducibility for XOR expressions. *)
+
+(*i*)
 open Expr
 open Util
 open Type
+open Syms
+(*i*)
 
 module Ht = Hashtbl
 module L = List

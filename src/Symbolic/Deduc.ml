@@ -1,6 +1,9 @@
-(** Deducibility of expressions. *)
+(*s Deducibility of expressions. *)
+
+(*i*)
 open Type
 open Expr
+(*i*)
 
 exception Found of expr 
 
@@ -39,7 +42,7 @@ let invert from to_ =
       end
     | Nary _ -> () in
 
-  (* sub is the list of all known subterm, on with we will apply do_construct *)
+  (* sub is the list of all known subterm, on with we will apply $do_construct$ *)
   let sub = ref Se.empty in
   let add_expr e = if not (Se.mem e !sub) then sub := Se.add e !sub in
   (* tytbl is a map associating to interesting type a set of subterm of this

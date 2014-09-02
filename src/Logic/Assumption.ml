@@ -1,12 +1,18 @@
+(*s Decisional and computational assumptions *)
+
+(*i*)
 open Game
 open Expr
 open Wf
 open Util
+open Syms
+open Gsyms
+(*i*)
 
-(* ----------------------------------------------------------------------- *)
-(** {1 Decisional assumptions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Decisional assumptions} *)
 
-type assumption_decision =
+type assm_dec =
   { ad_name       : string;
     ad_prefix1    : gdef;
     ad_prefix2    : gdef;
@@ -22,29 +28,22 @@ let check_nocall gd =
     | _ -> ())
     gd
 
-let mk_ad name pref1 pref2 pvars =
-  let pvarse =
-    Vsym.S.fold (fun x acc -> Se.add (mk_V x) acc)
-      pvars Se.empty
-  in
-  (* FIXME: check that groupvars(pref1) = groupvars(pref2) *)
+let mk_assm_dec name pref1 pref2 pvars =
   check_nocall pref1;
   check_nocall pref2;
   ignore (wf_gdef NoCheckDivZero pref1);
   ignore (wf_gdef NoCheckDivZero pref2);
-  let pubvar1 = Se.diff (gdef_vars pref1) pvarse in
-  let pubvar2 = Se.diff (gdef_vars pref2) pvarse in
-  if not (Se.equal pubvar1 pubvar2) then begin
-    let diff = Se.union (Se.diff pubvar1 pubvar2) (Se.diff pubvar2 pubvar1) in
+  let pubvar1 = Vsym.S.diff (gdef_all_vars pref1) pvars in
+  let pubvar2 = Vsym.S.diff (gdef_all_vars pref2) pvars in
+  if not (Vsym.S.equal pubvar1 pubvar2) then begin
+    let diff = Vsym.S.union (Vsym.S.diff pubvar1 pubvar2) (Vsym.S.diff pubvar2 pubvar1) in
     tacerror "public variables should be equal: %a"
-      (pp_list "@ " pp_exp) (Se.elements diff)
+      (pp_list "@ " Vsym.pp) (Vsym.S.elements diff)
   end;
-  let pubvars = 
-    Se.fold (fun e s -> Vsym.S.add (destr_V e) s) pubvar1 Vsym.S.empty in
   { ad_name = name;
     ad_prefix1    = pref1;
     ad_prefix2    = pref2;
-    ad_pubvars    = pubvars;
+    ad_pubvars    = pubvar1;
     ad_privvars   = pvars;
   }
 
@@ -69,10 +68,10 @@ let subst subst assm =
     ad_privvars = subst_s assm.ad_privvars;
   }
 
-(* ----------------------------------------------------------------------- *)
-(** {2 Computational assumptions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Computational assumptions} *)
 
-type assumption_computational =
+type assm_comp =
   { ac_name       : string;
     ac_prefix     : gdef;
     ac_event_var  : Vsym.t;
@@ -81,17 +80,11 @@ type assumption_computational =
     ac_privvars   : Vsym.S.t;
   }
 
-let mk_ac name pref ev_var ev priv_vars =
-  let priv_varse =
-    Vsym.S.fold (fun x acc -> Se.add (mk_V x) acc) priv_vars Se.empty
-  in
+let mk_assm_comp name pref ev_var ev priv_vars =
   check_nocall pref;
   ignore (wf_gdef NoCheckDivZero pref);
-  let pub_varse = Se.diff (gdef_vars pref) priv_varse in
-  let pub_vars =
-    Se.fold (fun e s -> Vsym.S.add (destr_V e) s) pub_varse Vsym.S.empty
-  in
-  (* check that all variables in event defined in gdef + ev_var *)
+  let pub_vars = Vsym.S.diff (gdef_all_vars pref) priv_vars in
+  (* check that all variables in event defined in $gdef + ev_var$ *)
   { ac_name       = name;
     ac_prefix     = pref;
     ac_event_var  = ev_var;

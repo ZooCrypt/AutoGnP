@@ -1,10 +1,14 @@
-(** Well-formedness of games. *)
+(*s Well-formedness of games. *)
 
+(*i*)
 open Util
 open Expr
 open Type
 open Game
+open Syms
+open Gsyms
 open Norm
+(*i*)
 
 type wf_check_type = CheckDivZero | NoCheckDivZero
 

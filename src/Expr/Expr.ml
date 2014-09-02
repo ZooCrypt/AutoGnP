@@ -1,43 +1,51 @@
+(*s This module implements hashconsed and non-hashconsed expressions. *)
+
+(*i*)
 open Type
 open Util
-open IdType
+open Syms
+(*i*)
 
-(* ----------------------------------------------------------------------- *)
-(** {1 Expressions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Expression data types} *)
 
-type 'a proj_type = 'a gty * 'a gty * 'a gty
+type proj_type = ty * ty * ty
 
-(* constants *)
+(* \ic{Constants.} *)
 type cnst =
-    GGen        (* generator of G (type defines group) *)
-  | FNat of int (* Natural number in field, always >= 0 *)
-  | Z           (* 0 bitstring (typ defines length) *)
-  | B of bool   (* boolean value *)
+    GGen        (*r generator of $\group$ (type defines group) *)
+  | FNat of int (*r Natural number in field, always $\geq 0$ *)
+  | Z           (*r $0$ bitstring (typ defines length) *)
+  | B of bool   (*r boolean value *)
 
-let cnst_hash = function
+(* \ic{Hash constants.} *)
+let cnst_hash = (*c ... *) (*i*)
+  function
   | GGen   -> 1
   | FNat n -> Hashcons.combine 2 n
   | Z      -> 3
-  | B b  -> if b then 5 else 6
+  | B b    -> if b then 5 else 6
+(*i*)
 
-(* operators with fixed arity *)
-type 'a gop =
-    GExp of 'a Groupvar.gid  (* exponentiation in source group *)
-  | GLog of 'a Groupvar.gid  (* discrete logarithm in group *)
-  | FOpp                     (* additive inverse in Fq *)
-  | FMinus                   (* subtraction in Fq *)
-  | FInv                     (* mult. inverse in Fq *)
-  | FDiv                     (* division in Fq *)
-  | Eq                       (* equality *)
-  | Not                      (* negation *)
-  | Ifte                     (* if then else *)
-  | EMap of 'a Esym.gt       (* bilinear map *)
 
-type op = internal gop
-type eop = exported gop
+(* \ic{Operators with fixed arity.} *)
+type op =
+    GExp of Groupvar.id  (*r exponentiation in $\group_i$ *)
+  | GLog of Groupvar.id  (*r discrete logarithm in $\group_i$ *)
+  | FOpp                 (*r additive inverse in $\field$ *)
+  | FMinus               (*r subtraction in $\field$ *)
+  | FInv                 (*r mult. inverse in $\field$ *)
+  | FDiv                 (*r division in $\field$ *)
+  | Eq                   (*r equality *)
+  | Not                  (*r negation *)
+  | Ifte                 (*r if then else *)
+  | EMap of Esym.t       (*r bilinear map *)
 
-let op_hash = function
-    GExp gv  -> Hashcons.combine 1 (Groupvar.hash gv)
+
+(* \ic{Hash operators.} *)
+let op_hash = (*c ... *) (*i*)
+  function
+  | GExp gv  -> Hashcons.combine 1 (Groupvar.hash gv)
   | GLog gv  -> Hashcons.combine 2 (Groupvar.hash gv)
   | FOpp     -> 3
   | FMinus   -> 4
@@ -47,53 +55,56 @@ let op_hash = function
   | Not      -> 8
   | Ifte     -> 9
   | EMap(es) ->  Hashcons.combine 10 (Esym.hash es)
+  (*i*)
 
-(* associative operators with variable arity *)
+
+(* \ic{N-ary/associative operators with variable arity.} *)
 type nop =
-    FPlus  (* plus in Fq *)
-  | FMult  (* multiplication in Fq *)
-  | Xor    (* Xor of bitstrings *)
-  | Land   (* logical and *)
-  | GMult  (* multiplication in G (type defines group) *)
+    FPlus  (*r plus in Fq *)
+  | FMult  (*r multiplication in Fq *)
+  | Xor    (*r Xor of bitstrings *)
+  | Land   (*r logical and *)
+  | GMult  (*r multiplication in G (type defines group) *)
 
-let nop_hash = function
-    FPlus  -> 1
+(* \ic{Hash n-ary operators.} *)
+let nop_hash = (*c ... *) (*i*)
+  function
+  | FPlus  -> 1
   | FMult  -> 2
   | Xor    -> 3
   | Land   -> 4
   | GMult  -> 5
+(*i*)
 
-type 'a gexpr = {
-  e_node : 'a gexpr_node;
-  e_ty   : 'a gty;
+
+(* \ic{Expressions and expression nodes.} *)
+type expr = {
+  e_node : expr_node;
+  e_ty   : ty;
   e_tag  : int
 }
-and 'a gexpr_node =
-  | V     of 'a Vsym.gt                 (* variables (program, logical, random, ...) *)
-  | H     of 'a Hsym.gt * 'a gexpr      (* hash function application *)
-  | Tuple of ('a gexpr) list            (* tuples *)
-  | Proj  of int * 'a gexpr             (* projection *)
-  | Cnst  of cnst                       (* constants *)
-  | App   of 'a gop * 'a gexpr list     (* fixed arity operators *)
-  | Nary  of nop * 'a gexpr list        (* variable arity AC operators *)
-  | Exists of 'a gexpr * 'a gexpr * ('a Vsym.gt * 'a Hsym.gt) list
-    (* Exists(e1,e2,[(x1,L_Hh1)...]: exists  x1 <- L_Hh1, e1 = e2 *)
+and expr_node =
+  | V     of Vsym.t          (*r variables (program, logical, random, ...) *)
+  | H     of Hsym.t * expr   (*r hash function application *)
+  | Tuple of expr list       (*r tuples *)
+  | Proj  of int * expr      (*r projection *)
+  | Cnst  of cnst            (*r constants *)
+  | App   of op * expr list  (*r fixed arity operators *)
+  | Nary  of nop * expr list (*r variable arity AC operators *)
+  | Exists of expr * expr * (Vsym.t * Hsym.t) list
+    (*r $Exists(e_1,e_2,[(x_1,L_{H_{h1}}),\ldots]$: $\exists x_1 \in L_{H_{h1}}.\, e_1 = e_2$ *)
 
 
-type expr = internal gexpr
-type expr_node = internal gexpr_node
-
-type eexpr = exported gexpr
-type eexpr_node = exported gexpr_node
-
+(* \ic{Equality hashing, and comparison for expressions.} *)
 let e_equal : expr -> expr -> bool = (==) 
 let e_hash e = e.e_tag
 let e_compare e1 e2 = e1.e_tag - e2.e_tag 
 
+(* \ic{Hashcons expressions.} *)
 module Hse = Hashcons.Make (struct
   type t = expr
 
-  let equal e1 e2 =
+  let equal e1 e2 = (*c ... *) (*i*)
     ty_equal e1.e_ty e2.e_ty &&
     match e1.e_node, e2.e_node with
     | V v1, V v2                 -> Vsym.equal v1 v2
@@ -108,8 +119,10 @@ module Hse = Hashcons.Make (struct
         list_eq_for_all2 (fun (v1,h1) (v2,h2) ->
           Vsym.equal v1 v2 && Hsym.equal h1 h2) vh1 vh2
     | _, _                       -> false
+  (*i*)
 
-  let hash_node = function
+  let hash_node = (*c ... *) (*i*)
+    function
     | V(v)       -> Vsym.hash v
     | H(f,e)     -> Hashcons.combine (Hsym.hash f) (e_hash e)
     | Tuple(es)  -> Hashcons.combine_list e_hash 3 es
@@ -121,64 +134,31 @@ module Hse = Hashcons.Make (struct
         Hashcons.combine_list 
           (fun (v,h) -> Hashcons.combine (Vsym.hash v) (Hsym.hash h))
           (Hashcons.combine (e_hash e1) (e_hash e2)) vh
+  (*i*)
 
-  let hash e =
-    Hashcons.combine (ty_hash e.e_ty) (hash_node e.e_node)
+  let hash e = Hashcons.combine (ty_hash e.e_ty) (hash_node e.e_node)
 
   let tag n e = { e with e_tag = n }
 end)
 
+(* \ic{Create internal expression.} *)
 let mk_e n ty = Hse.hashcons {
   e_node = n;
   e_ty   = ty;
   e_tag  = (-1)
 }
 
-let mk_ee n ty = {
-  e_node = n;
-  e_ty   = ty;
-  e_tag  = (-1)
-}
-
-let op_export o = match o with
-  | GExp gv  -> GExp(Groupvar.export gv)
-  | GLog gv  -> GLog(Groupvar.export gv)
-  | FOpp     -> FOpp
-  | FMinus   -> FMinus
-  | FInv     -> FInv
-  | FDiv     -> FDiv
-  | Eq       -> Eq
-  | Not      -> Not
-  | Ifte     -> Ifte
-  | EMap(es) -> EMap(Esym.export es)
-
-let rec e_export e =
-  let ty = ty_export e.e_ty in
-  let e = match e.e_node with
-    | V(v)       -> V(Vsym.export v)
-    | H(f,e)     -> H(Hsym.export f, e_export e)
-    | Tuple(es)  -> Tuple(List.map e_export es)
-    | Proj(i,e)  -> Proj(i,e_export e)
-    | Cnst(c)    -> Cnst(c)
-    | App(o,es)  -> App(op_export o, List.map e_export es)
-    | Nary(o,es) -> Nary(o, List.map e_export es)
-    | Exists(e1,e2,h) -> 
-      Exists(e_export e1,e_export e2,
-            List.map (fun (v,h) -> Vsym.export v, Hsym.export h) h)
-  in mk_ee e ty
-
-
+(* \ic{Create Map, Set, and HashTable modules.} *)
 module E = StructMake (struct
   type t = expr
   let tag = e_hash
 end)
-
 module Me = E.M
 module Se = E.S
 module He = E.H
 
-(* ----------------------------------------------------------------------- *)
-(** {2 Indicator functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Indicator functions} *)
 
 let is_V e = match e.e_node with V _ -> true | _ -> false
 
@@ -245,9 +225,17 @@ let is_field_exp e = match e.e_node with
   | Nary(o,_)    -> is_field_nop o
   | _            -> false
 
-(* ----------------------------------------------------------------------- *)
-(** {3 Pretty printing} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Pretty printing} *)
 
+(* \ic{The term $*(+(a,b),c)$ can be printed as $(a + b) * c$
+    or $a + b * c$.
+    We pass enough information to the function call
+    printing $a + b$ to decide if parentheses are
+    required around this expression or not.}
+*)
+
+(* \ic{Pretty print constant.} *)
 let pp_cnst fmt c ty =
   match c with
   | GGen   -> if Groupvar.name (destr_G ty) <> ""
@@ -257,55 +245,38 @@ let pp_cnst fmt c ty =
   | Z      -> F.fprintf fmt "0%%%a" pp_ty ty
   | B b    -> F.fprintf fmt "%b" b
 
-(* The term   *
-             / \
-            %   c
-           / \
-          a   b
-    can be printed as 'a % b # c' or '(a % b) # c'.
-    We pass enough information to the function call
-    printing 'a % b' to decide if parentheses are
-    required around this expression or not.
-*)
-
+(* \ic{Constructor above the current expression.} *)
 type 'a above =
-    PrefixApp (* prefix function application: hash, emap, ... *)
-  | Top
-  | Infix  of 'a gop * int (* infix operator, i-th argument *)
-  | NInfix of nop (* nary infix operator *)
-  | Tup
+    PrefixApp          (*r prefix function application: $f(\ldots)$ *)
+  | Top                (*r topmost, nothing above *)
+  | Infix  of op * int (*r infix operator, i-th argument *)
+  | NInfix of nop      (*r n-ary infix operator *)
+  | Tup                (*r tuple constructor *)
 
-(* Generic function for printing *)
-let pp_if c pp1 pp2 fmt x =
-  match c with
-  | true  -> pp1 fmt x
-  | false -> pp2 fmt x
-
-let pp_enclose hv ~pre ~post pp fmt x =
-  if hv then
-    F.fprintf fmt "%(%)@[<hv>%a@]%(%)" pre pp x post
-  else
-    F.fprintf fmt "%(%)@[<hov>%a@]%(%)" pre pp x post
-
-let pp_paren hv pp fmt x =
-  pp_enclose hv ~pre:"(" ~post:")" pp fmt x
-
-let pp_box hv pp fmt =
-  if hv then
-    F.fprintf fmt "@[<hv>%a@]" pp
-  else
-    F.fprintf fmt "@[<hov>%a@]" pp
-
-let pp_maybe_paren hv c pp =
-   pp_if c (pp_paren hv) (pp_box hv) pp
-
-(* above does not have separators that allow to leave out parentheses *)
+(* \ic{Above does not have separators that allow to leave out parentheses.} *)
 let notsep above = above <> Top && above <> PrefixApp && above <> Tup
 
+(* \ic{Surround with an [hv] or [hov] box.} *)
+let pp_box hv pp fmt =
+  if hv
+  then F.fprintf fmt "@[<hv>%a@]" pp
+  else F.fprintf fmt "@[<hov>%a@]" pp
+
+(* \ic{Enclose with given format strings.} *)
+let pp_enclose hv ~pre ~post pp fmt x =
+  F.fprintf fmt "%(%)%a%(%)" pre (pp_box hv pp) x post
+
+(* \ic{Enclose with parens.} *)
+let pp_paren hv = pp_enclose hv ~pre:"(" ~post:")"
+
+(* \ic{Enclose with parens depending on boolean argument.} *)
+let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
+
+(* \ic{Pretty-prints expression assuming that
+       the expression above is of given type.} *)
 let rec pp_exp_p above fmt e =
   match e.e_node with
   | V(v)       -> 
-    (* F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
     F.fprintf fmt "%a" Vsym.pp v
   | H(h,e)     -> 
     F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p PrefixApp) e
@@ -326,6 +297,8 @@ let rec pp_exp_p above fmt e =
         (pp_exp_p Top) e1 (pp_exp_p Top) e2 in
     pp_maybe_paren true (notsep above && above<>NInfix(Land)) pp fmt ()
 
+(* \ic{Pretty-prints operator assuming that
+       the expression above is of given type.} *)
 and pp_op_p above fmt (op, es) =
   let pp_bin p op ops a b =
     let pp fmt () = 
@@ -366,6 +339,8 @@ and pp_op_p above fmt (op, es) =
     pp_maybe_paren true (notsep above) pp fmt ()
   | _             -> failwith "pp_op: invalid expression"
 
+(* \ic{Pretty-prints n-ary operator assuming that
+       the expression above is of given type.} *)
 and pp_nop_p above fmt (op,es) =
   let pp_nary hv op ops p =
     pp_maybe_paren hv p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es in
@@ -381,15 +356,16 @@ and pp_nop_p above fmt (op,es) =
       | _ -> notsep above in
     pp_nary false FMult "@,*" p
 
+(* \ic{Pretty-print expressions/operators assuming they are topmost.} *)
 let pp_exp fmt e = pp_exp_p Top fmt e
 let pp_op  fmt x = pp_op_p  Top fmt x
 let pp_nop fmt x = pp_nop_p Top fmt x
 
-(* no parens around tuples *)
+(* \ic{Pretty-printing without parens around tuples.} *)
 let pp_exp_tnp fmt e = pp_exp_p PrefixApp fmt e
 
-(* ----------------------------------------------------------------------- *)
-(** {4 Destructor functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Destructor functions} *)
 
 exception Destr_failure of string
 
@@ -472,222 +448,157 @@ let destr_Exists  e =
   | Exists(e1,e2,vh) -> e1,e2,vh
   | _ -> raise (Destr_failure "Exists")
 
-(* ----------------------------------------------------------------------- *)
-(** {5 Constructor functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(*  \subsection{Constructor functions} *)
 
-(** We use a functor so that we don't have to duplicate code for
-    hashconsed/internal expressions and external expressions. *)
+exception TypeError of (ty * ty * expr * expr option * string)
 
-module type GexprBuild = sig
-  type t
-  val mk : t gexpr_node -> t gty -> t gexpr
-  val ty_equal : t gty -> t gty -> bool
-  val comp : t gexpr -> t gexpr -> int
-  val mk_ty : t gty_node -> t gty
-end
+let ensure_ty_equal ty1 ty2 e1 e2 s =
+  ignore (ty_equal ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
-module ExprBuild : GexprBuild with type t = internal = struct
-  type t = internal
-  let mk = mk_e
-  let comp = e_compare
-  let ty_equal = Type.ty_equal
-  let mk_ty =  mk_ty
-end
+let ensure_ty_G ty s =
+  match ty.ty_node with
+  | G gv -> gv
+  | _    ->
+    failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
-module EexprBuild : GexprBuild with type t = exported = struct
-  type t = exported
-  let mk = mk_ee
-  let comp = compare
-  let ty_equal = (=)
-  let mk_ty = mk_ety
-end
+let ty_G gv = mk_ty (G gv)
+let ty_Fq = mk_ty Fq
+let ty_Bool = mk_ty Bool
+let ty_BS lv = mk_ty (BS lv)
+let ty_Prod tys = mk_ty (Prod tys)
 
-module type S =
-sig
-  type t
-  exception TypeError of (t gty *  t gty * (t gexpr) * (t gexpr) option * string)
-  val ensure_ty_equal : t gty -> t gty -> t gexpr -> t gexpr option -> string -> unit
-  val mk_V : t Vsym.gt -> t gexpr
-  val mk_H : t Hsym.gt -> t gexpr -> t gexpr
-  val mk_Tuple  : (t gexpr) list -> t gexpr
-  val mk_Proj   : int -> t gexpr -> t gexpr
-  val mk_Exists : t gexpr -> t gexpr -> (t Vsym.gt * t Hsym.gt) list -> t gexpr
+let mk_V v = mk_e (V v) v.Vsym.ty
   
-  val mk_GGen  : t Groupvar.gid -> t gexpr
-  val mk_FNat  : int -> t gexpr
-  val mk_FZ    : t gexpr
-  val mk_FOne  : t gexpr
-  val mk_Z     : t Lenvar.gid -> t gexpr
-  val mk_B     : bool -> t gexpr
-  val mk_True  : t gexpr
-  val mk_False : t gexpr
+let mk_H h e =
+  ensure_ty_equal e.e_ty h.Hsym.dom e None "mk_H";
+  mk_e (H(h,e)) h.Hsym.codom
 
-  val mk_GMult : t gexpr list -> t gexpr
-  val mk_GExp : t gexpr -> t gexpr -> t gexpr
-  val mk_GLog : t gexpr -> t gexpr
-  val mk_EMap : t Esym.gt -> t gexpr -> t gexpr -> t gexpr
-  val mk_FOpp : t gexpr -> t gexpr
-  val mk_FMinus : t gexpr -> t gexpr -> t gexpr
-  val mk_FInv : t gexpr -> t gexpr
-  val mk_FDiv : t gexpr -> t gexpr -> t gexpr
-  val mk_Eq : t gexpr -> t gexpr -> t gexpr
-  val mk_Not : t gexpr -> t gexpr  
-  val mk_Ifte : t gexpr -> t gexpr -> t gexpr -> t gexpr
+let mk_Tuple es =
+  mk_e (Tuple es) (ty_Prod (L.map (fun e -> e.e_ty) es))
 
-  val mk_FPlus : (t gexpr) list -> t gexpr
-  val mk_FMult : (t gexpr) list -> t gexpr
-  val mk_Xor : (t gexpr) list -> t gexpr
-  val mk_Land : (t gexpr) list -> t gexpr
-end
+let mk_Proj i e = 
+  match e.e_ty.ty_node with
+  | Prod(tys) when i >= 0 && L.length tys > i -> 
+    mk_e (Proj(i,e)) (L.nth tys i)
+  | _ ->
+    let s =
+      F.sprintf
+        "mk_Proj expects product type with at least %i components"
+        (i+1)
+    in
+    raise (TypeError(e.e_ty,e.e_ty,e,None,s))
 
-module Make (E : GexprBuild) : S with type t = E.t =
-struct
-  type t = E.t
-
-  exception TypeError of (E.t gty * E.t gty * E.t gexpr * E.t gexpr option * string)
-
-  let ensure_ty_equal ty1 ty2 e1 e2 s =
-    ignore (E.ty_equal ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
-
-  let ensure_ty_G ty s =
-    match ty.ty_node with
-    | G gv -> gv
-    | _    ->
-      failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
-
-  let ty_G gv = E.mk_ty (G gv)
-  let ty_Fq = E.mk_ty Fq
-  let ty_Bool = E.mk_ty Bool
-  let ty_BS lv = E.mk_ty (BS lv)
-  let ty_Prod tys = E.mk_ty (Prod tys)
-
-  let mk_V v = E.mk (V v) v.Vsym.ty
+let mk_Exists e1 e2 h =
+  ensure_ty_equal e1.e_ty e2.e_ty e1 None "mk_ElemH";
+  L.iter (fun (v,h) ->
+    ensure_ty_equal v.Vsym.ty h.Hsym.dom (mk_V v) None "mk_ElemH") h;
+  mk_e (Exists(e1,e2,h)) ty_Bool
   
-  let mk_H h e =
-    ensure_ty_equal e.e_ty h.Hsym.dom e None "mk_H";
-    E.mk (H(h,e)) h.Hsym.codom
+let mk_Cnst c ty = mk_e (Cnst c) ty
 
-  let mk_Tuple es =
-    E.mk (Tuple es) (ty_Prod (List.map (fun e -> e.e_ty) es))
-
-  let mk_Proj i e = 
-    match e.e_ty.ty_node with
-    | Prod(tys) when i >= 0 && List.length tys > i -> 
-      E.mk (Proj(i,e)) (List.nth tys i)
-    | _ ->
-      (* FIXME: the message you get from this is really confusing,
-        expected t, got t, ..., expected product type *)
-      raise (TypeError(e.e_ty,e.e_ty,e,None,
-             (F.sprintf "mk_Proj expected product type with at least %i components" (i+1))))
-
-  let mk_Exists e1 e2 h =
-    ensure_ty_equal e1.e_ty e2.e_ty e1 None "mk_ElemH";
-    List.iter (fun (v,h) ->
-      ensure_ty_equal v.Vsym.ty h.Hsym.dom (mk_V v) None "mk_ElemH") h;
-    E.mk (Exists(e1,e2,h)) ty_Bool
-  
-  let mk_Cnst c ty = E.mk (Cnst c) ty
-
-  let mk_GGen gv = mk_Cnst GGen (ty_G gv)
-  let mk_FNat n = assert (n >= 0); mk_Cnst (FNat n) ty_Fq
-  let mk_FOne = mk_Cnst (FNat 1) ty_Fq
-  let mk_FZ = mk_Cnst (FNat 0) ty_Fq
-  let mk_Z lv = mk_Cnst Z (ty_BS lv)
-  let mk_B  b = mk_Cnst (B b) ty_Bool
-  let mk_True = mk_B true
-  let mk_False = mk_B false
+let mk_GGen gv = mk_Cnst GGen (ty_G gv)
+let mk_FNat n = assert (n >= 0); mk_Cnst (FNat n) ty_Fq
+let mk_FOne = mk_Cnst (FNat 1) ty_Fq
+let mk_FZ = mk_Cnst (FNat 0) ty_Fq
+let mk_Z lv = mk_Cnst Z (ty_BS lv)
+let mk_B  b = mk_Cnst (B b) ty_Bool
+let mk_True = mk_B true
+let mk_False = mk_B false
 
 
-  let mk_App o es ty = E.mk (App(o,es)) ty
+let mk_App o es ty = mk_e (App(o,es)) ty
 
-  let mk_GExp a b =
-    let gv = ensure_ty_G a.e_ty "mk_GExp" in
-    ensure_ty_equal b.e_ty ty_Fq b None "mk_GExp";
-    mk_App (GExp gv) [a;b] a.e_ty
+let mk_GExp a b =
+  let gv = ensure_ty_G a.e_ty "mk_GExp" in
+  ensure_ty_equal b.e_ty ty_Fq b None "mk_GExp";
+  mk_App (GExp gv) [a;b] a.e_ty
 
-  let mk_GLog a =
-    let gv = ensure_ty_G a.e_ty "mk_GLog" in
-    mk_App (GLog gv) [a] ty_Fq
+let mk_GLog a =
+  let gv = ensure_ty_G a.e_ty "mk_GLog" in
+  mk_App (GLog gv) [a] ty_Fq
 
-  let mk_EMap es a b =
-    ensure_ty_equal a.e_ty (ty_G es.Esym.source1) a None "mk_EMap";
-    ensure_ty_equal b.e_ty (ty_G es.Esym.source2) b None "mk_EMap";
-    mk_App (EMap es) [a;b] (ty_G es.Esym.target)
+let mk_EMap es a b =
+  ensure_ty_equal a.e_ty (ty_G es.Esym.source1) a None "mk_EMap";
+  ensure_ty_equal b.e_ty (ty_G es.Esym.source2) b None "mk_EMap";
+  mk_App (EMap es) [a;b] (ty_G es.Esym.target)
 
-  let mk_FOpp a =
-    ensure_ty_equal a.e_ty ty_Fq a None "mk_FOpp";
-    mk_App FOpp [a] ty_Fq
+let mk_FOpp a =
+  ensure_ty_equal a.e_ty ty_Fq a None "mk_FOpp";
+  mk_App FOpp [a] ty_Fq
 
-  let mk_FMinus a b =
-    ensure_ty_equal a.e_ty ty_Fq a None "mk_FMinus";
-    ensure_ty_equal b.e_ty ty_Fq b None "mk_FMinus";
-    mk_App FMinus [a;b] ty_Fq
+let mk_FMinus a b =
+  ensure_ty_equal a.e_ty ty_Fq a None "mk_FMinus";
+  ensure_ty_equal b.e_ty ty_Fq b None "mk_FMinus";
+  mk_App FMinus [a;b] ty_Fq
 
   let mk_FInv a =
     ensure_ty_equal a.e_ty ty_Fq a None "mk_FInv";
     mk_App FInv [a] ty_Fq
 
-  let mk_FDiv a b =
-    ensure_ty_equal a.e_ty ty_Fq a None "mk_FDiv";
-    ensure_ty_equal b.e_ty ty_Fq b None "mk_FDiv";
-    mk_App FDiv [a;b] ty_Fq
+let mk_FDiv a b =
+  ensure_ty_equal a.e_ty ty_Fq a None "mk_FDiv";
+  ensure_ty_equal b.e_ty ty_Fq b None "mk_FDiv";
+  mk_App FDiv [a;b] ty_Fq
 
-  let mk_Eq a b =
-    ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Eq";
-    mk_App Eq [a;b] ty_Bool
+let mk_Eq a b =
+  ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Eq";
+  mk_App Eq [a;b] ty_Bool
 
-  let mk_Not a =
-    ensure_ty_equal a.e_ty ty_Bool a None "mk_Not";
-    mk_App Not [a] ty_Bool
+let mk_Not a =
+  ensure_ty_equal a.e_ty ty_Bool a None "mk_Not";
+  mk_App Not [a] ty_Bool
 
-  let mk_Ifte a b c =
-    ensure_ty_equal a.e_ty ty_Bool a None "mk_Ifte";
-    ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
-    mk_App Ifte [a;b;c] b.e_ty
+let mk_Ifte a b c =
+  ensure_ty_equal a.e_ty ty_Bool a None "mk_Ifte";
+  ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
+  mk_App Ifte [a;b;c] b.e_ty
 
 
-  let rec flatten nop es =
-    let go e = match e.e_node with
-      | Nary(nop1, es1) when nop1 = nop ->
-        flatten nop es1
-      | _ -> [ e ]
-    in
-    List.concat (List.map go es)
+let rec flatten nop es =
+  let go e = match e.e_node with
+    | Nary(nop1, es1) when nop1 = nop ->
+      flatten nop es1
+    | _ -> [ e ]
+  in
+  L.concat (L.map go es)
 
-  let mk_nary s sort o es ty =
-    let es = flatten o es in
-    let es = if sort then List.sort E.comp es else es in
-    match es with
-    | []  -> failwith (F.sprintf "%s: empty list given" s);
-    | [a] -> a
-    | _   -> List.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
-             E.mk (Nary(o,es)) ty
+let mk_nary s sort o es ty =
+  let es = flatten o es in
+  let es = if sort then L.sort e_compare es else es in
+  match es with
+  | []  -> failwith (F.sprintf "%s: empty list given" s);
+  | [a] -> a
+  | _   ->
+    L.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
+    mk_e (Nary(o,es)) ty
 
-  let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es ty_Fq 
-  let mk_FMult es = mk_nary "mk_FMult" true FMult es ty_Fq
-  let mk_Xor es = match es with
-    | e::_ -> (match e.e_ty.ty_node with
-               | BS _ | Bool -> mk_nary "mk_Xor" true Xor es e.e_ty
-               | _ -> failwith "mk_Xor: expected bitstring argument")
-    | _ -> failwith "mk_Xor: expected non-empty list"
-  let mk_Land es = mk_nary "mk_Land" false Land es ty_Bool
-  let mk_GMult es =
-    match es with
-    | e::_ ->
-        (match e.e_ty.ty_node with
-         | G gv -> mk_nary "mk_GMult" true GMult es (ty_G gv)
-         | _ -> assert false)
+let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es ty_Fq 
+
+let mk_FMult es = mk_nary "mk_FMult" true FMult es ty_Fq
+
+let mk_Xor es =
+  match es with
+  | e::_ ->
+    begin match e.e_ty.ty_node with
+    | BS _ | Bool -> mk_nary "mk_Xor" true Xor es e.e_ty
+    | _ -> failwith "mk_Xor: expected bitstring argument"
+    end
+  | _ -> failwith "mk_Xor: expected non-empty list"
+
+let mk_Land es = mk_nary "mk_Land" false Land es ty_Bool
+
+let mk_GMult es =
+  match es with
+  | e::_ ->
+    begin match e.e_ty.ty_node with
+    | G gv -> mk_nary "mk_GMult" true GMult es (ty_G gv)
     | _ -> assert false
+    end
+  | _ -> assert false
 
-end
-
-module Constructors : S with type t = internal = Make(ExprBuild) 
-module EConstructors : S with type t = exported = Make(EexprBuild)
-
-include Constructors
-
-(* ----------------------------------------------------------------------- *)
-(** {6 Generic functions on [expr]} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Generic functions on expressions} *)
 
 let sub_map g e = 
   match e.e_node with
@@ -730,14 +641,14 @@ let e_sub_fold g acc e =
   | V _ | Cnst _ -> acc
   | H(_,e) | Proj(_, e) -> g acc e
   | Exists(e1,e2,_) -> g (g acc e1) e2
-  | Tuple(es) | App(_, es) | Nary(_, es)-> List.fold_left g acc es
+  | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
   | H(_,e) | Proj(_, e) -> g e
   | Exists(e1,e2,_) -> g e1; g e2
-  | Tuple(es) | App(_, es) | Nary(_, es)-> List.iter g es
+  | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
 
 let rec e_iter g e =
   g e; e_sub_iter (e_iter g) e
@@ -754,8 +665,8 @@ let e_sub_forall f =
 let rec e_forall f e = 
   f e && e_sub_forall (e_forall f) e
 
-let e_find (type t) f (e : t gexpr) = 
-  let module E = struct exception Found of (t gexpr) end in
+let e_find f (e : expr) = 
+  let module E = struct exception Found of expr end in
   let rec aux e = 
     if f e then raise (E.Found e)
     else e_sub_iter aux e in
@@ -782,7 +693,7 @@ let e_ty_outermost ty e =
 
 let has_log e = e_exists (fun e -> is_GLog e) e
 
-(* FIXME: is this sufficient? *)
+(*i FIXME: is this sufficient? i*)
 let is_ppt e = not (has_log e)
 
 let e_map f = 
@@ -811,8 +722,7 @@ let e_replace e1 e2 =
 
 let e_subst s = e_map_top (fun e -> Me.find e s)
 
-let se_of_list = List.fold_left (fun s e -> Se.add e s) Se.empty
-
+let se_of_list = L.fold_left (fun s e -> Se.add e s) Se.empty
 
 type ctxt = Vsym.t * expr
 
@@ -821,22 +731,21 @@ let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 let typeError_to_string (ty1,ty2,e1,me2,s) =
   match me2 with
   | Some e2 -> 
-      format_to_string (fun fmt ->
-        F.fprintf fmt "incompatible types `%a' vs. `%a' for expressions `%a' and `%a' in %s"
-          pp_ty ty1 pp_ty ty2 pp_exp e1 pp_exp e2 s)
+    fsprintf
+      "incompatible types `%a' vs. `%a' for expressions `%a' and `%a' in %s"
+      pp_ty ty1 pp_ty ty2 pp_exp e1 pp_exp e2 s
   | None when ty_equal ty1 ty2 ->
-      format_to_string (fun fmt ->
-        F.fprintf fmt "type error in `%a' of type %a: %s" pp_exp e1 pp_ty ty1 s)
+    fsprintf "type error in `%a' of type %a: %s" pp_exp e1 pp_ty ty1 s
   | None ->
-      format_to_string (fun fmt ->
-        F.fprintf fmt "expected type `%a', got  `%a' for Expression `%a': %s"
-          pp_ty ty1 pp_ty ty2 pp_exp e1 s)
+    fsprintf
+      "expected type `%a', got  `%a' for Expression `%a': %s"
+      pp_ty ty1 pp_ty ty2 pp_exp e1 s
 
 let catch_TypeError f =
   try f()
-  with Constructors.TypeError(ty1,ty2,e1,me2,s) ->
+  with TypeError(ty1,ty2,e1,me2,s) ->
     print_string (typeError_to_string (ty1,ty2,e1,me2,s));
-    raise (Constructors.TypeError(ty1,ty2,e1,me2,s))
+    raise (TypeError(ty1,ty2,e1,me2,s))
 
 let sub t = 
   let rec aux e1 e2 = 
@@ -849,8 +758,8 @@ let sub t =
     | Fq   -> mk_FMinus e1 e2, mk_FZ
     | Prod lt ->
       let es, zs = 
-        List.split 
-          (List.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
+        L.split 
+          (L.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
       mk_Tuple es, mk_Tuple zs in
   let x1 =  Vsym.mk "x"  t in
   let x2 = Vsym.mk "x" t in
@@ -861,13 +770,9 @@ let mk_Zero t = snd (sub t)
 
 let rec is_Zero e = 
   match e.e_node with
-  | Cnst (B false) -> true
-  | Cnst (FNat 0) -> true
-  | Cnst Z -> true
-  | Tuple es -> List.for_all is_Zero es
-  | App(GExp _, [e1;e2]) -> 
-    is_Zero e2 || is_Zero e1
-  | _ -> false
-
-
-    
+  | Cnst (B false)       -> true
+  | Cnst (FNat 0)        -> true
+  | Cnst Z               -> true
+  | Tuple es             -> L.for_all is_Zero es
+  | App(GExp _, [e1;e2]) -> is_Zero e2 || is_Zero e1
+  | _                    -> false

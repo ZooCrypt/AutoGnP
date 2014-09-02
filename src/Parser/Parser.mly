@@ -90,6 +90,7 @@
 %token RSWAP
 %token REQUIV
 %token RINDEP
+%token RSIMP  
 %token RBAD
 %token RCASE_EV
 %token RFALSE_EV
@@ -332,33 +333,34 @@ instr :
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
-| ASSUMPTION_DECISIONAL d=dir s=ID xs=ID* { Apply (Rassm_decisional(d,s,xs))}
-| ASSUMPTION_COMPUTATIONAL s=ID e = expr0 { Apply (Rassm_computational(s,e))}
+| ASSUMPTION_DECISIONAL d=dir s=ID xs=ID* { Apply (Rassm_dec(d,s,xs))}
+| ASSUMPTION_COMPUTATIONAL s=ID e = expr0 { Apply (Rassm_comp(s,e))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event? { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }
 | REXCEPT i = NAT es = expr0* { Apply(Rexcept(i-1,es)) }
-| REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_oracle(op,es)) }
+| REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_orcl(op,es)) }
 | RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN
                   LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  i3 = ID { Apply(Rrandom(i-1,Some(i1,e1),Some(i2,e2),i3)) }
+                  i3 = ID { Apply(Rrnd(i-1,Some(i1,e1),Some(i2,e2),i3)) }
 | RRANDOM i = NAT UNDERSCORE
                   LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  i3 = ID { Apply(Rrandom(i-1,None,Some(i2,e2),i3)) }
+                  i3 = ID { Apply(Rrnd(i-1,None,Some(i2,e2),i3)) }
 | RRANDOM i = NAT UNDERSCORE
                   UNDERSCORE
-                  i3 = ID { Apply(Rrandom(i-1,None,None,i3)) }
+                  i3 = ID { Apply(Rrnd(i-1,None,None,i3)) }
+| RSIMP { Apply(Rsimp) }
 | RRANDOM_ORACLE op = opos
                  LPAREN i1 = ID TO e1 = expr0 RPAREN
                  LPAREN i2 = ID TO e2 = expr0 RPAREN
                  i3 = ID
-                 { Apply(Rrandom_oracle(op,Some(i1,e1),i2,e2,i3)) }
+                 { Apply(Rrnd_orcl(op,Some(i1,e1),i2,e2,i3)) }
 | RRANDOM_ORACLE op = opos
                  UNDERSCORE
                  LPAREN i2 = ID TO e2 = expr0 RPAREN
                  i3 = ID
-                 { Apply(Rrandom_oracle(op,None,i2,e2,i3)) }
+                 { Apply(Rrnd_orcl(op,None,i2,e2,i3)) }
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN j = NAT
    { Apply(Rctxt_ev(i1,e1,j - 1)) }
@@ -371,7 +373,7 @@ instr :
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
    { Apply(Rctxt_ev(i1,e1,0)) }
 | RFALSE_EV {Apply(Rfalse_ev)}
-| RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_oracle(op,d)) }
+| RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_orcl(op,d)) }
 | RREWRITE_EV i = int d = dir { Apply(Rrewrite_ev(i - 1,d)) }
 | EXTRACT s=STRING { Extract s }
 

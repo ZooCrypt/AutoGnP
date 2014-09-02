@@ -1,6 +1,8 @@
-(** Normal form computation for expressions. *)
+(*s Normal form computation for expressions. *)
 
+(*i*)
 open Expr
+(*i*)
 
 (** [norm_expr e] computes the normal form of the expression [e]. *)
 val norm_expr : expr -> expr

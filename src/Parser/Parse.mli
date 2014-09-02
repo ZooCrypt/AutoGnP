@@ -1,4 +1,4 @@
-(** Wrapper functions for parser with error handling. *)
+(*s Wrapper functions for parser with error handling. *)
 
 val ty : string -> ParserUtil.parse_ty
 

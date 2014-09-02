@@ -1,6 +1,8 @@
 adversary A1 : G -> (BS_k * BS_k).
 adversary A2 : (G * BS_k) -> Bool.
+
 random oracle H : G -> BS_k.
+
 assumption ddh
   [ x <-$ Fq; y <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]

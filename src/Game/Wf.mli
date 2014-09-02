@@ -1,4 +1,9 @@
-(** Well-formedness of games. *)
+(*s Well-formedness of games. *)
+
+(*i*)
+open Syms
+open Gsyms
+(*i*)
 
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
@@ -23,7 +28,7 @@ val wf_lcmds : wf_check_type -> wf_state -> Game.lcmd list -> wf_state
 val wf_odef :
   wf_check_type ->
   wf_state ->
-  IdType.internal Osym.gt * Vsym.S.elt list * Game.lcmd list * Expr.expr ->
+  Osym.t * Vsym.S.elt list * Game.lcmd list * Expr.expr ->
   unit
 
 val wf_gdef : wf_check_type -> Game.gcmd list -> wf_state

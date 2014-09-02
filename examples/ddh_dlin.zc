@@ -1,0 +1,55 @@
+adversary A1 : (G * G * G * G * G) -> Bool.
+
+assumption_decisional ddh
+  [ x <-$ Fq; y <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
+    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
+    x y z.
+
+prove
+  [ a1 <-$ Fq;
+    a2 <-$ Fq;
+    r1 <-$ Fq;
+    r2 <-$ Fq;
+    u  <-$ Fq;
+    b  <-$ Bool;
+    b' <- A1(g^a1, g^a2, g^(a1*r1), g^(a2*r2), b?g^(r1+r2):g^u);
+  ] : b = b'.
+
+rswap 3 -1.
+rnorm_unknown a1 r1.
+rlet_abstract 3 ga1 g^a1.
+rlet_abstract 4 gr1 g^r1.
+rlet_abstract 5 gar g^(a1*r1).
+assumption_decisional -> ddh c1. rnorm.
+
+rrandom 2 _ _ tmp.
+
+
+(b?g^(r1+rr):g^(u+rr)) = r3 + (b?g^(r1+r2):g^u)
+ 
+(* simplification rule for pushing ifte inwards *)
+(* 
+   push_if
+   subst b?C[x]:C[y] = C[b?x:y]
+
+   rule for merging random variables:
+   r1 <-$ D
+   r2 <-$ D
+   all occurences in context b?r1:r2
+   -> replace b?r1:r2 by r1
+
+  G= r<- ; G'{b?r1:r2 / r} r1, r2 not used G' 
+*)
+(* rule for dead-code elimination *)
+
+O(b)
+  r1 <-$
+  r2 <-$
+  return b?r1:r2
+...
+
+O'(b)
+  r <-$
+  return r

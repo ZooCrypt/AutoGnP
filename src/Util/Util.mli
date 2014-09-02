@@ -1,5 +1,8 @@
-(** This module defines types tagged with [int]s and some convenience functor applications
-    for maps, sets, hashtables, lists, and pretty printing. *)
+(*s This module defines types tagged with [int]s, some convenience functor
+    applications for maps, sets, hashtables, and some convenience functions
+    for lists and pretty printing. *)
+
+(* \subsection{Convenience Functors} *)
 
 (** [tag] converts [t] into an [int]. The function must be injective. *)
 module type Tagged = sig type t val tag : t -> int end
@@ -43,8 +46,37 @@ module Hint : Hashtbl.S with type key = int
 module Sstring : Set.S with type elt = string
 module Mstring : Map.S with type key = string
 
+(* \subsection{Misc functions} *)
+
 (** Returns a unique (in a program execution) [int]. *)
 val unique_int : unit -> int
+
+(** [exc_to_opt f] returns [None] if [f ()] raises an
+    exception and [Some (f ())] otherwise. *)
+val exc_to_opt : (unit -> 'a) -> 'a option
+
+(** [map_opt f o] returns [None] if [o] is [None] and
+    applies [f] to the value contained in [o] otherwise *)
+val map_opt : ('a -> 'b) -> 'a option -> 'b option
+
+val swap : 'a * 'b -> 'b * 'a
+
+(** [compare_on f x y] yields the comparison [compare (f x) (f y)] *)
+val compare_on : ('a -> 'b) -> 'a -> 'a -> int
+
+val input_file : string -> string
+
+val output_file : string -> string -> unit
+
+val assert_msg : bool -> string -> unit
+
+type ('a,'b) either = Left of 'a | Right of 'b
+
+type direction = LeftToRight | RightToLeft
+
+val id : 'a -> 'a
+
+(* \subsection{List functions} *)
 
 (** Same as [List.list_for_all2], but returns [false] if lists have different lengths. *)
 val list_eq_for_all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
@@ -62,50 +94,47 @@ val drop : int -> 'a list -> 'a list
     is shorter than [k], then fewer elements are returned.  *)
 val take : int -> 'a list -> 'a list
 
-(** [split_n k l] return rhd, a, tl such that 
-    l = List.rev_append rhd (a::tl) and List.length rhd = k *)
+(** [split_n k l] return [rhd], [a], [tl] such that 
+    [l = List.rev\_append rhd (a::tl)] and [List.length rhd = k] *)
 val split_n : int -> 'a list -> 'a list * 'a * 'a list
 
-(** [cut_n k l] return rhd, tl such that 
-    l = List.rev_append rhd tl and List.length rhd = k *)
+(** [cut_n k l] returns rhd, tl such that 
+    [l = List.rev_append rhd tl] and [List.length rhd = k] *)
 val cut_n : int -> 'a list -> 'a list * 'a list
 
 (** [filter_map f l] returns the list corresponding to apply [f] to each 
    elements of [l] and keep the one returning [Some] *)
 val filter_map : ('a -> 'b option) -> 'a list -> 'b list
+
 (** [list_from_to i j] returns the list with all natural
      numbers from [i] to [j-1]. *)
 val list_from_to : int -> int -> int list
 
-(** [x |> f] is equivalent to [f x]. *)
-(* val (|>) : 'a -> ('a -> 'b) -> 'b *)
-
-(** [exc_to_opt f] returns [None] if [f ()] raises an
-    exception and [Some (f ())] otherwise. *)
-val exc_to_opt : (unit -> 'a) -> 'a option
-
-(** [map_opt f o] returns [None] if [o] is [None] and
-    applies [f] to the value contained in [o] otherwise *)
-val map_opt : ('a -> 'b) -> 'a option -> 'b option
-
-(** [format_to_string f] executes [f ()] and returns the resulting string. *)
-val format_to_string : (F.formatter -> unit) -> string
-
-(** [fsprintf f] executes the format function with the standard
-    string formatter. *)
-val fsprintf : ('a, F.formatter, unit, string) format4 -> 'a
-
 val replicate_r : 'a list -> int -> 'a -> 'a list
+
 val replicate   : int -> 'a -> 'a list
 
-(* TODO remove this *)
-val massoc : 'k -> ('k * 'v) list -> 'v option
+val lefts : (('a,'b) either) list -> 'a list
 
-val swap : 'a * 'b -> 'b * 'a
+val rights : (('a,'b) either) list -> 'b list
 
-(** [compare_on f x y] yields the comparison
-    [compare (f x) (f y)] *)
-val compare_on : ('a -> 'b) -> 'a -> 'a -> int
+val lefts_rights : (('a,'b) either) list -> ('a list * 'b list)
+
+val cat_Some : 'a option list -> 'a list
+
+(* \subsection{String functions} *)
+
+val splitn : string -> char -> string list
+
+val splitn_by : string -> (string -> int -> bool) -> string list
+
+val string_find_from : string -> string -> int -> int option
+
+val string_rfind_from : string -> string -> int -> int option
+
+val split : string -> char -> (string * string) option
+
+(* \subsection{Pretty printing} *)
 
 (** [pplist sep pp_elt f l] takes a formatter [f], a separator
     [sep], and a pretty printer for ['e] and returns a
@@ -121,37 +150,14 @@ val pp_list_s : F.formatter -> string list -> unit
 
 val pp_string : F.formatter -> string -> unit
 
-val input_file : string -> string
+val pp_if : bool -> ('a -> 'b -> 'c) -> ('a -> 'b -> 'c) -> 'a -> 'b -> 'c
 
-val output_file : string -> string -> unit
+(** [fsprintf f] executes the format function with the standard
+    string formatter. *)
+val fsprintf : ('a, F.formatter, unit, string) format4 -> 'a
 
-val assert_msg : bool -> string -> unit
 
-type ('a,'b) either = Left of 'a | Right of 'b
-
-val lefts : (('a,'b) either) list -> 'a list
-
-val rights : (('a,'b) either) list -> 'b list
-
-val lefts_rights : (('a,'b) either) list -> ('a list * 'b list)
-
-type direction = LeftToRight | RightToLeft
-
-val id : 'a -> 'a
-
-val cat_Some : 'a option list -> 'a list
-
-val splitn : string -> char -> string list
-
-val splitn_by : string -> (string -> int -> bool) -> string list
-
-val string_find_from : string -> string -> int -> int option
-
-val string_rfind_from : string -> string -> int -> int option
-
-val split : string -> char -> (string * string) option
-
-(* Exception *)
+(* \subsection{Exception required by Logic modules} *)
 
 exception Invalid_rule of string 
 

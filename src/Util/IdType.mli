@@ -1,9 +1,8 @@
-(** Type for exported and internal (abstract) identifiers. *)
+(*s Type for exported and internal (abstract) identifiers. *)
 
+(*i*)
 open Util
-
-(*  Note: This should be an [mli], but then we get a linking
-    error. *)
+(*i*)
 
 (** {!exported} is used as phantom type for [ID.gid] denoting exported
   identifiers where the tag may not be internal. *)
@@ -14,6 +13,7 @@ type exported
 type internal = private exported
 
 module type ID = sig
+
   (** {!gid}s consist of a name and a tag and can be {!internal} or {!exported}. *)
   type 'a gid
 

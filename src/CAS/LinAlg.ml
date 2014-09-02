@@ -1,10 +1,12 @@
-(** Simple linear algebra (equation solving) over F_2. *)
+(*s Simple linear algebra (equation solving) over $F_2$. *)
 
+(*i*)
 open Util
 open Array
+(*i*)
 
-(* ----------------------------------------------------------------------- *)
-(** {1 Types and utility functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Types and utility functions} *)
 
 type col = int
 
@@ -50,10 +52,10 @@ let iter_cols_with_sol m f =
     f c
   done
 
-(* ----------------------------------------------------------------------- *)
-(** {2 Equation solving} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Equation solving} *)
 
-(* find all-zero columns and columns that only have one non-zero entry *)
+(** Find all-zero columns and columns that only have one non-zero entry. *)
 let classify_cols m =
   let col_is_z    = make (cols m + 1) false in (* i-th column is zero vector, also track for solution *)
   let col_is_std  = make (cols m + 1) false     in (* i-th column is standard basis vector *)
@@ -105,10 +107,6 @@ let reduce_pivot m r c =
     if r' <> r && m.(r').(c) = true then
       add_row_to m r' r)
 
-(* let add_col vs a =
-  let i = ref (-1) in
-  List.map (fun v -> i := !i + 1; append v (make 1 a.(!i))) vs
- *)
 
 let transpose m =
   let rownum = length m in
@@ -123,9 +121,7 @@ let transpose m =
 
 let solve (m0 : (bool array) list) (b : bool array) =
   let m = of_list (m0 @ [b]) in
-  (* F.printf "%a%!\n\n" (pp_matrix (fun fmt b -> F.fprintf fmt "%i" (if b then 1 else 0)))  m; *)
   let m = transpose m in
-  (* F.printf "%a%!\n\n" (pp_matrix (fun fmt b -> F.fprintf fmt "%i" (if b then 1 else 0)))  m; *)
   let rec go () =
     match is_solved m with
     | Pivot(r,c) ->
@@ -134,6 +130,7 @@ let solve (m0 : (bool array) list) (b : bool array) =
     | Solved s -> s
   in go ()
 
+(*i*)
 (* ----------------------------------------------------------------------- *)
 (** {3 Tests} *)
 
@@ -157,3 +154,4 @@ let _test () =
   ignore (solve (to_list m) b);
   F.printf "%a%!\n\n" (pp_matrix (fun fmt b -> F.fprintf fmt "%i" (if b then 1 else 0)))  m
 
+(*i*)

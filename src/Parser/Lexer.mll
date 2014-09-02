@@ -61,6 +61,7 @@ rule lex = parse
   | "rlet_unfold"  { RLET_UNFOLD }
   | "rrewrite_oracle"  { RREWRITE_ORACLE }  
   | "rrewrite_ev" { RREWRITE_EV }
+  | "rsimp" { RSIMP }
   | "rsplit_ev" { RSPLIT_EV }
   | "rfalse_ev" { RFALSE_EV }
   | "with"  { WITH }
@@ -126,4 +127,3 @@ and string buf = parse
   | _ as c        { Buffer.add_char buf c   ; string buf lexbuf }
 
   | eof           { unterminated_string () }
-

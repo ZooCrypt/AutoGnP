@@ -1,4 +1,4 @@
-<src/Util> or <src/Type> or <src/Expr> or <src/Test>: include
+<src/Util> or <src/Expr> or <src/Test>: include
 
 <src/Logic> or <src/Tactic> or <src/Symbolic> or <src/Extract>: include
 

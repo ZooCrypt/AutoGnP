@@ -1,12 +1,14 @@
-(** Normed field expressions and polynomials. *)
+(*s Normed field expressions and polynomials. *)
 
+(*i*)
 open Expr
+(*i*)
 
 (** [is_norm_field_exp e] returns true if
     [e] is in normal-form as a field expression.
     The function only considers the outermost
     field context. *)
-val is_norm_field_exp : 'a gexpr -> bool
+val is_norm_field_exp : expr -> bool
 
 type 'a monom = ('a * int) list
 

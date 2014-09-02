@@ -1,3 +1,10 @@
+(*s This module defines types tagged with [int]s, some convenience functor
+    applications for maps, sets, hashtables, and some convenience functions
+    for lists and pretty printing. *)
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Convenience Functors} *)
+
 module type Tagged = sig
   type t
   val tag : t -> int
@@ -14,7 +21,7 @@ end
 module OrderedHash (X : Tagged) : OrderedHash with type t = X.t = struct
   type t = X.t
   let hash t = X.tag t
-  let equal t1 t2 = X.tag t1 = X.tag t2 (* FIXME: is there really a speedup using == on int *)
+  let equal t1 t2 = X.tag t1 = X.tag t2
   let compare t1 t2 = Pervasives.compare (X.tag t1) (X.tag t2)
 end
 
@@ -41,9 +48,50 @@ module Hint = Ints.H
 module Mstring = Map.Make(String)
 module Sstring = Set.Make(String)
 
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Misc functions} *)
+
 let unique_int () = Oo.id (object end)
 
-(* ----------------------------------------------------------------------- *)
+let exc_to_opt f = try Some (f ()) with _ -> None
+
+let map_opt f m = match m with
+  | Some x -> Some (f x)
+  | None -> None
+
+let swap (x,y) = (y,x)
+
+let compare_on f x y = compare (f x) (f y)
+
+let input_file file_name =
+  let in_channel = open_in file_name in
+  let rec go lines =
+    try
+      let l = input_line in_channel in
+      go (l :: lines)
+    with
+      End_of_file -> lines
+  in
+  let lines = go [] in
+  let _ = close_in_noerr in_channel in
+  String.concat "\n" (List.rev lines)
+
+let output_file file_name content =
+  let out_channel = open_out file_name in
+  output_string out_channel content;
+  close_out_noerr out_channel
+
+let assert_msg b m = if not b then failwith m
+
+type ('a,'b) either = Left of 'a | Right of 'b
+
+type direction = LeftToRight | RightToLeft
+
+let id x = x
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{List functions} *)
 
 let list_eq_for_all2 f l1 l2 =
   try List.for_all2 f l1 l2 with _ -> false
@@ -75,7 +123,8 @@ let split_n i l =
     | [] -> assert false
     | x::xs ->
       if i = 0 then r,x,xs
-      else aux (i-1) (x::r) xs in
+      else aux (i-1) (x::r) xs
+  in
   aux i [] l
 
 let cut_n i l = 
@@ -83,7 +132,8 @@ let cut_n i l =
     match  l with
     | _ when i <= 0 -> r, l
     | [] -> assert false 
-    | a::l -> aux (i-1) (a::r) l in
+    | a::l -> aux (i-1) (a::r) l
+  in
   aux i [] l
 
 let rec filter_map f l = 
@@ -94,84 +144,16 @@ let rec filter_map f l =
     | None -> filter_map f l
     | Some z -> z::filter_map f l
 
-      
-let list_from_to i j = (* [i,j), i.e., excluding j *)
+(** For interval $[i,j)$, i.e., excluding $j$. *)
+let list_from_to i j =
   let rec go aux i = if i >= j then aux else go (i::aux) (i+1)
   in List.rev (go [] i)
-
-(* let (|>) x f = f x *)
-
-let format_to_string f = 
-  ignore (F.flush_str_formatter ());
-  f F.str_formatter;
-  F.flush_str_formatter ()
-
-(* let fsprintf fm = F.fprintf F.str_formatter fm *)
-
-(* let fsget _ = F.flush_str_formatter () *)
-
-let compare_on f x y = compare (f x) (f y)
-
-let exc_to_opt f = try Some (f ()) with _ -> None
-
-let map_opt f m = match m with
-  | Some x -> Some (f x)
-  | None -> None
-
-(* let rec group xs0 =
-  let rec go acc xs = match (acc,xs) with
-        | ([],[])  -> []
-        | (acc,[]) -> [acc]
-        | ([],y::ys) -> go [y] ys
-        | (b::bs, y::ys) -> if b = y then go (b::y::bs) ys else (b::bs)::(go [y] ys)
-  in go [] xs0
-*)
-
-(* let nub_sort xs = map hd (group (sort compare xs)) *)
 
 let rec replicate_r acc i x =
   if i <= 0 then acc 
   else replicate_r (x::acc) (i-1) x
   
 let replicate i x = replicate_r [] i x
-
-let massoc v l = try Some (List.assoc v l) with Not_found -> None
-
-let swap (x,y) = (y,x)
-
-let rec pp_list sep pp_elt f l =
-  match l with
-  | [] -> ()
-  | [e] -> pp_elt f e
-  | e::l -> F.fprintf f "%a%(%)%a" pp_elt e sep (pp_list sep pp_elt) l
-
-let pp_list_c pe = (pp_list "," pe)
-let pp_list_s = pp_list_c (fun fmt -> F.fprintf fmt "%s")
-
-let pp_string fmt s = F.fprintf fmt "%s" s
-
-let input_file file_name =
-  let in_channel = open_in file_name in
-  let rec go lines =
-    try
-      let l = input_line in_channel in
-      go (l :: lines)
-    with
-      End_of_file -> lines
-  in
-  let lines = go [] in
-  let _ = close_in_noerr in_channel in
-  String.concat "\n" (List.rev lines)
-
-let output_file file_name content =
-  let out_channel = open_out file_name in
-  output_string out_channel content;
-  close_out_noerr out_channel
-
-let assert_msg b m =
-  if not b then failwith m
-
-type ('a,'b) either = Left of 'a | Right of 'b
 
 let lefts l =
   let rec go acc xs = match xs with
@@ -194,16 +176,16 @@ let lefts_rights l =
     | [] -> (List.rev lacc, List.rev racc)
   in go [] [] l
 
-type direction = LeftToRight | RightToLeft
-
-let id x = x
-
 let cat_Some l =
   let rec go acc xs = match xs with
     | Some(x)::xs  -> go (x::acc) xs
     | None::xs     -> go acc      xs
     | [] -> List.rev acc
   in go [] l
+
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{String functions} *)
 
 let splitn s sep =
   if s = "" then []
@@ -272,7 +254,35 @@ let split s sep =
       Some (a, b)
   | None   -> None
 
-(** Exception *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Pretty printing} *)
+
+let rec pp_list sep pp_elt f l =
+  match l with
+  | [] -> ()
+  | [e] -> pp_elt f e
+  | e::l -> F.fprintf f "%a%(%)%a" pp_elt e sep (pp_list sep pp_elt) l
+
+let pp_list_c pe = (pp_list "," pe)
+let pp_list_s = pp_list_c (fun fmt -> F.fprintf fmt "%s")
+
+let pp_string fmt s = F.fprintf fmt "%s" s
+
+let pp_if c pp1 pp2 fmt x =
+  if c then pp1 fmt x else pp2 fmt x
+
+let fsprintf fmt =
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  F.kfprintf
+    (fun _ ->
+      F.pp_print_flush fbuf ();
+      (Buffer.contents buf))
+    fbuf fmt
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Exception required by Logic modules} *)
+
 exception Invalid_rule of string 
 
 let tacerror fmt =
@@ -282,13 +292,4 @@ let tacerror fmt =
     (fun _ ->
       F.pp_print_flush fbuf ();
       raise (Invalid_rule (Buffer.contents buf)))
-    fbuf fmt
-
-let fsprintf fmt =
-  let buf  = Buffer.create 127 in
-  let fbuf = F.formatter_of_buffer buf in
-  F.kfprintf
-    (fun _ ->
-      F.pp_print_flush fbuf ();
-      (Buffer.contents buf))
     fbuf fmt

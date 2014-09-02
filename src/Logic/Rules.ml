@@ -1,48 +1,56 @@
+(*s Derived higher-level tactics. *)
+
+(*i*)
 open Game
 open CoreRules
 open Expr
 open Norm
 open Util
+open Syms
+(*i*)
 
-(** {1 Composition tactic } *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Operators for tacticals} *)
 
 let ( @. ) = t_seq 
-let ( @+) t ts g = 
-  t_subgoal ts (t g)
+
+let ( @+) t ts g = t_subgoal ts (t g)
 
 let ( @| ) = t_or
 
-(** {2 Logical rules built on top of core rules. *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Derived rewriting tactics} *)
 
-(* unfold all lets and norm *)
+(** Unfold all lets and norm. *)
 let t_norm ju =
   let new_ju = norm_ju ~norm:norm_expr_def ju in
   t_conv true new_ju ju
 
+(** Unfold all lets and norm, also remove tuple projection. *)
 let t_norm_tuple_proj ju = 
   let norm e = remove_tuple_proj (norm_expr_def e) in
   let new_ju = norm_ju ~norm ju in
   t_conv true new_ju ju
 
-(* norm without unfolding *)
+(** Norm without unfolding. *)
 let t_norm_nounfold ju = 
   let new_ju = map_ju_exp norm_expr_def ju in
   t_conv true new_ju ju
 
 
-(* unfold without norm *)
+(** Unfold without norm. *)
 let t_unfold_only ju = 
   let new_ju = norm_ju ~norm:(fun x -> x) ju in
   t_conv false new_ju ju
 
-(* [simp e unknown] takes an exponent expression [e] and a
+(*i [simp e unknown] takes an exponent expression [e] and a
    set [unknown] of unknown expressions.
    It returns a pair [(ges,mdenom)] where [mdenom] is 
    a denominator using [None] to encode [1] and [ges] is a
    list of of triples (b,ue,ke) representing (b^ue)^ke
    where [None] encodes the default group generator.
    The whole list [ges] represent the product of group
-   elements in [ges]. *)
+   elements in [ges]. i*)
 let simp_exp e unknown =
   let norm_mult es = mk_FMult (List.sort e_compare es) in
   let norm_fopp e  = mk_FOpp e in
@@ -106,10 +114,10 @@ let rewrite_exps unknown e0 =
   in
   go e0
 
-(* norm and try to rewrite all exponentiations as products of
+(*i norm and try to rewrite all exponentiations as products of
    (g^i)^o or X where i might be unknown, but o is not unknown.
    If there is a "let z=g^i" we can replace g^i by z in the next
-   step. *)
+   step. i*)
 let t_norm_unknown unknown ju =
   let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
   let new_ju = map_ju_exp norm ju in
@@ -118,7 +126,7 @@ let t_norm_unknown unknown ju =
 let t_let_abstract p vs e ju =
   let l,r = Util.cut_n p ju.ju_gdef in
   let v = mk_V vs in
-  (* could also try to normalize given expression *)
+  (*c could also try to normalize given expression *)
   let subst a = e_replace e v a in
   let new_ju = { ju_gdef = List.rev_append l (GLet(vs, e)::map_gdef_exp subst r);
                  ju_ev = subst ju.ju_ev }
@@ -137,7 +145,10 @@ let t_let_unfold p ju =
   | _ -> tacerror "rlet_unfold: no let at given position"
 
 
-let t_assm_decisional dir assm subst ju =
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Derived tactics for dealing with assumptions} *)
+
+let t_assm_dec dir assm subst ju =
   let c = 
     if dir = LeftToRight then assm.Assumption.ad_prefix1 
     else assm.Assumption.ad_prefix1 in
@@ -150,9 +161,9 @@ let t_assm_decisional dir assm subst ju =
         Vsym.M.add x1 x2 s
       | _ -> tacerror "assumption_decisional : can not infer substitution")
       subst c jc in
-  t_assm_decision dir subst assm ju
+  t_assm_dec dir subst assm ju
 
-let t_assm_computational assm ev_e ju =
+let t_assm_comp assm ev_e ju =
   let c = assm.Assumption.ac_prefix in
   let jc = Util.take (List.length c) ju.ju_gdef in
   let subst =
@@ -167,7 +178,38 @@ let t_assm_computational assm ev_e ju =
   in
   t_assm_comp assm ev_e subst ju
 
-(* merging event in the postcondition *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Tactics with placeholders} *)
+
+let invert_ctxt (v,e) =
+  let hole_occurs p =
+    List.exists
+      (fun (_,m) ->
+         List.exists (fun (e,_) -> Se.mem (mk_V v) (e_vars e)) m)
+      p
+  in
+  match Poly.polys_of_field_expr (CAS.norm (fun x -> x) e) with
+  | (nom, None) ->
+    (*i v = v' * g + h => v' = (v - h) / g i*)
+    let (g,h) = Poly.factor_out (mk_V v) nom in
+    let e' = mk_FDiv (mk_FMinus (mk_V v) (Poly.exp_of_poly h))
+                     (Poly.exp_of_poly g)
+    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
+  | (nom, Some(denom)) when not (hole_occurs denom) ->
+    (*i v = (v' * g + h) / denom => v' = (v * denom - h) / g i*)
+    let (g,h) = Poly.factor_out (mk_V v) nom in
+    let e' = mk_FDiv
+               (mk_FMinus (mk_FMult [mk_V v; Poly.exp_of_poly denom]) (Poly.exp_of_poly h))
+               (Poly.exp_of_poly g)
+    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
+  | (_nom, Some(_denom)) ->
+    tacerror
+      "invert does not support denominators with hole-occurences in contexts"
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Derived tactics for dealing with events} *)
+
+(** Merging equalities in conjuncts of event. *)
 let t_merge_ev tomerge ju = 
   let tomerge = List.sort Pervasives.compare tomerge in
   let rec tac k tomerge ju = 
@@ -177,8 +219,9 @@ let t_merge_ev tomerge ju =
       (t_merge_ev (i-k) (j-k) @. tac (k+1) (j::tomerge)) ju in
   tac 0 tomerge ju
 
-(** A tactic to automatize Random Indep *)                            
-(* We known a set of facts 
+(** A tactic to automate random independence. *)
+
+(*i We known a set of facts 
    e1 = e2 
    exists x in L | e1 = e2 
    and inequalities 
@@ -190,8 +233,7 @@ let t_merge_ev tomerge ju =
    We look the equality which are used and we merge then in a single equivalent
    equality, again we build the inverter (this should works).
    We apply the inverter.
-*)
-
+i*)
 
 let simp_group e c =
   if Type.is_G e.e_ty then

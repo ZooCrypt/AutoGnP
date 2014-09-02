@@ -1,5 +1,6 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
+/// <reference path="handlebars.d.ts" />
 
 declare var ReconnectingWebSocket
 
@@ -20,6 +21,7 @@ function log(s) {
 var wsServer = window.location.hostname ? window.location.hostname : "127.0.0.1";
 var webSocket = new ReconnectingWebSocket("ws://" + wsServer + ":9999/");
 var firstConnect = true;
+var files = [];
 
 //webSocket.onclose = function(evt) {
 //  log("reconnecting to server");
@@ -179,6 +181,25 @@ $(window).resize(resizeAce);
 //set initially
 resizeAce();
 
+/* ******************************************************************/
+/* File handling functions                                         */
+/* ******************************************************************/
+
+function saveBuffer() {
+  sendZoocrypt({'cmd':'save', 'arg':editorProof.getValue()});
+}
+
+function loadBuffer(fname) {
+  sendZoocrypt({'cmd':'load', 'arg':fname});
+}
+
+function openDialog() {
+  $("#open-file-modal").modal('show');
+}
+
+function closeDialog() {
+  $("#open-file-modal").modal("hide");
+}
 
 /* ******************************************************************/
 /* Websocket event handling                                         */
@@ -188,6 +209,7 @@ resizeAce();
 webSocket.onopen = function (evt) {
   if (firstConnect) {
     sendZoocrypt({'cmd':'load','arg':''});
+    sendZoocrypt({'cmd':'listFiles','arg':''});
   }
   firstConnect = false;
 };
@@ -218,6 +240,30 @@ webSocket.onmessage = function (evt) {
       editorMessage.setValue(m.msgs.length > 0 ? m.msgs[m.msgs.length - 1] : "No message received.");
     }
     editorMessage.clearSelection();
+  // answer for list files
+  } else if (m.cmd == 'setFiles') {
+    files = <any>(m.arg);
+    var source   = $("#file-button-template").html();
+    var template = Handlebars.compile(source);
+
+    var h = "";
+    for(var i = 0; i < files.length; i++) {
+      h = h + template({file: files[i]});
+    }
+    $("#file-buttons").html(h)
+    var fcs = $('.file-choice');
+    var len = fcs.length;
+    for (var i = 0; i < len; i++) {
+      var fn = fcs[i].textContent;
+      fcs[i].onclick = function() {
+        var j = (<any>(arguments.callee)).j;
+        var fname = $('.file-choice')[j].textContent;
+        loadBuffer(fname);
+        closeDialog();
+      };
+      (<any>(fcs[i].onclick)).j = i;
+    }
+
   // answer for load
   } else if (m.cmd == 'setProof') {
     editorProof.setValue(m.arg);
@@ -227,15 +273,15 @@ webSocket.onmessage = function (evt) {
     editorMessage.clearSelection();
     var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
     editorProof.moveCursorToPosition(pos);
+  // answers for save
   } else if (m.cmd == "saveOK") {
     editorMessage.setValue("Proofscript saved.");
     editorMessage.clearSelection();
   } else if (m.cmd == "saveFAILED") {
     editorMessage.setValue("Save of proofscript failed.");
     editorMessage.clearSelection();
-}
+  }
 };
-
 
 /* ******************************************************************/
 /* Evaluate parts of buffer                                         */
@@ -285,6 +331,25 @@ function evalPrev() {
 }
 
 /* ******************************************************************/
+/* Set handlers for buttons                                         */
+/* ******************************************************************/
+
+var ctrl_button = navigator.appVersion.indexOf('Mac') != -1 ? "Cmd" : "Ctrl";
+
+var source   = $("#button-template").html();
+var template = Handlebars.compile(source);
+
+$("#buttons").html(template({CTRL: ctrl_button}));
+
+$('#btn-open').click(openDialog);
+$('#btn-cancel-open').click(closeDialog);
+
+$('#btn-save').click(saveBuffer);
+$('#btn-eval-next').click(evalNext);
+$('#btn-eval-upto').click(evalCursor);
+$('#btn-eval-undo').click(evalPrev);
+
+/* ******************************************************************/
 /* Add command bindings buffer                                      */
 /* ******************************************************************/
 
@@ -296,7 +361,7 @@ editorProof.commands.addCommand({
     sender: 'editor|cli'
   },
   exec: function(env, args, request) {
-    sendZoocrypt({'cmd':'save', 'arg':editorProof.getValue()});
+    saveBuffer();
   }
 });
 

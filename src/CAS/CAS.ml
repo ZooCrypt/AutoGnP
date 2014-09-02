@@ -1,3 +1,6 @@
+(*s Using CAS to perform computations on polynomials *)
+
+(*i*)
 open Expr
 open Poly
 open Util
@@ -5,11 +8,12 @@ open CASLexer
 
 module Ht = Hashtbl
 module YS = Yojson.Safe
+(*i*)
 
-(* ----------------------------------------------------------------------- *)
-(** {1 Pure field expressions without other operators} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Pure field expressions without other operators} *)
 
-(* field expression *)
+(** Field expression. *)
 type fexp =
     SV of int
   | SNat of int
@@ -18,7 +22,7 @@ type fexp =
   | SPlus of fexp * fexp
   | SMult of fexp * fexp
 
-(* pretty-printer function for already abstracted field expression *)
+(** Pretty-printer function for already abstracted field expression. *)
 let rec string_of_fexp e = match e with
   | SV i       -> F.sprintf "x%i" i
   | SNat(n)    -> F.sprintf "%i" n
@@ -27,7 +31,7 @@ let rec string_of_fexp e = match e with
   | SPlus(a,b) -> F.sprintf "(%s + %s)" (string_of_fexp a) (string_of_fexp b)
   | SMult(a,b) -> F.sprintf "(%s * %s)" (string_of_fexp a) (string_of_fexp b)
 
-(* Abstraction of [Expr.expr] to [sfexp] *)
+(** Abstraction of [Expr.expr] to [sfexp]. *)
 let rec rename hr = function 
   | SV i -> SV (Ht.find hr i)
   | (SNat _) as e -> e
@@ -36,10 +40,10 @@ let rec rename hr = function
   | SPlus(e1,e2) -> SPlus (rename hr e1, rename hr e2)
   | SMult(e1,e2) -> SMult (rename hr e1, rename hr e2)
 
-(* [abstract_non_field_multiple before es] abstracts all
-   expressions in [es] at once sharing variables for
-   common non-field subexpression. It also applies the
-   [before] function to expressions beforehand. *)
+(** [abstract_non_field_multiple before es] abstracts all
+    expressions in [es] at once sharing variables for
+    common non-field subexpression. It also applies the
+    [before] function to expressions beforehand. *)
 let abstract_non_field_multiple before es =
   let c = ref 0 in
   let he = He.create 17 in
@@ -74,15 +78,16 @@ let abstract_non_field_multiple before es =
                       Ht.add hv i e) binding;
   (List.map (rename hr) ses, !c, hv)
 
-(* See [abstract_non_field *)
+(** See [abstract_non_field] *)
 let abstract_non_field before e =
   match abstract_non_field_multiple before [e] with
   | ([e],c,hv) -> (e,c,hv)
   | _ -> assert false
 
-(* ----------------------------------------------------------------------- *)
-(** {2 Parser for Singular Polynomials in Q[x1,..,xk]} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Parser for Singular Polynomials in $Q[x_1,..,x_k]$} *)
 
+(*i*)
 (* for debugging / error messages *)
 let string_of_token t = match t with
   | INT i -> F.sprintf "INT %i" i
@@ -97,6 +102,7 @@ let string_of_token t = match t with
   | EOF   -> "EOF"
 
 let string_of_tokens ts = String.concat ", " (List.map string_of_token ts)
+(*i*)
 
 let lex_to_list lexer s =
   let lb = Lexing.from_string s in
@@ -105,8 +111,8 @@ let lex_to_list lexer s =
     | t   -> t :: go ()
   in go ()
 
-(* Parse CAS result into Poly.poly data type.
-   We do not have nesting, so we use a custom parser. *)
+(** Parse CAS result into [Poly.poly] data type.
+    We do not have nesting, so we use a custom parser. *)
 let parse_poly s =
   let rec pterm toks poly coeff mon  = match toks with
     | OPEN::rest                  -> pterm rest poly coeff mon
@@ -135,8 +141,8 @@ let parse_poly_json l =
                 (c, List.map (function `List [`Int v; `Int e] -> (v,e) | _ -> failwith "error") m)
               | _ -> failwith "error") l
 
-(* ----------------------------------------------------------------------- *)
-(** {3 Using CAS to perform polynomial computations.} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Using CAS to perform polynomial computations} *)
 
 type systems = Singular | Macaulay | Sage
 
@@ -163,14 +169,14 @@ let call_system sys cmd linenum =
         cs
   in
   output_string c_out cmd;
-  (* F.printf "input: `%s' has been sent\n\n%!" cmd; *)
+  (*i F.printf "input: `%s' has been sent\n\n%!" cmd; i*)
   flush c_out;
   let rec loop o linenum =
     if linenum = 0 then o
     else (
       try
         let l = input_line c_in in
-        (* F.printf "output: `%s'\n%!" l; *)
+        (*i F.printf "output: `%s'\n%!" l; i*)
         loop (o @ [l]) (linenum - 1)
       with End_of_file ->
         ignore (Unix.close_process (c_in,c_out)); (* FIXME: close on exit *)
@@ -302,7 +308,7 @@ let _mod_reduce_macaulay a b =
     in
     match call_system Macaulay cmd 2 with
     | [ _s1; sremainder ] ->
-      (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
+      (*i F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; i*)
       let res = sremainder = "true" in
       Ht.add cache_mod_reduce_macaulay (sa,sb) res;
       res
@@ -332,7 +338,7 @@ let mod_reduce_singular a b =
     in
     match call_system Singular cmd 2 with
     | [ _s1; sremainder ] ->
-      (* F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; *)
+      (*i F.printf "mod_reduce %a %% %a = %s\n\n%!" pp_exp a pp_exp b sremainder; i*)
       let res = sremainder = "1" in
       Ht.add ht_mod_reduce_singular (sa,sb) res;
       res
@@ -340,8 +346,8 @@ let mod_reduce_singular a b =
       failwith (F.sprintf "mod_reduce_singular: unexpected result %s\n"
                  (String.concat "\n" repls))
 
-(* ----------------------------------------------------------------------- *)
-(** {4 Computing the normal form and reducing modulo a polynomial.} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Computing the normal form and reducing modulo a polynomial} *)
 
 let mod_reduce = mod_reduce_singular
 
@@ -358,17 +364,18 @@ let norm before e =
   | SMult(SV i, SNat 1)   -> Ht.find hv i
   | SMult(SNat i, SNat j) -> mk_FNat (i * j)
   | SMult(SV i, SV j)     -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
-  (* seems like it is not creating the normal forms that we expect *)
-  (* | _                     -> norm_sage se c hv *)
   | _                     -> norm_singular se c hv
 
+  (*i seems like Sage is not creating the normal forms that we expect i*)
+  (*i | _                     -> norm_sage se c hv i*)
+
+(*i FIXME: add exit handlers for other systems i*)
 let () =
-  (* FIXME: add exit handlers for other systems *)
   let exit_cmd = YS.to_string (`Assoc [ ("cmd", `String "exit") ])^"\n" in
   at_exit (fun () -> if is_started Sage then ignore (call_system Sage exit_cmd 1))
 
-(* ----------------------------------------------------------------------- *)
-(** {5 Deducibility for fields using Sage.} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Deducibility for fields using Sage} *)
 
 let parse_field_json ctxs t0 =
   let rec go t =

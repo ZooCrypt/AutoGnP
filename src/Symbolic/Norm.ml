@@ -1,6 +1,11 @@
+(*s Normal form computation for expressions. *)
+
+(*i*)
 open Type
 open Expr
+open Syms
 open Util
+(*i*)
 
 let mk_gexp gv p = mk_GExp (mk_GGen gv) p
 
@@ -17,7 +22,7 @@ let destr_xor e =
 
 let rec norm_ggt e =   
   match e.e_ty.ty_node with
-  | G gv -> mk_gexp gv (mk_GLog e)   (* g ^ (log x) *)
+  | G gv -> mk_gexp gv (mk_GLog e)   (*i g ^ (log x) i*)
   | Fq | Bool | BS _ -> e
   | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_ggt (mk_Proj i e)) lt)
 
@@ -31,12 +36,12 @@ let mk_proj_simpl i e =
 let rec mk_simpl_op op l =
   match op, l with
   | GExp gv, [g1;p1] ->
-    (* g1 is necessary of the form g ^ a *)
+    (*i g1 is necessary of the form g ^ a i*)
     let a = destr_gexp gv g1 in
     let p = norm_field_expr (mk_FMult [a; p1]) in
     mk_gexp gv p
   | GLog gv, [g1] -> destr_gexp gv g1 
-  | EMap es, [g1;g2] -> (* e(g^a,g^b) -> e(g,g)^ab *)
+  | EMap es, [g1;g2] -> (*i e(g^a,g^b) -> e(g,g)^ab i*)
     let p1 = destr_gexp es.Esym.source1 g1 in
     let p2 = destr_gexp es.Esym.source2 g2 in
     let p = norm_field_expr (mk_FMult [p1; p2]) in
@@ -61,10 +66,10 @@ let rec mk_simpl_op op l =
     | Eq   | Ifte   | Not)           , _ -> assert false
 
 and mk_simpl_nop op l =
-  (* TODO flattening, for xor and land *)
+  (*i TODO flattening, for xor and land i*)
   match op with
   | FPlus  | FMult  ->
-    assert false (* norm_expr_field should be called instead *)
+    assert false (*i norm_expr_field should be called instead i*)
   | GMult ->
     let gv = match l with e::_ -> destr_G e.e_ty | _ -> assert false in
     let l = List.map (destr_gexp gv) l in
@@ -150,7 +155,7 @@ let rec abbrev_ggen e =
     else e
   | _ -> e
 
-(* use norm_expr to check equality modulo equational theory *)
+(*i use norm_expr to check equality modulo equational theory i*)
 let e_equalmod e e' = e_equal (norm_expr e) (norm_expr e')
 
 let rm_tuple_proj e es =

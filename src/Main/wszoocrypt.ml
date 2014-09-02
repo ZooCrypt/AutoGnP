@@ -9,7 +9,8 @@ module PU = ParserUtil
 
 let (>>=) = Lwt.bind
 
-let ps_file = ref ""
+let ps_file  = ref ""
+let ps_files = ref []
 let disallow_save = ref false
 let server_name = ref "localhost"
 
@@ -45,6 +46,12 @@ let process_unknown s =
   F.printf "unknown command: %s\n%!" s;
   Lwt.return (Frame.of_string "Unknown command")
 
+let process_list_files () =
+  Lwt.return
+    (Frame.of_string
+       (YS.to_string (`Assoc [("cmd", `String "setFiles");
+                              ("arg", `List (List.map (fun s -> `String s) !ps_files))])))
+
 let process_save content =
   F.printf "Save: %s\n%!" content;
   Lwt.return (
@@ -56,10 +63,12 @@ let process_save content =
     )
   )
 
-let process_load () =
+let process_load s =
+  ps_file := if s = "" then !ps_file else s;
   F.printf "Loading %s\n%!" !ps_file;
-  let s = if Sys.file_exists !ps_file then input_file !ps_file
-          else "(* Enter proof script below *)"
+  let s =
+    if Sys.file_exists !ps_file && List.mem !ps_file !ps_files then input_file !ps_file
+    else "(* Enter proof script below *)"
   in
   let res = `Assoc [("cmd", `String "setProof"); ("arg", `String s)] in
   Lwt.return (Frame.of_string (YS.to_string res))
@@ -156,14 +165,15 @@ let process_eval proofscript =
 
 let process_frame frame =
   let inp = Frame.content frame in
-  (* F.printf "Command: ``%s''\n%!" inp; *)
+  F.printf "Command: ``%s''\n%!" inp;
   match YS.from_string inp with
   | `Assoc l ->
      (try
         (let get k = List.assoc k l in
          match get "cmd", get "arg" with
          | `String "eval", `String pscript -> process_eval pscript
-         | `String "load",_                -> process_load ()
+         | `String "listFiles", _          -> process_list_files ()
+         | `String "load", `String fname   -> process_load fname
          | `String "save", `String fcont   -> process_save fcont
          | _                               -> process_unknown inp)
       with Not_found -> process_unknown inp)
@@ -192,14 +202,15 @@ let main =
         ("-s", Arg.Set_string server_name, " bind to this servername (default: localhost)")]
   in
   let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " <file>" in
-  let parse_args s = if !ps_file = "" then ps_file := s else failwith "can only serve one file" in
+  let parse_args s = ps_files := !ps_files @ [s] in
   Arg.parse speclist parse_args usage_msg;
-  if !ps_file = "" then (Arg.usage speclist usage_msg; exit 1);
+  if !ps_files = [] then (Arg.usage speclist usage_msg; exit 1);
+  ps_file := List.hd !ps_files;
 
   (* start server *)
   print_endline "Open the following URL in your browser (websocket support required):\n";
   print_endline ("    file://"^Sys.getcwd ()^"/web/index.html\n\n");
   if Sys.file_exists !ps_file
-    then print_endline ("File: " ^ !ps_file)
+    then print_endline ("Files: " ^ (String.concat ", " !ps_files))
     else failwith (F.sprintf "File ``%s'' does not exist." !ps_file);
   Lwt_main.run (run_server !server_name "9999" >>= fun _ -> wait_forever ())

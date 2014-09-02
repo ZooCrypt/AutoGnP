@@ -1,7 +1,9 @@
-(** Wrapper functions for parser with error handling. *)
+(*s Wrapper functions for parser with error handling. *)
 
+(*i*)
 module S = String
 module PU = ParserUtil
+(*i*)
 
 (** Convert lexer and parser errors to ParseError exception *)
 let wrap_error f s0 =

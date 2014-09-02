@@ -2,6 +2,8 @@ open Util
 open Type
 open Expr
 open File
+open Syms
+open Gsyms
 
 (* -------------------------------------------------------------------- *)
 let pp_if c pp1 pp2 fmt x =
