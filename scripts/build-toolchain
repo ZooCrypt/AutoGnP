@@ -1,4 +1,7 @@
 #! /bin/bash
+(set -o igncr) 2>/dev/null && set -o igncr; # this comment is required
+
+# Taken from EasyCrypt
 
 # --------------------------------------------------------------------
 set -e
@@ -8,16 +11,18 @@ set -e
 : ${DEST="${PWD}/_tools"}       # MUST BE ABSOLUTE
 
 # --------------------------------------------------------------------
-OBREW_URL=https://raw.github.com/hcarty/ocamlbrew/master/ocamlbrew-install
-# ECOPAM_URL=http://ci.easycrypt.info/opam
+PATCHES=ocaml-patches.diff
+OBREW_URL=https://www.easycrypt.info/toolchain/ocamlbrew
 
-OPAM_VERSION=1.0.0
-OPAM_URL=http://www.ocamlpro.com/pub/opam-full-1.0.0.tar.gz
+OPAM_VERSION=1.1.1
+OPAM_URL=http://www.ocamlpro.com/pub/opam-full-${OPAM_VERSION}.tar.gz
+#ECOPAM_URL=https://www.easycrypt.info/opam-${OPAM_VERSION}
 
-OCONFIG="${DEST}/ocaml-${OVERSION}/etc/ocamlbrew.bashrc"
+OCONFIG_BASE="ocaml-${OVERSION}/etc/ocamlbrew.bashrc"
+OCONFIG="${DEST}/${OCONFIG_BASE}"
 
 export OCAMLBREW_BASE=${DEST}
-export OCAMLBREW_FLAGS="-v ${OVERSION} -f"
+export OCAMLBREW_FLAGS="-v ${OVERSION} -p ${PWD}/scripts/patches/${PATCHES} -f"
 
 export OPAMROOT=${DEST}/ocaml-${OVERSION}/opam
 export OPAMFLAGS="--no-setup"
@@ -26,19 +31,55 @@ unset OCAMLFIND_CONF
 unset OCAML_TOPLEVEL_PATH
 unset CAML_LD_LIBRARY_PATH
 
+case $(uname -s) in
+  CYGWIN*)
+    buildtype=cygwin;;
+  *)
+    buildtype=posix;;
+esac
+
+
 # --------------------------------------------------------------------
 if [ "${DEST}" != "${DEST//[ ]/}" ]; then
-    echo "Destination folder contains spaces" >&2
-    echo "Please, set the DEST variable to a valid value" >&2
-    exit 1
+  echo "Destination folder contains spaces" >&2
+  echo "Please, set the DEST variable to a valid value" >&2
+  exit 1
 fi
 
 # --------------------------------------------------------------------
-set -x
+function check_cmd {
+  if ! type -P "$1" >/dev/null 2>&1; then
+    echo "missing program: $1. install it first" >&2
+    exit 1
+  fi
+}
+
+check_cmd m4
+check_cmd autoconf
+check_cmd gcc
+check_cmd g++
+check_cmd curl
+
+if [ ${buildtype} = "cygwin" ]; then
+  check_cmd ocaml
+fi
+
+# --------------------------------------------------------------------
+set -e
 
 rm -rf "${DEST}" && mkdir "${DEST}" "${DEST}/src"
-curl -f -kL -o "${DEST}/src/ocamlbrew" ${OBREW_URL}
-bash "${DEST}/src/ocamlbrew"
+
+if [ ${buildtype} != "cygwin" ]; then
+  curl -f -kL -o "${DEST}/src/ocamlbrew" ${OBREW_URL}
+  bash "${DEST}/src/ocamlbrew" ${OCAMLBREW_FLAGS}
+else
+  mkdir "${DEST}"/ocaml-${OVERSION}/
+  mkdir "${DEST}"/ocaml-${OVERSION}/build
+  mkdir "${DEST}"/ocaml-${OVERSION}/etc
+  cat >>"${OCONFIG}" <<-EOF
+export PATH="${DEST}/ocaml-${OVERSION}/bin:\${PATH}"
+EOF
+fi
 
 # --------------------------------------------------------------------
 function build_opam {
@@ -54,11 +95,13 @@ function build_opam {
 
     "${DEST}"/ocaml-${OVERSION}/bin/opam init ${OPAMFLAGS}
 
-    cat >>"${OCONFIG}" <<EOF
-export OPAMROOT="${OPAMROOT}"
+    cat >>"${OCONFIG}" <<-EOF
+export PS1="(ec-tool) \${PS1}"
 export OCAMLFIND_CONF="${DEST}/ocaml-${OVERSION}/opam/system/lib/findlib.conf"
+export OPAMROOT="${OPAMROOT}"
 EOF
-    echo 'eval `opam config env`' >>"${OCONFIG}"
+
+    echo "eval \`${DEST}/ocaml-${OVERSION}/bin/opam config env\`" >>"${OCONFIG}"
 }
 
 ( set -e; cd "${DEST}"/ocaml-${OVERSION}/build && build_opam )
@@ -79,11 +122,14 @@ function box {
 box "ZooCrypt toolchain installed"
 
 cat <<EOF
+%%% --------------------------------------------------------------------
 %%%
-%%% To use it, type:"
+%%% To use it, type:
 %%% 
-%%%   $(scripts/activate-toolchain.sh) 
+%%%    \$(./scripts/activate-toolchain.sh)
 %%% 
 %%% Don't forget to [make clean] the zoocrypt source tree
 %%%
+%%% --------------------------------------------------------------------
 EOF
+
