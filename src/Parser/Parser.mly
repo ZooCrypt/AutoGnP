@@ -61,7 +61,7 @@
 %token RBRACKET
 %token MID
 %token SEMICOLON
-%token LIST
+%token <string> LIST
 %token WITH
 %token <string> AID
 %token <int> NAT
@@ -172,7 +172,7 @@ expr :
 | e = expr0 EOF { e }
 
 expr0 :
-| EXISTS bd=hbindings MID e1 = expr1 EQUAL e2 = expr1
+| EXISTS bd=hbindings COLON e1 = expr1 EQUAL e2 = expr1
      { Exists(e1,e2,bd) }
 | e1 = expr0 BACKSLASH i = NAT { Proj(i,e1) }
 | e1 = expr1 EQUAL e2 = expr1 { Eq(e1,e2) }
@@ -223,11 +223,11 @@ expr6 :
 ;
 
 hbinding:
-| x=ID LEFTARROW LIST h=AID {x,h}
+| x=ID LEFTARROW h = LIST {x,h}
 ;
 hbindings:
-| b=hbinding { [b] }
-| b=hbinding COMMA bs= hbindings { b::bs }
+| hbs=separated_nonempty_list(COMMA,hbinding) { hbs }
+
 ;
 /************************************************************************/
 /* List comprehensions */
@@ -244,7 +244,7 @@ idlist0 :
 
 lcmd :
 | LET i = ID EQUAL e = expr0 { LLet(i,e) }
-| is = idlist LEFTARROW LIST hsym = ID { LBind(is,hsym) }
+| is = idlist LEFTARROW hsym = LIST { LBind(is,hsym) }
 | i = ID SAMP t = typ0 BACKSLASH es = exprlist0 { LSamp(i,t,es) }
 | i = ID SAMP t = typ0                          { LSamp(i,t,[]) }
 | e = expr0 { LGuard(e) }

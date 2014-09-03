@@ -291,7 +291,7 @@ let rec pp_exp_p above fmt e =
   | Nary(o,es) -> pp_nop_p above fmt (o,es)
   | Exists(e1,e2,h) ->
     let pp fmt () = 
-      F.fprintf fmt "@[<hv 2>exists %a,@ %a =@ %a@]"
+      F.fprintf fmt "@[<hv 2>exists %a:@ %a =@ %a@]"
         (pp_list ",@ " (fun fmt (v,h) ->
           F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h 
         (pp_exp_p Top) e1 (pp_exp_p Top) e2 in

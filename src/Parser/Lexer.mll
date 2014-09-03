@@ -25,13 +25,6 @@ rule lex = parse
   | "++"    { XOR }
   | "-"     { MINUS }  
   | "*"     { STAR }
-  | "BS_"(['a'-'z']['0'-'9']* as s) { TBS(s) }
-  | "0_"(['a'-'z']['0'-'9']* as s) { ZBS(s) }
-  | "Bool" { TBOOL }
-  | "g" { GEN("") }
-  | "g_"(['a'-'z''0'-'9']* as s) { GEN(s) }
-  | "G" { TG("") }
-  | "G_"(['a'-'z''0'-'9']* as s) { TG(s) } 
   | "Fq"    { TFQ }
   | "not"   { NOT }
   | "log"   { LOG }
@@ -76,7 +69,17 @@ rule lex = parse
   | "rctxt_ev"       { RCTXT_EV }
   | "exists"    { EXISTS }
   | "extract"   { EXTRACT }
-  | "L_"    { LIST }
+  | "L_"
+    (['A'-'Z']
+     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
+    { LIST (s) }
+  | "BS_"(['a'-'z']['0'-'9']* as s) { TBS(s) }
+  | "0_"(['a'-'z']['0'-'9']* as s) { ZBS(s) }
+  | "Bool" { TBOOL }
+  | "g" { GEN("") }
+  | "g_"(['a'-'z''0'-'9']* as s) { GEN(s) }
+  | "G" { TG("") }
+  | "G_"(['a'-'z''0'-'9']* as s) { TG(s) } 
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
