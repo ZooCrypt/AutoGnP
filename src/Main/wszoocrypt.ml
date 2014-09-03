@@ -64,6 +64,7 @@ let process_save content =
   )
 
 let process_load s =
+  Hashtbl.clear ts_cache;
   ps_file := if s = "" then !ps_file else s;
   F.printf "Loading %s\n%!" !ps_file;
   let s =
