@@ -133,8 +133,7 @@ let handle_tactic ts tac =
     let gd2 = PU.gdef_of_parse_gdef vmap ts gd in
     let ev = PU.expr_of_parse_expr vmap ts ev in
     let ju2 = { Game.ju_gdef = gd2; Game.ju_ev = ev } in
-    let renaming = Game.unif_ju ju ju2 in
-    apply_rule (t_conv true renaming ju2) ts
+    apply_rule (t_conv true ju2) ts
 
   | PU.Rassm_dec(dir,s,xs) ->
     let assm = 

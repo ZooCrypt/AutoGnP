@@ -24,24 +24,24 @@ let ( @| ) = t_or
 (** Unfold all lets and norm. *)
 let t_norm ju =
   let new_ju = norm_ju ~norm:norm_expr_def ju in
-  t_conv true id_renaming new_ju ju
+  t_conv true new_ju ju
 
 (** Unfold all lets and norm, also remove tuple projection. *)
 let t_norm_tuple_proj ju = 
   let norm e = remove_tuple_proj (norm_expr_def e) in
   let new_ju = norm_ju ~norm ju in
-  t_conv true id_renaming new_ju ju
+  t_conv true new_ju ju
 
 (** Norm without unfolding. *)
 let t_norm_nounfold ju = 
   let new_ju = map_ju_exp norm_expr_def ju in
-  t_conv true id_renaming new_ju ju
+  t_conv true new_ju ju
 
 
 (** Unfold without norm. *)
 let t_unfold_only ju = 
   let new_ju = norm_ju ~norm:(fun x -> x) ju in
-  t_conv false id_renaming new_ju ju
+  t_conv false new_ju ju
 
 (*i [simp e unknown] takes an exponent expression [e] and a
    set [unknown] of unknown expressions.
@@ -121,7 +121,7 @@ let rewrite_exps unknown e0 =
 let t_norm_unknown unknown ju =
   let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
   let new_ju = map_ju_exp norm ju in
-  t_conv true id_renaming new_ju ju
+  t_conv true new_ju ju
 
 let t_let_abstract p vs e ju =
   let l,r = Util.cut_n p ju.ju_gdef in
@@ -131,7 +131,7 @@ let t_let_abstract p vs e ju =
   let new_ju = { ju_gdef = List.rev_append l (GLet(vs, e)::map_gdef_exp subst r);
                  ju_ev = subst ju.ju_ev }
   in
-  t_conv false id_renaming new_ju ju
+  t_conv false new_ju ju
 
 let t_let_unfold p ju =
   match get_ju_ctxt ju p with
@@ -141,7 +141,7 @@ let t_let_unfold p ju =
                 juc_right = map_gdef_exp subst juc.juc_right;
                 juc_ev = subst juc.juc_ev }
     in
-    t_conv false id_renaming (set_ju_ctxt [] juc) ju
+    t_conv false (set_ju_ctxt [] juc) ju
   | _ -> tacerror "rlet_unfold: no let at given position"
 
 

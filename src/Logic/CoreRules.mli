@@ -94,8 +94,8 @@ val t_admit : tactic
 (** [rconv b j' j] returns [j'] if [j] and [j'] are equal
     after expanding all lets and rewriting with respect
     to the equational theory. *)
-val rconv  : bool -> renaming -> judgment -> rule 
-val t_conv : bool -> renaming -> judgment -> tactic
+val rconv  : bool -> judgment -> rule 
+val t_conv : bool -> judgment -> tactic
 
 (** [rctxt_ev ctx i ju] returns the judgment resulting from
     replacing the [i]-th conjunct in the event of [ju]

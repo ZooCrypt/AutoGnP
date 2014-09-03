@@ -212,7 +212,7 @@ let t_try t g = t_or t t_id g
     then it checks that [sigma] is bijective and renames
     [ju] with [sigma] before
     normalizing and comparing the two judgments *)
-let rconv do_norm_terms sigma new_ju ju =
+let rconv do_norm_terms new_ju ju =
   let (nf,ctype) =
     if do_norm_terms
     then (Norm.norm_expr,CheckDivZero)
@@ -222,17 +222,20 @@ let rconv do_norm_terms sigma new_ju ju =
   wf_ju ctype new_ju;
   F.printf "ju >> %a\n%!" pp_ju ju;
   F.printf "new_ju >> %a\n%!" pp_ju new_ju;
-  let ju =
-    (* FIXME: check that sigma bijective *)
-    Game.subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju
-  in
   F.printf "sigma(ju) >> %a\n%!" pp_ju ju;
   let ju' = norm_ju ~norm:nf ju in
   let new_ju' = norm_ju ~norm:nf new_ju in
+  let ju' =
+    try
+      let sigma = Game.unif_ju ju' new_ju' in
+      subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju'
+    with
+      Not_found -> ju'
+  in
   if not (ju_equal ju' new_ju') then tacerror "rconv: not convertible";
   Rconv, [new_ju]
 
-let t_conv do_norm_terms msubst new_ju = prove_by (rconv do_norm_terms msubst new_ju)
+let t_conv do_norm_terms new_ju = prove_by (rconv do_norm_terms new_ju)
 
 (** Swap instruction. *)
 
