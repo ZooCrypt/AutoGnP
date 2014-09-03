@@ -14,12 +14,14 @@ open Gsyms
 (** Renaming of variables *)
 type renaming = vs Vsym.M.t
 
+val id_renaming : renaming
+
 (** Low-level rules (extractable to EasyCrypt). *)
 type rule_name = 
 
   (*c equivalence/small statistical distance: main *)
   | Rconv
-  | Rswap of gcmd_pos * int 
+  | Rswap of gcmd_pos * int
   | Rrnd  of gcmd_pos * ctxt * ctxt * vs
   | Rexc  of gcmd_pos * expr list
 
@@ -92,8 +94,8 @@ val t_admit : tactic
 (** [rconv b j' j] returns [j'] if [j] and [j'] are equal
     after expanding all lets and rewriting with respect
     to the equational theory. *)
-val rconv  : bool -> judgment -> rule 
-val t_conv : bool -> judgment -> tactic
+val rconv  : bool -> renaming -> judgment -> rule 
+val t_conv : bool -> renaming -> judgment -> tactic
 
 (** [rctxt_ev ctx i ju] returns the judgment resulting from
     replacing the [i]-th conjunct in the event of [ju]

@@ -335,7 +335,7 @@ instr :
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
 | ASSUMPTION_DECISIONAL d=dir s=ID xs=ID* { Apply (Rassm_dec(d,s,xs))}
 | ASSUMPTION_COMPUTATIONAL s=ID e = expr0 { Apply (Rassm_comp(s,e))}
-| REQUIV LBRACKET gd = gdef0 RBRACKET e=event? { Apply(Requiv(gd,e)) }
+| REQUIV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }

@@ -129,17 +129,12 @@ let handle_tactic ts tac =
   | PU.Rswap_oracle(op,j) -> apply_rule (t_swap_oracle op j) ts
 
   | PU.Requiv(gd,ev) ->
-    failwith "undefined"
-    (*i
-    let gd = PU.gdef_of_parse_gdef true ts gd in 
-    (* reuse variables from previous games *)
-    let ev = 
-      match ev with
-      | None -> ju.Game.ju_ev
-      | Some e -> PU.expr_of_parse_expr ts e
-    in
-    apply_rule (t_conv true { Game.ju_gdef = gd; Game.ju_ev = ev }) ts
-    i*)
+    let vmap = Hashtbl.create 134 in
+    let gd2 = PU.gdef_of_parse_gdef vmap ts gd in
+    let ev = PU.expr_of_parse_expr vmap ts ev in
+    let ju2 = { Game.ju_gdef = gd2; Game.ju_ev = ev } in
+    let renaming = Game.unif_ju ju ju2 in
+    apply_rule (t_conv true renaming ju2) ts
 
   | PU.Rassm_dec(dir,s,xs) ->
     let assm = 
@@ -279,7 +274,7 @@ let handle_tactic ts tac =
     let es = L.map (PU.expr_of_parse_expr vmap ts) es in
     apply_rule (t_except i es) ts
 
-  | PU.Rexcept_orcl(op,es) ->
+  | PU.Rexcept_orcl(_op,_es) ->
     failwith "undefined"
     (*i
     let es = L.map (PU.expr_of_parse_expr ts) es in

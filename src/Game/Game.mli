@@ -192,7 +192,7 @@ val gdef_global_vars : gdef -> Se.t
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Variable renaming} *)
 
-val subst_v_e : (Vsym.t -> vs) -> expr -> expr
+val subst_v_e : (vs -> vs) -> expr -> expr
 
 val subst_v_lc : (vs -> vs) -> lcmd -> lcmd
 
@@ -201,6 +201,10 @@ val subst_v_odef : (vs -> vs) -> odef -> odef
 val subst_v_gc : (vs -> vs) -> gcmd -> gcmd
 
 val subst_v_gdef : (vs -> vs) -> gdef -> gdef
+
+val subst_v_ju : (vs -> vs) -> judgment -> judgment
+
+val unif_ju : judgment -> judgment -> vs Vsym.M.t
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Mappings from strings to variables} *) 

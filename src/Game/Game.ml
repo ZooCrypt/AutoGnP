@@ -411,10 +411,88 @@ let gdef_all_vars gdef = fold_union_vs gcmd_all_vars gdef
 let gdef_global_vars gdef = Se.union (read_gcmds gdef) (write_gcmds gdef)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Variable renaming} *) 
+(* \subsection{Unification} *) 
 
-let subst_v_e tov = 
-  let aux e = match e.e_node with V v -> mk_V (tov v) | _ -> raise Not_found in
+let ensure_same_length l1 l2 =
+  if L.length l1 <> L.length l2 then raise Not_found
+
+let unif_vs ren v1 v2 = Vsym.H.add ren v1 v2
+
+(* FIXME: pretty incomplete *)
+let unif_expr ren e1 e2 =
+  match e1.e_node, e2.e_node with
+  | Exists(_,_,binders1), Exists(_,_,binders2) ->
+    ensure_same_length binders1 binders2;
+    L.iter2 (unif_vs ren) (L.map fst binders1) (L.map fst binders2)
+  | _ -> ()
+
+let unif_lcmd ren lc1 lc2 =
+  match lc1,lc2 with
+  | LLet(v1,_), LLet(v2,_)
+  | LSamp(v1,_), LSamp(v2,_) ->
+    unif_vs ren v1 v2
+  | LBind(vss1,_), LBind(vss2,_) ->
+    ensure_same_length vss1 vss2;
+    L.iter2 (unif_vs ren) vss1 vss2
+  | LGuard(_), LGuard(_) ->
+    ()
+  | _ -> 
+    raise Not_found
+
+let unif_odef ren (_,vs1,lcmds1,_) (_,vs2,lcmds2,_) =
+  ensure_same_length vs1 vs2;
+  ensure_same_length lcmds1 lcmds2;
+  L.iter2 (unif_vs ren) vs1 vs2;
+  L.iter2 (unif_lcmd ren) lcmds1 lcmds2
+  
+let unif_gcmd ren gcmd1 gcmd2 =
+  match gcmd1, gcmd2 with
+  | GLet(v1,_), GLet(v2,_)
+  | GSamp(v1,_), GSamp(v2,_) -> unif_vs ren v1 v2
+  | GCall(vs1,_,_,odefs1), GCall(vs2,_,_,odefs2) ->
+    ensure_same_length vs1 vs2;
+    ensure_same_length odefs1 odefs2;
+    L.iter2 (unif_vs ren) vs1 vs2;
+    L.iter2 (unif_odef ren) odefs1 odefs2
+  | _ -> raise Not_found
+
+let unif_gdef ren gd1 gd2 =
+  ensure_same_length gd1 gd2;
+  L.iter2 (unif_gcmd ren) gd1 gd2
+
+let vht_to_map ht =
+  Vsym.H.fold
+    (fun v x m ->
+      F.printf "%a -> %a\n%!" Vsym.pp v Vsym.pp x;
+      Vsym.M.add v x m)
+    ht
+    Vsym.M.empty
+
+(** We only support an outermost exists binder *)
+let unif_ju ju1 ju2 =
+  try
+    let ren = Vsym.H.create 134 in
+    unif_gdef ren ju1.ju_gdef ju2.ju_gdef;
+    unif_expr ren ju1.ju_ev ju2.ju_ev;
+    vht_to_map ren
+  with
+    Not_found ->
+      F.printf "no unifier found!\n%!";
+      raise Not_found
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Variable renaming} *)
+
+let subst_v_e tov =
+  let rec aux e =
+    match e.e_node with
+    | V v -> mk_V (tov v)
+    | Exists(e1,e2,binders) ->
+      let e1 = e_map_top aux e1 in
+      let e2 = e_map_top aux e2 in
+      mk_Exists e1 e2 (L.map (fun (v,h) -> (tov v,h)) binders)
+    | _   -> raise Not_found
+  in
   e_map_top aux
 
 let subst_v_lc tov = function
@@ -435,8 +513,11 @@ let subst_v_gc tov = function
   | GCall(vs, asym, e, odefs) ->
     GCall(L.map tov vs, asym, subst_v_e tov e,
           L.map (subst_v_odef tov) odefs)
-  
+
 let subst_v_gdef tov = L.map (subst_v_gc tov)
+
+let subst_v_ju tov ju =
+  { ju_gdef = subst_v_gdef tov ju.ju_gdef; ju_ev = subst_v_e tov ju.ju_ev }
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Mappings from strings to variables} *) 
@@ -524,7 +605,7 @@ let norm_odef ?norm:(nf=Norm.norm_expr) s (o,vs,lc,e) =
     | LGuard e::lc' ->
       aux s (LGuard (nf (e_subst s e)) :: rc) lc' in
   aux s [] lc
-    
+
 let norm_gdef ?norm:(nf=Norm.norm_expr) g =
   let rec aux s rc lc = 
     match lc with

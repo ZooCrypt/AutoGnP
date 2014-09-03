@@ -714,7 +714,8 @@ let e_map_top f =
     with Not_found ->
       let e' = try check_fun f e with Not_found -> sub_map aux e in
       He.add tbl e e';
-      e' in
+      e'
+  in
   aux 
 
 let e_replace e1 e2 = 
