@@ -96,7 +96,8 @@ let mk_assm_comp name pref ev_var ev priv_vars =
 let instantiate subst assm = 
   let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
   let subst_s s =
-    Vsym.S.fold (fun x -> Vsym.S.add (subst_v x)) s Vsym.S.empty in
+    Vsym.S.fold (fun x -> Vsym.S.add (subst_v x)) s Vsym.S.empty
+  in
   let subst_g = Game.subst_v_gdef subst_v in
   { ac_name       = assm.ac_name;
     ac_prefix     = subst_g assm.ac_prefix;

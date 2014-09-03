@@ -85,9 +85,6 @@ let handle_tactic ts tac =
     apply_rule (Rules.t_norm_unknown vs) ts
 
   | PU.Rctxt_ev (sv,e,j) ->
-    failwith "undefined"
-    (*i
-    (* TODO: how to be in the good typing context *)
     let ev = ju.Game.ju_ev in
     let b =
       match ev.e_node with
@@ -102,11 +99,11 @@ let handle_tactic ts tac =
         let (e1,_,_) = destr_Exists b in e1.e_ty 
       else tacerror "rctxt_ev: bad event"
     in
-    let v1 = PU.create_var false ts sv ty in
-    let e1 = PU.expr_of_parse_expr ts e in
+    let vmap = Game.vmap_of_globals ju.Game.ju_gdef in
+    let v1 = PU.create_var vmap sv ty in
+    let e1 = PU.expr_of_parse_expr vmap ts e in
     let c = v1, e1 in
     apply_rule (t_ctxt_ev j c) ts
-    i*)
 
   | PU.Rcase_ev (e) ->
     let vmap = Game.vmap_of_globals ju.Game.ju_gdef in
