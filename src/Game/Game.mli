@@ -206,6 +206,8 @@ val subst_v_ju : (vs -> vs) -> judgment -> judgment
 
 val unif_ju : judgment -> judgment -> vs Vsym.M.t
 
+val subst_injective : vs Vsym.M.t -> bool
+
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Mappings from strings to variables} *) 
 

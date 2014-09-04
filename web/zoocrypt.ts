@@ -1,6 +1,6 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
-/// <reference path="handlebars.d.ts" />
+// /// <reference path="handlebars.d.ts" />
 
 declare var ReconnectingWebSocket
 
@@ -22,6 +22,7 @@ var wsServer = window.location.hostname ? window.location.hostname : "127.0.0.1"
 var webSocket = new ReconnectingWebSocket("ws://" + wsServer + ":9999/");
 var firstConnect = true;
 var files = [];
+var currentFile = "";
 
 //webSocket.onclose = function(evt) {
 //  log("reconnecting to server");
@@ -186,7 +187,9 @@ resizeAce();
 /* ******************************************************************/
 
 function saveBuffer() {
-  sendZoocrypt({'cmd':'save', 'arg':editorProof.getValue()});
+  sendZoocrypt({'cmd':'save',
+                'arg':editorProof.getValue(),
+                'filename':currentFile});
 }
 
 function loadBuffer(fname) {
@@ -222,67 +225,6 @@ interface Reply {
   ok_upto : number;
 }
 
-// handle websocket answers
-webSocket.onmessage = function (evt) {
-  log(evt.data);
-  var m : Reply = JSON.parse(evt.data);
-  // answer for eval
-  if (m.cmd == 'setGoal') {
-    setFirstUnlocked(m.ok_upto);
-    markLocked('locked');
-    editorGoal.setValue(m.arg);
-    editorGoal.clearSelection();
-    var pos = editorGoal.getSession().getDocument().indexToPosition(0,0);
-    editorGoal.moveCursorToPosition(pos);
-    if (m.err) {
-      editorMessage.setValue(m.err);
-    } else {
-      editorMessage.setValue(m.msgs.length > 0 ? m.msgs[m.msgs.length - 1] : "No message received.");
-    }
-    editorMessage.clearSelection();
-  // answer for list files
-  } else if (m.cmd == 'setFiles') {
-    files = <any>(m.arg);
-    var source   = $("#file-button-template").html();
-    var template = Handlebars.compile(source);
-
-    var h = "";
-    for(var i = 0; i < files.length; i++) {
-      h = h + template({file: files[i]});
-    }
-    $("#file-buttons").html(h)
-    var fcs = $('.file-choice');
-    var len = fcs.length;
-    for (var i = 0; i < len; i++) {
-      var fn = fcs[i].textContent;
-      fcs[i].onclick = function() {
-        var j = (<any>(arguments.callee)).j;
-        var fname = $('.file-choice')[j].textContent;
-        loadBuffer(fname);
-        closeDialog();
-      };
-      (<any>(fcs[i].onclick)).j = i;
-    }
-
-  // answer for load
-  } else if (m.cmd == 'setProof') {
-    editorProof.setValue(m.arg);
-    editorProof.clearSelection();
-    editorProof.scrollPageUp();
-    editorMessage.setValue("Proofscript loaded.");
-    editorMessage.clearSelection();
-    var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked,0);
-    editorProof.moveCursorToPosition(pos);
-  // answers for save
-  } else if (m.cmd == "saveOK") {
-    editorMessage.setValue("Proofscript saved.");
-    editorMessage.clearSelection();
-  } else if (m.cmd == "saveFAILED") {
-    editorMessage.setValue("Save of proofscript failed.");
-    editorMessage.clearSelection();
-  }
-};
-
 /* ******************************************************************/
 /* Evaluate parts of buffer                                         */
 /* ******************************************************************/
@@ -293,7 +235,8 @@ function evalLocked() {
   editorProof.clearSelection();
   markLocked('processing');
   if (lockedText() !== "") {
-    sendZoocrypt({'cmd':'eval','arg':lockedText()});
+    sendZoocrypt({'cmd':'eval','arg':lockedText(),
+                  'filename':currentFile});
   } else {
     editorGoal.setValue("");
     editorMessage.setValue("");
@@ -329,25 +272,6 @@ function evalPrev() {
   }
   evalLocked();
 }
-
-/* ******************************************************************/
-/* Set handlers for buttons                                         */
-/* ******************************************************************/
-
-var ctrl_button = navigator.appVersion.indexOf('Mac') != -1 ? "Cmd" : "Ctrl";
-
-var source   = $("#button-template").html();
-var template = Handlebars.compile(source);
-
-$("#buttons").html(template({CTRL: ctrl_button}));
-
-$('#btn-open').click(openDialog);
-$('#btn-cancel-open').click(closeDialog);
-
-$('#btn-save').click(saveBuffer);
-$('#btn-eval-next').click(evalNext);
-$('#btn-eval-upto').click(evalCursor);
-$('#btn-eval-undo').click(evalPrev);
 
 /* ******************************************************************/
 /* Add command bindings buffer                                      */

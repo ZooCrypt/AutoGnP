@@ -480,6 +480,20 @@ let unif_ju ju1 ju2 =
       F.printf "no unifier found!\n%!";
       raise Not_found
 
+let subst_injective sigma =
+  try
+    let inv = Vsym.H.create 134 in
+    Vsym.M.iter
+      (fun _ v' ->
+        if Vsym.H.mem inv v'
+        then raise Not_found
+        else Vsym.H.add inv v' ())
+      sigma;
+    true
+  with
+    Not_found ->
+      false
+
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Variable renaming} *)
 

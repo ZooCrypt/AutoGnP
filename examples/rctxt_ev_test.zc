@@ -1,0 +1,17 @@
+(* test *)
+
+adversary A : () -> ().
+random oracle H : Fq -> Fq.
+
+prove
+  [ 
+    u <- A();
+    y <-$ Fq;
+  ] : exists x <- L_H: g^x = g^y.
+  rctxt_ev (x -> log(x)) 1.
+  (*
+  goal 1:
+  1: u <- A();
+  2: y <-$ Fq;
+  : exists x <- L_H: g ^ x = g ^ y
+  *)

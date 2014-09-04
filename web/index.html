@@ -2,7 +2,6 @@
 
 <html>
 <head>
-  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">-->
   <link rel="stylesheet" href="css/bootstrap.css">
   <meta charset="utf-8">
     <title>ZooCrypt</title>
@@ -35,9 +34,7 @@
 <body style="background-color: rgba(35, 35, 35, 0.84);">
   <div class="container">
     <div class="row" style="color: #ffffff">
-      <div class="btn-toolbar">
-        <div id="buttons"/>
-      </div>
+      <div id="toolbar-buttons"/>
     </div>
     <div class="row">
       <div class="col-md-12">
@@ -66,9 +63,7 @@
           <h3  class="modal-title">Open file</h3>
         </div>
         <div class="modal-body" style="text-align: center">
-          <div class="btn-group-vertical" id="file-buttons">
-            <div id="file-buttons"/>
-          </div>
+          <div id="file-buttons"/>
         </div>
         <div class="modal-footer">
           <div class="btn-group">
@@ -78,27 +73,30 @@
       </div>
     </div>
   </div>
+
   <script src="imported/jquery/jquery-1.11.1.min.js"></script>
   <script src="imported/ace/ace.js"></script>
   <script src="imported/ace/keybinding-emacs.js"></script>
   <script src="imported/ace/mode-zoocrypt.js"></script>
   <script src="imported/bootstrap.min.js"></script>
-  <script src="imported/handlebars-v2.0.0.js"></script>
+  <script src="imported/react-0.11.1.js"></script>
+  <!-- <script src="imported/handlebars-v2.0.0.js"></script> -->
   <script src="imported/reconnecting-websocket.js"></script>
-
-  <script id="button-template" type="text/x-handlebars-template">
-    <button class="btn btn-primary btn-default" id="btn-open">Open file</button>
-    <button class="btn btn-primary btn-default" id="btn-save">Save ({{CTRL}}-s)</button>
-    <button class="btn btn-primary btn-default" id="btn-eval-next">Eval next (Ctrl-n)</button>
-    <button class="btn btn-primary btn-default" id="btn-eval-upto">Eval up to cursor (Ctrl-return)</button>
-    <button class="btn btn-primary btn-default" id="btn-eval-undo">Undo eval (Ctrl-p)</button>
-  </script>
-  
-  <script id="file-button-template" type="text/x-handlebars-template">
-    <button type="button" class="btn btn-default file-choice">{{file}}</button>
-  </script>
-
   <script src="zoocrypt.js"></script>
+  <script src="buttonView.js"></script>
+  <script src="mainloop.js"></script>
+
+  <!-- <script id="button-template" type="text/x-handlebars-template"> -->
+  <!--   <button class="btn btn-primary btn-default" id="btn-open">Open file</button> -->
+  <!--   <button class="btn btn-primary btn-default" id="btn-save">Save ({{CTRL}}-s)</button> -->
+  <!--   <button class="btn btn-primary btn-default" id="btn-eval-next">Eval next (Ctrl-n)</button> -->
+  <!--   <button class="btn btn-primary btn-default" id="btn-eval-upto">Eval up to cursor (Ctrl-return)</button> -->
+  <!--   <button class="btn btn-primary btn-default" id="btn-eval-undo">Undo eval (Ctrl-p)</button> -->
+  <!--   <span style="padding-left: 10px">Editing examples/bb1.ec</span> -->
+  <!-- </script> -->
+  
+
+
   
 </body>
 </html>

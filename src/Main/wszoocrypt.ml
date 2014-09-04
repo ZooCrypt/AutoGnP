@@ -25,10 +25,11 @@ let ts_cache = Hashtbl.create 10
    cmds for which there is a proofstate. The proofstate
    is returned together with the list of unhandled
    commands. *)
-let lookup_ts_cache cmds =
+let lookup_ts_cache filename cmds =
   let rec go handled_cmds rem_cmds =
     try
-      (Hashtbl.find ts_cache handled_cmds, List.rev handled_cmds, rem_cmds)
+      let fcache = Hashtbl.find ts_cache filename in
+      (Hashtbl.find fcache handled_cmds, List.rev handled_cmds, rem_cmds)
     with
       Not_found ->
         (match handled_cmds with
@@ -36,8 +37,15 @@ let lookup_ts_cache cmds =
          | last::before -> go before (last::rem_cmds))
   in go (List.rev cmds) []
 
-let insert_ts_cache cmds (ts,msgs) =
-  Hashtbl.add ts_cache (List.rev cmds) (ts,msgs)
+let insert_ts_cache filename cmds (ts,msgs) =
+  let fcache =
+    try Hashtbl.find ts_cache filename
+    with Not_found ->
+      let fcache = Hashtbl.create 10 in
+      Hashtbl.add ts_cache filename fcache;
+      fcache
+  in
+  Hashtbl.add fcache (List.rev cmds) (ts,msgs)
 
 (* ----------------------------------------------------------------------- *)
 (** {Handlers for different commands} *)
@@ -52,11 +60,12 @@ let process_list_files () =
        (YS.to_string (`Assoc [("cmd", `String "setFiles");
                               ("arg", `List (List.map (fun s -> `String s) !ps_files))])))
 
-let process_save content =
-  F.printf "Save: %s\n%!" content;
+let process_save filename content =
+  F.printf "Save %s: %s\n%!" filename content;
+  assert (List.mem filename !ps_files);
   Lwt.return (
     if (Sys.file_exists !ps_file && not !disallow_save) then (
-      output_file !ps_file content;
+      output_file filename content;
       Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else (
       Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
@@ -71,7 +80,9 @@ let process_load s =
     if Sys.file_exists !ps_file && List.mem !ps_file !ps_files then input_file !ps_file
     else "(* Enter proof script below *)"
   in
-  let res = `Assoc [("cmd", `String "setProof"); ("arg", `String s)] in
+  let res = `Assoc [("cmd", `String "setProof");
+                    ("arg", `String s);
+                    ("filename", `String !ps_file) ] in
   Lwt.return (Frame.of_string (YS.to_string res))
 
 let split_proof_script s =
@@ -104,10 +115,10 @@ let split_proof_script s =
   in
   go 0 []
 
-let process_eval proofscript =
+let process_eval fname proofscript =
   let l = split_proof_script proofscript in
   (* F.printf "Eval: ``%a''\n%!" (pp_list ";" pp_string) l; *)
-  let ((ts0, msgs0), handled_cmds, rem_cmds) = lookup_ts_cache l in
+  let ((ts0, msgs0), handled_cmds, rem_cmds) = lookup_ts_cache fname l in
   (* F.printf "Eval: ``%s''\n%!" proofscript; *)
   F.printf "executing %i remaining commands\n%!" (List.length rem_cmds);
   let rhandled = ref handled_cmds in
@@ -128,7 +139,7 @@ let process_eval proofscript =
              last_cmd := cmd;
              let (ts, msg) = handle_instr !rts (Parse.instruction (cmd ^ ".")) in
              rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
-             insert_ts_cache !rhandled (ts,!rmsgs))
+             insert_ts_cache fname !rhandled (ts,!rmsgs))
           rem_cmds;
           `Null
       with
@@ -172,10 +183,18 @@ let process_frame frame =
      (try
         (let get k = List.assoc k l in
          match get "cmd", get "arg" with
-         | `String "eval", `String pscript -> process_eval pscript
-         | `String "listFiles", _          -> process_list_files ()
+         | `String cmd, `String arg when cmd = "eval" || cmd = "save" ->
+           begin match get "filename" with
+           | `String fname ->
+             begin match cmd with
+             | "eval" -> process_eval fname arg
+             | "save" -> process_save fname arg
+             | _ -> assert false
+             end
+           | _ -> process_unknown inp
+           end
          | `String "load", `String fname   -> process_load fname
-         | `String "save", `String fcont   -> process_save fcont
+         | `String "listFiles", _          -> process_list_files ()
          | _                               -> process_unknown inp)
       with Not_found -> process_unknown inp)
   | _ -> process_unknown inp

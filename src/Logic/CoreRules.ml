@@ -228,6 +228,8 @@ let rconv do_norm_terms new_ju ju =
   let ju' =
     try
       let sigma = Game.unif_ju ju' new_ju' in
+      if not (Game.subst_injective sigma) then
+        tacerror "rconv: computed renaming is not bijective";
       subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju'
     with
       Not_found -> ju'

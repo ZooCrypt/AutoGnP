@@ -1,0 +1,14 @@
+(* test for random independent rule with existential quantification *)
+
+adversary A : () -> ().
+random oracle H : Fq -> Fq.
+
+prove
+  [ 
+    u <- A();
+    y <-$ Fq;
+  ] : exists x <- L_H, g^x = g^y.
+  rindep.
+
+
+extract "t_rindep_ex.ec".

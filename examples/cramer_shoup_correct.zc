@@ -30,5 +30,4 @@ prove
         | not (a = a), not(a' = a'), not(c = c), not(d = d),
           d = (a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2)) ];
   ] : b' = b.
-rnorm.  print_goals : correctness.
-
+rnorm.

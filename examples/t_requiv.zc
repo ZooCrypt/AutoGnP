@@ -1,0 +1,15 @@
+(* test *)
+
+adversary A : () -> ().
+random oracle H : G -> G.
+
+prove
+  [ 
+    u <- A();
+    y <-$ G;
+  ] : exists x <- L_H: g^log(x) = g^log(y).
+  requiv
+    [
+      u <- A();
+      y <-$ G;
+    ] : exists x <- L_H: x = y.
