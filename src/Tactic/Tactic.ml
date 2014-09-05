@@ -316,11 +316,12 @@ let pp_jus fmt jus =
 let handle_instr ts instr =
   match instr with
   | PU.RODecl(s,ro,t1,t2) ->
+    let oname = if ro then "random oracle" else "operator" in
     if Ht.mem ts.ts_rodecls s then
-      tacerror "Random oracle with same name already declared.";
+      tacerror "%s with same name already declared." oname;
     Ht.add ts.ts_rodecls s
       (Hsym.mk s ro (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
-    (ts, "Declared random oracle")
+    (ts, fsprintf "Declared %s" oname)
 
   | PU.EMDecl(s,g1,g2,g3) ->
     if Ht.mem ts.ts_emdecls s then

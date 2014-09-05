@@ -12,7 +12,7 @@ var FileButton = React.createClass({
       loadBuffer(file);
       closeDialog();
     };
-    return <button type="button" className="btn btn-default" onClick={hclick}>{file}</button>;
+    return <button type="button" className="btn btn-default" style={{textAlign: "left"}} onClick={hclick}>{file}</button>;
   }
 });
 

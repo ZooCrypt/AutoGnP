@@ -30,7 +30,7 @@ prove
       Kg2(i) = [ (g^(c*d + r2*(d*i + h)), g^r2)
                | not (i=i'), r2 <-$ Fq];
   ] : b = b'.
-
+  
   rnorm. rswap 7 -3.
 
   rrandom 5 _ (h -> h + d * i').
@@ -49,12 +49,8 @@ prove
   rlet_abstract 5 xd (g ^ d).
   rlet_abstract 6 xe (g ^ e').
   rlet_abstract 7 t (g_t^(c*d*e')).
-
   assumption_decisional -> bddh u. rnorm. rswap 4 4.
+  
+  rrandom 8 _ _. rnorm. rindep.
 
-  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)).
-  rnorm. rswap 7 2.
-
-  rindep.
-
-extract "bb1.ec".
+extract "extraction/bb1.ec".

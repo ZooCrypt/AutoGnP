@@ -48,5 +48,5 @@ rswap 4 2.
 print_goals : norm6.
 rindep.
 
-extract "helgamal_std.ec".
+extract "extraction/helgamal_std.ec".
 

@@ -27,4 +27,4 @@ prove
   ] : not (m = m').
   rnorm. rfalse_ev.
   
-  extract "bb1_asym_correct.ec".
+  extract "extraction/bb1_asym_correct.ec".

@@ -40,4 +40,4 @@ rctxt_ev (v -> log(v)).
 rnorm.
 rindep.
 
-(* extract "helgamal_ro.ec". *)
+extract "extraction/helgamal_ro.ec".

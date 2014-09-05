@@ -65,4 +65,4 @@ prove
 
   rindep.
 
-extract "bb2.ec".
+extract "extraction/bb1_asym.ec".

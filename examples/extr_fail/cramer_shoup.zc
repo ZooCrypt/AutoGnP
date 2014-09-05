@@ -74,7 +74,7 @@ prove
   assumption_decisional -> ddh v. rnorm. (* assumption DDH *)
 
   (* perform all possible rrandom applications *)
-  rexcept 3 u*w. rrandom 4 _ _ tmp. rrandom 6 _ _ tmp. rrandom 8 _ _ tmp.
+  rexcept 3 u*w. rrandom 4 _ _. rrandom 6 _ _. rrandom 8 _ _.
   
   (* if a^w = a' for all queries, b not used in game anymore *)
   radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
@@ -82,8 +82,8 @@ prove
     rswap 5 6.
     rindep.
   rrewrite_oracle (10,1,1) <-. rnorm.
-  rrandom 5 _ _ tmp.
-  rrandom 9 _ _ tmp.
+  rrandom 5 _ _.
+  rrandom 9 _ _.
   
   radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
     last. rrewrite_oracle (12,1,1) <-. rnorm. rindep.
@@ -109,4 +109,4 @@ prove
     rswap 9 -6. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
     assumption_computational tcr (ea,ea',ec).
 
-  extract "cramer_shoup.ec".
+  extract "extraction/cramer_shoup.ec".
