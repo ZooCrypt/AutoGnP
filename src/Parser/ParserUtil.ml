@@ -263,7 +263,7 @@ type tactic =
   | Rswap_oracle   of G.ocmd_pos * int
   | Rctxt_ev       of string * parse_expr * int
   | Rrnd           of int * (string * parse_expr) option * (string * parse_expr) option
-  | Rrnd_orcl      of G.ocmd_pos * (string * parse_expr) option * string *  parse_expr * string
+  | Rrnd_orcl      of G.ocmd_pos * (string * parse_expr) option * string * parse_expr
   | Requiv         of gdef * parse_expr
   | Rassm_dec      of Util.direction * string * string list
   | Rassm_comp     of string * parse_expr  

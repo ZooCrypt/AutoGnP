@@ -354,13 +354,11 @@ instr :
 | RRANDOM_ORACLE op = opos
                  LPAREN i1 = ID TO e1 = expr0 RPAREN
                  LPAREN i2 = ID TO e2 = expr0 RPAREN
-                 i3 = ID
-                 { Apply(Rrnd_orcl(op,Some(i1,e1),i2,e2,i3)) }
+                 { Apply(Rrnd_orcl(op,Some(i1,e1),i2,e2)) }
 | RRANDOM_ORACLE op = opos
                  UNDERSCORE
                  LPAREN i2 = ID TO e2 = expr0 RPAREN
-                 i3 = ID
-                 { Apply(Rrnd_orcl(op,None,i2,e2,i3)) }
+                 { Apply(Rrnd_orcl(op,None,i2,e2)) }
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN j = NAT
    { Apply(Rctxt_ev(i1,e1,j - 1)) }

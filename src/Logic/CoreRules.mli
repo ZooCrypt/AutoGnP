@@ -28,7 +28,7 @@ type rule_name =
   (*c equivalence/small statistical distance: oracle *)
   | Rrw_orcl   of ocmd_pos * direction
   | Rswap_orcl of ocmd_pos * int 
-  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt * vs
+  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt
   | Rexc_orcl  of ocmd_pos * expr list 
 
   (*c case distinctions, up-to *)
@@ -135,8 +135,8 @@ val t_random : gcmd_pos -> ctxt -> ctxt -> tactic
     with [r <- d; let v = ctx1[r]] and substituting v for r
     in the judgment. The rule checks that [ctx2] is the inverse
     of [ctx1]. *)
-val rrandom_oracle  : ocmd_pos -> ctxt -> ctxt -> vs -> rule 
-val t_random_oracle : ocmd_pos -> ctxt -> ctxt -> vs -> tactic
+val rrandom_oracle  : ocmd_pos -> ctxt -> ctxt -> rule 
+val t_random_oracle : ocmd_pos -> ctxt -> ctxt -> tactic
 
 (** [rexcept p es ju] returns the judgment resulting from replacing
     the sampling [r <- d \ es'] at position [p] in [ju] with the

@@ -235,19 +235,21 @@ let handle_tactic ts tac =
     in
     apply_rule ru ts
 
-  | PU.Rrnd_orcl((i,j,k) as op,mctxt1,sv2,e2,svlet) ->
+  | PU.Rrnd_orcl((i,j,k) as op,mctxt1,sv2,e2) ->
     let ty =
       match Game.get_ju_lcmd ju (i,j,k) with
       | _,_,(_,Game.LSamp(v,_),_),_ -> v.Vsym.ty
       | _ -> tacerror "Position %i,%i,%i is not a sampling." i j k
     in
     let vmap = Game.vmap_in_orcl ju op in 
-    let v2 = PU.create_var vmap sv2 ty in
+    let v2 = Vsym.mk sv2 ty in
+    Hashtbl.add vmap sv2 v2;
     let e2 = PU.expr_of_parse_expr vmap ts e2 in
     let (v1,e1) = match mctxt1 with
       | Some(sv1,e1) ->
         let vmap = Game.vmap_in_orcl ju op in
-        let v1 = PU.create_var vmap sv1 ty in
+        let v1 = Vsym.mk sv1 ty in
+        Hashtbl.add vmap sv1 v1;
         let e1 = PU.expr_of_parse_expr vmap ts e1 in
         (v1,e1)
       | None when ty_equal ty mk_Fq ->
@@ -255,9 +257,7 @@ let handle_tactic ts tac =
       | None ->
         tacerror "invert only implemented for Fq"
     in
-    let vmap = Game.vmap_in_orcl ju op in 
-    let vlet = PU.create_var vmap svlet ty in
-    apply_rule (t_random_oracle (i,j,k) (v1,e1) (v2,e2) vlet) ts
+    apply_rule (t_random_oracle (i,j,k) (v1,e1) (v2,e2)) ts
 
   | PU.Rbad(i,sx) ->
     let ty =

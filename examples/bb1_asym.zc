@@ -39,13 +39,13 @@ prove
   
   rnorm. rswap 7 -3.
 
-  rrandom 5 _ (x -> x + d * i') z.
+  rrandom 5 _ (h -> h + d * i').
   rnorm.
 
-  rrandom_oracle (6,1,2) _ (x -> x * (i1 - i') + c) zz.
+  rrandom_oracle (6,1,2) _ (x -> x * (i - i') + c).
   rnorm.
 
-  rrandom_oracle (8,1,2) _ (x -> x * (i2 - i') + c) zzz.
+  rrandom_oracle (8,1,2) _ (x -> x * (i - i') + c).
   rnorm.
 
   rswap 1 3.
@@ -60,7 +60,7 @@ prove
 
   assumption_decisional -> bddh u. rnorm. rswap 4 4.
 
-  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)) zzzz.
+  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)).
   rnorm. rswap 7 2.
 
   rindep.

@@ -680,7 +680,7 @@ let pr_random file (pos,inv1,inv2) ju1 ju2 fmt () =
   pp_cmds fmt info.tacs;
   close_pp fmt ()
 
-let pr_random_orcl file (pos, inv1, inv2,_newx) ju1 ju2 fmt () =
+let pr_random_orcl file (pos, inv1, inv2) ju1 ju2 fmt () =
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
   let _i, ctxt = Game.get_ju_octxt ju1 pos in
   let _i, ctxt2 = Game.get_ju_octxt ju2 pos in
@@ -1021,10 +1021,10 @@ let rec extract_proof file pft =
     let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' 
       (pr_random file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
-  | Rrnd_orcl (pos, inv1, inv2, newx) ->
+  | Rrnd_orcl (pos, inv1, inv2) ->
     let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' 
-      (pr_random_orcl file (pos,inv1,inv2,newx) pft.pt_ju pft'.pt_ju)
+      (pr_random_orcl file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
 
   | Rswap _ ->
     let sw1, pft' = skip_swap pft in

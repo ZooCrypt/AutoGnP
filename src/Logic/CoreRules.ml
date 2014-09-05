@@ -35,7 +35,7 @@ type rule_name =
       $Rrw\_orcl(p,dir)$: rewrite oracle with equality test at $p$ in $dir$ *)
   | Rswap_orcl of ocmd_pos * int (*r
       $Rswap\_orcl(op,i)$: swap statement at $p$ forward by $i$ *)
-  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt * vs (*r
+  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt (*r
       $Rnd\_orcl(p,c_1,c_2,v)$: rnd with $c_1=c_2^{-1}$ for $v$ at $p$*)
   | Rexc_orcl  of ocmd_pos * expr list (*r
       $Rexc\_orcl(p,\vec{e})$: change sampling at $p$ to exclude $\vec{e}$ *)
@@ -369,15 +369,13 @@ let t_swap_oracle i delta = prove_by (rswap_oracle i delta)
 
 (** Random rule. *)
 
-let rrandom_oracle p c1 c2 vslet ju =
-  fail_if_occur vslet ju "rrandom_oracle";
+let rrandom_oracle p c1 c2 ju =
   match get_ju_octxt ju p with
-  | LSamp(vs,((t,[]) as d)), juoc ->
-    assert (ty_equal vslet.Vsym.ty t);
+  | LSamp(vs,((_t,[]) as d)), juoc ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v;
     let cmds = [ LSamp(vs,d);
-                 LLet(vslet, inst_ctxt c1 (mk_V vs)) ]
+                 LLet(vs, inst_ctxt c1 (mk_V vs)) ]
     in
     (* ensure both contexts well-defined *)
     let wfs = wf_gdef CheckDivZero (List.rev juoc.juoc_juc.juc_left) in
@@ -385,15 +383,14 @@ let rrandom_oracle p c1 c2 vslet ju =
     let wfs = wf_lcmds CheckDivZero wfs (List.rev juoc.juoc_cleft) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
-    let subst e = e_replace v (mk_V vslet) e in
     let juoc = { juoc with
-                 juoc_return = subst juoc.juoc_return;
-                 juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright }
+                 juoc_return = juoc.juoc_return;
+                 juoc_cright = juoc.juoc_cright }
     in
-    Rrnd_orcl(p,c1,c2,vslet), [set_ju_octxt cmds juoc]
+    Rrnd_orcl(p,c1,c2), [set_ju_octxt cmds juoc]
   | _ -> tacerror "random: position given is not a sampling"
 
-let t_random_oracle p c1 c2 vslet = prove_by (rrandom_oracle p c1 c2 vslet)
+let t_random_oracle p c1 c2 = prove_by (rrandom_oracle p c1 c2)
 
 (** Exclude values from sampling. *)
 
