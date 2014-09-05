@@ -1,32 +1,30 @@
-adversary A1 : () -> Fq.
-adversary A2 : (G * G * G_s * G_s * G_t) -> (G_t * G_t).
-adversary A3 : (G_t * G * G) -> Bool.
-adversary A4 : G_t -> ().
-oracle Kg : Fq -> (G * G_s).
-bilinear map e : G * G_s -> G_t.
+adversary A1 : () -> (Fq * G_t).
+bilinear map e : G_1 * G_2 -> G_t.
 
 prove
-  [ i' <- A1();
+  [ (* master secret/public key *)
     alpha <-$ Fq;
     beta  <-$ Fq;
     delta <-$ Fq;
-    let g1  = g^alpha;
-    let h1  = g^delta;
-    let g1' = g_s^alpha;
-    let h1' = g_s^delta;
-    let g0' = g_s^(alpha*beta);
-    let v = e(g,g0');
-    (m0,m1) <- A2(g1,h1,g1',h1',v);
-    b <-$ Bool;
-    let mb = b?m0:m1;
+    let g1  = g_1^alpha;
+    let h1  = g_1^delta;
+    let g1' = g_2^alpha;
+    let h1' = g_2^delta;
+    let g0' = g_2^(alpha*beta);
+    let v = e(g_1,g0');
+    (i,m) <- A1();
+    (* cipher *)
     s <-$ Fq;
-    let c1 = mb*v^s;
-    let c2 = g^s;
-    let c3 = (g1^i'*h1)^s;
-    b' <- A3(c1, c2, c3);
+    let c1 = m*v^s;
+    let c2 = g_1^s;
+    let c3 = (g1^i*h1)^s;
+    (* key for identity i *)
     r <-$ Fq;
-    let k1 = g0'*(g1'^i'*h1')^r;
-    let k2 = g_s^r;
-    () <- A4(c1*e(c3,k2)*e(c2,k1)^(-1));
-  ] : b = b'.  print_goals : start.
-  rnorm.  print_goals : correct. (* check that A4 is called with b?m0:m1 *)
+    let k1 = g0'*(g1'^i*h1')^r;
+    let k2 = g_2^r;
+    (* decryption *)
+    let m' = c1*e(c3,k2)*e(c2,k1)^(-1);
+  ] : not (m = m').
+  rnorm. rfalse_ev.
+  
+  extract "bb1_asym_correct.ec".

@@ -21,25 +21,25 @@ prove
     let pk2 = g^d;
     let pk3 = g^h;
     (m0,m1) <- A2(pk1,pk2,pk3)  with
-      Kg1(i1) = [ (g^(c*d + r*(d*i1 + h)), g^r)
-                | not (i1=i'), r <-$ Fq];
+      Kg1(i) = [ (g^(c*d + r*(d*i + h)), g^r)
+               | not (i=i'), r <-$ Fq];
     b <-$ Bool;
     let mb = (b?m0:m1);
     e' <-$ Fq;
     b' <- A3(mb * e(pk1,pk2)^e', g^e', (pk2^i'*pk3)^e') with
-      Kg2(i2) = [ (g^(c*d + r2*(d*i2 + h)), g^r2)
-                | not (i2=i'), r2 <-$ Fq];
+      Kg2(i) = [ (g^(c*d + r2*(d*i + h)), g^r2)
+               | not (i=i'), r2 <-$ Fq];
   ] : b = b'.
 
   rnorm. rswap 7 -3.
 
-  rrandom 5 _ (x -> x + d * i') z.
+  rrandom 5 _ (h -> h + d * i').
   rnorm.
 
-  rrandom_oracle (6,1,2) _ (x -> x * (i1 - i') + c) zz.
+  rrandom_oracle (6,1,2) _ (r -> r * (i - i') + c).
   rnorm.
 
-  rrandom_oracle (8,1,2) _ (x -> x * (i2 - i') + c) zzz.
+  rrandom_oracle (8,1,2) _ (r -> r * (i - i') + c).
   rnorm.
 
   rswap 1 3.
@@ -52,7 +52,7 @@ prove
 
   assumption_decisional -> bddh u. rnorm. rswap 4 4.
 
-  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)) zzzz.
+  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)).
   rnorm. rswap 7 2.
 
   rindep.

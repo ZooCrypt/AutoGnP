@@ -13,3 +13,5 @@ prove
       u <- A();
       y <-$ G;
     ] : exists x <- L_H: x = y.
+  admit.
+  extract "extraction/t_requiv.ec".
