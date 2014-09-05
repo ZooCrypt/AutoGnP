@@ -657,7 +657,7 @@ let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () =
   pp_cmds fmt info.tacs;
   close_pp fmt ()
 
-let pr_random file (pos,inv1,inv2,_newx) ju1 ju2 fmt () =
+let pr_random file (pos,inv1,inv2) ju1 ju2 fmt () =
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
   (*let write = write_gcmds (Util.take pos ju2.ju_gdef) in
     let eqs = mk_eq_exprs file g1 g2 write in *)
@@ -1017,10 +1017,10 @@ let rec extract_proof file pft =
   | Rmerge_ev _ -> 
     let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' (pr_admit "merge_ev")
-  | Rrnd (pos,inv1,inv2,newx) ->
+  | Rrnd (pos,inv1,inv2) ->
     let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' 
-      (pr_random file (pos,inv1,inv2,newx) pft.pt_ju pft'.pt_ju)
+      (pr_random file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
   | Rrnd_orcl (pos, inv1, inv2, newx) ->
     let pft' = List.hd pft.pt_subgoal in
     extract_proof_sb1 file pft pft' 

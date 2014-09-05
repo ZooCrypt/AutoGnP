@@ -171,7 +171,7 @@ let handle_tactic ts tac =
   | PU.Rlet_unfold(i) ->
     apply_rule (Rules.t_let_unfold i) ts
 
-  | PU.Rrnd(i,mctxt1,mctxt2,svlet) ->
+  | PU.Rrnd(i,mctxt1,mctxt2) ->
     let (ty,rv) =
       match Game.get_ju_gcmd ju i with
       | Game.GSamp(v,_) -> (v.Vsym.ty, v)
@@ -181,7 +181,9 @@ let handle_tactic ts tac =
       match mctxt2 with
       | Some (sv2,e2) ->
         let vmap = Game.vmap_of_globals ju.Game.ju_gdef in
-        let v2 = PU.create_var vmap sv2 ty in
+        (* bound name overshadows names in game *)
+        let v2 = Vsym.mk sv2 ty in
+        Hashtbl.add vmap sv2 v2;
         (v2,PU.expr_of_parse_expr vmap ts e2,0)
       | None ->
         (* field expressions containing the sampled variable *)
@@ -215,7 +217,9 @@ let handle_tactic ts tac =
       match mctxt1 with
       | Some(sv1,e1) ->
         let vmap = Game.vmap_of_globals ju.Game.ju_gdef in
-         let v1 = PU.create_var vmap sv1 ty in
+        (* bound name overshadows names in game *)
+        let v1 = Vsym.mk sv1 ty in
+        Hashtbl.add vmap sv1 v1;
         let e1 = PU.expr_of_parse_expr vmap ts e1 in
         (v1,e1)
       | None when ty_equal ty mk_Fq ->
@@ -223,9 +227,7 @@ let handle_tactic ts tac =
       | None ->
         tacerror "invert only implemented for Fq"
     in
-    let vmap = Game.vmap_of_globals ju.Game.ju_gdef in
-    let vlet = PU.create_var vmap svlet ty in
-    let ru_rand = t_random (i + forward) (v1,e1) (v2,e2) vlet in
+    let ru_rand = t_random (i + forward) (v1,e1) (v2,e2) in
     F.printf ">>> forward %i\n" forward;
     let ru =
       if forward = 0 then ru_rand

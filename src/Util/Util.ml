@@ -293,3 +293,16 @@ let tacerror fmt =
       F.pp_print_flush fbuf ();
       raise (Invalid_rule (Buffer.contents buf)))
     fbuf fmt
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Debug printing} *)
+
+let debug_fmt = ref F.err_formatter
+
+let eprintf fs = F.fprintf !debug_fmt fs
+
+let set_debug_buffer () =
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  debug_fmt := fbuf;
+  buf

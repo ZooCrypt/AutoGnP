@@ -164,4 +164,9 @@ exception Invalid_rule of string
 (** [tacerror s] raises a rule application error with information [s]. *)
 val tacerror : ('a, F.formatter, unit, 'b) format4 -> 'a
 
+(* \subsection{Debug printing} *)
+
+val eprintf : ('a, F.formatter, unit) format -> 'a
+
+val set_debug_buffer : unit -> Buffer.t
 

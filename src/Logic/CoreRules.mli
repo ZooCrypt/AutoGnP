@@ -22,7 +22,7 @@ type rule_name =
   (*c equivalence/small statistical distance: main *)
   | Rconv
   | Rswap of gcmd_pos * int
-  | Rrnd  of gcmd_pos * ctxt * ctxt * vs
+  | Rrnd  of gcmd_pos * ctxt * ctxt
   | Rexc  of gcmd_pos * expr list
 
   (*c equivalence/small statistical distance: oracle *)
@@ -123,13 +123,12 @@ val t_split_ev  : int -> tactic
 val rmerge_ev   : int -> int -> rule
 val t_merge_ev  : int -> int -> tactic
 
-(** [rrandom p ctx1 ctx2 v ju] returns the judgment resulting
+(** [rrandom p ctx1 ctx2 ju] returns the judgment resulting
     from replacing the sampling [r <- d] at position [p]
-    with [r <- d; let v = ctx1[r]] and substituting v for r
-    in the judgment. The rule checks that [ctx2] is the inverse
-    of [ctx1]. *)
-val rrandom  : gcmd_pos -> ctxt -> ctxt -> vs -> rule
-val t_random : gcmd_pos -> ctxt -> ctxt -> vs -> tactic
+    with [r <- d; let r = ctx1]. The rule checks that [ctx2]
+    is the inverse of [ctx1]. *)
+val rrandom  : gcmd_pos -> ctxt -> ctxt -> rule
+val t_random : gcmd_pos -> ctxt -> ctxt -> tactic
 
 (** [rrandom p ctx1 ctx2 v ju] returns the judgment resulting
     from replacing the sampling [r <- d] at oracle position [p]

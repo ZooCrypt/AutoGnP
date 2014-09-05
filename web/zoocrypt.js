@@ -1,11 +1,10 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
-// /// <reference path="handlebars.d.ts" />
 
 /* ******************************************************************/
 /* Debug logging                                                    */
 /* ******************************************************************/
-var enable_debug = true;
+var enable_debug = false;
 
 function log(s) {
     if (enable_debug) {
@@ -184,22 +183,11 @@ resizeAce();
 /* File handling functions                                         */
 /* ******************************************************************/
 function saveBuffer() {
-    sendZoocrypt({
-        'cmd': 'save',
-        'arg': editorProof.getValue(),
-        'filename': currentFile });
+    sendZoocrypt({ 'cmd': 'save', 'arg': editorProof.getValue(), 'filename': currentFile });
 }
 
 function loadBuffer(fname) {
     sendZoocrypt({ 'cmd': 'load', 'arg': fname });
-}
-
-function openDialog() {
-    $("#open-file-modal").modal('show');
-}
-
-function closeDialog() {
-    $("#open-file-modal").modal("hide");
 }
 
 /* ******************************************************************/
@@ -223,9 +211,7 @@ function evalLocked() {
     editorProof.clearSelection();
     markLocked('processing');
     if (lockedText() !== "") {
-        sendZoocrypt({
-            'cmd': 'eval', 'arg': lockedText(),
-            'filename': currentFile });
+        sendZoocrypt({ 'cmd': 'eval', 'arg': lockedText(), 'filename': currentFile });
     } else {
         editorGoal.setValue("");
         editorMessage.setValue("");

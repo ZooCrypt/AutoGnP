@@ -461,12 +461,7 @@ let unif_gdef ren gd1 gd2 =
   L.iter2 (unif_gcmd ren) gd1 gd2
 
 let vht_to_map ht =
-  Vsym.H.fold
-    (fun v x m ->
-      F.printf "%a -> %a\n%!" Vsym.pp v Vsym.pp x;
-      Vsym.M.add v x m)
-    ht
-    Vsym.M.empty
+  Vsym.H.fold (fun v x m -> Vsym.M.add v x m) ht Vsym.M.empty
 
 (** We only support an outermost exists binder *)
 let unif_ju ju1 ju2 =

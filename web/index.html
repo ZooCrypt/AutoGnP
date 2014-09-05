@@ -36,67 +36,22 @@
     <div class="row" style="color: #ffffff">
       <div id="toolbar-buttons"/>
     </div>
-    <div class="row">
-      <div class="col-md-12">
-        <table>
-          <tbody>
-            <tr>
-              <td>
-                <div class="editor" id="editor-proof"></div>
-              </td>
-              <td>
-                <div class="editor" id="editor-goal"></div>
-                <div class="editor" id="editor-message"></div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div id="content">
     </div>
   </div>
   
-  <!-- Modal -->
-  <div id="open-file-modal" class="modal">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header" style="text-align: center">
-          <h3  class="modal-title">Open file</h3>
-        </div>
-        <div class="modal-body" style="text-align: center">
-          <div id="file-buttons"/>
-        </div>
-        <div class="modal-footer">
-          <div class="btn-group">
-            <button type="button" class="btn btn-primary btn-default" id="btn-cancel-open">Cancel</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
+  <div id="open-dialog"/>
+  
   <script src="imported/jquery/jquery-1.11.1.min.js"></script>
   <script src="imported/ace/ace.js"></script>
   <script src="imported/ace/keybinding-emacs.js"></script>
   <script src="imported/ace/mode-zoocrypt.js"></script>
   <script src="imported/bootstrap.min.js"></script>
   <script src="imported/react-0.11.1.js"></script>
-  <!-- <script src="imported/handlebars-v2.0.0.js"></script> -->
   <script src="imported/reconnecting-websocket.js"></script>
+  <script src="editorView.js"></script>
   <script src="zoocrypt.js"></script>
   <script src="buttonView.js"></script>
   <script src="mainloop.js"></script>
-
-  <!-- <script id="button-template" type="text/x-handlebars-template"> -->
-  <!--   <button class="btn btn-primary btn-default" id="btn-open">Open file</button> -->
-  <!--   <button class="btn btn-primary btn-default" id="btn-save">Save ({{CTRL}}-s)</button> -->
-  <!--   <button class="btn btn-primary btn-default" id="btn-eval-next">Eval next (Ctrl-n)</button> -->
-  <!--   <button class="btn btn-primary btn-default" id="btn-eval-upto">Eval up to cursor (Ctrl-return)</button> -->
-  <!--   <button class="btn btn-primary btn-default" id="btn-eval-undo">Undo eval (Ctrl-p)</button> -->
-  <!--   <span style="padding-left: 10px">Editing examples/bb1.ec</span> -->
-  <!-- </script> -->
-  
-
-
-  
 </body>
 </html>

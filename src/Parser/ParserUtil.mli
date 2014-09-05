@@ -95,7 +95,7 @@ type tactic =
   | Rswap          of int * int
   | Rswap_oracle   of ocmd_pos * int
   | Rctxt_ev       of string * parse_expr * int
-  | Rrnd           of int * (string * parse_expr) option * (string * parse_expr) option * string
+  | Rrnd           of int * (string * parse_expr) option * (string * parse_expr) option
   | Rrnd_orcl      of ocmd_pos * (string * parse_expr) option * string * parse_expr * string
   | Requiv         of gdef * parse_expr
   | Rassm_dec      of Util.direction * string * string list

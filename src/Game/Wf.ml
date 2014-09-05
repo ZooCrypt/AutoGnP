@@ -32,9 +32,14 @@ let ensure_names_fresh wfs names =
   List.fold_left ensure_name_fresh wfs names
 
 let ensure_varname_fresh wfs vs =
-  let name = Id.name vs.Vsym.id in
-  let wfs = ensure_name_fresh wfs name in
-  { wfs with wf_bvars = Vsym.S.add vs wfs.wf_bvars }
+  (* we allow overshadowing of existing names *)
+  if Vsym.S.mem vs wfs.wf_bvars then (
+    wfs
+  ) else (
+    let name = Id.name vs.Vsym.id in
+    let wfs = ensure_name_fresh wfs name in
+    { wfs with wf_bvars = Vsym.S.add vs wfs.wf_bvars }
+  )
 
 let ensure_varnames_fresh wfs vs =
   List.fold_left ensure_varname_fresh wfs vs
@@ -245,7 +250,6 @@ let wf_gdef ctype gdef0 =
       let wfs = ensure_varname_fresh wfs v in
       assert (ty_equal v.Vsym.ty e.e_ty);
       wf_exp ctype wfs e;
-      (* FIXME: account for binding in non-zero condition *)
       go wfs gcmds
     | GSamp(v,(t,es))::gcmds ->
       assert (ty_equal v.Vsym.ty t &&

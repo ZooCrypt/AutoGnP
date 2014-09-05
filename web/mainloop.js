@@ -1,26 +1,18 @@
 /// <reference path="zoocrypt.ts" />
 
 /* ******************************************************************/
-/* Set handlers for buttons                                         */
-/* ******************************************************************/
-$('#btn-open').click(openDialog);
-$('#btn-cancel-open').click(closeDialog);
-
-$('#btn-save').click(saveBuffer);
-$('#btn-eval-next').click(evalNext);
-$('#btn-eval-upto').click(evalCursor);
-$('#btn-eval-undo').click(evalPrev);
-
-/* ******************************************************************/
 /* webSocket event loop                                             */
 /* ******************************************************************/
-// handle websocket answers
 webSocket.onmessage = function (evt) {
     log(evt.data);
     var m = JSON.parse(evt.data);
 
     // answer for eval
     if (m.cmd == 'setGoal') {
+        var dbg = m.debug;
+        if (dbg != "") {
+            console.debug(dbg);
+        }
         setFirstUnlocked(m.ok_upto);
         markLocked('locked');
         editorGoal.setValue(m.arg);
@@ -36,26 +28,7 @@ webSocket.onmessage = function (evt) {
         // answer for list files
     } else if (m.cmd == 'setFiles') {
         files = (m.arg);
-        renderFileSelector(files);
-        // var source   = $("#file-button-template").html();
-        // var template = Handlebars.compile(source);
-        //var h = "";
-        //for(var i = 0; i < files.length; i++) {
-        //  h = h + template({file: files[i]});
-        //}
-        //$("#file-buttons").html(h)
-        //var fcs = $('.file-choice');
-        //var len = fcs.length;
-        //for (var i = 0; i < len; i++) {
-        //  var fn = fcs[i].textContent;
-        //  fcs[i].onclick = function() {
-        //    var j = (<any>(arguments.callee)).j;
-        //    var fname = $('.file-choice')[j].textContent;
-        //    loadBuffer(fname);
-        //    closeDialog();
-        //  };
-        //  (<any>(fcs[i].onclick)).j = i;
-        //}
+        renderOpenDialog(files);
         // answer for load
     } else if (m.cmd == 'setProof') {
         currentFile = m.filename;

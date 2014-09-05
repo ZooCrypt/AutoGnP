@@ -25,7 +25,7 @@ type rule_name =
   | Rconv                                  (*r rename, unfold let, normalize *)
   | Rswap   of gcmd_pos * int              (*r
       $Rswap(p,i)$: swap statement at $p$ forward by $i$ *)
-  | Rrnd    of gcmd_pos * ctxt * ctxt * vs (*r
+  | Rrnd    of gcmd_pos * ctxt * ctxt (*r
       $Rnd(p,c_1,c_2,v)$: rnd with bij. $c_1=c_2^{-1}$ for $v$ at $p$*)
   | Rexc of gcmd_pos * expr list (*r
       $Rexc(p,\vec{e})$: change sampling at $p$ to exclude $\vec{e}$ *)
@@ -220,9 +220,9 @@ let rconv do_norm_terms new_ju ju =
   in
   wf_ju ctype ju;
   wf_ju ctype new_ju;
-  F.printf "ju >> %a\n%!" pp_ju ju;
-  F.printf "new_ju >> %a\n%!" pp_ju new_ju;
-  F.printf "sigma(ju) >> %a\n%!" pp_ju ju;
+  (* eprintf "ju >> %a\n%!" pp_ju ju; *)
+  (* eprintf "new_ju >> %a\n%!" pp_ju new_ju; *)
+  (* eprintf "sigma(ju) >> %a\n%!" pp_ju ju; *)
   let ju' = norm_ju ~norm:nf ju in
   let new_ju' = norm_ju ~norm:nf new_ju in
   let ju' =
@@ -281,37 +281,33 @@ let ensure_bijection c1 c2 v =
           Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
   then tacerror "random: contexts not bijective"
 
-(*i 'random p c1 c2 vslet' takes a position p, two contexts. and a
-   variable symbol for the new let-bound variable. It first
-   ensures that there is a random sampling 'x <-$ d' at position p.
-   For now, excepted distributions are not allowed.
-   Then it checks that c1 and c2 are well-formed for at position p
-   (taking inequalities that are checked beforehand into account)
-   and that 'forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x'.  i*)
-let rrandom p c1 c2 vslet ju =
-  fail_if_occur vslet ju "rrandom";
+(*i 'random p c1 c2' takes a position p and two contexts.
+    It first ensures that there is a random sampling 'x <-$ d' at position p.
+    For now, excepted distributions are not allowed.
+    Then it checks that c1 and c2 are well-formed for at position p
+    (taking inequalities that are checked beforehand into account)
+    and that 'forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x'.  i*)
+let rrandom p c1 c2 ju =
   match get_ju_ctxt ju p with
-  | GSamp(vs,((t,[]) as d)), juc ->
-    assert (ty_equal vslet.Vsym.ty t);
+  | GSamp(vs,((_t,[]) as d)), juc ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v;
     let cmds =
       [ GSamp(vs,d);
-        GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
+        GLet(vs, inst_ctxt c1 (mk_V vs)) ]
     in
     let wfs = wf_gdef NoCheckDivZero (List.rev juc.juc_left) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
-    let subst e = e_replace v (mk_V vslet) e in
     let juc =
       { juc with
-        juc_right = map_gdef_exp subst juc.juc_right;
-        juc_ev = subst juc.juc_ev }
+        juc_right = juc.juc_right;
+        juc_ev = juc.juc_ev }
     in
-    Rrnd(p,c1,c2,vslet), [ set_ju_ctxt cmds juc ]
+    Rrnd(p,c1,c2), [ set_ju_ctxt cmds juc ]
   | _ -> tacerror "random: position given is not a sampling"
 
-let t_random p c1 c2 vslet = prove_by (rrandom p c1 c2 vslet)
+let t_random p c1 c2 = prove_by (rrandom p c1 c2)
 
 (** Exclude from sampling. *)
 
