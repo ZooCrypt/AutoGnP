@@ -38,31 +38,10 @@ prove
   ] : b = b'.
   
   rnorm. rswap 7 -3.
-
-  rrandom 5 _ (h -> h + d * i').
-  rnorm.
-
-  rrandom_oracle (6,1,2) _ (x -> x * (i - i') + c).
-  rnorm.
-
-  rrandom_oracle (8,1,2) _ (x -> x * (i - i') + c).
-  rnorm.
-
-  rswap 1 3.
-  rnorm_unknown c d e'.
-
-  rlet_abstract 4 xc (g_1 ^ c).
-  rlet_abstract 5 xd (g_1 ^ d).
-  rlet_abstract 6 xd' (g_2 ^ d).
-  rlet_abstract 7 xe  (g_1 ^ e').
-  rlet_abstract 8 xe' (g_2 ^ e').
-  rlet_abstract 9 t (g_t^(c*d*e')).
-
-  assumption_decisional -> bddh u. rnorm. rswap 4 4.
-
-  rrandom 8 (x -> x - log(b?m0:m1)) (x -> x + log(b?m0:m1)).
-  rnorm. rswap 7 2.
-
-  rindep.
-
-extract "extraction/bb1_asym.ec".
+  rrandom 5 _ (h -> h + d * i'). rnorm.
+  rrandom_oracle (6,1,2) _ (x -> x * (i - i') + c). rnorm.
+  rrandom_oracle (8,1,2) _ (x -> x * (i - i') + c). rnorm.
+  crush _.
+  qed.
+  print_proof.
+  extract "extraction/bb1_asym.ec".

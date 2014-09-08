@@ -5,4 +5,5 @@ prove
     x2 <- A();
   ] : (x1 * x2 = 0) /\ not (x2 = 0).
   rindep.
+  qed.
   extract "extraction/t_rindep.ec".

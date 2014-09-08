@@ -16,4 +16,5 @@ prove
   : exists x <- L_H: log(g ^ x) = log(g ^ y)
   *)
   admit.
+  qed.
   extract "extraction/t_rctxt_ev.ec".
