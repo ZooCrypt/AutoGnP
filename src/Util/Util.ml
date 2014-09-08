@@ -60,6 +60,15 @@ let map_opt f m = match m with
   | Some x -> Some (f x)
   | None -> None
 
+let from_opt x o = match o with
+  | Some y -> y
+  | None   -> x
+
+let opt f x o = match o with
+  | Some y -> f y
+  | None   -> x
+
+
 let swap (x,y) = (y,x)
 
 let compare_on f x y = compare (f x) (f y)
@@ -87,6 +96,10 @@ let assert_msg b m = if not b then failwith m
 type ('a,'b) either = Left of 'a | Right of 'b
 
 type direction = LeftToRight | RightToLeft
+
+let string_of_dir = function
+  | LeftToRight -> "->"
+  | RightToLeft -> "<-"
 
 let id x = x
 
@@ -183,6 +196,18 @@ let cat_Some l =
     | [] -> List.rev acc
   in go [] l
 
+let conc_map f xs =
+  L.concat (L.map f xs)
+
+let map_accum f init xs =
+  let rec go acc xs res =
+    match xs with
+    | []    -> (acc,L.rev res)
+    | x::xs ->
+      let (acc,y) = f acc x in
+      go acc xs (y::res)
+  in
+  go init xs []
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{String functions} *)
@@ -268,8 +293,13 @@ let pp_list_s = pp_list_c (fun fmt -> F.fprintf fmt "%s")
 
 let pp_string fmt s = F.fprintf fmt "%s" s
 
+let pp_int fmt i = F.fprintf fmt "%i" i
+
 let pp_if c pp1 pp2 fmt x =
   if c then pp1 fmt x else pp2 fmt x
+
+let pp_pair pp1 pp2 fmt (a,b) =
+  F.fprintf fmt "(%a,%a)" pp1 a pp2 b
 
 let fsprintf fmt =
   let buf  = Buffer.create 127 in
@@ -278,20 +308,6 @@ let fsprintf fmt =
     (fun _ ->
       F.pp_print_flush fbuf ();
       (Buffer.contents buf))
-    fbuf fmt
-
-(*i ----------------------------------------------------------------------- i*)
-(* \subsection{Exception required by Logic modules} *)
-
-exception Invalid_rule of string 
-
-let tacerror fmt =
-  let buf  = Buffer.create 127 in
-  let fbuf = F.formatter_of_buffer buf in
-  F.kfprintf
-    (fun _ ->
-      F.pp_print_flush fbuf ();
-      raise (Invalid_rule (Buffer.contents buf)))
     fbuf fmt
 
 (*i ----------------------------------------------------------------------- i*)
@@ -306,3 +322,20 @@ let set_debug_buffer () =
   let fbuf = F.formatter_of_buffer buf in
   debug_fmt := fbuf;
   buf
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Exception required by Logic modules} *)
+
+exception Invalid_rule of string 
+
+let tacerror fmt =
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  F.kfprintf
+    (fun _ ->
+      F.pp_print_flush fbuf ();
+      let s = Buffer.contents buf in
+      eprintf "%s\n" s;
+      raise (Invalid_rule s))
+    fbuf fmt
+

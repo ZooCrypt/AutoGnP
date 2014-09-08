@@ -34,6 +34,8 @@ rule lex = parse
   | "adversary" { ADVERSARY }
   | "admit" { ADMIT }
   | "last" { LAST }
+  | "qed" { QED }
+  | "back" { BACK }
   | "oracle" { ORACLE }
   | "operator" { OPERATOR }
   | "assumption_decisional" { ASSUMPTION_DECISIONAL }
@@ -43,7 +45,8 @@ rule lex = parse
   | "map" { MAP }
   | "prove" { PROVE }
   | "print_goals" { PRINTGOALS }
-  | "print_goal" { PRINTGOAL }  
+  | "print_goal" { PRINTGOAL }
+  | "print_proof" { PRINTPROOF }
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm" { RNORM }
   | "radd_test" { RADD_TEST }
@@ -54,6 +57,7 @@ rule lex = parse
   | "rlet_unfold"  { RLET_UNFOLD }
   | "rrewrite_oracle"  { RREWRITE_ORACLE }  
   | "rrewrite_ev" { RREWRITE_EV }
+  | "crush" { RCRUSH }
   | "rsimp" { RSIMP }
   | "rsplit_ev" { RSPLIT_EV }
   | "rfalse_ev" { RFALSE_EV }

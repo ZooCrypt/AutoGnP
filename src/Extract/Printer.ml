@@ -65,7 +65,7 @@ let pp_tvar fmt i =
   F.fprintf fmt "%a.%s" pp_mod_name m i.tvar_ty
 
 let rec pp_type file fmt ty = 
- match ty.ty_node with
+  match ty.ty_node with
   | BS lv    -> pp_tvar fmt (get_lvar file lv)
   | Bool     -> F.fprintf fmt "bool"
   | G gv     -> pp_tvar fmt (get_gvar file gv)

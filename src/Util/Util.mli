@@ -59,7 +59,13 @@ val exc_to_opt : (unit -> 'a) -> 'a option
     applies [f] to the value contained in [o] otherwise *)
 val map_opt : ('a -> 'b) -> 'a option -> 'b option
 
+val from_opt : 'a -> 'a option -> 'a
+
+val opt : ('a -> 'b) -> 'b -> 'a option -> 'b
+
 val swap : 'a * 'b -> 'b * 'a
+
+val map_accum : ('b -> 'a -> 'b * 'c) -> 'b -> 'a list -> 'b * 'c list
 
 (** [compare_on f x y] yields the comparison [compare (f x) (f y)] *)
 val compare_on : ('a -> 'b) -> 'a -> 'a -> int
@@ -73,6 +79,8 @@ val assert_msg : bool -> string -> unit
 type ('a,'b) either = Left of 'a | Right of 'b
 
 type direction = LeftToRight | RightToLeft
+
+val string_of_dir : direction -> string
 
 val id : 'a -> 'a
 
@@ -122,6 +130,8 @@ val lefts_rights : (('a,'b) either) list -> ('a list * 'b list)
 
 val cat_Some : 'a option list -> 'a list
 
+val conc_map : ('a -> 'b list) -> 'a list -> 'b list
+
 (* \subsection{String functions} *)
 
 val splitn : string -> char -> string list
@@ -150,7 +160,11 @@ val pp_list_s : F.formatter -> string list -> unit
 
 val pp_string : F.formatter -> string -> unit
 
+val pp_int : F.formatter -> int -> unit
+
 val pp_if : bool -> ('a -> 'b -> 'c) -> ('a -> 'b -> 'c) -> 'a -> 'b -> 'c
+
+val pp_pair : (F.formatter -> 'a -> unit) -> (F.formatter -> 'b -> unit) -> F.formatter -> 'a * 'b -> unit
 
 (** [fsprintf f] executes the format function with the standard
     string formatter. *)

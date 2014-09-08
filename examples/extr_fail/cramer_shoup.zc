@@ -55,40 +55,25 @@ prove
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
 
   ] : b = b'.
+  rnorm. assumption_decisional _ _ v.
 
-  (*
-  ddh.
-  rrandom*.
-  rindep_progress. closes current goal, generates a new subgoal for test a^w = a'
-  rindep.
-  try rindep with Require(i) -> find_tactic(i). last. rindep.
-  rindep_progress. closes current goal, generates a new subgoal for h(x) = h(y)
-  tcr.
-  *)
+  rexcept 3 u*w. rnorm.
+  rrandom 4 _ _. rnorm.
+  rrandom 5 _ _. rnorm.
+  rrandom 6 _ _. rnorm.
 
-  (* we could sample here, but then we cannot perform DDH *)
-
-  (* apply DDH *)
-  rswap 15 -13. rnorm. rnorm_unknown u w.
-  rlet_abstract 3 gw g^w. rlet_abstract 4 gu g^u. rlet_abstract 5 gwu g^(w*u).
-  assumption_decisional -> ddh v. rnorm. (* assumption DDH *)
-
-  (* perform all possible rrandom applications *)
-  rexcept 3 u*w. rrandom 4 _ _. rrandom 6 _ _. rrandom 8 _ _.
-  
   (* if a^w = a' for all queries, b not used in game anymore *)
   radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
     rrewrite_oracle (10,1,1) <-. rnorm.
-    rswap 5 6.
     rindep.
   rrewrite_oracle (10,1,1) <-. rnorm.
-  rrandom 5 _ _.
-  rrandom 9 _ _.
+  rrandom 4 _ _. rnorm.
+  rrandom 5 _ _. rnorm.
   
   radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
     last. rrewrite_oracle (12,1,1) <-. rnorm. rindep.
   rrewrite_oracle (12,1,1) <-. rnorm.
-  
+
   (* we just use the rlet to simplify terms for the manual proof *)
   rlet_abstract 13 h1 H(g ^ u,g ^ v,g ^ z2). rlet_abstract 15 h2 H(ea,ea',ec).
   rlet_abstract 15 la1 log(ea). rlet_abstract 15 la2 log(ea').
@@ -106,7 +91,7 @@ prove
     rsplit_ev 5. rrewrite_ev 5 ->. rrewrite_ev 6 ->. rrewrite_ev 7 ->. rrewrite_ev 3 ->.
     rnorm. rfalse_ev.
   rremove_ev 1. rremove_ev 1. rremove_ev 1. rnorm_unknown u v z2. rswap 2 -1. rexcept 3. rswap 3 -1.
-    rswap 9 -6. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
+    rswap 11 -8. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
     assumption_computational tcr (ea,ea',ec).
-
+  qed.
   extract "extraction/cramer_shoup.ec".

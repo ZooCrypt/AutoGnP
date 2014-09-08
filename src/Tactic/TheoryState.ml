@@ -1,9 +1,12 @@
 (*s Goals and mappings from strings to variables/symbols. *)
 
 (*i*)
-open Assumption
 open Syms
 open Gsyms
+open Util
+open Assumption
+open CoreRules
+open Nondet
 
 module Ht = Hashtbl
 module T = Type
@@ -12,10 +15,8 @@ module G = Game
 
 type theory_proof_state =
   | BeforeProof
-  | ActiveProof of CoreRules.proof_state
-  | ClosedTheory
-    (* FIXME: we should store the proof tree here. Extraction works
-       only with a closed theory. *)
+  | ActiveProof  of (proof_state * proof_state nondet) 
+  | ClosedTheory of proof_tree
 
 type theory_state =
   { (* theory definitions:
@@ -45,23 +46,22 @@ let mk_ts () =
 
 let get_proof_state ts = 
   match ts.ts_ps with
-  | ActiveProof g -> g
-  | BeforeProof   -> Util.tacerror "cannot apply tactic: no active proof"
-  | ClosedTheory  -> Util.tacerror "cannot apply tactic: theory closed"
+  | ActiveProof (g,_)  -> g
+  | BeforeProof        -> tacerror "cannot apply tactic: no active proof"
+  | ClosedTheory _     -> tacerror "cannot apply tactic: theory closed"
 
-(*i
-let ts_copy ts =
-  { ts_lvars      = Ht.copy ts.ts_lvars;
-    ts_gvars      = Ht.copy ts.ts_gvars;
-    ts_rodecls    = Ht.copy ts.ts_rodecls;
-    ts_odecls     = Ht.copy ts.ts_odecls; 
-    ts_adecls     = Ht.copy ts.ts_adecls;
-    ts_emdecls    = Ht.copy ts.ts_emdecls;
-    ts_assms_dec  = Ht.copy ts.ts_assms_dec;
-    ts_assms_comp = Ht.copy ts.ts_assms_comp;
-    ts_ps         = ts.ts_ps
-  }
-i*)
+let get_proof_state_back ts = 
+  match ts.ts_ps with
+  | ActiveProof (_,bg)  -> bg
+  | BeforeProof         -> tacerror "cannot apply tactic: no active proof"
+  | ClosedTheory _      -> tacerror "cannot apply tactic: theory closed"
+
+
+let get_proof_tree ts = 
+  match ts.ts_ps with
+  | ActiveProof _   -> tacerror "cannot obtain proof tree, finish proof with qed "
+  | BeforeProof     -> tacerror "cannot obtain proof, no proof started yet"
+  | ClosedTheory pt -> pt
 
 let create_lenvar ps s =
   try Ht.find ps.ts_lvars s 
@@ -76,26 +76,3 @@ let create_groupvar ps s =
     let gv = T.Groupvar.mk s in
     Ht.add ps.ts_gvars s gv;
     gv
-
-(*i
-let create_var reuse ps s ty =
-  if Ht.mem ps.ts_vars s then (
-    if reuse then Some (Ht.find ps.ts_vars s)
-    else None
-  ) else (
-    let v = Vsym.mk s ty in
-    Ht.add ps.ts_vars s v;
-    Some v
-  )
-i*)
-
-(*i
-let ts_importvars ts ju =
-  let ts = ts_resetvars ts in
-  let import_var vs =
-    Ht.add ts.ts_vars (vs.Vsym.id |> Id.name) vs
-  in
-  Vsym.S.iter import_var (ju_all_vars ju);
-  ts
-i*)
-

@@ -85,8 +85,8 @@ let num_list l = L.mapi (fun i a -> i+1,a) l
 let pp_lcomp fmt (e,m) =
   match m with
   | [] -> F.fprintf fmt "1: return %a;" pp_exp e
-  | _  -> F.fprintf fmt "%a;@,%i: return %a;@]" 
-            (pp_list ";@," pp_ilcmd) (num_list m) (L.length m) pp_exp e
+  | _  -> F.fprintf fmt "@[%a;@\n%i: return %a;@]"
+            (pp_list ";@\n" pp_ilcmd) (num_list m) (L.length m + 1) pp_exp e
 
 let pp_odef fmt (o, vs, ms, e) =
   F.fprintf fmt "@[<v>%a %a = [@,  @[<v>%a@]@,]@]" 
@@ -101,16 +101,16 @@ let pp_gcmd fmt gc = match gc with
     F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@])@]" 
       pp_binder vs Asym.pp asym pp_exp_tnp e 
   | GCall(vs,asym,e,os) -> 
-    F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@]) with@ %a@]"
+    F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@]) with@\n%a@]"
       pp_binder vs Asym.pp asym 
       pp_exp_tnp e
-      (pp_list ";@ " pp_odef) os
+      (pp_list ",@;" pp_odef) os
 
 let pp_igcmd fmt (i,gc) = 
   F.fprintf fmt "@[%i: %a@]" i pp_gcmd gc 
 
 let pp_gdef fmt gd =
-  pp_list ";@." pp_igcmd fmt (num_list gd)
+  pp_list ";@;" pp_igcmd fmt (num_list gd)
 
 let pp_ju fmt ju =
   F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev

@@ -1,6 +1,7 @@
 (*s Derived higher-level tactics. *)
 
 (*i*)
+open Nondet
 open Game
 open Expr
 open Assumption
@@ -53,38 +54,48 @@ type rule_name =
   | Rrnd_indep of bool * int
 
 type proof_tree = private {
-  pt_subgoal : proof_tree list;
-  pt_rule    : rule_name;
-  pt_ju      : judgment;
+  pt_children : proof_tree list;
+  pt_rule     : rule_name;
+  pt_ju       : judgment;
 }
+
+val pt_replace_children : proof_tree -> proof_tree list -> proof_tree
 
 type goal = judgment
 
-type rule = judgment -> rule_name * judgment list
+type rule = goal -> rule_name * goal list
 
 type validation = proof_tree list -> proof_tree
 
 type proof_state = {
-  subgoals   : judgment list;
+  subgoals   : goal list;
   validation : validation
 }
 
-type tactic = goal -> proof_state
+type tactic = goal -> proof_state nondet
+
+type 'a rtactic = goal -> ('a * proof_state) nondet
 
 exception NoOpenGoal 
 
 (* \subsection{Basic manipulation tactics}  *)
-val get_proof : proof_state -> proof_tree  
-val t_first_last : proof_state -> proof_state 
-val t_on_n : int -> tactic -> proof_state -> proof_state
-val t_first : tactic -> proof_state -> proof_state
+val get_proof : proof_state -> proof_tree
+val move_first_last : proof_state -> proof_state
+val apply_on_n : int -> tactic -> proof_state -> proof_state nondet
+val apply_first : tactic -> proof_state -> proof_state nondet
 
 val t_id : tactic
 val t_seq : tactic -> tactic -> tactic
-val t_subgoal : tactic list -> proof_state -> proof_state
+val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
+val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
+val t_cut : tactic -> tactic
+(* val t_subgoal : tactic list -> proof_state -> proof_state *)
+
 
 val t_try : tactic -> tactic
 val t_or  : tactic -> tactic -> tactic
+val t_fail : ('a, Util.F.formatter, unit, 'b nondet) format4 -> 'c -> 'a
+val t_ensure_progress : tactic -> tactic
 
 (* \subsection{Core rules of the logic} *)
 

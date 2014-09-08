@@ -2,6 +2,7 @@
 
 (*i*)
 open Util
+open Nondet
 open Type
 open Expr
 open Game
@@ -71,10 +72,15 @@ type rule_name =
 
 (** Proof tree. *)
 type proof_tree = {
-  pt_subgoal : proof_tree list;
-  pt_rule    : rule_name;
-  pt_ju      : judgment
+  pt_children : proof_tree list;
+  pt_rule     : rule_name;
+  pt_ju       : judgment
 }
+
+let pt_replace_children pt pts =
+  let equal_fact pt1 pt2 = ju_equal pt1.pt_ju pt2.pt_ju in
+  assert (Util.list_eq_for_all2 equal_fact pt.pt_children pts);
+  { pt with pt_children = pts }
 
 (** A goal is just a judgment (for now). *) 
 type goal = judgment
@@ -93,7 +99,8 @@ type proof_state = {
 }
 
 (** A tactic takes a goal and returns a proof state. *)
-type tactic = goal -> proof_state
+type tactic = goal -> proof_state nondet
+type 'a rtactic = goal -> ('a * proof_state) nondet
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{General purpose functions} *)
@@ -108,16 +115,21 @@ let fail_if_occur vs ju s =
 
 (** Prove goal [g] by rule [ru] which yields [subgoals]. *)
 let prove_by rule g = 
-  let (rn, subgoals) = rule g in
-  { subgoals = subgoals;
-    validation = fun pts ->
-      assert (List.length pts = List.length subgoals);
-      assert (List.for_all2 (fun pt g -> ju_equal pt.pt_ju g) pts subgoals);
-      { pt_ju      = g;
-        pt_rule    = rn;
-        pt_subgoal = pts;
+  try    
+    let (rn, subgoals) = rule g in
+    ret
+      { subgoals = subgoals;
+        validation = fun pts ->
+          assert (L.length pts = L.length subgoals);
+          assert (L.for_all2 (fun pt g -> ju_equal pt.pt_ju g) pts subgoals);
+          { pt_ju       = g;
+            pt_rule     = rn;
+            pt_children = pts;
+          }
       }
-  }
+  with
+    Invalid_rule s ->
+      mfail s
 
 (** Get proof from proof state with no open goals. *)
 let get_proof ps = 
@@ -143,64 +155,103 @@ let merge_proof_states pss validation =
 (* \subsection{Tacticals and goal management} *)
 
 (** Tactic that moves the first subgoal to the last position. *)
-let t_first_last ps = 
+let move_first_last ps = 
   match ps.subgoals with
   | [] -> tacerror "last: no goals"
   | ju :: jus ->
     let validation pts = 
-      match List.rev pts with
-      | pt :: pts -> ps.validation (pt::List.rev pts)
+      match L.rev pts with
+      | pt :: pts -> ps.validation (pt::L.rev pts)
       | _ -> assert false in
     { subgoals = jus @ [ju];
       validation = validation }
 
 (** Apply the tactic [t] to the [n]-th subgoal of proof state [ps]. *)
-let t_on_n n t ps = 
-  let len = List.length ps.subgoals in
+let apply_on_n n t ps = 
+  let len = L.length ps.subgoals in
   if len = 0 then raise NoOpenGoal;
   if len <= n then tacerror "there is only %i subgoals" len;
   let hd, g, tl = 
     Util.split_n n ps.subgoals  
   in
-  let gsn = t g in
+  t g >>= fun gsn ->
   let vali pts =
     let hd, tl = Util.cut_n n pts in
-    let ptn, tl = Util.cut_n (List.length gsn.subgoals) tl in
-    ps.validation (List.rev_append hd (gsn.validation (List.rev ptn) :: tl))
+    let ptn, tl = Util.cut_n (L.length gsn.subgoals) tl in
+    ps.validation (L.rev_append hd (gsn.validation (L.rev ptn) :: tl))
   in
-  { subgoals = List.rev_append hd (gsn.subgoals @ tl);
-    validation = vali }
+  ret { subgoals = L.rev_append hd (gsn.subgoals @ tl);
+        validation = vali }
 
 (** Apply the tactic [t] to the first subgoal in proof state [ps]. *)
-let t_first t ps = t_on_n 0 t ps
+let apply_first t ps = apply_on_n 0 t ps
 
 (** Identity tactic. *)
-let t_id g = 
+let t_id g = ret (
   { subgoals = [g];
-    validation = fun pts -> match pts with [pt] -> pt | _ -> assert false }
+    validation = fun pts -> match pts with [pt] -> pt | _ -> assert false })
+
+let t_bind_ignore (t1 : 'a rtactic) (ft2 : 'a -> tactic) g =
+  t1 g >>= fun (x,ps1) ->
+  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
+  ret (merge_proof_states ps2s ps1.validation)
+
+let t_cut t g =
+  let pss = t g in
+  match pull pss with
+  | Left(Some s) -> mfail s
+  | Left None    -> mfail "t_cut: mempty"
+  | Right(x,_)   -> ret x
 
 (** Apply [t1] to goal [g] and [t2] to all resulting subgoals. *)
-let t_seq t1 t2 g =
-  let ps1 = t1 g in
-  let ps2s = List.map t2 ps1.subgoals in
-  merge_proof_states ps2s ps1.validation
+let t_bind (t1 : 'a rtactic) (ft2 : 'a -> 'b rtactic) g =
+  t1 g >>= fun (x,ps1) ->
+  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
+  match ps2s with
+  | [y,ps2] ->
+    ret (y,merge_proof_states [ps2] ps1.validation)
+  | _ ->
+    mfail "t_bind: expected exactly one goal"
 
+let t_seq t1 t2 g =
+  t1 g >>= fun ps1 ->
+  mapM t2 ps1.subgoals >>= fun ps2s ->
+  ret (merge_proof_states ps2s ps1.validation)
+
+let t_ensure_progress t g =
+  t g >>= fun ps ->
+  guard (ps.subgoals <> [g]) >>= fun _ ->
+  ret ps
+  
 (** Apply tactics [ts] to subgoals of proof state [ps]. *)
+(*
 let t_subgoal ts ps = 
   let ps2s = 
-    try List.map2 (fun t g -> t g) ts ps.subgoals 
+    try L.map2 (fun t g -> t g) ts ps.subgoals 
     with Invalid_argument _ -> 
       tacerror "%i tactics expected, %i are given" 
-        (List.length ps.subgoals) (List.length ts)
+        (L.length ps.subgoals) (L.length ts)
   in
   merge_proof_states ps2s ps.validation
+*)
 
 (** Apply tactic [t1] to goal [g] or [t2] in case of failure. *)
-let t_or t1 t2 g = 
-  try t1 g with Invalid_rule _ -> t2 g
+let t_or tn1 tn2 g = Nondet.mplus (tn1 g)  (tn2 g)
 
 (** Apply tactic [t] or [t_id] in case of failure. *)
 let t_try t g = t_or t t_id g
+
+(** Failure, takes a format string *)
+let t_fail fs _g =
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  F.kfprintf
+    (fun _ ->
+      F.pp_print_flush fbuf ();
+      let s = Buffer.contents buf in
+      eprintf "%s\n" s;
+      mfail s)
+    fbuf fs
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Rules for main (equivalence/small statistical distance)} *)
@@ -220,9 +271,9 @@ let rconv do_norm_terms new_ju ju =
   in
   wf_ju ctype ju;
   wf_ju ctype new_ju;
-  (* eprintf "ju >> %a\n%!" pp_ju ju; *)
-  (* eprintf "new_ju >> %a\n%!" pp_ju new_ju; *)
-  (* eprintf "sigma(ju) >> %a\n%!" pp_ju ju; *)
+  (*i eprintf "ju >> %a\n%!" pp_ju ju; i*)
+  (*i eprintf "new_ju >> %a\n%!" pp_ju new_ju; i*)
+  (*i eprintf "sigma(ju) >> %a\n%!" pp_ju ju; i*)
   let ju' = norm_ju ~norm:nf ju in
   let new_ju' = norm_ju ~norm:nf new_ju in
   let ju' =
@@ -262,7 +313,7 @@ let swap i delta ju =
         thd, hhd, tl
       else
         let htl, ttl = cut_n delta tl in
-        hd, List.rev htl, ttl
+        hd, L.rev htl, ttl
     in
     check_swap read_gcmds write_gcmds instr c2;
     if is_call instr && has_call c2
@@ -296,7 +347,7 @@ let rrandom p c1 c2 ju =
       [ GSamp(vs,d);
         GLet(vs, inst_ctxt c1 (mk_V vs)) ]
     in
-    let wfs = wf_gdef NoCheckDivZero (List.rev juc.juc_left) in
+    let wfs = wf_gdef NoCheckDivZero (L.rev juc.juc_left) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let juc =
@@ -336,7 +387,7 @@ let rrewrite_oracle op dir ju =
     in
     let subst e = e_replace a b e in
     let juoc = { juoc with
-                 juoc_cright = List.map (map_lcmd_exp subst) juoc.juoc_cright;
+                 juoc_cright = L.map (map_lcmd_exp subst) juoc.juoc_cright;
                  juoc_return = subst juoc.juoc_return }
     in
     Rrw_orcl(op,dir), [ set_ju_octxt [lc] juoc ]
@@ -356,7 +407,7 @@ let swap_oracle i delta ju =
         thd,hhd,juoc.juoc_cright
       else
         let htl, ttl = cut_n delta juoc.juoc_cright in
-        juoc.juoc_cleft, List.rev htl, ttl in
+        juoc.juoc_cleft, L.rev htl, ttl in
     check_swap read_lcmds write_lcmds i c2;
     let c2, c3 = 
       if delta > 0 then c2, i::c3 else i::c2, c3 in
@@ -378,9 +429,9 @@ let rrandom_oracle p c1 c2 ju =
                  LLet(vs, inst_ctxt c1 (mk_V vs)) ]
     in
     (* ensure both contexts well-defined *)
-    let wfs = wf_gdef CheckDivZero (List.rev juoc.juoc_juc.juc_left) in
+    let wfs = wf_gdef CheckDivZero (L.rev juoc.juoc_juc.juc_left) in
     let wfs = ensure_varnames_fresh wfs juoc.juoc_oargs in
-    let wfs = wf_lcmds CheckDivZero wfs (List.rev juoc.juoc_cleft) in
+    let wfs = wf_lcmds CheckDivZero wfs (L.rev juoc.juoc_cleft) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let juoc = { juoc with
@@ -437,9 +488,9 @@ let radd_test p tnew asym fvs ju =
                    "preceeding commands must be tests")
              pp_lcmd lcmd
     in
-    let tests = List.map destr_guard (List.rev juoc.juoc_cleft) in
+    let tests = L.map destr_guard (L.rev juoc.juoc_cleft) in
     let subst = 
-      List.fold_left2
+      L.fold_left2
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
         Me.empty juoc.juoc_oargs fvs
     in
@@ -492,7 +543,7 @@ let t_bad p vsx = prove_by (rbad p vsx)
 let rctxt_ev i c ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
-  if i < 0 || i >= List.length evs then failwith "invalid event position";
+  if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in 
   let b = 
     if is_Eq b then
@@ -503,7 +554,7 @@ let rctxt_ev i c ju =
       mk_Exists (inst_ctxt c e1) (inst_ctxt c e2) h 
     else tacerror "rctxt_ev: bad event, expected equality or exists"
   in
-  let ev = mk_Land (List.rev_append l (b:: r)) in
+  let ev = mk_Land (L.rev_append l (b:: r)) in
   let wfs = wf_gdef NoCheckDivZero (ju.ju_gdef) in
   wf_exp CheckDivZero wfs ev;
   let new_ju = {ju with ju_ev = ev} in
@@ -519,7 +570,7 @@ let rremove_ev (rm:int list) ju =
     | [] -> []
     | ev::evs -> 
       let evs = aux (i+1) evs in
-      if List.mem i rm then evs else ev::evs in
+      if L.mem i rm then evs else ev::evs in
   let ev = ju.ju_ev in
   let evs = aux 0 (destruct_Land ev) in
   let new_ju = {ju with ju_ev = mk_Land evs} in
@@ -551,7 +602,7 @@ let rmerge_ev i j ju =
     if i = j then [], b1, r 
     else Util.split_n (j - i - 1) r in
   let ev = merge_base_event b1 b2 in
-  let evs = List.rev_append l (List.rev_append l' (ev::r)) in
+  let evs = L.rev_append l (L.rev_append l' (ev::r)) in
   let new_ju = {ju with ju_ev = mk_Land evs} in
   (*i TODO : should we check DivZero, I think not i*)
   Rmerge_ev(i,j), [new_ju]
@@ -563,7 +614,7 @@ let t_merge_ev i j = prove_by (rmerge_ev i j)
 let rsplit_ev i ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
-  if i < 0 || i >= List.length evs then failwith "invalid event position";
+  if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in 
   let b =
     if not (is_Eq b)
@@ -572,9 +623,9 @@ let rsplit_ev i ju =
     if not (is_Tuple e1 && is_Tuple e2)
       then tacerror "rsplit_ev: bad event, tuples";
     let es1, es2 = destr_Tuple e1, destr_Tuple e2 in
-    if not (List.length es1 = List.length es2)
+    if not (L.length es1 = L.length es2)
       then tacerror "rsplit_ev: bad event, tuples";
-    List.map (fun (e1,e2) -> mk_Eq e1 e2) (List.combine es1 es2)
+    L.map (fun (e1,e2) -> mk_Eq e1 e2) (L.combine es1 es2)
   in
   let evs = l@b@r in
   let new_ju = {ju with ju_ev = mk_Land evs} in
@@ -587,7 +638,7 @@ let t_split_ev i = prove_by (rsplit_ev i)
 let rrw_ev i d ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
-  if i < 0 || i >= List.length evs then failwith "invalid event position";
+  if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in 
   let u,v =
     if not (is_Eq b)
@@ -596,7 +647,7 @@ let rrw_ev i d ju =
     if d = LeftToRight then (u,v) else (v,u)
   in
   let subst e = e_replace u v e in
-  let evs = (List.map subst l)@[b]@(List.map subst r) in
+  let evs = (L.map subst l)@[b]@(L.map subst r) in
   let new_ju = { ju with ju_ev = mk_Land evs } in
   Rrw_ev(i,d), [ new_ju ]
 
@@ -614,9 +665,9 @@ let rassm_dec dir subst assm' ju =
     then assm.ad_prefix1,assm.ad_prefix2 
     else assm.ad_prefix2,assm.ad_prefix1
   in
-  let cju = Util.take (List.length c) ju.ju_gdef in
+  let cju = Util.take (L.length c) ju.ju_gdef in
   if not (gdef_equal c cju) then tacerror "assm_dec: cannot match decisional assumption";
-  let tl = Util.drop (List.length c) ju.ju_gdef in
+  let tl = Util.drop (L.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
   let read = read_ju ju' in
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
@@ -636,9 +687,9 @@ let rassm_comp assm ev_e subst ju =
   then (tacerror "assm_comp: event not equal, expected %a, got %a"
           pp_exp ju.ju_ev pp_exp assm_ev);
   let c = assm.ac_prefix in
-  let cju = Util.take (List.length c) ju.ju_gdef in
+  let cju = Util.take (L.length c) ju.ju_gdef in
   if not (gdef_equal c cju) then tacerror "assm_comp: prefix does not match";
-  let tl = Util.drop (List.length c) ju.ju_gdef in
+  let tl = Util.drop (L.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
   let read = read_ju ju' in
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ac_privvars Se.empty in
@@ -692,8 +743,8 @@ let check_event r ev =
   aux 0 (destruct_Land ev)
 
 let rrandom_indep ju = 
-  match List.rev ju.ju_gdef with
+  match L.rev ju.ju_gdef with
   | GSamp(r,_)::_ -> check_event r ju.ju_ev,  []
-  | _             -> tacerror "rrandom_indep: the last instruction is not a random"
+  | _             -> tacerror "rindep: the last instruction is not a random"
 
 let t_random_indep = prove_by rrandom_indep

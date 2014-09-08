@@ -134,7 +134,7 @@ let process_eval fname proofscript =
   let res =
     let error =
       let last_cmd = ref "" in
-      try 
+      try
         List.iter
           (fun cmd ->
              last_cmd := cmd;
@@ -151,14 +151,16 @@ let process_eval fname proofscript =
         | Expr.TypeError  e ->
           `String (F.sprintf "type error: %s" (Expr.typeError_to_string e))
         | e ->
-          `String (F.sprintf "unknown error: %s" (Printexc.to_string e))
+          `String (F.sprintf "unknown error: %s,\n%s"
+                     (Printexc.to_string e)
+                     (Printexc.get_backtrace ()))
     in
     let g =
       match !rts.ts_ps with
-      | BeforeProof  -> "No proof started."
-      | ClosedTheory -> "Theory closed."
-      | ActiveProof { CoreRules.subgoals = [] } -> "No goals."
-      | ActiveProof gs ->
+      | BeforeProof    -> "No proof started."
+      | ClosedTheory _ -> "Theory closed."
+      | ActiveProof ({ CoreRules.subgoals = [] },_) -> "No goals."
+      | ActiveProof (gs,_) ->
         fsprintf "@[%a@.%s@]"
           pp_jus 
           (Util.take 1 gs.subgoals)
@@ -218,6 +220,7 @@ let rec wait_forever () =
 (** {Argument handling} *)
 
 let main =
+  Printexc.record_backtrace true;
   let speclist =
     Arg.align
       [ ("-nosave", Arg.Set disallow_save, " disallow to save file");

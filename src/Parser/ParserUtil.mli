@@ -95,14 +95,15 @@ type tactic =
   | Rswap          of int * int
   | Rswap_oracle   of ocmd_pos * int
   | Rctxt_ev       of string * parse_expr * int
-  | Rrnd           of int * (string * parse_expr) option * (string * parse_expr) option
+  | Rrnd           of int option * (string * parse_expr) option * (string * parse_expr) option
   | Rrnd_orcl      of ocmd_pos * (string * parse_expr) option * string * parse_expr
   | Requiv         of gdef * parse_expr
-  | Rassm_dec      of Util.direction * string * string list
+  | Rassm_dec      of string option * Util.direction option * (string list) option
   | Rassm_comp     of string * parse_expr  
   | Rlet_abstract  of int * string * parse_expr
   | Rlet_unfold    of int
   | Rindep
+  | Rcrush         of int option
   | Rbad           of int * string
   | Rexcept        of int * parse_expr list
   | Rexcept_orcl   of ocmd_pos * parse_expr list
@@ -121,11 +122,14 @@ type instr =
   | AssmDec    of string * gdef * gdef * string list
   | AssmComp   of string * gdef * string * parse_ty * parse_expr * string list
   | Judgment   of gdef * parse_expr
-  | PrintGoals of string
   | PrintGoal  of string
+  | PrintGoals of string
+  | PrintProof
   | Apply      of tactic
   | Admit
   | Last
+  | Back
+  | Qed
   | Extract    of string
 
 type theory = instr list

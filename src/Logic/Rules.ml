@@ -1,376 +1,189 @@
-(*s Derived higher-level tactics. *)
+(*s Infrastructure for defining derived rules. *)
 
 (*i*)
-open Game
-open CoreRules
-open Expr
-open Norm
+open Nondet
 open Util
 open Syms
+open Type
+open Expr
+open Game
+open Assumption
+open CoreRules
+
+module Ht = Hashtbl
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Operators for tacticals} *)
 
-let ( @. ) = t_seq 
+let ( @> ) = t_seq
 
-let ( @+) t ts g = t_subgoal ts (t g)
+let ( @>>= ) = t_bind
+
+let ( @>= ) = t_bind_ignore
+
+(* let ( @+) t ts g = t_subgoal ts (t g) *)
 
 let ( @| ) = t_or
 
-(*i ----------------------------------------------------------------------- i*)
-(* \subsection{Derived rewriting tactics} *)
+let mk_name () = "x."^string_of_int (unique_int ())
 
-(** Unfold all lets and norm. *)
-let t_norm ju =
-  let new_ju = norm_ju ~norm:norm_expr_def ju in
-  t_conv true new_ju ju
-
-(** Unfold all lets and norm, also remove tuple projection. *)
-let t_norm_tuple_proj ju = 
-  let norm e = remove_tuple_proj (norm_expr_def e) in
-  let new_ju = norm_ju ~norm ju in
-  t_conv true new_ju ju
-
-(** Norm without unfolding. *)
-let t_norm_nounfold ju = 
-  let new_ju = map_ju_exp norm_expr_def ju in
-  t_conv true new_ju ju
-
-
-(** Unfold without norm. *)
-let t_unfold_only ju = 
-  let new_ju = norm_ju ~norm:(fun x -> x) ju in
-  t_conv false new_ju ju
-
-(*i [simp e unknown] takes an exponent expression [e] and a
-   set [unknown] of unknown expressions.
-   It returns a pair [(ges,mdenom)] where [mdenom] is 
-   a denominator using [None] to encode [1] and [ges] is a
-   list of of triples (b,ue,ke) representing (b^ue)^ke
-   where [None] encodes the default group generator.
-   The whole list [ges] represent the product of group
-   elements in [ges]. i*)
-let simp_exp e unknown =
-  let norm_mult es = mk_FMult (List.sort e_compare es) in
-  let norm_fopp e  = mk_FOpp e in
-  let rec split_unknown e =
-    let is_unknown e = Se.mem e unknown in
-    match e.e_node with
-    | Nary(FMult,es) ->
-      let de,es = List.partition is_GLog es in
-      let ue,ke = List.partition is_unknown es in 
-      let b,de = match de with
-        | []    -> (None,de)
-        | b::bs -> (Some (destr_GLog b),bs)
-      in
-      begin match ue@de, ke with
-      | [],ke -> (b, norm_mult ke,None)
-      | ue,[] -> (b, norm_mult ue,None)
-      | ue,ke -> (b, norm_mult ue, Some(norm_mult ke))
-      end
-    | App(FOpp,[a]) ->
-      begin match split_unknown a with
-      | (b,e1,None)    -> (b, norm_fopp e1,None)
-      | (b,e1,Some e2) -> (b, e1,Some(norm_fopp e2))
-      end
-    | _ -> (None,e,None)
+let samplings gd =
+  let samp i = function
+    | GSamp(vs,(t,e)) -> Some (i,(vs,(t,e)))
+    | _              -> None
   in
-  let go sum denom = (List.map split_unknown sum, denom) in
-  match e.e_node with
-  | Nary(FPlus,es)  -> go es None
-  | App(FDiv,[a;b]) ->
-    begin match a.e_node with
-    | Nary(FPlus,es) -> go es (Some b)
-    | _ -> ([(None,a,None)],Some b)
-    end
-  | _ -> ([ split_unknown e ], None)
+  cat_Some (L.mapi samp gd)
 
-let rewrite_exps unknown e0 =
-  let rec go e =
-    let e = e_sub_map go e in
-    match e.e_node with
-    | App(GExp _,[a;b]) ->
-      assert (is_GGen a);
-      let gen = a in
-      let (ies,ce) = simp_exp b unknown in
-      let expio b ie moe =
-        let gen = match b with None -> gen | Some a -> a in
-        match moe with
-        | Some oe -> mk_GExp (mk_GExp gen ie) oe
-        | None    -> mk_GExp gen ie
-      in
-      let a =
-        match ies with
-        | []         -> gen
-        | [b,ie,moe] -> expio b ie moe
-        | ies        -> mk_GMult (List.map (fun (b,ie,moe) -> expio b ie moe) ies)
-      in
-      begin match ce with
-      | None    -> a
-      | Some oe -> mk_GExp a (mk_FInv oe)
-      end
-    | _ -> e
+let pp_samp fmt (i,(vs,d)) =
+  F.fprintf fmt "%i: %a from %a" i Vsym.pp vs pp_distr d
+
+let lets gd =
+  let get_let i = function
+    | GLet(vs,e) -> Some (i,(vs,e))
+    | _          -> None
   in
-  go e0
+  cat_Some (L.mapi get_let gd)
 
-(*i norm and try to rewrite all exponentiations as products of
-   (g^i)^o or X where i might be unknown, but o is not unknown.
-   If there is a "let z=g^i" we can replace g^i by z in the next
-   step. i*)
-let t_norm_unknown unknown ju =
-  let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
-  let new_ju = map_ju_exp norm ju in
-  t_conv true new_ju ju
+let pp_let fmt (i,(vs,e)) =
+  F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_exp e
 
-let t_let_abstract p vs e ju =
-  let l,r = Util.cut_n p ju.ju_gdef in
-  let v = mk_V vs in
-  (*c could also try to normalize given expression *)
-  let subst a = e_replace e v a in
-  let new_ju = { ju_gdef = List.rev_append l (GLet(vs, e)::map_gdef_exp subst r);
-                 ju_ev = subst ju.ju_ev }
-  in
-  t_conv false new_ju ju
+let rec t_seq_list = function
+  | []    -> t_id
+  | t::ts -> t @> t_seq_list ts
 
-let t_let_unfold p ju =
-  match get_ju_ctxt ju p with
-  | GLet(vs,e), juc ->
-    let subst a = e_replace (mk_V vs) e a in
-    let juc = { juc with
-                juc_right = map_gdef_exp subst juc.juc_right;
-                juc_ev = subst juc.juc_ev }
-    in
-    t_conv false (set_ju_ctxt [] juc) ju
-  | _ -> tacerror "rlet_unfold: no let at given position"
+let t_print s ju =
+  eprintf "%s:@\n%a@\n%!" s pp_ju ju;
+  t_id ju
 
+let t_debug s g =
+  eprintf "%s" s;
+  t_id g
+
+let t_guard f ju =
+  if f ju then t_id ju else mempty
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Derived tactics for dealing with assumptions} *)
+(* \subsection{Swap maximum amount forward and backward} *)
 
-let t_assm_dec dir assm subst ju =
-  let c = 
-    if dir = LeftToRight then assm.Assumption.ad_prefix1 
-    else assm.Assumption.ad_prefix1 in
-  let jc = Util.take (List.length c) ju.ju_gdef in
-  let subst = 
-    List.fold_left2 (fun s i1 i2 ->
-      match i1, i2 with
-      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
-        when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
-        Vsym.M.add x1 x2 s
-      | _ -> tacerror "assumption_decisional : can not infer substitution")
-      subst c jc in
-  t_assm_dec dir subst assm ju
+type dir = ToFront | ToEnd
 
-let t_assm_comp assm ev_e ju =
-  let c = assm.Assumption.ac_prefix in
-  let jc = Util.take (List.length c) ju.ju_gdef in
-  let subst =
-    List.fold_left2 (fun s i1 i2 ->
-      match i1, i2 with
-      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
-        when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
-        Vsym.M.add x1 x2 s
-      | _ ->
-        tacerror "assumption_computational : can not infer substitution")
-      Vsym.M.empty c jc
+let swap_max dir i ju rv =
+  let step = if dir=ToEnd then 1 else -1 in
+  let rec aux j =
+    if i+j < L.length ju.ju_gdef && 0 <= i+j then (
+      let gcmd = get_ju_gcmd ju (i+j) in
+      if Vsym.S.mem rv (gcmd_all_vars gcmd) then j - step else aux (j+step)
+    ) else (
+      j - step
+    )
   in
-  t_assm_comp assm ev_e subst ju
+  aux step
 
-(*i ----------------------------------------------------------------------- i*)
-(* \subsection{Tactics with placeholders} *)
-
-let invert_ctxt (v,e) =
-  let hole_occurs p =
-    List.exists
-      (fun (_,m) ->
-         List.exists (fun (e,_) -> Se.mem (mk_V v) (e_vars e)) m)
-      p
+let t_swap_max dir i rv ju =
+  let offset = swap_max dir i ju rv
   in
-  match Poly.polys_of_field_expr (CAS.norm (fun x -> x) e) with
-  | (nom, None) ->
-    (*i v = v' * g + h => v' = (v - h) / g i*)
-    let (g,h) = Poly.factor_out (mk_V v) nom in
-    let e' = mk_FDiv (mk_FMinus (mk_V v) (Poly.exp_of_poly h))
-                     (Poly.exp_of_poly g)
-    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
-  | (nom, Some(denom)) when not (hole_occurs denom) ->
-    (*i v = (v' * g + h) / denom => v' = (v * denom - h) / g i*)
-    let (g,h) = Poly.factor_out (mk_V v) nom in
-    let e' = mk_FDiv
-               (mk_FMinus (mk_FMult [mk_V v; Poly.exp_of_poly denom]) (Poly.exp_of_poly h))
-               (Poly.exp_of_poly g)
-    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
-  | (_nom, Some(_denom)) ->
-    tacerror
-      "invert does not support denominators with hole-occurences in contexts"
-
-(*i ----------------------------------------------------------------------- i*)
-(* \subsection{Derived tactics for dealing with events} *)
-
-(** Merging equalities in conjuncts of event. *)
-let t_merge_ev tomerge ju = 
-  let tomerge = List.sort Pervasives.compare tomerge in
-  let rec tac k tomerge ju = 
-    match tomerge with
-    | [] | [_]-> t_id ju
-    | i::j::tomerge -> 
-      (t_merge_ev (i-k) (j-k) @. tac (k+1) (j::tomerge)) ju in
-  tac 0 tomerge ju
-
-(** A tactic to automate random independence. *)
-
-(*i We known a set of facts 
-   e1 = e2 
-   exists x in L | e1 = e2 
-   and inequalities 
-   We collect all the term we known and we try to invert the term we want.
-   Assume we known e1 = e2 then we known e1 - e2 = 0
-   as well for exists x in L | e1 = e2
-   Then we try to invert the random variable, using the equality.
-   We get an inverter.
-   We look the equality which are used and we merge then in a single equivalent
-   equality, again we build the inverter (this should works).
-   We apply the inverter.
-i*)
-
-let simp_group e c =
-  if Type.is_G e.e_ty then
-    norm_expr (mk_GLog e), (fst c, mk_GLog (snd c))
-  else
-    e, c
-
-let simp_div er e c =
-  if Type.is_Fq e.e_ty && is_FDiv e && not (Se.mem er (e_vars (snd (destr_FDiv e)))) then
-    let (num,denom) = destr_FDiv e in
-    let c = (fst c, mk_FMult [snd c; denom]) in
-    num, c
-  else
-    e, c
-
-let simp_plus er e c =
-  let er_occurs e = Se.mem er (e_vars e) in
-  if is_FPlus e then
-    let (er_es, no_er_es) = L.partition er_occurs (destr_FPlus e) in
-    let c = (fst c, mk_FMinus (snd c) (mk_FPlus no_er_es)) in
-    match er_es with
-    | [] -> e, c
-    | _  -> mk_FPlus er_es, c
-  else
-    e, c
-
-let simp_xor er e c =
-  let er_occurs e = Se.mem er (e_vars e) in
-  if is_Xor e then
-    let (er_es, no_er_es) = L.partition er_occurs (destr_Xor e) in
-    begin match er_es with
-    | [er'] ->
-      assert (e_equal er' er);
-      let c = (fst c, mk_Xor ([snd c]@no_er_es)) in
-      er, c
-    | _ ->
-      e,c
-    end
-  else
-    e, c
-
-let simp_mult er e c =
-  let er_occurs e = Se.mem er (e_vars e) in
-  if Type.is_Fq e.e_ty && Type.is_Fq er.e_ty then (
-    let coeff = norm_expr (mk_FDiv e er) in
-    if er_occurs coeff
-    then e, c
-    else er, (fst c, mk_FDiv (snd c) coeff)
-  ) else ( e, c )
-
-
-let init_inverter test er =
-  let e1, e2, bd =
-    if is_Eq test then let e1,e2 = destr_Eq test in e1,e2,[]
-    else if is_Exists test then destr_Exists test
-    else raise Not_found
+  let swap_samp =
+    if offset = 0
+    then t_id
+    else t_swap i offset
   in
-  let (x1,c), z = sub e2.e_ty in
-  let c = (x1, inst_ctxt c e2) in
-  let e = norm_expr (inst_ctxt c e1) in
-  let (e, c) = simp_group e c in
-  let (e, c) = simp_xor er e c in
-  let (e, c) = simp_div er e c in
-  let (e, c) = simp_plus er e c in
-  let (e, c) = simp_mult er e c in
-  bd, e, c, z
+  swap_samp ju >>= fun ps -> ret (i+offset,ps)
 
-let init_inverters test er =
-  let ts = destruct_Land test in
-  let bds = ref [] in
-  let rec aux i ts =
-    match ts with
-    | [] -> []
-    | t::ts ->
-      try 
-        let bd,e1me2,inv,z = init_inverter t er in
-        bds := bd @ !bds;
-        (i,e1me2,inv, z, mk_V (Vsym.mk "x" e1me2.e_ty)) :: aux (i+1) ts
-      with Not_found -> aux (i+1) ts in
-  let l = aux 0 ts in
-  !bds, l
-
-let t_last_random_indep ju = 
-  match List.rev ju.ju_gdef with
-  | GSamp (r,_) :: _ ->
-    let ev = ju.ju_ev in
-    let fv = e_vars ev in
-    let er = mk_V r in
-    let bds, ms = init_inverters ev er in
-    let msv = List.map (fun (_,e1me2,_,_,x) -> e1me2, x) ms in
-    let vs = L.map (fun x -> x, x) (Se.elements (Se.remove er fv)) in
-    let bds = List.map (fun (x,_) -> let e = mk_V x in e, e) bds in
-    let inv =
-      try Deduc.invert (vs@bds@msv) er
-      with Not_found -> tacerror "cannot find inverter"
-    in
-    let used = e_vars inv in
-    let tomerge = List.filter (fun (_,_,_,_,x) -> Se.mem x used) ms in
-    let tomergei = List.map (fun (i,_,_,_,_) -> i) tomerge in 
-    let ctxt =
-      if List.length tomerge = 1 then
-        let  (_,_,c,_,x1) = List.hd tomerge in
-        let x = destr_V x1 in
-        fst c, inst_ctxt (x,inv) (snd c)
-      else
-        let e = mk_Tuple (List.map (fun (_,e,_,_,_) -> e) tomerge) in
-        let vx = Vsym.mk "x" e.e_ty in
-        let x = mk_V vx in
-        let projs = List.mapi (fun i _ -> mk_Proj i x) tomerge in
-        let app_proj inv (_,_,c,_,y) p =
-          let y = destr_V y in
-          inst_ctxt (y,inv) (inst_ctxt c p)
+let t_swap_others_max dir i ju =
+  let samps = samplings ju.ju_gdef in
+  let samp_others =
+    L.map
+      (fun (j,(rv,(ty,_))) -> if i <> j && ty_equal ty mk_Fq then Some (i,rv) else None)
+      samps
+    |> cat_Some
+  in
+  let samp_others =
+    (* when pushing forwards, we start with the last sampling to keep indices valid *)
+    if dir=ToEnd then L.sort (fun a b -> compare (fst a) (fst b)) samp_others
+    else samp_others
+  in
+  let rec aux i samps =
+    match samps with
+    | [] ->
+      (fun ju ->
+        eprintf "swap others done %i\n%!" i;
+        t_id ju >>= fun ps ->
+        ret (i,ps))
+    | (j,rv)::samps ->
+      (fun ju ->
+        (* eprintf "swap max j=%i i=%i\n%!" j i; *)
+        t_swap_max dir j rv ju >>= fun (j',ps) ->
+        let i' =
+          if (j > i && j' < i) then i + 1
+          else if (j < i && j' > i) then i - 1
+          else i
         in
-        let inv = List.fold_left2 app_proj inv tomerge projs in
-        vx, inv
-    in
-    let pos = match List.rev tomerge with
-      | (i,_,_,_,_) :: _ -> i
-      | _ -> assert false
-    in
-    let pos = pos - (List.length tomerge - 1) in
-    (t_merge_ev tomergei @.
-      t_ctxt_ev pos ctxt @.
-      t_norm_tuple_proj  @.
-      t_random_indep ) ju
+        (* eprintf "swap max done j=%i j'=%i i=%i i'=%i\n%!" j j' i i'; *)
+        ret (i', ps)
+      ) @>>= fun i -> aux i samps
+  in
+  aux i samp_others ju
 
-  | _ -> tacerror "The last instruction is not a sampling"
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Simplification and pretty printing} *)
+
+let pp_rule fmt ru =
+  let s = 
+    match ru with
+    | Rconv -> "rconv"
+    | Rswap(_pos,_i) -> "rswap"
+    | Rrnd(_pos,_c1,_c2) -> "rrnd"
+    | Rexc(_pos,_es) -> "rexc"
+    | Rrw_orcl(_opos,_dir) -> "rrw_orcl"
+    | Rswap_orcl(_opos,_i) -> "rswap_orcl"
+    | Rrnd_orcl(_opos,_c1,_c2) -> "rrnd_orcl"
+    | Rexc_orcl(_opos,_es) -> "rexc_orcl"
+    | Rcase_ev(_e) -> "rcase"
+    | Radd_test(_opos,_e,_ads,_vss) -> "radd_test"
+    | Rbad(_pos,_vs) -> "rbad"
+    | Rctxt_ev(_i,_c) -> "rctxt"
+    | Rremove_ev(_is) -> "rremove"
+    | Rmerge_ev(_i,_j) -> "rmerge"
+    | Rsplit_ev(_i) -> "rsplit"
+    | Rrw_ev(_i,_dir) -> "rrw_ev"
+    | Rassm_dec(_dir,_ren,assm) -> fsprintf "rassm_dec(%s)" assm.ad_name
+    | Rassm_comp(_e,_ren,assm) -> fsprintf "rassm_comp(%s)" assm.ac_name
+    | Radmit -> "radmit"
+    | Rfalse_ev -> "rfalse_ev"
+    | Rrnd_indep(_b,_i) -> "rrnd_indep"
+  in
+  F.fprintf fmt "%s" s
+
+let rec pp_proof_tree fmt pt =
+  F.fprintf fmt
+    ("##########################@\n%a@\n##########################@\n"^^
+     "apply %a@\n"^^
+     "  @[<v 0>%a@\n@]")
+    pp_ju pt.pt_ju
+    pp_rule pt.pt_rule
+    (pp_list "@\n" pp_proof_tree) pt.pt_children
   
-let t_random_indep ju =
-  let rec aux i rc ju =
-    match rc with
-    | GSamp (_,_) :: rc ->
-      (t_norm @. (t_swap (List.length rc) i @. t_last_random_indep) @|
-       aux (i+1) rc) ju
-    | _ :: rc -> aux (i+1) rc ju
-    | [] -> 
-      tacerror "random_indep: can not find an independent random variable" in
-  (CoreRules.t_random_indep @| aux 0 (List.rev ju.ju_gdef)) ju
+let rec simplify_proof_tree pt =
+  let children = L.map simplify_proof_tree pt.pt_children in
+  let pt = pt_replace_children pt children in
+  match pt.pt_rule, pt.pt_children with
+  | Rconv,[pt1] ->
+    begin match pt1.pt_rule, pt1.pt_children with
+    | Rconv,[pt11] ->
+      (* skip intermediate judgment *)
+      let pss = t_conv true pt11.pt_ju pt.pt_ju in
+      let ps = Nondet.first pss in
+      ps.validation [pt11]
+    | _ -> 
+      pt
+    end
+  | _ -> pt
 
+let rec prove_by_admit ps =
+  if ps.subgoals = [] then
+    ps.validation []
+  else
+    let ps = Nondet.first (apply_first t_admit ps) in
+    prove_by_admit ps
 

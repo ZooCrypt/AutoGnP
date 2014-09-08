@@ -5,13 +5,14 @@
 /* ******************************************************************/
 webSocket.onmessage = function (evt) {
     log(evt.data);
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
     var m = JSON.parse(evt.data);
 
     // answer for eval
     if (m.cmd == 'setGoal') {
         var dbg = m.debug;
         if (dbg != "") {
-            console.debug(dbg);
+            console.log(dbg);
         }
         setFirstUnlocked(m.ok_upto);
         markLocked('locked');
@@ -44,6 +45,7 @@ webSocket.onmessage = function (evt) {
     } else if (m.cmd == "saveOK") {
         editorMessage.setValue("Proofscript saved.");
         editorMessage.clearSelection();
+        // answers for failed save
     } else if (m.cmd == "saveFAILED") {
         editorMessage.setValue("Save of proofscript failed.");
         editorMessage.clearSelection();

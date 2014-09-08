@@ -1,6 +1,7 @@
 %{
   (** Parser for expressions, games, judgments, and tactic command. *)
-	open ParserUtil
+  open ParserUtil
+  open Util
 
 %}
 
@@ -82,6 +83,7 @@
 %token DOT
 %token PRINTGOALS
 %token PRINTGOAL
+%token PRINTPROOF
 %token RNORM
 %token RNORM_UNKNOWN
 %token RNORM_NOUNFOLD
@@ -90,6 +92,7 @@
 %token RSWAP
 %token REQUIV
 %token RINDEP
+%token RCRUSH
 %token RSIMP  
 %token RBAD
 %token RCASE_EV
@@ -107,6 +110,8 @@
 %token UNDERSCORE
 %token ADMIT
 %token LAST
+%token BACK
+%token QED
 %token EXTRACT
 %token <string> STRING
 
@@ -310,9 +315,18 @@ dir:
 opos:
 | LPAREN i = NAT COMMA j = NAT COMMA k = NAT RPAREN { (i-1,j-1,k-1) }
 
+%public uoption(X):
+| UNDERSCORE { None }
+| x = X { Some x }
+
+ctx :
+| LPAREN i = ID TO e = expr0 RPAREN { (i,e) }
+
 instr :
 | ADMIT { Admit }
 | LAST { Last }
+| BACK { Back }
+| QED { Qed }
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 { ODecl(i,t1,t2) }
 | RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,true,t1,t2) }
@@ -326,6 +340,7 @@ instr :
 | PROVE  LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
 | PRINTGOALS COLON i = ID { PrintGoals(i) }
 | PRINTGOAL COLON i = ID { PrintGoal(i) }
+| PRINTPROOF { PrintProof }
 | PRINTGOALS { PrintGoals("") }
 | RNORM { Apply(Rnorm) }
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
@@ -333,7 +348,7 @@ instr :
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
-| ASSUMPTION_DECISIONAL d=dir s=ID xs=ID* { Apply (Rassm_dec(d,s,xs))}
+| ASSUMPTION_DECISIONAL s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(s,d,xs))}
 | ASSUMPTION_COMPUTATIONAL s=ID e = expr0 { Apply (Rassm_comp(s,e))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
@@ -341,16 +356,10 @@ instr :
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }
 | REXCEPT i = NAT es = expr0* { Apply(Rexcept(i-1,es)) }
 | REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_orcl(op,es)) }
-| RRANDOM i = NAT LPAREN i1 = ID TO e1 = expr0 RPAREN
-                  LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  { Apply(Rrnd(i-1,Some(i1,e1),Some(i2,e2))) }
-| RRANDOM i = NAT UNDERSCORE
-                  LPAREN i2 = ID TO e2 = expr0 RPAREN
-                  { Apply(Rrnd(i-1,None,Some(i2,e2))) }
-| RRANDOM i = NAT UNDERSCORE
-                  UNDERSCORE
-                  { Apply(Rrnd(i-1,None,None)) }
+| RRANDOM mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
+  { Apply(Rrnd(map_opt (fun i -> i -1) mi,mc1,mc2)) }
 | RSIMP { Apply(Rsimp) }
+| RCRUSH mi = uoption(NAT) { Apply(Rcrush(mi)) }
 | RRANDOM_ORACLE op = opos
                  LPAREN i1 = ID TO e1 = expr0 RPAREN
                  LPAREN i2 = ID TO e2 = expr0 RPAREN

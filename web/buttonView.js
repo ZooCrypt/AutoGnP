@@ -23,7 +23,7 @@ var FileButtons = React.createClass({displayName: 'FileButtons',
      return (
       React.DOM.div({className: "btn-group-vertical", style: {paddingBottom: "10px"}}, 
          files.map(function (fn) { return FileButton({key: fn, file: fn, closeDialog: closeDialog}) })
-      ));
+      ));extr
  }
 });
 

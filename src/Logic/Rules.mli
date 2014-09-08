@@ -1,31 +1,43 @@
 (*s Logical rules built on top of core rules. *)
 
-open Assumption
-open Util
-open Expr
 open CoreRules
-open Syms
+open Game
+open Type
+open Expr
+open Util
 
-val ( @. ) : tactic -> tactic -> tactic
-val ( @+ ) : tactic -> tactic list -> tactic
+val ( @> ) : tactic -> tactic -> tactic
+val ( @>= ) : 'a rtactic -> ('a -> tactic) -> tactic
+val ( @>>= ) : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
+(* val ( @+ ) : tactic -> tactic list -> tactic *)
 val ( @| ) : tactic -> tactic -> tactic
 
-val t_norm : tactic
+type dir = ToFront | ToEnd
 
-val t_norm_nounfold : tactic
+val t_swap_max : dir -> gcmd_pos -> vs -> int rtactic
 
-val t_unfold_only : tactic 
+val t_swap_others_max : dir -> gcmd_pos -> int rtactic
 
-val t_norm_unknown : expr list -> tactic
+val mk_name : unit -> string
 
-val t_let_abstract : int -> Vsym.t -> expr -> tactic 
+val samplings : gcmd list -> (int * (vs * (ty * expr list))) list
 
-val t_let_unfold : int -> tactic
+val pp_samp : F.formatter -> int * (vs * (ty * expr list)) -> unit
 
-val t_assm_dec : direction -> assm_dec -> Vsym.t Vsym.M.t -> tactic
+val lets :  gcmd list -> (int * (vs * expr)) list
 
-val t_assm_comp : assm_comp -> expr -> tactic
+val pp_let : F.formatter -> int * (vs * expr) -> unit
 
-val t_random_indep : tactic
+val t_seq_list : tactic list -> tactic
 
-val invert_ctxt : Syms.Vsym.t * Expr.expr -> Syms.Vsym.t * Expr.expr
+val t_print : string -> tactic
+
+val t_debug : string -> tactic
+
+val t_guard : (goal -> bool) -> tactic
+
+val pp_proof_tree : Util.F.formatter -> CoreRules.proof_tree -> unit
+
+val simplify_proof_tree : proof_tree -> proof_tree
+
+val prove_by_admit: proof_state -> proof_tree

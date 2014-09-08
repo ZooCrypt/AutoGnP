@@ -853,13 +853,13 @@ let extract_assum file dir subst ainfo pft pft' =
 
 let rec skip_conv pft = 
   match pft.pt_rule with
-  | Rconv -> skip_conv (List.hd pft.pt_subgoal)
+  | Rconv -> skip_conv (List.hd pft.pt_children)
   | _ -> pft
 
 let skip_swap pft = 
   let rec aux sw pft = 
     match pft.pt_rule with
-    | Rswap(p,i) -> aux ((p,i)::sw) (List.hd pft.pt_subgoal)
+    | Rswap(p,i) -> aux ((p,i)::sw) (List.hd pft.pt_children)
     | _ -> List.rev sw, pft in
   aux [] pft
 
@@ -1011,18 +1011,18 @@ let rec extract_proof file pft =
   match pft.pt_rule with
   | Rconv -> extract_conv file pft [] pft
   | Rctxt_ev _ ->
-    let pft' = List.hd pft.pt_subgoal in
+    let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "ctxt_ev")
   | Rremove_ev _ -> assert false
   | Rmerge_ev _ -> 
-    let pft' = List.hd pft.pt_subgoal in
+    let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "merge_ev")
   | Rrnd (pos,inv1,inv2) ->
-    let pft' = List.hd pft.pt_subgoal in
+    let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' 
       (pr_random file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
   | Rrnd_orcl (pos, inv1, inv2) ->
-    let pft' = List.hd pft.pt_subgoal in
+    let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' 
       (pr_random_orcl file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
 
@@ -1035,13 +1035,13 @@ let rec extract_proof file pft =
       extract_proof_sb1 file pft pft' (pr_swap file sw1 pft.pt_ju pft'.pt_ju)
     end
   | Rswap_orcl _ ->
-    let pft' = List.hd pft.pt_subgoal in
+    let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "swap oracle")
   | Rrnd_indep (side, pos) -> 
     extract_rnd_indep file side pos pft.pt_ju 
     
   | Rassm_dec (dir,subst, assum) ->
-    let pft' = List.hd pft.pt_subgoal in
+    let pft' = List.hd pft.pt_children in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
     let ainfo = 
       try Ht.find file.assump assum.ad_name with Not_found -> assert false in
@@ -1062,7 +1062,7 @@ let rec extract_proof file pft =
     lemma3, pr, cmp_le, bound 
 
   | Rexc (pos,l)   -> 
-    let pft' = List.hd pft.pt_subgoal in
+    let pft' = List.hd pft.pt_children in
     let (lemma1, pr', cmp, bound) = extract_proof file pft' in
     (* pr' cmp bound *)
     let (lemma2, pr, _, eps) = extract_except file pos l pft pft' in
@@ -1113,8 +1113,8 @@ and extract_proof_sb1 file pft pft' proof =
   
 
 let extract_file ts = 
-  let ps = get_proof_state ts in
-  let pft = get_proof ps in
+  let pt = get_proof_tree ts in
+  let pft = Rules.simplify_proof_tree pt in
   let file = init_file ts pft in
   let lemma, pr, cmp, bound = extract_proof file pft in
   let name = top_name file "conclusion" in
