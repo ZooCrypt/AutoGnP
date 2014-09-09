@@ -14,7 +14,9 @@ val ( @| ) : tactic -> tactic -> tactic
 
 type dir = ToFront | ToEnd
 
-val t_swap_max : dir -> gcmd_pos -> vs -> int rtactic
+val vars_dexc : Syms.Vsym.t -> Expr.expr list -> Expr.Se.t
+
+val t_swap_max : dir -> gcmd_pos -> Se.t -> int rtactic
 
 val t_swap_others_max : dir -> gcmd_pos -> int rtactic
 

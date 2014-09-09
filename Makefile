@@ -71,6 +71,12 @@ wszoocrypt :
 ##########################################################################
 # Used for development and testing
 
+test-examples: zoocrypt
+	for file in examples/extr_fail/*.zc; do\
+	   printf "File $$file: ";\
+	   /usr/bin/time sh -c "./zoocrypt.native $$file  2>&1 | grep -i Finished";\
+	done
+
 Test_Type :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte
 

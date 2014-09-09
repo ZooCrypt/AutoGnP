@@ -342,6 +342,7 @@ let eprintf fs =
 let set_debug_buffer () =
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
+  F.pp_set_margin fbuf 240;
   debug_fmt := fbuf;
   buf
 

@@ -57,19 +57,16 @@ prove
   ] : b = b'.
   rnorm. assumption_decisional _ _ v.
 
-  rexcept 3 u*w. rnorm.
-  rrnd 4 _ _. rnorm.
-  rrnd 5 _ _. rnorm.
-  rrnd 6 _ _. rnorm.
+  rexcept 3 u*w.
+  crush 3. rnorm.
 
   (* if a^w = a' for all queries, b not used in game anymore *)
   radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
     rrewrite_oracle (10,1,1) <-. rnorm.
     rindep.
   rrewrite_oracle (10,1,1) <-. rnorm.
-  rrnd 4 _ _. rnorm.
-  rrnd 5 _ _. rnorm.
-  
+  crush 2. rnorm.
+
   radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
     last. rrewrite_oracle (12,1,1) <-. rnorm. rindep.
   rrewrite_oracle (12,1,1) <-. rnorm.
@@ -90,7 +87,7 @@ prove
   rcase_ev (ea,ea',ec) = (g ^ u,g ^ v,g ^ z2).
     rsplit_ev 5. rrewrite_ev 5 ->. rrewrite_ev 6 ->. rrewrite_ev 7 ->. rrewrite_ev 3 ->.
     rnorm. rfalse_ev.
-  rremove_ev 1. rremove_ev 1. rremove_ev 1. rnorm_unknown u v z2. rswap 2 -1. rexcept 3. rswap 3 -1.
+  rremove_ev 1. rremove_ev 1. rremove_ev 1. rnorm_unknown u v z2. rexcept 3. rswap 3 -1.
     rswap 11 -8. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
     assumption_computational tcr (ea,ea',ec).
   qed.

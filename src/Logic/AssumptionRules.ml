@@ -4,6 +4,7 @@
 open Util
 open Nondet
 open Type
+open Assumption
 open Syms
 open Expr
 open Game
@@ -65,21 +66,21 @@ let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
   let (subst, let_abstrs) =  map_accum ltac subst lets_assm in
   eprintf "returned tactic@\n%!";
   try
-    (        t_print "after swapping, before unknown"
-          @> t_norm_unknown priv_exprs
-          @> t_print "after unknown"
+    (        (* t_print "after swapping, before unknown"
+          @>*) t_norm_unknown priv_exprs
+          (* @> t_print "after unknown" *)
           @> t_seq_list let_abstrs
-          @> t_print "after"
+          (* @> t_print "after" *)
           @> CoreRules.t_assm_dec dir subst assm) ju
   with
     Invalid_rule s -> eprintf "%s%!"s; mempty)
 
 let rec parallel_swaps old_new_pos =
   let upd_pos op np p =
-    (* before: op .. p after np .. p *)
-    if p > op && p < np then p - 1
+    (* before: op .. p after p .. np*)
+    if op < p && p >= np then p - 1
     (* before: p .. op after np .. p *)
-    else if p < op && p > np then p + 1
+    else if p < op && np <= p then p + 1
     else p
   in
   match old_new_pos with
@@ -91,7 +92,7 @@ let rec parallel_swaps old_new_pos =
     let abstractions that make assumption applicable. *)
 let t_assm_dec_auto assm dir subst ju =
   eprintf "###############################\n%!";
-  eprintf "dir=%s assm=%s\n%!" (string_of_dir dir) assm.Assumption.ad_name;
+  eprintf "t_assm_dec_auto dir=%s assm=%s\n%!" (string_of_dir dir) assm.Assumption.ad_name;
   let assm_cmds =
     match dir with
     | LeftToRight -> assm.Assumption.ad_prefix1 
@@ -122,7 +123,7 @@ let t_assm_dec_auto assm dir subst ju =
   (t_seq_list swaps @> t_assm_dec_aux assm dir subst samp_assm lets_assm) ju
 
 (** Supports placeholders for which all possible values are tried *)
-let t_assm_dec ts massm_names mdir mvnames ju =
+let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts massm_names mdir mvnames ju =
   (* use assumption with given name or try all decisional assumptions *)
   (match massm_names with
    | Some aname ->
@@ -132,6 +133,7 @@ let t_assm_dec ts massm_names mdir mvnames ju =
    | None ->
      mconcat (Ht.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_dec [])
   ) >>= fun assm ->
+  guard (not (Sstring.mem assm.ad_name iassms)) >>= fun _ ->
   (* use given direction or try both directions *)
   (opt ret (mconcat [LeftToRight; RightToLeft]) mdir)
   >>= fun dir ->

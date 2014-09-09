@@ -26,5 +26,5 @@ prove
     let m' = c1*e(c3,k2)*e(c2,k1)^(-1);
   ] : not (m = m').
   rnorm. rfalse_ev.
-  
+  qed.
   extract "extraction/bb1_asym_correct.ec".

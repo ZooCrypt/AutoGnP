@@ -8,14 +8,19 @@ open TheoryState
 open ParserUtil
 
 val t_rnd_maybe :
-  theory_state ->  Game.gcmd_pos option
-  -> (string * parse_expr) option -> (string * parse_expr) option
+  ?i_rvars:Syms.Vsym.S.t
+  -> theory_state
+  ->  Game.gcmd_pos option
+  -> (string * parse_expr) option
+  -> (string * parse_expr) option
   -> goal -> proof_state nondet
 
 val t_rnd_oracle_maybe :
-  theory_state
+  ?i_rvars:Syms.Vsym.S.t
+  -> theory_state
   ->  Game.ocmd_pos option
-  -> (string * parse_expr) option -> (string * parse_expr) option
+  -> (string * parse_expr) option
+  -> (string * parse_expr) option
   -> goal -> proof_state nondet
 
 val t_random_indep : CoreRules.tactic

@@ -114,9 +114,9 @@ let fail_if_occur vs ju s =
     tacerror "%s: variable %a occurs in judgment\n %a" s Vsym.pp vs pp_ju ju
 
 (** Prove goal [g] by rule [ru] which yields [subgoals]. *)
-let prove_by rule g = 
+let prove_by ru g =
   try    
-    let (rn, subgoals) = rule g in
+    let (rn, subgoals) = ru g in
     ret
       { subgoals = subgoals;
         validation = fun pts ->
@@ -338,7 +338,7 @@ let ensure_bijection c1 c2 v =
     Then it checks that c1 and c2 are well-formed for at position p
     (taking inequalities that are checked beforehand into account)
     and that 'forall x in supp(d), c2(c1(x)) = x /\ c1(c2(x)) = x'.  i*)
-let rrandom p c1 c2 ju =
+let rrnd p c1 c2 ju =
   match get_ju_ctxt ju p with
   | GSamp(vs,((_t,[]) as d)), juc ->
     let v = mk_V vs in
@@ -355,10 +355,11 @@ let rrandom p c1 c2 ju =
         juc_right = juc.juc_right;
         juc_ev = juc.juc_ev }
     in
+    eprintf "## rrnd performed@\n";
     Rrnd(p,c1,c2), [ set_ju_ctxt cmds juc ]
-  | _ -> tacerror "random: position given is not a sampling"
+  | _ -> tacerror "rrnd: position given is not a sampling"
 
-let t_random p c1 c2 = prove_by (rrandom p c1 c2)
+let t_rnd p c1 c2 = prove_by (rrnd p c1 c2)
 
 (** Exclude from sampling. *)
 
@@ -420,7 +421,7 @@ let t_swap_oracle i delta = prove_by (rswap_oracle i delta)
 
 (** Random rule. *)
 
-let rrandom_oracle p c1 c2 ju =
+let rrnd_oracle p c1 c2 ju =
   match get_ju_octxt ju p with
   | LSamp(vs,((_t,[]) as d)), juoc ->
     let v = mk_V vs in
@@ -438,10 +439,11 @@ let rrandom_oracle p c1 c2 ju =
                  juoc_return = juoc.juoc_return;
                  juoc_cright = juoc.juoc_cright }
     in
+    eprintf "## rrnd_oracle performed@\n";
     Rrnd_orcl(p,c1,c2), [set_ju_octxt cmds juoc]
   | _ -> tacerror "random: position given is not a sampling"
 
-let t_random_oracle p c1 c2 = prove_by (rrandom_oracle p c1 c2)
+let t_rnd_oracle p c1 c2 = prove_by (rrnd_oracle p c1 c2)
 
 (** Exclude values from sampling. *)
 
@@ -678,6 +680,7 @@ let rassm_dec dir subst assm' ju =
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
   let diff = Se.inter priv read in
   if not (Se.is_empty diff) then tacerror "assm_dec: does not respect private variables";
+  eprintf "## rassm_dec performed@\n";
   Rassm_dec(dir,subst,assm'), [{ ju with ju_gdef = c' @ tl }]
 
 let t_assm_dec dir subst assm = prove_by (rassm_dec dir subst assm)
@@ -724,7 +727,7 @@ let t_false_ev = prove_by rfalse_ev
 (** Bound random independence. *)
 
 let check_event r ev =
-  let rec aux i evs = 
+  let rec aux i evs =
     match evs with
     | [] -> tacerror "can not apply rrandom_indep"
     | ev::evs -> 

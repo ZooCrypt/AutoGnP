@@ -103,7 +103,7 @@ let transform_expr ju rv rvs e =
       let (g,_h) = Poly.factor_out v nom in
       let e' = (Poly.exp_of_poly g) in
       guard (Se.mem (mk_V rv) (e_vars e')) >>= fun _ ->
-      eprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e';
+      (* eprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'; *)
       ret e'
     with
       _ -> mempty
@@ -149,20 +149,24 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju =
   | None -> mempty
   ) >>= fun (v1,e1) ->
   (* eprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju; *)
-  CR.t_random i (v1,e1) (v2,e2) ju
+  CR.t_rnd i (v1,e1) (v2,e2) ju
 
-let t_rnd_maybe ts mi mctxt1 mctxt2 ju =
+let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mi mctxt1 mctxt2 ju =
   let samps = samplings ju.ju_gdef in
   let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
   (match mi with
   | Some i -> ret i
   | None   -> mconcat (L.map fst samps)
   ) >>= fun i ->
-  let (rv,(ty,_)) = L.assoc i samps in
+  let (rv,(ty,es)) = L.assoc i samps in
+  let vs = vars_dexc rv es in
+  guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
+  eprintf "###############################\n%!";
+  eprintf "t_rnd_maybe %i\n%!" i;
   eprintf "sampling: %i, %a@\n%!" i Vsym.pp rv;
   let rnd i = t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i in
   ( t_debug (fsprintf "initial i is %i\n" i) @>
-    t_swap_max ToEnd i rv @>= (fun i ->
+    t_swap_max ToEnd i vs @>= (fun i ->
     t_debug (fsprintf "after swapping toEnd: %i\n" i) @>
     t_swap_others_max ToFront i @>= (fun i ->
     t_debug (fsprintf "after swapping others ToFront: %i\n" i) @>
@@ -180,7 +184,7 @@ let parse_ctxt_oracle ts opos ju ty (sv,se) =
   (v,expr_of_parse_expr vmap ts se)
 
 
-let t_rnd_oracle_maybe ts mopos mctxt1 mctxt2 ju =
+let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   let osamps = osamplings ju.ju_gdef in
   let samps  = samplings ju.ju_gdef in
   let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
@@ -189,6 +193,9 @@ let t_rnd_oracle_maybe ts mopos mctxt1 mctxt2 ju =
   | None      -> mconcat (L.map fst osamps)
   ) >>= fun ((i,j,k) as op) ->
   let (rv,(ty,_)) = L.assoc op osamps in
+  guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
+  eprintf "###############################\n%!";
+  eprintf "t_rnd_oracle_maybe (%i,%i,%i)\n%!" i j k;
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt_oracle ts op ju ty (sv2,se2))
   | None           ->
@@ -207,7 +214,7 @@ let t_rnd_oracle_maybe ts mopos mctxt1 mctxt2 ju =
     end
   | None -> mempty
   ) >>= fun (v1,e1) ->
-  CR.t_random_oracle (i,j,k) (v1,e1) (v2,e2) ju
+  CR.t_rnd_oracle (i,j,k) (v1,e1) (v2,e2) ju
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Rules for random independence} *)
@@ -374,6 +381,8 @@ let t_last_random_indep ju =
 
 
 let t_random_indep ju =
+  eprintf "###############################\n%!";
+  eprintf "t_random_indep\n%!";
   try
     let rec aux i rc =
       match rc with

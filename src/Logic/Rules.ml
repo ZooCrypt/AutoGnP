@@ -90,20 +90,23 @@ let t_guard f ju =
 
 type dir = ToFront | ToEnd
 
-let swap_max dir i ju rv =
+let vars_dexc rv es = e_vars (mk_Tuple ((mk_V rv)::es))
+
+let swap_max dir i ju vs =
   let step = if dir=ToEnd then 1 else -1 in
   let rec aux j =
     if i+j < L.length ju.ju_gdef && 0 <= i+j then (
       let gcmd = get_ju_gcmd ju (i+j) in
-      if Vsym.S.mem rv (gcmd_all_vars gcmd) then j - step else aux (j+step)
+      let cmd_vars = Se.union (write_gcmd gcmd) (read_gcmd gcmd) in
+      if not (Se.is_empty (Se.inter vs cmd_vars)) then j - step else aux (j+step)
     ) else (
       j - step
     )
   in
   aux step
 
-let t_swap_max dir i rv ju =
-  let offset = swap_max dir i ju rv in
+let t_swap_max dir i vs ju =
+  let offset = swap_max dir i ju vs in
   let swap_samp =
     if offset = 0
     then t_id
@@ -114,39 +117,39 @@ let t_swap_max dir i rv ju =
 
 let t_swap_others_max dir i ju =
   let samps = samplings ju.ju_gdef in
-  eprintf "samp_others: %a\n"
-    (pp_list ", " (pp_pair pp_int Vsym.pp)) (L.map (fun (i,(v,_)) -> (i,v)) samps);
   let samp_others =
     L.map
-      (fun (j,(rv,(ty,_))) ->
+      (fun (j,(rv,(ty,es))) ->
         if ((j > i && dir=ToFront) || (j < i && dir=ToEnd)) && ty_equal ty mk_Fq
-        then Some (j,rv) else None)
+        then Some (j,(rv,vars_dexc rv es)) else None)
       samps
     |> cat_Some
   in
   let samp_others =
     (* when pushing forwards, we start with the last sampling to keep indices valid *)
-    if dir=ToEnd then L.sort (fun a b -> compare (fst a) (fst b)) samp_others
+    if dir=ToEnd then L.sort (fun a b -> - (compare (fst a) (fst b))) samp_others
     else samp_others
   in
-  let rec aux i samps =
-    match samps with
+  eprintf "samp_others for %i: %a\n" i
+    (pp_list ", " (pp_pair pp_int Vsym.pp)) (L.map (fun (a,b) -> (a,fst b)) samp_others);
+  let rec aux i samp_others =
+    match samp_others with
     | [] ->
       (fun ju ->
         (* eprintf "swap others done %i\n%!" i; *)
         t_id ju >>= fun ps ->
         ret (i,ps))
-    | (j,rv)::samps ->
+    | (j,(_rv,vs))::samp_others ->
       (fun ju ->
-        t_swap_max dir j rv ju >>= fun (j',ps) ->
+        t_swap_max dir j vs ju >>= fun (j',ps) ->
         let i' =
-          if (j > i && j' < i) then i + 1
-          else if (j < i && j' > i) then i - 1
+          if (j > i && j' <= i) then i + 1
+          else if (j < i && j' >= i) then i - 1
           else i
         in
         eprintf "swap_other step done j=%i j'=%i i=%i i'=%i\n%!" j j' i i';
         ret (i', ps)
-      ) @>>= fun i -> aux i samps
+      ) @>>= fun i -> aux i samp_others
   in
   aux i samp_others ju
 
