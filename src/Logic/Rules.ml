@@ -52,6 +52,10 @@ let rec t_seq_list = function
   | []    -> t_id
   | t::ts -> t @> t_seq_list ts
 
+let rec t_or_list = function
+  | []    -> t_id
+  | t::ts -> t @| t_or_list ts
+
 let t_print s ju =
   eprintf "%s:@\n%a@\n%!" s pp_ju ju;
   t_id ju
@@ -81,20 +85,24 @@ let swap_max dir i ju rv =
   aux step
 
 let t_swap_max dir i rv ju =
-  let offset = swap_max dir i ju rv
-  in
+  let offset = swap_max dir i ju rv in
   let swap_samp =
     if offset = 0
     then t_id
     else t_swap i offset
   in
+  eprintf "swap offset %i from %i\n" offset i;
   swap_samp ju >>= fun ps -> ret (i+offset,ps)
 
 let t_swap_others_max dir i ju =
   let samps = samplings ju.ju_gdef in
+  eprintf "samp_others: %a\n"
+    (pp_list ", " (pp_pair pp_int Vsym.pp)) (L.map (fun (i,(v,_)) -> (i,v)) samps);
   let samp_others =
     L.map
-      (fun (j,(rv,(ty,_))) -> if i <> j && ty_equal ty mk_Fq then Some (i,rv) else None)
+      (fun (j,(rv,(ty,_))) ->
+        if ((j > i && dir=ToFront) || (j < i && dir=ToEnd)) && ty_equal ty mk_Fq
+        then Some (j,rv) else None)
       samps
     |> cat_Some
   in
@@ -107,19 +115,18 @@ let t_swap_others_max dir i ju =
     match samps with
     | [] ->
       (fun ju ->
-        eprintf "swap others done %i\n%!" i;
+        (* eprintf "swap others done %i\n%!" i; *)
         t_id ju >>= fun ps ->
         ret (i,ps))
     | (j,rv)::samps ->
       (fun ju ->
-        (* eprintf "swap max j=%i i=%i\n%!" j i; *)
         t_swap_max dir j rv ju >>= fun (j',ps) ->
         let i' =
           if (j > i && j' < i) then i + 1
           else if (j < i && j' > i) then i - 1
           else i
         in
-        (* eprintf "swap max done j=%i j'=%i i=%i i'=%i\n%!" j j' i i'; *)
+        eprintf "swap_other step done j=%i j'=%i i=%i i'=%i\n%!" j j' i i';
         ret (i', ps)
       ) @>>= fun i -> aux i samps
   in

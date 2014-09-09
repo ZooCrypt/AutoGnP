@@ -662,18 +662,22 @@ let rassm_dec dir subst assm' ju =
   let assm = Assumption.subst subst assm' in
   let c,c' = 
     if dir = LeftToRight
-    then assm.ad_prefix1,assm.ad_prefix2 
+    then assm.ad_prefix1,assm.ad_prefix2
     else assm.ad_prefix2,assm.ad_prefix1
   in
   let cju = Util.take (L.length c) ju.ju_gdef in
-  if not (gdef_equal c cju) then tacerror "assm_dec: cannot match decisional assumption";
+  (* FIXME: check if OK for certification if we allow equality of expressions modulo E,
+            we actually need equality modulo AC probably. *)
+  let norm_es = Game.map_gdef_exp Norm.norm_expr in
+  if not (gdef_equal (norm_es c) (norm_es cju) || gdef_equal (norm_es c) (norm_es cju))
+    then tacerror "assm_dec: cannot match decisional assumption";
   let tl = Util.drop (L.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
+  if not (is_ppt_ju ju') then tacerror "@[assm_dec: game or event not ppt @\n%a@\n@]" pp_ju ju';
   let read = read_ju ju' in
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
   let diff = Se.inter priv read in
   if not (Se.is_empty diff) then tacerror "assm_dec: does not respect private variables";
-  if not (is_ppt_ju ju') then tacerror "assm_dec: game or event not ppt";
   Rassm_dec(dir,subst,assm'), [{ ju with ju_gdef = c' @ tl }]
 
 let t_assm_dec dir subst assm = prove_by (rassm_dec dir subst assm)

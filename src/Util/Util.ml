@@ -209,6 +209,27 @@ let map_accum f init xs =
   in
   go init xs []
 
+(** [group rel xs] creates a list of lists where successive
+    elements of [xs] that are related with respect to [rel]
+    are grouped together. This function is commonly used
+    together with [L.sort] to compute the equivalence
+    classes of elements in [xs] with respect to [rel]. *)
+let group rel xs =
+  let rec go xs y acc = match xs with
+    | []                 -> [ L.rev acc ]
+    | x::xs when rel x y -> go xs y (x::acc)
+    | x::xs              -> (L.rev acc)::go xs x [x] 
+  in
+  match xs with
+  | []    -> []
+  | x::xs -> go xs x [x]
+
+
+(** [sorted_nub xs] sorts the elements in [xs] and
+    removes duplicate occurences in [xs]. *)
+let sorted_nub cmp xs =
+  xs |> L.sort cmp |> group (fun a b -> cmp a b = 0) |> L.map L.hd
+
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{String functions} *)
 
@@ -315,7 +336,8 @@ let fsprintf fmt =
 
 let debug_fmt = ref F.err_formatter
 
-let eprintf fs = F.fprintf !debug_fmt fs
+let eprintf fs =
+  F.fprintf !debug_fmt (fs^^"%!")
 
 let set_debug_buffer () =
   let buf  = Buffer.create 127 in

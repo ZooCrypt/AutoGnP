@@ -51,22 +51,67 @@ let parse_ctxt ts ju ty (sv,se) =
   Hashtbl.add vmap sv v;
   (v,expr_of_parse_expr vmap ts se)
 
-let transform_expr ju e =
+let subst_ineq ju rv e =
+  let ineqs = ref [] in
+  let add_ineq e =
+    if is_Not e then (
+      let e = destr_Not e in
+      if is_Eq e then (
+         let (e1,e2) = destr_Eq e in
+         if (ty_equal e1.e_ty mk_Fq) then (
+           let e = mk_FMinus e1 e2 in
+           if not (List.mem e !ineqs) then ineqs := e::!ineqs;
+         )
+      )
+    )
+  in
+  let add_ineqs e =
+    L.iter add_ineq (e_ty_outermost mk_Bool e)
+  in
+  iter_gdef_exp add_ineqs ju.ju_gdef;
+  mconcat !ineqs >>= fun ie ->
+  let inter = Se.inter (e_vars ie) (e_vars e) in
+  mconcat (Se.elements inter) >>= fun iv ->
+   eprintf  "ineq rewrite: replace %a by %a in expression %a\n%!" pp_exp iv pp_exp ie pp_exp e;
+  let erv = mk_V rv in
+  let erv' = mk_V (Vsym.mk "x____" erv.e_ty) in
+   let eq = Norm.norm_expr (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
+   guard (is_FPlus eq) >>= fun _ ->
+   eprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv';
+   let es = destr_FPlus eq in
+   let (with_erv,without_erv) = L.partition (fun t -> Se.mem erv (e_vars t)) es in
+
+   (match with_erv with
+   | [ e ] ->
+     if e_equal e (mk_FOpp erv) then ret (mk_FPlus without_erv)
+     else if e_equal e erv then ret (mk_FOpp (mk_FPlus without_erv))
+     else mempty
+   | _ -> mempty
+   ) >>= fun e ->
+   ret (e_replace erv' erv e)
+
+let transform_expr ju rv rvs e =
   let gvars = Game.write_gcmds ju.ju_gdef in
+  let rves = L.map mk_V rvs in
   let evs = e_vars e in
-  if Se.subset evs gvars then ret e
-  else
-    mconcat (Se.elements (Se.diff evs gvars)) >>= fun v ->
-    match Poly.polys_of_field_expr (CAS.norm id e) with
-    | (nom, None) ->
+  let factor_out_vars = rves @ (Se.elements (Se.diff evs gvars)) in
+  mconcat (sorted_nub e_compare factor_out_vars) >>= fun v ->
+  guard (ty_equal e.e_ty mk_Fq) >>= fun _ ->
+  match Poly.polys_of_field_expr (CAS.norm id e) with
+  | (nom, None) ->
+    begin try
       (*i v = v' * g + h => v' = (v - h) / g i*)
       let (g,_h) = Poly.factor_out v nom in
       let e' = (Poly.exp_of_poly g) in
+      guard (Se.mem (mk_V rv) (e_vars e')) >>= fun _ ->
       eprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e';
       ret e'
-    | _ -> ret e
+    with
+      _ -> mempty
+    end
+  | _ -> mempty
 
-let contexts ju rv =
+let contexts ju rv rvs =
   (* find field expressions containing the sampled variable *)
   let es = ref [] in
   let add_subterms e =
@@ -79,23 +124,18 @@ let contexts ju rv =
   iter_gdef_exp add_subterms ju.ju_gdef;
   add_subterms ju.ju_ev;
   mconcat !es >>= fun e ->
+  (* eprintf "possible expr=%a@\n%!" pp_exp e; *)
   guard (not (e_equal e (mk_V rv))) >>= fun _ ->
-  transform_expr ju e >>= fun e ->
+  mplus (ret e) (transform_expr ju rv rvs e) >>= fun e ->
+  mplus (ret e) (subst_ineq ju rv e) >>= fun e ->
   ret (rv,e)
 
-let t_rnd_maybe ts mi mctxt1 mctxt2 ju =
-  let samps = samplings ju.ju_gdef in
-  (match mi with
-  | Some i -> ret i
-  | None   -> mconcat (L.map fst samps)
-  ) >>= fun i ->
-  eprintf "sampling: %i@\n%!" i; 
-  let (rv,(ty,_)) = L.assoc i samps in
+let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju = 
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt ts ju ty (sv2,se2))
-  | None           -> contexts ju rv
-  )  >>= fun ((v2,e2)) ->
-  eprintf "expr=%a@\n%!" pp_exp e2;
+  | None           -> contexts ju rv rvs
+  ) >>= fun ((v2,e2)) ->
+  eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2;
   (match mctxt1 with
   | Some(sv1,e1) -> ret (parse_ctxt ts ju ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->
@@ -106,17 +146,26 @@ let t_rnd_maybe ts mi mctxt1 mctxt2 ju =
     end
   | None -> mempty
   ) >>= fun (v1,e1) ->
-  let rnd i = CR.t_random i (v1,e1) (v2,e2) in
-  CR.t_cut 
-    (   (t_debug "first case\n" @> rnd i)
-     @| (t_debug "second case\n" @>
-         t_swap_max ToEnd i rv @>= fun i -> rnd i)
-     @| (t_debug "third case\n" @>
-         t_swap_max ToEnd i rv @>= fun i ->
-         t_debug "after_swap\n" @>
-         t_swap_others_max ToFront i @>= fun i ->
-         t_debug "after_swap_others\n" @> rnd i))
-    ju
+  (* eprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju; *)
+  CR.t_random i (v1,e1) (v2,e2) ju
+
+let t_rnd_maybe ts mi mctxt1 mctxt2 ju =
+  let samps = samplings ju.ju_gdef in
+  let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
+  (match mi with
+  | Some i -> ret i
+  | None   -> mconcat (L.map fst samps)
+  ) >>= fun i ->
+  let (rv,(ty,_)) = L.assoc i samps in
+  eprintf "sampling: %i, %a@\n%!" i Vsym.pp rv;
+  let rnd i = t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i in
+  ( t_debug (fsprintf "initial i is %i\n" i) @>
+    t_swap_max ToEnd i rv @>= (fun i ->
+    t_debug (fsprintf "after swapping toEnd: %i\n" i) @>
+    t_swap_others_max ToFront i @>= (fun i ->
+    t_debug (fsprintf "after swapping others ToFront: %i\n" i) @>
+    rnd i)))
+  ju
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Rules for random independence} *)

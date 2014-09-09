@@ -57,21 +57,35 @@ let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
     let vs'  = Vsym.mk name vs.Vsym.ty in
     let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
     ( Vsym.M.add vs vs' subst
-    , t_let_abstract i vs' e'
-      @> t_guard (fun ju -> Se.mem (mk_V vs') (Game.read_ju ju)))
+    , t_let_abstract i vs' (Norm.norm_expr e')
+      (* @> t_guard (fun ju -> Se.mem (mk_V vs') (Game.read_ju ju) ) *)
+    )
   in
   let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) samp_gdef in
   let (subst, let_abstrs) =  map_accum ltac subst lets_assm in
   eprintf "returned tactic@\n%!";
   try
-    ((*t_print "before" 
-          @>*) t_norm_unknown priv_exprs
-          @> (*t_print "after unknown" 
-          @>*) t_seq_list let_abstrs
-          @> (*t_print "after"
-          @> *)CoreRules.t_assm_dec dir subst assm) ju
+    (        t_print "after swapping, before unknown"
+          @> t_norm_unknown priv_exprs
+          @> t_print "after unknown"
+          @> t_seq_list let_abstrs
+          @> t_print "after"
+          @> CoreRules.t_assm_dec dir subst assm) ju
   with
     Invalid_rule s -> eprintf "%s%!"s; mempty)
+
+let rec parallel_swaps old_new_pos =
+  let upd_pos op np p =
+    (* before: op .. p after np .. p *)
+    if p > op && p < np then p - 1
+    (* before: p .. op after np .. p *)
+    else if p < op && p > np then p + 1
+    else p
+  in
+  match old_new_pos with
+  | [] -> []
+  | (op,np)::old_new_pos ->
+    (op,np - op)::parallel_swaps (L.map (fun (op',np') -> (upd_pos op np op',np')) old_new_pos)
 
 (** Fuzzy matching with given assumption, try out swap and
     let abstractions that make assumption applicable. *)
@@ -84,7 +98,7 @@ let t_assm_dec_auto assm dir subst ju =
     | RightToLeft -> assm.Assumption.ad_prefix2
   in
   let samp_assm = samplings assm_cmds in
-  let lets_assm = lets assm_cmds  in
+  let lets_assm = lets assm_cmds in
   let samp_gdef = samplings ju.ju_gdef in
   eprintf "@[assm:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) samp_assm;
   eprintf "@[assm:@\n%a@\n%!@]" (pp_list "@\n" pp_let)  lets_assm;
@@ -94,9 +108,17 @@ let t_assm_dec_auto assm dir subst ju =
   let assm_samp_num = L.length samp_assm in
   let samp_gdef = List.filter (fun (_,(_,(ty,_))) -> ty_equal ty mk_Fq) samp_gdef in
   pick_set_exact assm_samp_num (mconcat samp_gdef) >>= fun match_samps ->
-  let match_samps = L.sort (fun a b -> compare (fst a) (fst b)) match_samps in
   eprintf "matching %a\n%!" (pp_list "," pp_int) (L.map fst match_samps);
-  let swaps = L.mapi (fun i (j,_) -> CR.t_swap j (i - j)) match_samps in
+  permutations match_samps >>= fun match_samps ->
+  eprintf "matching permutation %a\n%!"
+    (pp_list "," (pp_pair pp_int Vsym.pp))
+    (L.map (fun x -> (fst x, fst (snd x))) match_samps);
+  let old_new_pos = L.mapi (fun i x -> (fst x,i)) match_samps in
+  let swaps =
+    L.map
+      (fun (old_pos,delta) -> eprintf "rswap %i %i\n%!" old_pos delta; CR.t_swap old_pos delta)
+      (parallel_swaps old_new_pos)
+  in
   (t_seq_list swaps @> t_assm_dec_aux assm dir subst samp_assm lets_assm) ju
 
 (** Supports placeholders for which all possible values are tried *)

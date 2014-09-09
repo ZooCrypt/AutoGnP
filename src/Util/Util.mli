@@ -132,6 +132,10 @@ val cat_Some : 'a option list -> 'a list
 
 val conc_map : ('a -> 'b list) -> 'a list -> 'b list
 
+val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
+
+val sorted_nub :('a -> 'a -> int) -> 'a list -> 'a list
+
 (* \subsection{String functions} *)
 
 val splitn : string -> char -> string list

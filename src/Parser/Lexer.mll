@@ -58,17 +58,18 @@ rule lex = parse
   | "rrewrite_oracle"  { RREWRITE_ORACLE }  
   | "rrewrite_ev" { RREWRITE_EV }
   | "crush" { RCRUSH }
+  | "bycrush" { BYCRUSH }
   | "rsimp" { RSIMP }
   | "rsplit_ev" { RSPLIT_EV }
   | "rfalse_ev" { RFALSE_EV }
   | "with"  { WITH }
   | "rexcept" { REXCEPT }
   | "rexcept_oracle" { REXCEPT_ORACLE }  
-  | "rrandom" { RRANDOM }
+  | "rrnd" { RRND }
   | "rswap" { RSWAP }
   | "requiv" { REQUIV }
   | "rindep" { RINDEP }
-  | "rrandom_oracle" { RRANDOM_ORACLE }
+  | "rrnd_oracle" { RRND_ORACLE }
   | "rbad"           { RBAD }
   | "rctxt_ev"       { RCTXT_EV }
   | "exists"    { EXISTS }

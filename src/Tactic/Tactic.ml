@@ -105,7 +105,7 @@ let handle_tactic ts tac =
   | PU.Rsplit_ev(i)          -> apply (CR.t_split_ev i)
   | PU.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev i d)
   | PU.Rcase_ev(se)          -> apply (CR.t_case_ev (parse_e se))
-  | PU.Rcrush(mi)            -> apply (tn_crush mi ts) 
+  | PU.Rcrush(finish,mi)     -> apply (tn_crush finish mi ts) 
 
   | PU.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
   | PU.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
@@ -174,7 +174,7 @@ let handle_tactic ts tac =
   | PU.Rrnd(mi,mctxt1,mctxt2) ->
     apply (t_rnd_maybe ts mi mctxt1 mctxt2)
 
-  | PU.Rrnd_orcl((i,j,k) as op,mctxt1,sv2,e2) ->
+  | PU.Rrnd_orcl(Some ((i,j,k) as op),mctxt1,Some (sv2,e2)) ->
     let ty =
       match get_ju_lcmd ju (i,j,k) with
       | _,_,(_,G.LSamp(v,_),_),_ -> v.Vsym.ty
@@ -197,6 +197,9 @@ let handle_tactic ts tac =
         tacerror "invert only implemented for Fq"
     in
     apply (CR.t_random_oracle (i,j,k) (v1,e1) (v2,e2))
+
+  | PU.Rrnd_orcl(_) ->
+    tacerror "not implemented yet"
    
   | PU.Radd_test(op,t,aname,fvs) ->
     let _, juoc = get_ju_octxt ju op in
@@ -389,7 +392,7 @@ let handle_instr ts instr =
       if ps.CR.subgoals = [] then
         ({ts with ts_ps = ClosedTheory (ps.CR.validation [])}, "Finished proof.")
       else
-        (ts, "Cannot finish proof, open goals.")
+        tacerror "Cannot finish proof, open goals."
     | BeforeProof    -> (ts, "No proof started yet.")
     | ClosedTheory _ -> (ts, "Proof finished.")
     end

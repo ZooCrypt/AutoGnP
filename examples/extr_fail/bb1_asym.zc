@@ -36,12 +36,11 @@ prove
       Kg2(i) = [ (g_1^(c*d + r*(d*i + h)), g_1^r)
                | not (i=i'), r <-$ Fq];
   ] : b = b'.
-  
-  rnorm. rswap 7 -3.
-  rrandom 5 _ (h -> h + d * i'). rnorm.
-  rrandom_oracle (6,1,2) _ (x -> x * (i - i') + c). rnorm.
-  rrandom_oracle (8,1,2) _ (x -> x * (i - i') + c). rnorm.
-  crush _.
+  crush 1. rnorm.
+  rrnd_oracle (6,1,2) _ (r -> r * (i - i') + c). rnorm.
+  rrnd_oracle (8,1,2) _ (r -> r * (i - i') + c). rnorm.
+  assumption_decisional _ ->. rnorm.
+  bycrush 2.
   qed.
   print_proof.
   extract "extraction/bb1_asym.ec".

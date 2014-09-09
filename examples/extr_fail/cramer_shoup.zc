@@ -58,17 +58,17 @@ prove
   rnorm. assumption_decisional _ _ v.
 
   rexcept 3 u*w. rnorm.
-  rrandom 4 _ _. rnorm.
-  rrandom 5 _ _. rnorm.
-  rrandom 6 _ _. rnorm.
+  rrnd 4 _ _. rnorm.
+  rrnd 5 _ _. rnorm.
+  rrnd 6 _ _. rnorm.
 
   (* if a^w = a' for all queries, b not used in game anymore *)
   radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
     rrewrite_oracle (10,1,1) <-. rnorm.
     rindep.
   rrewrite_oracle (10,1,1) <-. rnorm.
-  rrandom 4 _ _. rnorm.
-  rrandom 5 _ _. rnorm.
+  rrnd 4 _ _. rnorm.
+  rrnd 5 _ _. rnorm.
   
   radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
     last. rrewrite_oracle (12,1,1) <-. rnorm. rindep.
@@ -94,4 +94,5 @@ prove
     rswap 11 -8. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
     assumption_computational tcr (ea,ea',ec).
   qed.
+  print_proof.
   extract "extraction/cramer_shoup.ec".

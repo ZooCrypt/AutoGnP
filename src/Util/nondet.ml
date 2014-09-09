@@ -125,6 +125,20 @@ let pick_set_exact k m0 =
   in
   go m0 k []
 
+let rec insertions left z right =
+  mplus
+    (ret (L.rev_append left (z::right)))
+    (match right with
+    | []    -> mempty
+    | x::xs -> insertions (x::left) z xs)
+
+let rec permutations xs =
+  match xs with
+  | []    -> ret []
+  | x::xs ->
+    permutations xs >>= fun xs ->
+    insertions [] x xs
+
 (* \ic{Return the cartesian product of $m1$ and $m2$.} *)
 let cart m1 m2 =
   m1 >>= fun x1 ->

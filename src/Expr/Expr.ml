@@ -210,6 +210,8 @@ let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
 let is_Eq e = is_App Eq e
 
+let is_Not e = is_App Not e
+
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
   | GExp _ | GLog _ | EMap _

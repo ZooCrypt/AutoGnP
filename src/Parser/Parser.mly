@@ -87,12 +87,13 @@
 %token RNORM
 %token RNORM_UNKNOWN
 %token RNORM_NOUNFOLD
-%token RRANDOM
-%token RRANDOM_ORACLE
+%token RRND
+%token RRND_ORACLE
 %token RSWAP
 %token REQUIV
 %token RINDEP
 %token RCRUSH
+%token BYCRUSH
 %token RSIMP  
 %token RBAD
 %token RCASE_EV
@@ -356,18 +357,12 @@ instr :
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }
 | REXCEPT i = NAT es = expr0* { Apply(Rexcept(i-1,es)) }
 | REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_orcl(op,es)) }
-| RRANDOM mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
+| RRND mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
   { Apply(Rrnd(map_opt (fun i -> i -1) mi,mc1,mc2)) }
 | RSIMP { Apply(Rsimp) }
-| RCRUSH mi = uoption(NAT) { Apply(Rcrush(mi)) }
-| RRANDOM_ORACLE op = opos
-                 LPAREN i1 = ID TO e1 = expr0 RPAREN
-                 LPAREN i2 = ID TO e2 = expr0 RPAREN
-                 { Apply(Rrnd_orcl(op,Some(i1,e1),i2,e2)) }
-| RRANDOM_ORACLE op = opos
-                 UNDERSCORE
-                 LPAREN i2 = ID TO e2 = expr0 RPAREN
-                 { Apply(Rrnd_orcl(op,None,i2,e2)) }
+| RCRUSH  mi = uoption(NAT) { Apply(Rcrush(false,mi)) }
+| BYCRUSH mi = uoption(NAT) { Apply(Rcrush(true,mi)) }
+| RRND_ORACLE op = uoption(opos) c1 = uoption(ctx) c2 = uoption(ctx) { Apply(Rrnd_orcl(op,c1,c2)) }
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN j = NAT
    { Apply(Rctxt_ev(i1,e1,j - 1)) }

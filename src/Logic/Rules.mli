@@ -30,6 +30,8 @@ val pp_let : F.formatter -> int * (vs * expr) -> unit
 
 val t_seq_list : tactic list -> tactic
 
+val t_or_list : tactic list -> tactic
+
 val t_print : string -> tactic
 
 val t_debug : string -> tactic

@@ -28,6 +28,9 @@ val prod : 'a nondet -> ('a * 'a) nondet
 val ncart : 'a nondet list -> ('a list) nondet
 val nprod : 'a nondet -> int -> ('a list) nondet
 
+val insertions : 'a list -> 'a -> 'a list -> 'a list nondet
+val permutations : 'a list -> 'a list nondet
+
 val pull : 'a nondet -> (string option, ('a * 'a nondet)) either
 val first : 'a nondet -> 'a
 
