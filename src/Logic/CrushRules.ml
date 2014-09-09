@@ -16,30 +16,37 @@ module Ht = Hashtbl
 exception Disallowed
 
 let pt_allowed pt =
-  let rec aux assumptions randoms pt =
+  let rec aux assms rvs (orvs : vs list) pt =
+    let gd = pt.CR.pt_ju.ju_gdef in
+    let children = pt.CR.pt_children in
     match pt.CR.pt_rule with
     | CR.Rassm_dec(_,_,ad) ->
-      if L.mem ad.ad_name assumptions then raise Disallowed;
-      L.iter (aux (ad.ad_name::assumptions) randoms) pt.CR.pt_children
+      if L.mem ad.ad_name assms then raise Disallowed;
+      L.iter (aux (ad.ad_name::assms) rvs orvs) children
     | CR.Rrnd(pos,_,_) ->
-      let rands = samplings pt.CR.pt_ju.ju_gdef in
+      let rands = samplings gd in
       let (rv,_) = L.assoc pos rands in
-      eprintf "pt_allowed %a in %a" Vsym.pp rv (pp_list "," Vsym.pp) randoms;
-      if L.mem rv randoms then raise Disallowed;
-      L.iter (aux assumptions (rv::randoms)) pt.CR.pt_children
+      eprintf "pt_allowed %a in %a" Vsym.pp rv (pp_list "," Vsym.pp) rvs;
+      if L.mem rv rvs then raise Disallowed;
+      L.iter (aux assms (rv::rvs) orvs) children
+    | CR.Rrnd_orcl(opos,_,_) ->
+      let orands = osamplings gd in
+      let (orv,_) = L.assoc opos orands in
+      if L.mem orv orvs then raise Disallowed;
+      L.iter (aux assms rvs (orv::orvs)) children
     | _ ->
-      L.iter (aux assumptions randoms) pt.CR.pt_children
+      L.iter (aux assms rvs orvs) children
   in
-  try aux [] [] pt; true with Disallowed -> false
+  try aux [] [] [] pt; true with Disallowed -> false
 
 let t_crush must_finish mi ts ps ju =
-
   let i = from_opt 5 mi in
   let step =
     (CR.t_cut ((t_norm ~fail_eq:true) @| CR.t_id))
     @> (   t_random_indep
         @| t_assm_dec ts None (Some LeftToRight) None
-        @| t_rnd_maybe ts None None None)
+        @| t_rnd_maybe ts None None None
+        @| t_rnd_oracle_maybe ts None None None)
   in
   let get_pt ps2 = prove_by_admit (first (CR.apply_first (fun _ -> ret ps2) ps)) in
   let rec aux j ps1 =

@@ -29,11 +29,8 @@ prove
     b' <- A3(mb * e(pk1,pk2)^e', g^e', (pk2^i'*pk3)^e') with
       Kg2(i) = [ (g^(c*d + r*(d*i + h)), g^r)
                | not (i=i'), r <-$ Fq];
-  ] : b = b'. rnorm.
-  crush 1. rnorm.
-  rrnd_oracle (6,1,2) _ (r -> r * (i - i') + c). rnorm.
-  rrnd_oracle (8,1,2) _ (r -> r * (i - i') + c). rnorm.
-  bycrush 3.
+  ] : b = b'.
+  bycrush 6.
   qed.
   print_proof.
   extract "extraction/bb1.ec".

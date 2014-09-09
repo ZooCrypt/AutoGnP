@@ -14,7 +14,7 @@ open ParserUtil
 
 module Ht = Hashtbl
 module CR = CoreRules
-
+module PU = ParserUtil
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -168,6 +168,46 @@ let t_rnd_maybe ts mi mctxt1 mctxt2 ju =
     t_debug (fsprintf "after swapping others ToFront: %i\n" i) @>
     rnd i)))
   ju
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Random rule in oracle} *)
+
+let parse_ctxt_oracle ts opos ju ty (sv,se) =
+  let vmap = vmap_in_orcl ju opos in
+  (* bound name overshadows names in game *)
+  let v = Vsym.mk sv ty in
+  Hashtbl.add vmap sv v;
+  (v,expr_of_parse_expr vmap ts se)
+
+
+let t_rnd_oracle_maybe ts mopos mctxt1 mctxt2 ju =
+  let osamps = osamplings ju.ju_gdef in
+  let samps  = samplings ju.ju_gdef in
+  let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
+  (match mopos with
+  | Some opos -> ret opos
+  | None      -> mconcat (L.map fst osamps)
+  ) >>= fun ((i,j,k) as op) ->
+  let (rv,(ty,_)) = L.assoc op osamps in
+  (match mctxt2 with
+  | Some (sv2,se2) -> ret (parse_ctxt_oracle ts op ju ty (sv2,se2))
+  | None           ->
+    let e2s = run (-1) (contexts ju rv rvs) in
+    mconcat (sorted_nub e_compare (L.map Norm.norm_expr e2s)) >>= fun e2 ->
+    ret (rv,e2)
+  ) >>= fun ((v2,e2)) ->
+  eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2;
+  (match mctxt1 with
+  | Some(sv1,e1) -> ret (parse_ctxt_oracle ts op ju ty (sv1,e1))
+  | None when ty_equal ty mk_Fq ->
+    begin try
+      ret (invert_ctxt (v2,e2))
+    with
+      _ -> eprintf "invert failed\n%!"; mempty
+    end
+  | None -> mempty
+  ) >>= fun (v1,e1) ->
+  CR.t_random_oracle (i,j,k) (v1,e1) (v2,e2) ju
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Rules for random independence} *)

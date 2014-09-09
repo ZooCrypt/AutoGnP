@@ -36,10 +36,7 @@ prove
       Kg2(i) = [ (g_1^(c*d + r*(d*i + h)), g_1^r)
                | not (i=i'), r <-$ Fq];
   ] : b = b'.
-  crush 1. rnorm.
-  rrnd_oracle (6,1,2) _ (r -> r * (i - i') + c). rnorm.
-  rrnd_oracle (8,1,2) _ (r -> r * (i - i') + c). rnorm.
-  bycrush 3.
+  bycrush 6.
   qed.
   print_proof.
   extract "extraction/bb1_asym.ec".

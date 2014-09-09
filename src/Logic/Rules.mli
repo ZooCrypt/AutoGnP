@@ -20,9 +20,13 @@ val t_swap_others_max : dir -> gcmd_pos -> int rtactic
 
 val mk_name : unit -> string
 
-val samplings : gcmd list -> (int * (vs * (ty * expr list))) list
+val samplings : gcmd list -> (gcmd_pos * (vs * (ty * expr list))) list
 
-val pp_samp : F.formatter -> int * (vs * (ty * expr list)) -> unit
+val pp_samp : F.formatter -> gcmd_pos * (vs * (ty * expr list)) -> unit
+
+val osamplings : gcmd list -> (ocmd_pos * (vs * (ty * expr list))) list
+
+val pp_osamp : F.formatter -> ocmd_pos * (vs * (ty * expr list)) -> unit
 
 val lets :  gcmd list -> (int * (vs * expr)) list
 

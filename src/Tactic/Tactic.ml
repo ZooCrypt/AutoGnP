@@ -128,7 +128,6 @@ let handle_tactic ts tac =
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
     apply (CR.t_conv true { ju_gdef = gd2; ju_ev = ev2 })
 
-
   | PU.Rassm_dec(maname,mdir,msvs) ->
     apply (t_assm_dec ts maname mdir msvs)
 
@@ -174,32 +173,8 @@ let handle_tactic ts tac =
   | PU.Rrnd(mi,mctxt1,mctxt2) ->
     apply (t_rnd_maybe ts mi mctxt1 mctxt2)
 
-  | PU.Rrnd_orcl(Some ((i,j,k) as op),mctxt1,Some (sv2,e2)) ->
-    let ty =
-      match get_ju_lcmd ju (i,j,k) with
-      | _,_,(_,G.LSamp(v,_),_),_ -> v.Vsym.ty
-      | _ -> tacerror "Position %i,%i,%i is not a sampling." i j k
-    in
-    let vmap = vmap_in_orcl ju op in 
-    let v2 = Vsym.mk sv2 ty in
-    Hashtbl.add vmap sv2 v2;
-    let e2 = PU.expr_of_parse_expr vmap ts e2 in
-    let (v1,e1) = match mctxt1 with
-      | Some(sv1,e1) ->
-        let vmap = vmap_in_orcl ju op in
-        let v1 = Vsym.mk sv1 ty in
-        Hashtbl.add vmap sv1 v1;
-        let e1 = PU.expr_of_parse_expr vmap ts e1 in
-        (v1,e1)
-      | None when ty_equal ty mk_Fq ->
-        invert_ctxt (v2,e2)
-      | None ->
-        tacerror "invert only implemented for Fq"
-    in
-    apply (CR.t_random_oracle (i,j,k) (v1,e1) (v2,e2))
-
-  | PU.Rrnd_orcl(_) ->
-    tacerror "not implemented yet"
+  | PU.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
+    apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
    
   | PU.Radd_test(op,t,aname,fvs) ->
     let _, juoc = get_ju_octxt ju op in
