@@ -361,6 +361,7 @@ instr :
   { Apply(Rrnd(map_opt (fun i -> i -1) mi,mc1,mc2)) }
 | RSIMP { Apply(Rsimp) }
 | RCRUSH  mi = uoption(NAT) { Apply(Rcrush(false,mi)) }
+| BYCRUSH { Apply(Rcrush(false,None)) }
 | BYCRUSH mi = uoption(NAT) { Apply(Rcrush(true,mi)) }
 | RRND_ORACLE op = uoption(opos) c1 = uoption(ctx) c2 = uoption(ctx) { Apply(Rrnd_orcl(op,c1,c2)) }
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }

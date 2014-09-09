@@ -1,15 +1,15 @@
 (*s Derived rules for dealing with random samplings. *)
 
 (*i*)
-open Game
-open Expr
-open Type
-open Norm
 open Util
+open Nondet
+open Type
 open Syms
+open Expr
+open Norm
+open Game
 open Rules
 open RewriteRules
-open Nondet
 open ParserUtil
 
 module Ht = Hashtbl
@@ -72,23 +72,22 @@ let subst_ineq ju rv e =
   mconcat !ineqs >>= fun ie ->
   let inter = Se.inter (e_vars ie) (e_vars e) in
   mconcat (Se.elements inter) >>= fun iv ->
-   eprintf  "ineq rewrite: replace %a by %a in expression %a\n%!" pp_exp iv pp_exp ie pp_exp e;
+  eprintf  "ineq rewrite: replace %a by %a in expression %a\n%!" pp_exp iv pp_exp ie pp_exp e;
   let erv = mk_V rv in
   let erv' = mk_V (Vsym.mk "x____" erv.e_ty) in
-   let eq = Norm.norm_expr (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
-   guard (is_FPlus eq) >>= fun _ ->
-   eprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv';
-   let es = destr_FPlus eq in
-   let (with_erv,without_erv) = L.partition (fun t -> Se.mem erv (e_vars t)) es in
-
-   (match with_erv with
-   | [ e ] ->
-     if e_equal e (mk_FOpp erv) then ret (mk_FPlus without_erv)
-     else if e_equal e erv then ret (mk_FOpp (mk_FPlus without_erv))
-     else mempty
-   | _ -> mempty
-   ) >>= fun e ->
-   ret (e_replace erv' erv e)
+  let eq = Norm.norm_expr (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
+  guard (is_FPlus eq) >>= fun _ ->
+  eprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv';
+  let es = destr_FPlus eq in
+  let (with_erv,without_erv) = L.partition (fun t -> Se.mem erv (e_vars t)) es in
+  (match with_erv with
+  | [ e ] ->
+    if e_equal e (mk_FOpp erv) then ret (mk_FPlus without_erv)
+    else if e_equal e erv then ret (mk_FOpp (mk_FPlus without_erv))
+    else mempty
+  | _ -> mempty
+  ) >>= fun e ->
+  ret (e_replace erv' erv e)
 
 let transform_expr ju rv rvs e =
   let gvars = Game.write_gcmds ju.ju_gdef in
@@ -128,12 +127,15 @@ let contexts ju rv rvs =
   guard (not (e_equal e (mk_V rv))) >>= fun _ ->
   mplus (ret e) (transform_expr ju rv rvs e) >>= fun e ->
   mplus (ret e) (subst_ineq ju rv e) >>= fun e ->
-  ret (rv,e)
+  ret e
 
 let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju = 
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt ts ju ty (sv2,se2))
-  | None           -> contexts ju rv rvs
+  | None           ->
+    let e2s = run (-1) (contexts ju rv rvs) in
+    mconcat (sorted_nub e_compare (L.map Norm.norm_expr e2s)) >>= fun e2 ->
+    ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
   eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2;
   (match mctxt1 with

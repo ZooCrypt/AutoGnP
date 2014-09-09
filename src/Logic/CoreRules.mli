@@ -84,6 +84,8 @@ val move_first_last : proof_state -> proof_state
 val apply_on_n : int -> tactic -> proof_state -> proof_state nondet
 val apply_first : tactic -> proof_state -> proof_state nondet
 
+val merge_proof_states : proof_state list -> (proof_tree list -> proof_tree) -> proof_state
+
 val t_id : tactic
 val t_seq : tactic -> tactic -> tactic
 val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic

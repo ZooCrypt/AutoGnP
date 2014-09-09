@@ -33,8 +33,7 @@ prove
   crush 1. rnorm.
   rrnd_oracle (6,1,2) _ (r -> r * (i - i') + c). rnorm.
   rrnd_oracle (8,1,2) _ (r -> r * (i - i') + c). rnorm.
-  assumption_decisional _ ->.
-  bycrush 2.
+  bycrush 3.
   qed.
   print_proof.
   extract "extraction/bb1.ec".

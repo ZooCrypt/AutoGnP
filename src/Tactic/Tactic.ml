@@ -105,7 +105,7 @@ let handle_tactic ts tac =
   | PU.Rsplit_ev(i)          -> apply (CR.t_split_ev i)
   | PU.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev i d)
   | PU.Rcase_ev(se)          -> apply (CR.t_case_ev (parse_e se))
-  | PU.Rcrush(finish,mi)     -> apply (tn_crush finish mi ts) 
+  | PU.Rcrush(finish,mi)     -> apply (t_crush finish mi ts ps)
 
   | PU.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
   | PU.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
