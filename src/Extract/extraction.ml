@@ -429,7 +429,7 @@ let t_id  = TSeq []
 
 let t_pr_if = 
   TSeq [
-    Progress ["nosplit"];
+    Progress ["-split"];
     TRepeat (TOr (Apply "iff_and", TOr (Apply "iff_neq", Apply "iff_eq")));
     Progress [];
     t_algebra
