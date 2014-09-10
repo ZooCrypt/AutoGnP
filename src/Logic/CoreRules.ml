@@ -667,7 +667,7 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
 (** Reduction to decisional assumptions. *)
 
 let rassm_dec dir subst assm' ju =
-  let assm = Assumption.subst subst assm' in
+  let assm = Assumption.ad_subst subst assm' in
   let c,c' = 
     if dir = LeftToRight
     then assm.ad_prefix1,assm.ad_prefix2

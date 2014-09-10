@@ -81,19 +81,19 @@ val map_gdef_exp : (expr -> expr) -> gdef -> gcmd list
 
 val map_ju_exp : (expr -> expr) -> judgment -> judgment
 
-val iter_distr_exp : ('a -> unit) -> 'b * 'a list -> unit
+val iter_distr_exp : ?iexc:bool -> ('a -> unit) -> 'b * 'a list -> unit
 
-val iter_lcmd_exp : (expr -> unit) -> lcmd -> unit
+val iter_lcmd_exp : ?iexc:bool -> (expr -> unit) -> lcmd -> unit
 
-val iter_odef_exp : (expr -> unit) -> odef -> unit
+val iter_odef_exp : ?iexc:bool -> (expr -> unit) -> odef -> unit
 
-val iter_gcmd_exp : (expr -> unit) -> gcmd -> unit
+val iter_gcmd_exp : ?iexc:bool -> (expr -> unit) -> gcmd -> unit
 
-val iter_gdef_exp : (expr -> unit) -> gcmd list -> unit
+val iter_gdef_exp : ?iexc:bool -> (expr -> unit) -> gcmd list -> unit
 
-val iter_ju_exp : (expr -> unit) -> judgment -> unit
+val iter_ju_exp :  ?iexc:bool -> (expr -> unit) -> judgment -> unit
 
-val fold_union : ('a -> Se.t) -> 'a list -> Se.t
+val fold_union :  ('a -> Se.t) -> 'a list -> Se.t
 
 (*i ----------------------------------------------------------------------- i*)
 (*  \subsection{Positions and replacement functions} *)

@@ -56,7 +56,7 @@ let needed_var dir assm =
   if dir = LeftToRight then Vsym.S.elements (Vsym.S.diff w2 w1)
   else Vsym.S.elements (Vsym.S.diff w1 w2)
 
-let subst subst assm = 
+let ad_subst subst assm =
   let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
   let subst_s s =
     Vsym.S.fold (fun x -> Vsym.S.add (subst_v x)) s Vsym.S.empty in

@@ -21,10 +21,7 @@ module PU = ParserUtil
 (* \subsection{Decisional assumptions} *)
 
 let _t_assm_dec assm dir subst ju =
-  let c = 
-    if dir = LeftToRight then assm.Assumption.ad_prefix1 
-    else assm.Assumption.ad_prefix2
-  in
+  let c = if dir = LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
   let jc = Util.take (L.length c) ju.ju_gdef in
   let subst = 
     L.fold_left2 (fun s i1 i2 ->
@@ -36,20 +33,20 @@ let _t_assm_dec assm dir subst ju =
       subst c jc in
   CR.t_assm_dec dir subst assm ju
 
-let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
+let t_assm_dec_aux assm dir asubst samp_assm lets_assm ju =
   let samp_gdef = samplings ju.ju_gdef in
   let samp_gdef = Util.take (L.length samp_assm) samp_gdef in
   (* subst renames assm into judgment *)
   guard (list_eq_for_all2
            (fun (_,(vs1,_)) (_,(vs2,_)) ->
-             eprintf "check: %a=%a\n%!" Vsym.pp vs1 Vsym.pp vs2;
+             (* eprintf "check: %a=%a\n%!" Vsym.pp vs1 Vsym.pp vs2; *)
              ty_equal vs1.Vsym.ty vs2.Vsym.ty)
            samp_assm samp_gdef) >>= (fun _ ->
   eprintf "guard, %i %i\n%!" (L.length samp_assm) (L.length samp_gdef);
   let subst = 
     L.fold_left2
       (fun s (_,(vs1,_)) (_,(vs2,_)) ->Vsym.M.add vs1 vs2 s)
-      subst
+      asubst
       samp_assm
       samp_gdef
   in
@@ -72,17 +69,16 @@ let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
   in
   let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) samp_gdef in
   let ((_,subst), let_abstrs) =  map_accum ltac (1,subst) lets_assm in
-  eprintf "returned tactic@\n%!";
   (* try conversion between gdef = gprefix;grest and inst(assm);grest *)
   let conv_common_prefix ju =
-    let a_rn = Assumption.subst subst assm in
+    let a_rn = ad_subst asubst assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
     let grest = Util.drop (L.length c) ju.ju_gdef in
     (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
      @> CoreRules.t_assm_dec dir subst assm) ju
   in
   try
-    (        (* t_print "after swapping, before unknown"
+    (       (* t_print "after swapping, before unknown"
           @>*) t_norm_unknown priv_exprs
           (* @> t_print "after unknown" *)
           @> t_seq_list let_abstrs
@@ -108,12 +104,8 @@ let rec parallel_swaps old_new_pos =
     let abstractions that make assumption applicable. *)
 let t_assm_dec_auto assm dir subst ju =
   eprintf "###############################\n%!";
-  eprintf "t_assm_dec_auto dir=%s assm=%s\n%!" (string_of_dir dir) assm.Assumption.ad_name;
-  let assm_cmds =
-    match dir with
-    | LeftToRight -> assm.Assumption.ad_prefix1 
-    | RightToLeft -> assm.Assumption.ad_prefix2
-  in
+  eprintf "t_assm_dec_auto dir=%s assm=%s\n%!" (string_of_dir dir) assm.ad_name;
+  let assm_cmds = if dir=LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
   let samp_assm = samplings assm_cmds in
   let lets_assm = lets assm_cmds in
   let samp_gdef = samplings ju.ju_gdef in
@@ -123,7 +115,7 @@ let t_assm_dec_auto assm dir subst ju =
   (* FIXME: we assume that the samplings in the assumption occur first
      and are of type Fq *)
   let assm_samp_num = L.length samp_assm in
-  let samp_gdef = List.filter (fun (_,(_,(ty,_))) -> ty_equal ty mk_Fq) samp_gdef in
+  let samp_gdef = L.filter (fun (_,(_,(ty,_))) -> ty_equal ty mk_Fq) samp_gdef in
   pick_set_exact assm_samp_num (mconcat samp_gdef) >>= fun match_samps ->
   eprintf "matching %a\n%!" (pp_list "," pp_int) (L.map fst match_samps);
   permutations match_samps >>= fun match_samps ->
@@ -155,7 +147,7 @@ let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts massm_names mdir mvnames ju =
   >>= fun dir ->
   (* generate substitution for all required new variable names
      generating new variable names if not enough are provided *)
-  let needed = Assumption.needed_var dir assm in
+  let needed = needed_var dir assm in
   let given_vnames = from_opt [] mvnames in
   let required = max 0 (L.length needed - L.length given_vnames) in
   (* FIXME: prevent variable clashes here *)

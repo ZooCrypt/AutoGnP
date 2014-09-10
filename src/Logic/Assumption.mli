@@ -17,7 +17,7 @@ val mk_assm_dec : string -> Game.gdef -> Game.gdef -> Vsym.S.t -> assm_dec
 
 val needed_var : Util.direction  -> assm_dec -> Vsym.t list
 
-val subst : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
+val ad_subst : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
 
 (** Computational assumptions. *)
 type assm_comp = private

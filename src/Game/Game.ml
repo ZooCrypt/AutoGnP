@@ -151,38 +151,38 @@ let map_ju_exp f ju =
 
 (** iter *)
 
-let iter_distr_exp f (_,es) = L.iter f es
+let iter_distr_exp ?iexc:(iexc=false) f (_,es) = if iexc then L.iter f es
 
-let iter_lcmd_exp f lcmd = match lcmd with
+let iter_lcmd_exp ?iexc:(iexc=false) f lcmd = match lcmd with
   | LLet(_,e)  -> f e
   | LBind(_)   -> ()
-  | LSamp(_,d) -> iter_distr_exp f d
+  | LSamp(_,d) -> iter_distr_exp ~iexc f d
   | LGuard(e)  -> f e
 
-let iter_odef_exp f (_o,_vs,ms,e) =
-  L.iter (iter_lcmd_exp f) ms; f e
+let iter_odef_exp ?iexc:(iexc=false) f (_o,_vs,ms,e) =
+  L.iter (iter_lcmd_exp ~iexc f) ms; f e
 
-let iter_gcmd_exp f gcmd = match gcmd with
-  | GLet(_,e)     -> f e
-  | GSamp(_,d)    -> iter_distr_exp f d
-  | GCall(_,_,e,os) -> f e; L.iter (iter_odef_exp f) os
+let iter_gcmd_exp ?iexc:(iexc=false) f gcmd = match gcmd with
+  | GLet(_,e)       -> f e
+  | GSamp(_,d)      -> iter_distr_exp ~iexc f d
+  | GCall(_,_,e,os) -> f e; L.iter (iter_odef_exp ~iexc f) os
 
-let iter_gcmd_exp_orcl f gcmd = match gcmd with
+let iter_gcmd_exp_orcl ?iexc:(iexc=false) f gcmd = match gcmd with
   | GLet(_,_)     -> ()
   | GSamp(_,_)    -> ()
-  | GCall(_,_,_,os) -> L.iter (iter_odef_exp f) os
+  | GCall(_,_,_,os) -> L.iter (iter_odef_exp ~iexc f) os
 
-let iter_gcmd_exp_no_orcl f gcmd = match gcmd with
+let iter_gcmd_exp_no_orcl ?iexc:(iexc=false) f gcmd = match gcmd with
   | GLet(_,e)     -> f e
-  | GSamp(_,d)    -> iter_distr_exp f d
+  | GSamp(_,d)    -> iter_distr_exp ~iexc f d
   | GCall(_,_,e,_) -> f e
 
-let iter_gdef_exp f gdef =
-  L.iter (iter_gcmd_exp_no_orcl f) gdef;
-  L.iter (iter_gcmd_exp_orcl f) gdef
+let iter_gdef_exp ?iexc:(iexc=false) f gdef =
+  L.iter (iter_gcmd_exp_no_orcl ~iexc f) gdef;
+  L.iter (iter_gcmd_exp_orcl ~iexc f) gdef
 
-let iter_ju_exp f ju =
-  iter_gdef_exp f ju.ju_gdef; f ju.ju_ev
+let iter_ju_exp ?iexc:(iexc=false) f ju =
+  iter_gdef_exp ~iexc f ju.ju_gdef; f ju.ju_ev
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Positions and replacement functions} *)
