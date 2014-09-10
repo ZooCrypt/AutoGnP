@@ -26,6 +26,10 @@ let ( @>= ) = t_bind_ignore
 
 let ( @| ) = t_or
 
+let (@||) t1 t2 ju =
+  let mps = t1 ju in
+  if is_nil mps then t2 ju else mps
+
 let mk_name () = "x__"^string_of_int (unique_int ())
 
 let samplings gd =

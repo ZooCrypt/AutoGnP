@@ -11,6 +11,7 @@ val ( @>= ) : 'a rtactic -> ('a -> tactic) -> tactic
 val ( @>>= ) : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 (* val ( @+ ) : tactic -> tactic list -> tactic *)
 val ( @| ) : tactic -> tactic -> tactic
+val ( @|| ) : tactic -> tactic -> tactic
 
 type dir = ToFront | ToEnd
 

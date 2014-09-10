@@ -343,16 +343,18 @@ let rrnd p c1 c2 ju =
   | GSamp(vs,((_t,[]) as d)), juc ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v;
+    let vslet = Vsym.mk (fsprintf "x__%i" (unique_int ())) vs.Vsym.ty in
     let cmds =
       [ GSamp(vs,d);
-        GLet(vs, inst_ctxt c1 (mk_V vs)) ]
+        GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
     let wfs = wf_gdef NoCheckDivZero (L.rev juc.juc_left) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    let subst e = e_replace v (mk_V vslet) e in
     let juc =
       { juc with
-        juc_right = juc.juc_right;
+        juc_right = map_gdef_exp subst juc.juc_right;
         juc_ev = juc.juc_ev }
     in
     eprintf "## rrnd performed@\n";
@@ -672,10 +674,7 @@ let rassm_dec dir subst assm' ju =
     else assm.ad_prefix2,assm.ad_prefix1
   in
   let cju = Util.take (L.length c) ju.ju_gdef in
-  (* FIXME: check if OK for certification if we allow equality of expressions modulo E,
-            we actually need equality modulo AC probably. *)
-  (* let norm_es = Game.map_gdef_exp Norm.norm_expr in *)
-  if not (gdef_equal c cju) (*  || gdef_equal (norm_es c) (norm_es cju)) *)
+  if not (gdef_equal c cju)
     then tacerror "assm_dec: cannot match decisional assumption";
   let tl = Util.drop (L.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in

@@ -27,7 +27,6 @@ type lcmd =
   | LSamp  of vs * distr   (*r $LSamp(x,d): x \leftarrow_{\$} d$ *)
   | LGuard of expr         (*r $LGuard(t): t$ *)
 
-
 (** Oracle definition. *)
 type odef = os * vs list * lcmd list * Expr.expr (*r
   $(o,\vec{x}, \vec{m},e): o(x_1,..,x_l) = [e | m_1, .., m_k]$ *)
@@ -48,7 +47,6 @@ type ev = expr
 (** A judgment consists of a game and an event. *)
 type judgment = { ju_gdef : gdef; ju_ev : ev }
   (*i FIXME: add probability tag i*)
-
 
 (*i*)
 (* ----------------------------------------------------------------------- *)

@@ -33,14 +33,14 @@ let invert_ctxt (v,e) =
     let (g,h) = Poly.factor_out (mk_V v) nom in
     let e' = mk_FDiv (mk_FMinus (mk_V v) (Poly.exp_of_poly h))
                      (Poly.exp_of_poly g)
-    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
+    in (v, Game.norm_expr_def e')
   | (nom, Some(denom)) when not (hole_occurs denom) ->
     (*i v = (v' * g + h) / denom => v' = (v * denom - h) / g i*)
     let (g,h) = Poly.factor_out (mk_V v) nom in
     let e' = mk_FDiv
                (mk_FMinus (mk_FMult [mk_V v; Poly.exp_of_poly denom]) (Poly.exp_of_poly h))
                (Poly.exp_of_poly g)
-    in (v, e' |> Norm.norm_expr |> Norm.abbrev_ggen)
+    in (v, Game.norm_expr_def e')
   | (_nom, Some(_denom)) ->
     tacerror "invert does not support denominators with hole-occurences in contexts"
 
@@ -75,7 +75,7 @@ let subst_ineq ju rv e =
   eprintf  "ineq rewrite: replace %a by %a in expression %a\n%!" pp_exp iv pp_exp ie pp_exp e;
   let erv = mk_V rv in
   let erv' = mk_V (Vsym.mk "x____" erv.e_ty) in
-  let eq = Norm.norm_expr (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
+  let eq = Game.norm_expr_def (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
   guard (is_FPlus eq) >>= fun _ ->
   eprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv';
   let es = destr_FPlus eq in
@@ -134,7 +134,7 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju =
   | Some (sv2,se2) -> ret (parse_ctxt ts ju ty (sv2,se2))
   | None           ->
     let e2s = run (-1) (contexts ju rv rvs) in
-    mconcat (sorted_nub e_compare (L.map Norm.norm_expr e2s)) >>= fun e2 ->
+    mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
   eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2;
@@ -200,7 +200,7 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   | Some (sv2,se2) -> ret (parse_ctxt_oracle ts op ju ty (sv2,se2))
   | None           ->
     let e2s = run (-1) (contexts ju rv rvs) in
-    mconcat (sorted_nub e_compare (L.map Norm.norm_expr e2s)) >>= fun e2 ->
+    mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
   eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2;

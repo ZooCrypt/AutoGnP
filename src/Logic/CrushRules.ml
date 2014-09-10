@@ -17,10 +17,6 @@ module Ht = Hashtbl
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Simplification} *)
 
-let (@||) t1 t2 ju =
-  let mps = t1 ju in
-  if is_nil mps then t2 ju else mps
-
 let t_split_ev_maybe mi ju =
   let ev = ju.ju_ev in
   (match mi with

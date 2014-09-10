@@ -73,13 +73,21 @@ let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
   let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) samp_gdef in
   let ((_,subst), let_abstrs) =  map_accum ltac (1,subst) lets_assm in
   eprintf "returned tactic@\n%!";
+  (* try conversion between gdef = gprefix;grest and inst(assm);grest *)
+  let conv_common_prefix ju =
+    let a_rn = Assumption.subst subst assm in
+    let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
+    let grest = Util.drop (L.length c) ju.ju_gdef in
+    (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
+     @> CoreRules.t_assm_dec dir subst assm) ju
+  in
   try
     (        (* t_print "after swapping, before unknown"
           @>*) t_norm_unknown priv_exprs
           (* @> t_print "after unknown" *)
           @> t_seq_list let_abstrs
           (* @> t_print "after" *)
-          @> CoreRules.t_assm_dec dir subst assm) ju
+          @> (CoreRules.t_assm_dec dir subst assm @|| conv_common_prefix)) ju
   with
     Invalid_rule s -> eprintf "%s%!"s; mempty)
 
