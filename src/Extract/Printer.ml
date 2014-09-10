@@ -345,9 +345,9 @@ let pp_bilinear_mod file fmt bvars =
          F.fprintf fmt "     op   %s.( ^ ) <- %s.( ^ ),@ " g wg;
          F.fprintf fmt "     op   %s.log   <- %s.log"      g wg in
       F.fprintf fmt "clone Bilinear.Bl as %s with@ " s;
-      pp_with "G1" g1;
+      pp_with "GS1" g1;
       F.fprintf fmt ",@ ";
-      pp_with "G2" g2;
+      pp_with "GS2" g2;
       F.fprintf fmt ",@ ";
       pp_with "GT" gt;
       F.fprintf fmt ".@ @ " in
