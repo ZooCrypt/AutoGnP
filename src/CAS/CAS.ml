@@ -389,7 +389,7 @@ let parse_field_json ctxs t0 =
     | _                                -> failwith (F.sprintf "parse_field_json: error %s" (YS.pretty_to_string t))
   in go t0
 
-let solve_fq_sage ecs e =
+let _solve_fq_sage ecs e =
   let (se,secs,c) =
     match abstract_non_field_multiple (fun x -> x) (e::(List.map snd ecs)) with
     | (se::secs,c,_) -> (se,secs,c)
