@@ -350,7 +350,7 @@ instr :
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
 | ASSUMPTION_DECISIONAL s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(s,d,xs))}
-| ASSUMPTION_COMPUTATIONAL s=ID e = expr0 { Apply (Rassm_comp(s,e))}
+| ASSUMPTION_COMPUTATIONAL s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(s,e))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }

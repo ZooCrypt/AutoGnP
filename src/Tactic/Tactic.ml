@@ -113,14 +113,8 @@ let handle_tactic ts tac =
   | PU.Rsimp ->
     apply (t_simp false 20 ts)
 
-  | PU.Rassm_comp(s,ev_e) ->
-    let assm = 
-      try Ht.find ts.ts_assms_comp s 
-      with Not_found -> tacerror "error no assumption %s" s
-    in
-    let vmap = vmap_of_globals ju.ju_gdef in
-    let ev_e = PU.expr_of_parse_expr vmap ts ev_e in
-    apply (t_assm_comp assm ev_e)
+  | PU.Rassm_comp(maname,mev_e) ->
+    apply (t_assm_comp ts maname mev_e)
 
   | PU.Rrnd(mi,mctxt1,mctxt2) ->
     apply (t_rnd_maybe ts mi mctxt1 mctxt2)

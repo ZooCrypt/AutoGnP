@@ -266,7 +266,7 @@ type tactic =
   | Rrnd_orcl      of G.ocmd_pos option * (string * parse_expr) option * (string * parse_expr) option
   | Requiv         of gdef * parse_expr
   | Rassm_dec      of string option * Util.direction option * (string list) option
-  | Rassm_comp     of string * parse_expr  
+  | Rassm_comp     of string option * (parse_expr) option
   | Rlet_abstract  of int * string * parse_expr
   | Rlet_unfold    of int
   | Rindep

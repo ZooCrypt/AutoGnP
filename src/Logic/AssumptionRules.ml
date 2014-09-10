@@ -14,6 +14,7 @@ open RewriteRules
 
 module Ht = Hashtbl
 module CR = CoreRules
+module PU = ParserUtil
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -156,7 +157,22 @@ let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts massm_names mdir mvnames ju =
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Derived tactics for dealing with computational assumptions} *)
 
-let t_assm_comp assm ev_e ju =
+let t_assm_comp ts maname mev_e ju =
+  (match maname with
+  | Some aname ->
+    begin try ret (Ht.find ts.ts_assms_comp aname)
+    with Not_found -> tacerror "error no assumption %s" aname
+    end
+  | None ->
+    mconcat (Ht.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_comp [])
+  ) >>= fun assm ->
+  (match mev_e with
+  | Some se ->
+    let vmap = vmap_of_globals ju.ju_gdef in
+    ret (PU.expr_of_parse_expr vmap ts se)
+  | None ->
+    mempty
+  ) >>= fun ev_e ->
   let c = assm.Assumption.ac_prefix in
   let jc = Util.take (L.length c) ju.ju_gdef in
   let subst =

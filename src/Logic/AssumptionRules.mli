@@ -1,6 +1,4 @@
 open Util
-open Expr
-open Assumption
 open CoreRules
 open TheoryState
 
@@ -12,4 +10,8 @@ val t_assm_dec :
   (string list) option ->
   tactic
 
-val t_assm_comp : assm_comp -> expr -> tactic
+val t_assm_comp :
+  theory_state ->
+  string option ->
+  ParserUtil.parse_expr option ->
+  tactic
