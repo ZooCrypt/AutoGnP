@@ -93,10 +93,10 @@ let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
 
 let rec parallel_swaps old_new_pos =
   let upd_pos op np p =
-    (* before: op .. p after p .. np*)
-    if op < p && p >= np then p - 1
-    (* before: p .. op after np .. p *)
-    else if p < op && np <= p then p + 1
+    (* op .. p .. np, if p = np before then p moves one to the right *)
+    if op < np && op < p && p <= np then p - 1
+    (* np .. p .. op, if p = np before then p moves one to the left *)
+    else if np < op && np <= p && p < op then p + 1
     else p
   in
   match old_new_pos with
