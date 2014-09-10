@@ -162,11 +162,11 @@ let call_system sys cmd linenum =
   let (c_in, c_out) =
     try Ht.find ht_systems sys
     with Not_found ->
-        let (command,setup) = List.assoc sys setup_systems in
-        let cs = Unix.open_process command in
-        (match setup with Some s -> output_string (snd cs) s | _ -> ());
-        Ht.add ht_systems sys cs;
-        cs
+      let (command,setup) = List.assoc sys setup_systems in
+      let cs = Unix.open_process command in
+      (match setup with Some s -> output_string (snd cs) s | _ -> ());
+      Ht.add ht_systems sys cs;
+      cs
   in
   output_string c_out cmd;
   (*i F.printf "input: `%s' has been sent\n\n%!" cmd; i*)

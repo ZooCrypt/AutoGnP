@@ -54,17 +54,24 @@ let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
       samp_gdef
   in
   eprintf "subst %a\n%!" (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst);
-  let ltac subst (i,((vs:Vsym.t),(e:expr))) =
+  let n_let = L.length lets_assm in
+  let ltac (i_let,subst) (i,((vs:Vsym.t),(e:expr))) =
     let name = mk_name () in
     let vs'  = Vsym.mk name vs.Vsym.ty in
     let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
-    ( Vsym.M.add vs vs' subst
+    ( (i_let + 1, Vsym.M.add vs vs' subst)
     , t_let_abstract i vs' (Norm.norm_expr e')
-      (* @> t_guard (fun ju -> Se.mem (mk_V vs') (Game.read_ju ju) ) *)
+      @>
+      (* We assume the last let definition differs between left and right
+         and therefore enforce that it is used in the game *)
+      (if i_let = n_let then
+          (t_guard (fun ju -> Se.mem (mk_V vs') (Game.read_ju ju)))
+       else
+          CR.t_id)
     )
   in
   let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) samp_gdef in
-  let (subst, let_abstrs) =  map_accum ltac subst lets_assm in
+  let ((_,subst), let_abstrs) =  map_accum ltac (1,subst) lets_assm in
   eprintf "returned tactic@\n%!";
   try
     (        (* t_print "after swapping, before unknown"
