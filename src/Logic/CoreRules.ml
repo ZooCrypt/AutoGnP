@@ -674,8 +674,8 @@ let rassm_dec dir subst assm' ju =
   let cju = Util.take (L.length c) ju.ju_gdef in
   (* FIXME: check if OK for certification if we allow equality of expressions modulo E,
             we actually need equality modulo AC probably. *)
-  let norm_es = Game.map_gdef_exp Norm.norm_expr in
-  if not (gdef_equal (norm_es c) (norm_es cju) || gdef_equal (norm_es c) (norm_es cju))
+  (* let norm_es = Game.map_gdef_exp Norm.norm_expr in *)
+  if not (gdef_equal c cju) (*  || gdef_equal (norm_es c) (norm_es cju)) *)
     then tacerror "assm_dec: cannot match decisional assumption";
   let tl = Util.drop (L.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
