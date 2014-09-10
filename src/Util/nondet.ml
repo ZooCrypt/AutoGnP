@@ -61,6 +61,11 @@ let first m =
   | Nil _       -> failwith "first: empty sequence"
   | Cons (a, _) -> a
 
+let is_nil m =
+  match sforce m with
+  | Nil _       -> true
+  | Cons (_, _) -> false
+
 (* Apply function [f] to the first n values,
    use [n = -1] to apply [f] to all values. *)
 let iter n m f =

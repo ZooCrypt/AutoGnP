@@ -48,4 +48,4 @@ val pp_proof_tree : Util.F.formatter -> CoreRules.proof_tree -> unit
 
 val simplify_proof_tree : proof_tree -> proof_tree
 
-val prove_by_admit: proof_state -> proof_tree
+val prove_by_admit: string -> proof_state -> proof_state

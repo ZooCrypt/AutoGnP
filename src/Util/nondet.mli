@@ -31,6 +31,7 @@ val nprod : 'a nondet -> int -> ('a list) nondet
 val insertions : 'a list -> 'a -> 'a list -> 'a list nondet
 val permutations : 'a list -> 'a list nondet
 
+val is_nil : 'a nondet -> bool
 val pull : 'a nondet -> (string option, ('a * 'a nondet)) either
 val first : 'a nondet -> 'a
 

@@ -1084,7 +1084,7 @@ let rec extract_proof file pft =
   | Radd_test _ -> default_proof file mem "add_test" pft
   | Rrw_orcl _  -> default_proof file mem "rw_orcl" pft
   | Rbad     _  -> default_proof file mem "bad" pft
-  | Radmit      -> default_proof file mem "admit" pft
+  | Radmit _    -> default_proof file mem "admit" pft
   | Rfalse_ev   -> default_proof file mem "false_ev" pft
   | Rassm_comp _ -> default_proof file mem "assm_comp" pft
   | Rcase_ev _ -> default_proof file mem "case_ev" pft

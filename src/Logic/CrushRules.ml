@@ -2,6 +2,7 @@
 open Util
 open Nondet
 open Syms
+open Expr
 open Game
 open Rules
 open RewriteRules
@@ -12,6 +13,77 @@ open RandomRules
 module CR = CoreRules
 module Ht = Hashtbl
 (*i*)
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Simplification} *)
+
+let (@||) t1 t2 ju =
+  let mps = t1 ju in
+  if is_nil mps then t2 ju else mps
+
+let t_split_ev_maybe mi ju =
+  let ev = ju.ju_ev in
+  (match mi with
+  | Some i -> ret i
+  | None   ->
+    guard (is_Land ev) >>= fun _ ->
+    mconcat (L.mapi (fun i e -> (i,e)) (destr_Land ev)) >>= fun (i,e) ->
+    guard (is_Eq e) >>= fun _ ->
+    let (a,b) = destr_Eq e in
+    guard (is_Tuple a && is_Tuple b) >>= fun _ ->
+    guard (L.length (destr_Tuple a) = L.length (destr_Tuple b)) >>= fun _ ->
+    ret i
+  ) >>= fun i ->
+  CR.t_split_ev i ju
+
+let t_rewrite_ev_maybe mi mdir ju =
+  let ev = ju.ju_ev in
+  (match mi with
+  | Some i ->
+    begin match mdir with
+    | Some d -> ret (i,d)
+    | None   -> mplus (ret (i,LeftToRight)) (ret (i,RightToLeft))
+    end
+  | None   ->
+    guard (is_Land ev) >>= fun _ ->
+    mconcat (L.mapi (fun i e -> (i,e)) (destr_Land ev)) >>= fun (i,e) ->
+    guard (is_Eq e) >>= fun _ ->
+    let (a,b) = destr_Eq e in
+    mplus 
+      (if (is_V a) then (ret LeftToRight) else mempty)
+      (if (is_V b) then (ret RightToLeft) else mempty) >>= fun dir ->
+    ret (i,dir)
+  ) >>= fun (i,dir) ->
+  (CR.t_rw_ev i dir @> CR.t_remove_ev [i]) ju
+
+let t_fix must_finish max t ju =
+  let ps0 = first (CR.t_id ju) in
+  let rec aux i ps =
+    let gs = ps.CR.subgoals in
+    let npss = mapM t gs in
+    if (is_nil npss || i < 0)
+    then (
+      guard (not must_finish || ps.CR.subgoals = []) >>= fun _ -> 
+      ret ps
+    ) else (
+      npss >>= fun pss ->
+      let ps2 = CR.merge_proof_states pss ps.CR.validation in
+      aux (i - 1) ps2
+    )
+  in aux max ps0
+
+let t_simp i must_finish _ts ju =
+  let step ju =
+        ((CR.t_cut ((t_norm ~fail_eq:true) @| CR.t_id))
+     @> (CR.t_cut (    CR.t_false_ev 
+                   @|| t_split_ev_maybe None
+                   @|| t_rewrite_ev_maybe None None ))) ju
+  in
+  t_fix i must_finish step ju
+
+(*i ----------------------------------------------------------------------- i*)
+(* \subsection{Automated crush tactic} *)
+
 
 type proof_search_info = {
   psi_assms  : Sstring.t;
@@ -54,7 +126,8 @@ let psis_of_pt pt =
         { psi with psi_orvars = Vsym.S.add orv psi.psi_orvars }
       in
       L.iter (aux psi) children
-    | CR.Radmit ->
+    | CR.Radmit "current" ->
+      (* we ignore admit's with label other from other branches of the proof *)
       admit_psis := psi::!admit_psis
     | _ ->
       L.iter (aux psi) children
@@ -70,15 +143,18 @@ let t_crush must_finish mi ts ps ju =
     let ias = psi.psi_assms in
     let irvs = psi.psi_rvars in
     let iorvs = psi.psi_rvars in
-    ((CR.t_cut ((t_norm ~fail_eq:true) @| CR.t_id))
+    (   (t_norm ~fail_eq:true @|| CR.t_id)
      @> (   t_random_indep
-         @| t_assm_dec ~i_assms:ias ts None (Some LeftToRight) None
-         @| t_rnd_maybe ~i_rvars:irvs ts None None None
-         @| t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None))
+         @|| (   t_simp true 10 ts
+              @| t_assm_dec ~i_assms:ias ts None (Some LeftToRight) None
+              @| t_rnd_maybe ~i_rvars:irvs ts None None None
+              @| t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None)))
   in
-  let get_pt ps2 = prove_by_admit (first (CR.apply_first (fun _ -> ret ps2) ps)) in
+  let get_pt ps2 =
+    CR.get_proof (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps2) ps)))
+  in
   let rec aux j ps1 =
-    let psis = psis_of_pt (get_pt ps1) in
+    let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
     let gs = ps1.CR.subgoals in
     assert (L.length gs = L.length psis);
     mapM (fun (psi,g) -> step psi g) (L.combine psis gs) >>= fun pss ->
@@ -98,3 +174,6 @@ let t_crush must_finish mi ts ps ju =
        ret ps2))
   in
   aux i (first (CR.t_id ju))
+
+
+

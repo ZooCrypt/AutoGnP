@@ -177,7 +177,7 @@ let pp_rule fmt ru =
     | Rrw_ev(_i,_dir) -> "rrw_ev"
     | Rassm_dec(_dir,_ren,assm) -> fsprintf "rassm_dec(%s)" assm.ad_name
     | Rassm_comp(_e,_ren,assm) -> fsprintf "rassm_comp(%s)" assm.ac_name
-    | Radmit -> "radmit"
+    | Radmit _ -> "radmit"
     | Rfalse_ev -> "rfalse_ev"
     | Rrnd_indep(_b,_i) -> "rrnd_indep"
   in
@@ -208,10 +208,10 @@ let rec simplify_proof_tree pt =
     end
   | _ -> pt
 
-let rec prove_by_admit ps =
+let rec prove_by_admit s ps =
   if ps.subgoals = [] then
-    ps.validation []
+    ps
   else
-    let ps = Nondet.first (apply_first t_admit ps) in
-    prove_by_admit ps
+    let ps = Nondet.first (apply_first (t_admit s) ps) in
+    prove_by_admit s ps
 

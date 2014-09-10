@@ -66,7 +66,7 @@ type rule_name =
   | Rassm_comp of expr * renaming * assm_comp
 
   (*c terminal rules *)
-  | Radmit
+  | Radmit of string
   | Rfalse_ev
   | Rrnd_indep of bool * int
 
@@ -631,6 +631,7 @@ let rsplit_ev i ju =
   in
   let evs = l@b@r in
   let new_ju = {ju with ju_ev = mk_Land evs} in
+  eprintf "## rsplit_ev %i@\n" i;
   Rsplit_ev(i), [ new_ju ]
 
 let t_split_ev i = prove_by (rsplit_ev i)
@@ -651,6 +652,7 @@ let rrw_ev i d ju =
   let subst e = e_replace u v e in
   let evs = (L.map subst l)@[b]@(L.map subst r) in
   let new_ju = { ju with ju_ev = mk_Land evs } in
+  eprintf "## rrw_ev %i@\n" i;
   Rrw_ev(i,d), [ new_ju ]
 
 let t_rw_ev i d = prove_by (rrw_ev i d)
@@ -712,15 +714,19 @@ let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
 
 (** Admit rule and tactic. *)
 
-let radmit _g = Radmit, []
-let t_admit = prove_by radmit
+let radmit s _g = Radmit s, []
+let t_admit s = prove_by (radmit s)
 
 (** Bound false event by $0$. *)
 
 let rfalse_ev ju =
   if is_False ju.ju_ev
-  then Rfalse_ev, []
-  else tacerror "rfalse_ev: event false expected"
+  then (
+    eprintf "## rfalse_ev@\n";
+    Rfalse_ev, []
+  ) else (
+    tacerror "rfalse_ev: event false expected"
+  )
 
 let t_false_ev = prove_by rfalse_ev
  

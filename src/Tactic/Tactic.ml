@@ -37,41 +37,6 @@ let rec simp_event ts =
   let ts = ts_importvars ts ju in
   
   let 
-  let ev = ju.Game.ju_ev in
-    let i = ref (-1) in
-    let tac =
-      if is_Land ev then (
-        L.fold_left
-          (fun t e ->
-             i := !i + 1;
-             if is_Eq e then (
-               let (a,b) = destr_Eq e in
-               if is_V a then (
-                 F.printf "%i %a ->\n%!" !i pp_exp e;
-                 (t @. t_rw_ev !i LeftToRight)
-               ) else if is_V b then (
-                 F.printf "%i %a <-\n%!" !i pp_exp e;
-                 (t @. t_rw_ev !i RightToLeft)
-               ) else if is_Tuple a && is_Tuple b then (
-                 F.printf "%i splitting %a \n%!" !i pp_exp e;
-                 (t @. t_split_ev !i)                        
-               ) else (
-                 F.printf "%i no V %a \n%!" !i pp_exp e;
-                 t
-               )
-             ) else (
-               F.printf "%i no eq %a \n%!" !i pp_exp e;
-               t
-             )
-          )
-          t_id
-          (destr_Land ev)
-      ) else (
-        t_id
-      )
-    in
-    (* { ts with ts_ps = ActiveProof(t_first r g) } in *)
-    apply_rule (tac @. t_norm @. t_false_ev) ts
 i*)  
 
 let handle_tactic ts tac =
@@ -159,7 +124,8 @@ let handle_tactic ts tac =
     let c = v1, e1 in
     apply (CR.t_ctxt_ev j c)
 
-  | PU.Rsimp -> tacerror "not implemented"
+  | PU.Rsimp ->
+    apply (t_simp false 20 ts)
 
   | PU.Rassm_comp(s,ev_e) ->
     let assm = 
@@ -316,7 +282,7 @@ let handle_instr ts instr =
   | PU.Admit ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_) -> 
-      ({ts with ts_ps = ActiveProof(first (CR.apply_first CR.t_admit ps),mempty)}
+      ({ts with ts_ps = ActiveProof(first (CR.apply_first (CR.t_admit "") ps),mempty)}
       , "Admit goal.")
     | _ -> tacerror "admit: no goals"
     end
@@ -338,7 +304,7 @@ let handle_instr ts instr =
         match ts.ts_ps with
         | BeforeProof -> assert false
         | ClosedTheory pt      -> pt
-        | ActiveProof  (ps,_)  -> prove_by_admit ps
+        | ActiveProof  (ps,_)  -> CR.get_proof (prove_by_admit "" ps)
       in
       let pt = simplify_proof_tree  pt in
       let buf = Buffer.create 1024 in

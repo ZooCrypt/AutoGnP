@@ -49,7 +49,7 @@ type rule_name =
   | Rassm_comp of expr * renaming * assm_comp
 
   (*c terminal rules *)
-  | Radmit
+  | Radmit of string
   | Rfalse_ev
   | Rrnd_indep of bool * int
 
@@ -101,8 +101,8 @@ val t_ensure_progress : tactic -> tactic
 
 (* \subsection{Core rules of the logic} *)
 
-val radmit : rule
-val t_admit : tactic
+val radmit : string -> rule
+val t_admit : string -> tactic
 
 (** [rconv b j' j] returns [j'] if [j] and [j'] are equal
     after expanding all lets and rewriting with respect
