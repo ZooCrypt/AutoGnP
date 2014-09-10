@@ -115,23 +115,26 @@ let rewrite_exps unknown e0 =
 let t_norm_unknown unknown ju =
   let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
   let new_ju = map_ju_exp norm ju in
+  (* this is too restricting, maybe we should give the allowed contexts?
   let unknown_se = se_of_list unknown in
-  let rec check_unknown ok_ctxt (e : expr) =
-    if ok_ctxt || not (Se.mem e unknown_se) then (
-      match e.e_node with
-      | V(_) | Cnst(_) -> ()
-      | H(_,e) | Proj(_,e) -> check_unknown false e
-      | App(GExp(_),[e1;e2]) when is_GGen e1 ->
-        check_unknown true e2
-      | Tuple(es) | App(_,es) | Nary(_,es) ->
-        L.iter (check_unknown false) es
-      | Exists(e1,e2,_) ->
-        check_unknown false e1; check_unknown false e2
-    ) else (
-      tacerror "unknown values still occur in forbidden contexts: %a" pp_exp e
-    )
+  let check_unknown e0 =
+    let rec aux ok_ctxt (e : expr) =
+      if ok_ctxt || not (Se.mem e unknown_se) then (
+        match e.e_node with
+        | V(_) | Cnst(_) -> ()
+        | H(_,e) | Proj(_,e) -> aux false e
+        | App(GExp(_),[e1;e2]) when is_GGen e1 ->
+          aux true e2
+        | Tuple(es) | App(_,es) | Nary(_,es) ->
+          L.iter (aux false) es
+        | Exists(e1,e2,_) ->
+          aux false e1; aux false e2
+      ) else (
+        tacerror "unknown value %a still occurs in forbidden contexts:@\n  %a@\n" pp_exp e pp_exp e0
+      )
+    in aux false e0
   in
-  iter_ju_exp ~iexc:false (check_unknown false) ju;
+  iter_ju_exp ~iexc:false check_unknown new_ju; *)
   t_conv true new_ju ju
 
 let t_let_abstract p vs e ju =
