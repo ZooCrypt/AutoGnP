@@ -26,7 +26,7 @@ let ( @>= ) = t_bind_ignore
 
 let ( @| ) = t_or
 
-let mk_name () = "x."^string_of_int (unique_int ())
+let mk_name () = "x__"^string_of_int (unique_int ())
 
 let samplings gd =
   let samp i = function
