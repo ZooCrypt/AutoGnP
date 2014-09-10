@@ -25,20 +25,6 @@ module CR = CoreRules
 let fail_unless c s =
   if not (c ()) then tacerror s
 
-(*i 
-let rec simp_event ts =
-  let g = get_proof_state ts in
-  let apply_rule r ts = { ts with ts_ps = ActiveProof(t_first r g) } in
-  let ju = match g.subgoals with
-    | ju::_ -> ju
-    | []    -> tacerror "cannot apply tactic: there is no goal"
-  in
-  (* FIXME: for now, we just clean up ts_vars here *)
-  let ts = ts_importvars ts ju in
-  
-  let 
-i*)  
-
 let handle_tactic ts tac =
   let ps = get_proof_state ts in
   let ju = match ps.CR.subgoals with

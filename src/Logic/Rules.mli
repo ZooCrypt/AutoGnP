@@ -30,6 +30,8 @@ val osamplings : gcmd list -> (ocmd_pos * (vs * (ty * expr list))) list
 
 val pp_osamp : F.formatter -> ocmd_pos * (vs * (ty * expr list)) -> unit
 
+val oguards : gcmd list -> (ocmd_pos * expr) list
+
 val lets :  gcmd list -> (int * (vs * expr)) list
 
 val pp_let : F.formatter -> int * (vs * expr) -> unit

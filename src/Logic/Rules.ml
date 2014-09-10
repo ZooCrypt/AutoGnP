@@ -56,6 +56,21 @@ let osamplings gd =
 let pp_osamp fmt ((i,j,k),(vs,d)) =
   F.fprintf fmt "(%i,%i,%i): %a from %a" i j k Vsym.pp vs pp_distr d
 
+let oguards gd =
+  let lcmds_guards gpos opos lcmds =
+    let samp i = function
+    | LGuard(e) -> Some ((gpos,opos,i),e)
+    | _              -> None
+    in
+    cat_Some (L.mapi samp lcmds)
+  in
+  let samp i = function
+    | GCall(_,_,_,odefs) ->
+      L.concat (L.mapi (fun opos (_,_,lcmds,_) -> lcmds_guards i opos lcmds) odefs)
+    | _ -> []
+  in
+  L.concat (L.mapi samp gd)
+
 let lets gd =
   let get_let i = function
     | GLet(vs,e) -> Some (i,(vs,e))

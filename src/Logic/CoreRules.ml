@@ -391,6 +391,8 @@ let rrewrite_oracle op dir ju =
                  juoc_cright = L.map (map_lcmd_exp subst) juoc.juoc_cright;
                  juoc_return = subst juoc.juoc_return }
     in
+    let (i,j,k) = op in
+    eprintf "## rrw_oracle %i,%i,%i @\n" i j k;
     Rrw_orcl(op,dir), [ set_ju_octxt [lc] juoc ]
   | _ -> assert false
 

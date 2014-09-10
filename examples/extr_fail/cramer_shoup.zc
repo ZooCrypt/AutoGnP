@@ -55,24 +55,24 @@ prove
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
 
   ] : b = b'.
-  rnorm. assumption_decisional _ _ v.
+  rnorm. assumption_decisional _ _ v. (* we could use crush 1, but we want to name the variable v *)
   rexcept 3 u*w.
   crush 3. rnorm.
-
+  
   (* if a^w = a' for all queries, b not used in game anymore *)
   radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
-    rrewrite_oracle (10,1,1) <-. bycrush.
-  rrewrite_oracle (10,1,1) <-. rnorm.
+    bycrush.
+  rsimp.
   crush 2. rnorm.
 
   radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
-    last. rrewrite_oracle (12,1,1) <-. bycrush.
-  rrewrite_oracle (12,1,1) <-. rnorm.
+    last. bycrush.
+  rsimp.
 
   rcase_ev  H(ea,ea',ec) = H(g ^ u,g ^ v,g ^ z2).
     last. bycrush.
   rnorm.
-  
+
   (* if EV ==> not ((ga,ga',gc) = (g ^ u,g ^ v,g ^ z2)) /\ H(ga,ga',gc) = H(g ^ u,g ^ v,g ^ z2), we can apply TCR *)
   rcase_ev (ea,ea',ec) = (g ^ u,g ^ v,g ^ z2).
     bycrush.

@@ -44,7 +44,7 @@ let t_rewrite_ev_maybe mi mdir ju =
     | Some d -> ret (i,d)
     | None   -> mplus (ret (i,LeftToRight)) (ret (i,RightToLeft))
     end
-  | None   ->
+  | None ->
     guard (is_Land ev) >>= fun _ ->
     mconcat (L.mapi (fun i e -> (i,e)) (destr_Land ev)) >>= fun (i,e) ->
     guard (is_Eq e) >>= fun _ ->
@@ -54,7 +54,25 @@ let t_rewrite_ev_maybe mi mdir ju =
       (if (is_V b) then (ret RightToLeft) else mempty) >>= fun dir ->
     ret (i,dir)
   ) >>= fun (i,dir) ->
-  (CR.t_rw_ev i dir @> CR.t_remove_ev [i]) ju
+  (CR.t_ensure_progress (CR.t_rw_ev i dir)) ju
+
+let t_rewrite_oracle_maybe mopos mdir ju =
+  (match mopos with
+  | Some opos ->
+    begin match mdir with
+    | Some d -> ret (opos,d)
+    | None   -> mplus (ret (opos,LeftToRight)) (ret (opos,RightToLeft))
+    end
+  | None ->
+    mconcat (oguards ju.ju_gdef) >>= fun (opos,e) ->
+    guard (is_Eq e) >>= fun _ ->
+    let (a,b) = destr_Eq e in
+    mplus 
+      (if (is_V a) then (ret LeftToRight) else mempty)
+      (if (is_V b) then (ret RightToLeft) else mempty) >>= fun dir ->
+    ret (opos,dir)
+  ) >>= fun (opos,dir) ->
+  (CR.t_ensure_progress (CR.t_rewrite_oracle opos dir)) ju
 
 let t_fix must_finish max t ju =
   let ps0 = first (CR.t_id ju) in
@@ -75,9 +93,10 @@ let t_fix must_finish max t ju =
 let t_simp i must_finish _ts ju =
   let step ju =
         ((CR.t_cut ((t_norm ~fail_eq:true) @| CR.t_id))
-     @> (CR.t_cut (    CR.t_false_ev 
-                   @|| t_split_ev_maybe None
-                   @|| t_rewrite_ev_maybe None None ))) ju
+     @> (    CR.t_false_ev 
+         @|| t_rewrite_oracle_maybe None None
+         @|| t_split_ev_maybe None
+         @|| t_rewrite_ev_maybe None None )) ju
   in
   t_fix i must_finish step ju
 
@@ -143,8 +162,9 @@ let t_crush must_finish mi ts ps ju =
     let ias = psi.psi_assms in
     let irvs = psi.psi_rvars in
     let iorvs = psi.psi_rvars in
-    (   (t_norm ~fail_eq:true @|| CR.t_id)
-     @> (   t_random_indep
+    let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in
+    (   t_norm_xor_id
+     @> (    (((t_simp false 10 ts @> t_norm_xor_id) @|| CR.t_id) @> t_print "before indep" @> t_random_indep)
          @|| (   t_simp true 10 ts
               @| t_assm_dec ~i_assms:ias ts None (Some LeftToRight) None
               @| t_rnd_maybe ~i_rvars:irvs ts None None None
