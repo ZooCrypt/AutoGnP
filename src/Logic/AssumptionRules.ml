@@ -126,9 +126,9 @@ let t_assm_dec_auto assm dir subst ju =
   (t_seq_list swaps @> t_assm_dec_aux assm dir subst samp_assm lets_assm) ju
 
 (** Supports placeholders for which all possible values are tried *)
-let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts massm_names mdir mvnames ju =
+let t_assm_dec_non_exact ?i_assms:(iassms=Sstring.empty) ts massm_name mdir mvnames ju =
   (* use assumption with given name or try all decisional assumptions *)
-  (match massm_names with
+  (match massm_name with
    | Some aname ->
      begin try ret (Ht.find ts.ts_assms_dec aname)
      with Not_found -> tacerror "error no assumption %s" aname
@@ -155,6 +155,16 @@ let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts massm_names mdir mvnames ju =
       (given_vnames@generated_vnames)
   in
   t_assm_dec_auto assm dir subst ju
+
+let t_assm_dec_exact ts massm_name mdir mvnames ju =
+    tacerror "not implemented yet"
+
+let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mvnames ju =
+  if exact then
+    t_assm_dec_exact ts massm_name mdir mvnames ju
+
+  else
+    t_assm_dec_non_exact ~i_assms:iassms ts massm_name mdir mvnames ju
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Derived tactics for dealing with computational assumptions} *)
@@ -332,7 +342,7 @@ let t_assm_comp_auto ts assm mev_e ju =
    @> t_seq_list swaps
    @> t_assm_comp_aux assm mev_e) ju
 
-let t_assm_comp ts maname mev_e ju =
+let t_assm_comp_no_exact ts maname mev_e ju =
   (match maname with
   | Some aname ->
     begin try ret (Ht.find ts.ts_assms_comp aname)
@@ -344,14 +354,25 @@ let t_assm_comp ts maname mev_e ju =
   (* try all assumptions *)
   t_assm_comp_auto ts assm mev_e ju
 
-(*
-  (match mev_e with
-  | Some se ->
-    let vmap = vmap_of_globals ju.ju_gdef in
-    ret (PU.expr_of_parse_expr vmap ts se)
-  | None ->
-    mempty
-  ) >>= fun ev_e ->
+let t_assm_comp_exact ts maname mev_e ju =
+  let aname =
+     match maname with
+     | None ->
+      tacerror "assumption_computational: event expression required for exact"
+     | Some an -> an
+  in
+  let ev_e =
+    match mev_e with
+    | Some se ->
+      let vmap = vmap_of_globals ju.ju_gdef in
+      PU.expr_of_parse_expr vmap ts se
+    | None ->
+      tacerror "assumption_computational: event expression required for exact"
+   in
+  let assm =
+    try Ht.find ts.ts_assms_comp aname
+    with Not_found -> tacerror "error no assumption %s" aname
+  in
   let c = assm.ac_prefix in
   let jc = Util.take (L.length c) ju.ju_gdef in
   let subst =
@@ -364,4 +385,10 @@ let t_assm_comp ts maname mev_e ju =
         tacerror "assumption_computational : can not infer substitution")
       Vsym.M.empty c jc
   in
-*)
+  CR.t_assm_comp assm ev_e subst ju
+
+let t_assm_comp ts exact maname mev_e ju =
+  if exact then
+    t_assm_comp_exact ts maname mev_e ju
+  else
+    t_assm_comp_no_exact ts maname mev_e ju

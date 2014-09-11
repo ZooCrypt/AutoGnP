@@ -79,8 +79,8 @@ let handle_tactic ts tac =
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
     apply (CR.t_conv true { ju_gdef = gd2; ju_ev = ev2 })
 
-  | PU.Rassm_dec(maname,mdir,msvs) ->
-    apply (t_assm_dec ts maname mdir msvs)
+  | PU.Rassm_dec(exact,maname,mdir,msvs) ->
+    apply (t_assm_dec ts exact maname mdir msvs)
 
   | PU.Rexcept_orcl(_op,_es) ->
     failwith "undefined"
@@ -113,11 +113,11 @@ let handle_tactic ts tac =
   | PU.Rsimp ->
     apply (t_simp false 20 ts)
 
-  | PU.Rassm_comp(maname,mev_e) ->
-    apply (t_assm_comp ts maname mev_e)
+  | PU.Rassm_comp(exact,maname,mev_e) ->
+    apply (t_assm_comp ts exact maname mev_e)
 
-  | PU.Rrnd(mi,mctxt1,mctxt2) ->
-    apply (t_rnd_maybe ts mi mctxt1 mctxt2)
+  | PU.Rrnd(exact,mi,mctxt1,mctxt2) ->
+    apply (t_rnd_maybe ts exact mi mctxt1 mctxt2)
 
   | PU.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
     apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)

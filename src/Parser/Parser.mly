@@ -15,6 +15,7 @@
 %token <string> TG
 %token TFQ
 %token STAR
+%token EXCL
 %left  STAR
 %token LPAREN
 %token RPAREN
@@ -338,7 +339,7 @@ instr :
     { AssmDec(i,g0,g1,p) }
 | ASSUMPTION_COMPUTATIONAL i1 = ID LBRACKET g = gdef0 RBRACKET LPAREN i2 = ID COLON t = typ0 TO e = expr0 RPAREN p=ID*
     { AssmComp(i1,g,i2,t,e,p) }
-| PROVE  LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
+| PROVE LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
 | PRINTGOALS COLON i = ID { PrintGoals(i) }
 | PRINTGOAL COLON i = ID { PrintGoal(i) }
 | PRINTPROOF { PrintProof }
@@ -349,16 +350,16 @@ instr :
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
-| ASSUMPTION_DECISIONAL s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(s,d,xs))}
-| ASSUMPTION_COMPUTATIONAL s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(s,e))}
+| ASSUMPTION_DECISIONAL exact=option(EXCL) s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(exact<>None,s,d,xs))}
+| ASSUMPTION_COMPUTATIONAL exact=option(EXCL) s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(exact<>None,s,e))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }
 | REXCEPT i = NAT es = expr0* { Apply(Rexcept(i-1,es)) }
 | REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_orcl(op,es)) }
-| RRND mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
-  { Apply(Rrnd(map_opt (fun i -> i -1) mi,mc1,mc2)) }
+| RRND exact=option(EXCL) mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
+  { Apply(Rrnd(exact<>None,map_opt (fun i -> i -1) mi,mc1,mc2)) }
 | RSIMP { Apply(Rsimp) }
 | RCRUSH  mi = uoption(NAT) { Apply(Rcrush(false,mi)) }
 | BYCRUSH { Apply(Rcrush(false,None)) }

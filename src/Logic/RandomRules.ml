@@ -151,7 +151,7 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju =
   (* eprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju; *)
   CR.t_rnd i (v1,e1) (v2,e2) ju
 
-let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mi mctxt1 mctxt2 ju =
+let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 ju =
   let samps = samplings ju.ju_gdef in
   let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
   (match mi with
@@ -165,13 +165,12 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mi mctxt1 mctxt2 ju =
   eprintf "t_rnd_maybe %i\n%!" i;
   eprintf "sampling: %i, %a@\n%!" i Vsym.pp rv;
   let rnd i = t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i in
-  ( t_debug (fsprintf "initial i is %i\n" i) @>
-    t_swap_max ToEnd i vs @>= (fun i ->
-    t_debug (fsprintf "after swapping toEnd: %i\n" i) @>
-    t_swap_others_max ToFront i @>= (fun i ->
-    t_debug (fsprintf "after swapping others ToFront: %i\n" i) @>
-    rnd i)))
-  ju
+  if exact then rnd i ju
+  else
+    ( t_swap_max ToEnd i vs @>= (fun i ->
+      t_swap_others_max ToFront i @>= (fun i ->
+      rnd i)))
+    ju
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Random rule in oracle} *)

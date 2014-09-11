@@ -25,6 +25,7 @@ rule lex = parse
   | "++"    { XOR }
   | "-"     { MINUS }  
   | "*"     { STAR }
+  | "!"     { EXCL }
   | "Fq"    { TFQ }
   | "not"   { NOT }
   | "log"   { LOG }

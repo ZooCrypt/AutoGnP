@@ -10,6 +10,7 @@ open ParserUtil
 val t_rnd_maybe :
   ?i_rvars:Syms.Vsym.S.t
   -> theory_state
+  -> bool
   ->  Game.gcmd_pos option
   -> (string * parse_expr) option
   -> (string * parse_expr) option
