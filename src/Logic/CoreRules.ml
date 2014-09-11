@@ -691,7 +691,7 @@ let t_assm_dec dir subst assm = prove_by (rassm_dec dir subst assm)
 (** Reduction to computational assumption. *)
 
 let rassm_comp assm ev_e subst ju =
-  let assm = Assumption.instantiate subst assm in
+  let assm = Assumption.ac_instantiate subst assm in
   let assm_ev = e_replace (mk_V assm.ac_event_var) ev_e assm.ac_event in
   if ju.ju_ev <> assm_ev
   then (tacerror "assm_comp: event not equal, expected %a, got %a"

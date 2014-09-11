@@ -93,7 +93,7 @@ let mk_assm_comp name pref ev_var ev priv_vars =
     ac_privvars   = priv_vars;
   }
 
-let instantiate subst assm = 
+let ac_instantiate subst assm = 
   let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
   let subst_s s =
     Vsym.S.fold (fun x -> Vsym.S.add (subst_v x)) s Vsym.S.empty

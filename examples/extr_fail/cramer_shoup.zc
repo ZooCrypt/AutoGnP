@@ -72,9 +72,7 @@ prove
   (* if EV ==> not ((ga,ga',gc) = (g ^ u,g ^ v,g ^ z2)) /\ H(ga,ga',gc) = H(g ^ u,g ^ v,g ^ z2), we can apply TCR *)
   rcase_ev (ea,ea',ec) = (g ^ u,g ^ v,g ^ z2). bycrush 1.
 
-  rremove_ev 1. rremove_ev 1. rremove_ev 1. rnorm_unknown u v z2. rexcept 3. rswap 2 -1. rswap 3 -1.
-    rswap 11 -8. rlet_abstract 4 tu g^u. rlet_abstract 5 tv g^v. rlet_abstract 6 tz g^z2.
-    assumption_computational _ (ea,ea',ec).
+  assumption_computational _ _.
   qed.
   print_proof.
   extract "extraction/cramer_shoup.ec".

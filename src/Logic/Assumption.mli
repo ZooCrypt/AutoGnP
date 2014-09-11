@@ -32,4 +32,4 @@ type assm_comp = private
 val mk_assm_comp :
   string -> Game.gdef -> Vsym.t -> Expr.expr -> Vsym.S.t -> assm_comp
 
-val instantiate : Vsym.t Vsym.M.t -> assm_comp -> assm_comp
+val ac_instantiate : Vsym.t Vsym.M.t -> assm_comp -> assm_comp

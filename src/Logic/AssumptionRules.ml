@@ -164,6 +164,191 @@ let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts massm_names mdir mvnames ju =
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Derived tactics for dealing with computational assumptions} *)
 
+let e_eqs e =
+  let comm_eq e =
+    guard (is_Eq e) >>= fun _ ->
+    let (_a,_b) = destr_Eq e in
+    ret e (* mplus (ret e) (ret (mk_Eq a b)) *)
+  in
+  if is_Land e then (
+    mconcat (destr_Land e) >>= fun cj ->
+    comm_eq cj
+  ) else (
+    comm_eq e
+  )
+
+let match_expr (var : vs) pat e =
+  let binding_v = ref None in
+  let ensure c =
+    if not c then raise Not_found
+  in
+  let inst e =
+    match !binding_v with
+    | None    -> binding_v := Some e
+    | Some e' -> ensure (e_equal e e')
+  in
+  let rec pmatchl es1 es2 =
+    ensure (L.length es1 = L.length es2);
+    L.iter2 pmatch es1 es2
+  and pmatch p e =
+    match p.e_node, e.e_node with
+    | V(vs1),_
+      when Vsym.equal vs1 var       -> inst e
+    | V(vs1),        V(vs2)         -> ensure (Vsym.equal vs1 vs2)
+    | H(hs1,e1),     H(hs2,e2)      -> ensure (Hsym.equal hs1 hs2); pmatch e1 e2
+    | Tuple(es1),    Tuple(es2)     -> pmatchl es1 es2
+    | Proj(i1,e1),   Proj(i2,e2)    -> ensure (i1 = i2); pmatch e1 e2
+    | Cnst(c1),      Cnst(c2)       -> ensure (c1 = c2)
+    | App(op1,es1),  App(op2,es2)   -> ensure (op1 = op2); pmatchl es1 es2
+    | Nary(nop1,es1),Nary(nop2,es2) -> ensure (nop1 = nop2); pmatchl es1 es2
+    | Exists(_),_                   -> raise Not_found
+    | _                             ->
+      eprintf "### ineq %a vs %a@\n" pp_exp p pp_exp e;
+      raise Not_found
+  in
+  try
+    pmatch pat e;
+    begin match !binding_v with
+    | None   -> mempty
+    | Some e -> ret e
+    end
+  with
+    Not_found ->
+      mempty
+
+let match_exprs_assm ju assm =
+  let jev = ju.ju_ev in
+  let aev = assm.ac_event in
+  let av = assm.ac_event_var in
+  let eav = mk_V av in
+  (* we first collect all equalities in aev and jev *)
+  e_eqs aev >>= fun aeq ->
+  guard (Se.mem eav (e_vars aeq)) >>= fun _ ->
+  e_eqs jev >>= fun jeq ->
+  eprintf "@\ntrying to match pat= %a (var %a)@\n                expr=%a@\n" pp_exp aeq pp_exp eav pp_exp jeq;
+  ret (aeq,jeq)
+
+let tries = ref 0
+
+let t_assm_comp_match assm subst mev_e ju =
+  let assm = ac_instantiate subst assm in
+  (match mev_e with
+  | Some e -> ret e
+  | None   ->
+    match_exprs_assm ju assm >>= fun (pat,e) ->
+    match_expr assm.ac_event_var pat e
+  ) >>= fun ev_e ->
+  eprintf "##########################@\nev_e = %a@\n" pp_exp ev_e;
+  CR.t_assm_comp assm ev_e subst ju
+
+
+let t_assm_comp_aux assm mev_e ju =
+  let assm_cmds = assm.ac_prefix in
+  let samp_assm = samplings assm_cmds in
+  let lets_assm = lets assm_cmds in
+  let samp_gdef = samplings ju.ju_gdef |> Util.take (L.length samp_assm) in
+  guard
+    (list_eq_for_all2 (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2) samp_assm samp_gdef)
+  >>= fun _ ->
+  eprintf "guard, %i %i\n%!" (L.length samp_assm) (L.length samp_gdef);
+  let subst =
+    L.fold_left2
+      (fun s (_,(vs1,_)) (_,(vs2,_)) -> Vsym.M.add vs1 vs2 s)
+      Vsym.M.empty
+      samp_assm
+      samp_gdef
+  in
+  eprintf "subst %a\n%!" (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst);
+  let ltac subst (i,((vs:Vsym.t),(e:expr))) =
+    let name = mk_name () in
+    let vs'  = Vsym.mk name vs.Vsym.ty in
+    let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
+    ( Vsym.M.add vs vs' subst, t_let_abstract i vs' (Norm.norm_expr e'))
+  in
+  let (subst, let_abstrs) = map_accum ltac subst lets_assm in
+  incr tries;
+  try
+    (   t_seq_list let_abstrs
+     @> t_debug (fsprintf "after let: %i" !tries)
+     @> t_assm_comp_match assm subst mev_e) ju
+  with
+    Invalid_rule s -> eprintf "%s%!"s; mempty
+
+let conj_type e =
+  if is_Eq e then (
+    let (a,_) = destr_Eq e in
+    Some (true,a.e_ty)
+  ) else if is_Not e then (
+    let e = destr_Not e in
+    if is_Eq e then (
+      let (a,_) = destr_Eq e in
+      Some (false,a.e_ty)
+    ) else (
+      None
+    )
+  ) else (
+    None
+  )
+      
+
+let t_assm_comp_auto ts assm mev_e ju =
+  eprintf "###############################\n%!";
+  eprintf "t_assm_comp assm=%s\n%!" assm.ac_name;
+  let vmap = vmap_of_globals ju.ju_gdef in
+  let mev_e = map_opt (PU.expr_of_parse_expr vmap ts) mev_e in
+  let assm_cmds = assm.ac_prefix in
+  let samp_assm = samplings assm_cmds in
+  let lets_assm = lets assm_cmds in
+  let samp_gdef = samplings ju.ju_gdef in
+  eprintf "@[assm:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) samp_assm;
+  eprintf "@[assm:@\n%a@\n%!@]" (pp_list "@\n" pp_let)  lets_assm;
+  eprintf "@[gdef:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) samp_gdef;
+  let assm_samp_num = L.length samp_assm in
+  (* FIXME: do not assume samplings in assumption occur first and are from Fq *)
+  let samp_gdef = L.filter (fun (_,(_,(ty,_))) -> ty_equal ty mk_Fq) samp_gdef in
+  pick_set_exact assm_samp_num (mconcat samp_gdef) >>= fun match_samps ->
+  permutations match_samps >>= fun match_samps ->
+  (* try all type-preserving bijections between random samplings in
+     the assumption and the considered game *)
+  eprintf "matching permutation %a\n%!"
+    (pp_list "," (pp_pair pp_int Vsym.pp))
+    (L.map (fun x -> (fst x, fst (snd x))) match_samps);
+  
+  let old_new_pos = L.mapi (fun i x -> (fst x,i)) match_samps in
+  let swaps =
+    L.map
+      (fun (old_pos,delta) -> eprintf "rswap %i %i\n%!" old_pos delta; CR.t_swap old_pos delta)
+      (parallel_swaps old_new_pos)
+  in
+  let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) match_samps in
+  let excepts =
+    L.map
+      (fun (i,(_,(_,es))) ->
+        match es with
+        | [] -> None
+        | _::_ -> Some (CR.t_except i []))
+      match_samps
+    |> cat_Some
+  in
+  let remove_events =
+    if not (is_Land assm.ac_event && is_Land ju.ju_ev)
+    then (
+      []
+    ) else (
+      let ctypes = L.map conj_type (destr_Land assm.ac_event) in
+      L.mapi (fun i e-> (i,conj_type e)) (destr_Land ju.ju_ev)
+      |> L.filter (fun (_,ct) -> not (L.mem ct ctypes))
+      |> L.map (fst)
+    )
+  in 
+  eprintf ">>>>>>>>>>>>>>>>>>> removing %a@\n" (pp_list "," pp_int) remove_events;
+  (* FIXME: first rnorm_unknown, then rexcept .., then swapping *)
+  (   (* t_debug "removing %a" (pp_list "," pp_int) remove_events *)
+      CR.t_remove_ev remove_events
+   @> t_norm_unknown priv_exprs
+   @> t_seq_list excepts
+   @> t_seq_list swaps @> t_assm_comp_aux assm mev_e) ju
+
 let t_assm_comp ts maname mev_e ju =
   (match maname with
   | Some aname ->
@@ -173,6 +358,10 @@ let t_assm_comp ts maname mev_e ju =
   | None ->
     mconcat (Ht.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_comp [])
   ) >>= fun assm ->
+  (* try all assumptions *)
+  t_assm_comp_auto ts assm mev_e ju
+
+(*
   (match mev_e with
   | Some se ->
     let vmap = vmap_of_globals ju.ju_gdef in
@@ -180,7 +369,7 @@ let t_assm_comp ts maname mev_e ju =
   | None ->
     mempty
   ) >>= fun ev_e ->
-  let c = assm.Assumption.ac_prefix in
+  let c = assm.ac_prefix in
   let jc = Util.take (L.length c) ju.ju_gdef in
   let subst =
     L.fold_left2 (fun s i1 i2 ->
@@ -192,4 +381,4 @@ let t_assm_comp ts maname mev_e ju =
         tacerror "assumption_computational : can not infer substitution")
       Vsym.M.empty c jc
   in
-  CR.t_assm_comp assm ev_e subst ju
+*)
