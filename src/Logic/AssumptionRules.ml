@@ -329,7 +329,8 @@ let t_assm_comp_auto ts assm mev_e ju =
   (   CR.t_remove_ev remove_events
    @> t_norm_unknown priv_exprs
    @> t_seq_list excepts
-   @> t_seq_list swaps @> t_assm_comp_aux assm mev_e) ju
+   @> t_seq_list swaps
+   @> t_assm_comp_aux assm mev_e) ju
 
 let t_assm_comp ts maname mev_e ju =
   (match maname with
