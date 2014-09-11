@@ -9,6 +9,7 @@
 <src/Main/zoocrypt.d.byte>: thread, package(unix), package(yojson)
 
 <src/Main/zoocrypt.native>: thread, package(unix), package(yojson)
+<src/Main/zoocrypt.p.native>: thread, package(unix), package(yojson)
 
 <src/CAS/CAS.ml>: package(yojson)
 
