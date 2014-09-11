@@ -651,6 +651,7 @@ let build_proof file g1 g2 lc1 lc2 =
 let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () = 
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
   open_pp fmt (); 
+  F.fprintf fmt "(* conv rule *)@ ";
   pp_swaps 1 fmt sw1;
   pp_swaps 2 fmt (invert_swap sw2);
   let info = build_proof file g1 g2 ju.ju_gdef ju'.ju_gdef in 
