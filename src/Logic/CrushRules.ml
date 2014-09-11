@@ -161,7 +161,7 @@ let t_crush must_finish mi ts ps ju =
     let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in
     (   t_norm_xor_id
      @> (    (((t_simp false 10 ts @> t_norm_xor_id) @|| CR.t_id)
-              @> (t_random_indep (* @|| t_assm_comp ts None None *)))
+              @> (t_random_indep @|| t_assm_comp ts false None None))
          @|| (   t_simp true 10 ts
               @| t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
               @| t_rnd_maybe ~i_rvars:irvs ts false None None None

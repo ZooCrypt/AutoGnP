@@ -77,8 +77,7 @@ prove
   rlet_abstract 4 gu g^u. rlet_abstract 5 gv g^v. rlet_abstract 6 gz2 g^z2.
   assumption_computational! tcr (ea,ea',ec).
   *)
-  
-  assumption_computational _ _.
+  bycrush 1.
   qed.
   print_proof.
   extract "extraction/cramer_shoup.ec".

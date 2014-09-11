@@ -377,7 +377,8 @@ let t_assm_comp_auto ts assm mev_e ju =
       |> L.filter (fun (_,ct) -> not (L.mem ct ctypes))
       |> L.map fst
     )
-  in 
+  in
+  guard (not (is_Land assm.ac_event && not (is_Land ju.ju_ev))) >>= fun _ ->
   (   CR.t_remove_ev remove_events
    @> t_norm_unknown priv_exprs
    @> t_seq_list excepts

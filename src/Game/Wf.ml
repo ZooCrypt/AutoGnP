@@ -10,6 +10,12 @@ open Gsyms
 open Norm
 (*i*)
 
+exception Wf_var_undef of Vsym.t * expr
+
+exception Wf_div_zero of expr list
+
+let assert_exc c rf = if not c then rf ()
+
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
 type wf_state =
@@ -162,9 +168,11 @@ and wf_exp ctype wfs e0 =
         assert (ty_equal (mk_Prod tys) e.e_ty);
         mk_Prod tys
       | V v ->
-        assert_msg (Vsym.S.mem v wfs.wf_bvars)
+        assert_exc (Vsym.S.mem v wfs.wf_bvars)
+          (fun () -> raise (Wf_var_undef (v,e0)))
+          (* 
           (fsprintf "wf_exp: Variable %a undefined in %a"
-             Vsym.pp v pp_exp e0);
+             Vsym.pp v pp_exp e0) *);
         assert (ty_equal v.Vsym.ty e.e_ty);
         v.Vsym.ty
       | Nary(Land,es) ->
@@ -191,11 +199,11 @@ and wf_exp ctype wfs e0 =
       | App(op,es) ->
         let (tys,rty,nz) = ty_of_op e.e_ty (List.map (fun e -> e.e_ty) es) op in
         assert (list_eq_for_all2 ty_equal tys (List.map go es));
-        assert_msg
+        assert_exc
           (List.for_all
             (fun i -> check_nonzero ctype wfs (List.nth es i)) nz)
-          (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp)
-            (List.map (fun i -> List.nth es i) nz));
+          (fun () -> raise (Wf_div_zero (List.map (fun i -> List.nth es i) nz)));
+          (* (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp) ) *)
         assert (ty_equal rty e.e_ty);
         rty
     in ty

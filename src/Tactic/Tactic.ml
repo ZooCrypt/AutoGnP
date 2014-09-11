@@ -32,12 +32,18 @@ let handle_tactic ts tac =
     | []    -> tacerror "cannot apply tactic: there is no goal"
   in
   let apply r =
-    let pss = CR.apply_first r ps in
-    match pull pss with
-    | Left None -> tacerror "mempty"
-    | Left (Some s) -> tacerror "%s" s
-    | Right(ps,pss) ->
-      { ts with ts_ps = ActiveProof(ps,pss) }
+    try
+      let pss = CR.apply_first r ps in
+      begin match pull pss with
+      | Left None     -> tacerror "mempty"
+      | Left (Some s) -> tacerror "%s" s
+      | Right(ps,pss) -> { ts with ts_ps = ActiveProof(ps,pss) }
+      end
+    with
+    | Wf.Wf_div_zero es ->
+        tacerror "Wf: Cannot prove that %a nonzero" (pp_list "," pp_exp) es
+    | Wf.Wf_var_undef(v,e) ->
+        tacerror "Wf: Var %a undefined in %a" Vsym.pp v pp_exp e
   in
   let vmap_g = vmap_of_globals ju.ju_gdef in
   let parse_e se = PU.expr_of_parse_expr vmap_g ts se in

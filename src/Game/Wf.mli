@@ -5,6 +5,10 @@ open Syms
 open Gsyms
 (*i*)
 
+exception Wf_var_undef of Vsym.t * Expr.expr
+
+exception Wf_div_zero of Expr.expr list
+
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
 type wf_state

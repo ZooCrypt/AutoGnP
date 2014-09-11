@@ -72,12 +72,12 @@ let subst_ineq ju rv e =
   mconcat !ineqs >>= fun ie ->
   let inter = Se.inter (e_vars ie) (e_vars e) in
   mconcat (Se.elements inter) >>= fun iv ->
-  eprintf  "ineq rewrite: replace %a by %a in expression %a\n%!" pp_exp iv pp_exp ie pp_exp e;
+  (* eprintf  "ineq rewrite: replace %a by %a in expression %a\n%!" pp_exp iv pp_exp ie pp_exp e; *)
   let erv = mk_V rv in
   let erv' = mk_V (Vsym.mk "x____" erv.e_ty) in
   let eq = Game.norm_expr_def (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
   guard (is_FPlus eq) >>= fun _ ->
-  eprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv';
+  (* eprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv'; *)
   let es = destr_FPlus eq in
   let (with_erv,without_erv) = L.partition (fun t -> Se.mem erv (e_vars t)) es in
   (match with_erv with
@@ -137,7 +137,7 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju =
     mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
-  eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2;
+  (* eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2; *)
   (match mctxt1 with
   | Some(sv1,e1) -> ret (parse_ctxt ts ju ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->
@@ -202,14 +202,14 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
     mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
-  eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2;
+  (* eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2; *)
   (match mctxt1 with
   | Some(sv1,e1) -> ret (parse_ctxt_oracle ts op ju ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->
     begin try
       ret (invert_ctxt (v2,e2))
     with
-      _ -> eprintf "invert failed\n%!"; mempty
+      _ -> (* eprintf "invert failed\n%!"; *) mempty
     end
   | None -> mempty
   ) >>= fun (v1,e1) ->
@@ -301,7 +301,7 @@ let init_inverter test er =
     else raise Not_found
   in
   let vs = Vsym.mk "x" er.e_ty in
-  Util.eprintf "checking er = %a, e1 = %a, e2 = %a\n" pp_exp er pp_exp e1 pp_exp e2;
+  (* eprintf "checking er = %a, e1 = %a, e2 = %a\n" pp_exp er pp_exp e1 pp_exp e2; *)
   if e_equal e1 er && Type.ty_equal er.e_ty Type.mk_Bool then (
     ([], er, (vs, mk_Xor [mk_V vs; e2]), mk_False)
   ) else if e_equal e2 er && Type.ty_equal er.e_ty Type.mk_Bool then (
