@@ -157,7 +157,49 @@ let t_assm_dec_non_exact ?i_assms:(iassms=Sstring.empty) ts massm_name mdir mvna
   t_assm_dec_auto assm dir subst ju
 
 let t_assm_dec_exact ts massm_name mdir mvnames ju =
-    tacerror "not implemented yet"
+  let dir = match mdir with Some s -> s | None -> tacerror "exact required dir" in
+  let assm_name = match massm_name with
+    | Some s -> s
+    | None -> tacerror "exact required sname"
+  in
+  let vnames = match mvnames with
+    | Some s -> s
+    | None -> tacerror "exact required vnames"
+  in
+  let assm =
+      try Ht.find ts.ts_assms_dec assm_name
+      with Not_found -> tacerror "error no assumption %s" assm_name
+  in
+  let needed = Assumption.needed_var dir assm in
+  if List.length needed <> List.length vnames then
+    tacerror "Bad number of variables";
+  let subst =
+    List.fold_left2
+      (fun s v x ->
+        let v' = Vsym.mk x v.Vsym.ty in
+        Vsym.M.add v v' s)
+      Vsym.M.empty
+      needed
+     vnames
+  in
+  let c =
+    if dir = LeftToRight then assm.Assumption.ad_prefix1
+    else assm.Assumption.ad_prefix1
+  in
+  let jc = Util.take (List.length c) ju.ju_gdef in
+  let subst =
+    List.fold_left2 (fun s i1 i2 ->
+      match i1, i2 with
+      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_)
+        when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
+        Vsym.M.add x1 x2 s
+      | _ -> tacerror "assumption_decisional : can not infer substitution")
+      subst
+      c
+      jc
+  in
+  CR.t_assm_dec dir subst assm ju
+
 
 let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mvnames ju =
   if exact then
