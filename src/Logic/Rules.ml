@@ -219,7 +219,7 @@ let rec simplify_proof_tree pt =
     begin match pt1.pt_rule, pt1.pt_children with
     | Rconv,[pt11] ->
       (* skip intermediate judgment *)
-      let pss = t_conv true pt11.pt_ju pt.pt_ju in
+      let pss = t_conv true ~do_rename:true pt11.pt_ju pt.pt_ju in
       let ps = Nondet.first pss in
       ps.validation [pt11]
     | _ -> 

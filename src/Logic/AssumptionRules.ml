@@ -198,7 +198,14 @@ let t_assm_dec_exact ts massm_name mdir mvnames ju =
       c
       jc
   in
-  CR.t_assm_dec dir subst assm ju
+  let conv_common_prefix ju =
+    let a_rn = ad_subst subst assm in
+    let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
+    let grest = Util.drop (L.length c) ju.ju_gdef in
+    (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
+     @> CoreRules.t_assm_dec dir subst assm) ju
+  in
+  (CR.t_assm_dec dir subst assm @|| conv_common_prefix) ju
 
 
 let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mvnames ju =
@@ -428,7 +435,7 @@ let t_assm_comp_exact ts maname mev_e ju =
         tacerror "assumption_computational : can not infer substitution")
       Vsym.M.empty c jc
   in
-  CR.t_assm_comp assm ev_e subst ju
+  (CR.t_assm_comp assm ev_e subst) ju
 
 let t_assm_comp ts exact maname mev_e ju =
   if exact then

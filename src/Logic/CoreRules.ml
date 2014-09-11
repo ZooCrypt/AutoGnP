@@ -263,7 +263,7 @@ let t_fail fs _g =
     then it checks that [sigma] is bijective and renames
     [ju] with [sigma] before
     normalizing and comparing the two judgments *)
-let rconv do_norm_terms new_ju ju =
+let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   let (nf,ctype) =
     if do_norm_terms
     then (Norm.norm_expr,CheckDivZero)
@@ -276,19 +276,26 @@ let rconv do_norm_terms new_ju ju =
   (*i eprintf "sigma(ju) >> %a\n%!" pp_ju ju; i*)
   let ju' = norm_ju ~norm:nf ju in
   let new_ju' = norm_ju ~norm:nf new_ju in
-  let ju' =
-    try
-      let sigma = Game.unif_ju ju' new_ju' in
-      if not (Game.subst_injective sigma) then
-        tacerror "rconv: computed renaming is not bijective";
-      subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju'
-    with
-      Not_found -> ju'
+  let ju' = 
+    if do_rename then 
+      try
+        let sigma = Game.unif_ju ju' new_ju' in
+        if not (Game.subst_injective sigma) then
+          tacerror "rconv: computed renaming is not bijective";
+        Vsym.M.fold (fun vs k () -> eprintf "%a.%i -> %a.%i@\n" Vsym.pp vs (Id.tag vs.Vsym.id) Vsym.pp k (Id.tag k.Vsym.id)) sigma ();
+        norm_ju ~norm:nf (subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju')
+      with
+        Not_found ->
+          eprintf "no renaming found";
+          ju'
+    else
+      ju'
   in
-  if not (ju_equal ju' new_ju') then tacerror "rconv: not convertible";
+  if not (ju_equal ju' new_ju') then
+    tacerror "rconv: not convertible@\n %a@\n %a" pp_ju ju' pp_ju new_ju';
   Rconv, [new_ju]
 
-let t_conv do_norm_terms new_ju = prove_by (rconv do_norm_terms new_ju)
+let t_conv do_norm_terms ?do_rename:(do_rename=false) new_ju = prove_by (rconv do_norm_terms ~do_rename new_ju)
 
 (** Swap instruction. *)
 

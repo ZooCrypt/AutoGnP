@@ -83,7 +83,7 @@ let handle_tactic ts tac =
     let vmap2 = Hashtbl.create 134 in
     let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
-    apply (CR.t_conv true { ju_gdef = gd2; ju_ev = ev2 })
+    apply (CR.t_conv true ~do_rename:true { ju_gdef = gd2; ju_ev = ev2 })
 
   | PU.Rassm_dec(exact,maname,mdir,msvs) ->
     apply (t_assm_dec ts exact maname mdir msvs)
@@ -292,7 +292,7 @@ let handle_instr ts instr =
         | ClosedTheory pt      -> pt
         | ActiveProof  (ps,_)  -> CR.get_proof (prove_by_admit "" ps)
       in
-      let pt = simplify_proof_tree  pt in
+      let pt = simplify_proof_tree pt in
       let buf = Buffer.create 1024 in
       let fbuf = F.formatter_of_buffer buf in
       F.pp_set_margin fbuf 240;
