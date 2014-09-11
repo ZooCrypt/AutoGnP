@@ -17,9 +17,6 @@ let destr_gexp gv g =
   assert (e_equal g1 (mk_GGen gv));
   p
 
-let destr_xor e = 
-  match e.e_node with Nary(Xor, l) -> l | _ -> [e]
-
 let rec norm_ggt e =   
   match e.e_ty.ty_node with
   | G gv -> mk_gexp gv (mk_GLog e)   (*i g ^ (log x) i*)
@@ -76,7 +73,7 @@ and mk_simpl_nop op l =
     let p = norm_field_expr (mk_FPlus l) in
     mk_gexp gv p
   | Xor -> 
-    let l = List.flatten (List.map destr_xor l) in
+    let l = List.flatten (List.map destruct_Lxor l) in
     let l = List.sort e_compare l in
     let e = List.hd l in
     let rec aux l = 
@@ -91,7 +88,7 @@ and mk_simpl_nop op l =
     else mk_Xor (aux l)
       
   | Land -> 
-    let l = List.flatten (List.map destr_xor l) in
+    let l = List.flatten (List.map destruct_Land l) in
     let l = List.sort e_compare l in
     let rec aux l = 
       match l with

@@ -436,6 +436,12 @@ let destr_Eq     e = destr_App_bop "Eq"   Eq e
 let destr_Not    e = destr_App_uop "Not"  Not e
 let destr_Xor    e = destr_Nary   "Xor"  Xor e 
 let destr_Land   e = destr_Nary   "Land" Land e
+
+let destruct_Lxor e = 
+  match e.e_node with
+  | Nary(Xor,es) -> es 
+  | _ -> [e] 
+
 let destruct_Land e =
   match e.e_node with
   | Nary(Land,es) -> es 

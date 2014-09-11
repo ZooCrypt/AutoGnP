@@ -126,6 +126,7 @@ val destr_FPlus  : expr -> expr list
 val destr_FMult  : expr -> expr list
 val destr_Xor    : expr -> expr list
 val destr_Land   : expr -> expr list
+val destruct_Lxor : expr -> expr list
 val destruct_Land : expr -> expr list
 val destr_Exists  : expr -> expr * expr * (Vsym.t * Hsym.t) list
 
