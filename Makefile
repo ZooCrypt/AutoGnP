@@ -73,8 +73,8 @@ wszoocrypt :
 
 test-examples: zoocrypt
 	for file in examples/ok/*.zc examples/extr_fail/*.zc; do\
-	   printf "File $$file: ";\
-	   /usr/bin/time sh -c "./zoocrypt.native $$file  2>&1 | grep -i Finished";\
+	   printf "\e[1;32mFile $$file: \n";\
+	   /usr/bin/time sh -c "./zoocrypt.native $$file  2>&1 | grep --colour=always -i -e 'Finished Proof' -e 'EasyCrypt proof script.extracted'" ;\
 	done
 
 Test_Type :
