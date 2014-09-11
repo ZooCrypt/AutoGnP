@@ -23,13 +23,21 @@ type fexp =
   | SMult of fexp * fexp
 
 (** Pretty-printer function for already abstracted field expression. *)
-let rec string_of_fexp e = match e with
-  | SV i       -> F.sprintf "x%i" i
-  | SNat(n)    -> F.sprintf "%i" n
-  | SOpp(a)    -> F.sprintf "-(%s)" (string_of_fexp a)
-  | SInv(a)    -> F.sprintf "1/(%s)" (string_of_fexp a)
-  | SPlus(a,b) -> F.sprintf "(%s + %s)" (string_of_fexp a) (string_of_fexp b)
-  | SMult(a,b) -> F.sprintf "(%s * %s)" (string_of_fexp a) (string_of_fexp b)
+let string_of_fexp e =
+  let buf = Buffer.create 120 in
+  let putc c = Buffer.add_char buf c in
+  let puts s = Buffer.add_string buf s in
+  let puti i = Buffer.add_string buf (string_of_int i) in
+  let rec aux e =
+    match e with
+    | SV i       -> putc 'x';  puti i
+    | SNat(n)    -> puti n
+    | SOpp(a)    -> puts "-("; aux a; putc ')'
+    | SInv(a)    -> puts "1/("; aux a; putc ')'
+    | SPlus(a,b) -> putc '('; aux a; puts " + "; aux b; putc ')'
+    | SMult(a,b) -> putc '('; aux a; puts " * "; aux b; putc ')'
+  in
+  aux e; Buffer.contents buf
 
 (** Abstraction of [Expr.expr] to [sfexp]. *)
 let rec rename hr = function 
