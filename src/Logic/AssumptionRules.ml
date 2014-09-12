@@ -20,19 +20,6 @@ module PU = ParserUtil
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Decisional assumptions} *)
 
-let _t_assm_dec assm dir subst ju =
-  let c = if dir = LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
-  let jc = Util.take (L.length c) ju.ju_gdef in
-  let subst = 
-    L.fold_left2 (fun s i1 i2 ->
-      match i1, i2 with
-      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
-        when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
-        Vsym.M.add x1 x2 s
-      | _ -> tacerror "assumption_decisional : can not infer substitution")
-      subst c jc in
-  CR.t_assm_dec dir subst assm ju
-
 let t_assm_dec_aux assm dir asubst samp_assm lets_assm ju =
   let samp_gdef = samplings ju.ju_gdef in
   let samp_gdef = Util.take (L.length samp_assm) samp_gdef in
@@ -162,15 +149,16 @@ let t_assm_dec_exact ts massm_name mdir mvnames ju =
     | Some s -> s
     | None -> tacerror "exact required sname"
   in
-  let vnames = match mvnames with
-    | Some s -> s
-    | None -> tacerror "exact required vnames"
-  in
   let assm =
       try Ht.find ts.ts_assms_dec assm_name
       with Not_found -> tacerror "error no assumption %s" assm_name
   in
-  let needed = Assumption.needed_var dir assm in
+  let needed = needed_var dir assm in
+  let vnames = match mvnames with
+    | Some names                     -> names
+    | None when L.length needed <> 0 -> tacerror "exact required vnames"
+    | None                           -> []
+  in
   if List.length needed <> List.length vnames then
     tacerror "Bad number of variables";
   let subst =
