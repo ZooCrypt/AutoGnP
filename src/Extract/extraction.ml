@@ -577,7 +577,7 @@ let supp_def file fmt ty =
   | Fq    -> F.fprintf fmt "FDistr.supp_def"
   | Prod _ -> assert false (* FIXME *) 
 
-let build_proof file g1 g2 lc1 lc2 = 
+let build_conv_proof file g1 g2 lc1 lc2 = 
   let add_info1 v1 e1 loc info = 
     add_let_info file g1 v1 e1 true loc info in
   let add_info2 v2 e2 loc info = 
@@ -654,7 +654,7 @@ let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () =
   F.fprintf fmt "(* conv rule *)@ ";
   pp_swaps 1 fmt sw1;
   pp_swaps 2 fmt (invert_swap sw2);
-  let info = build_proof file g1 g2 ju.ju_gdef ju'.ju_gdef in 
+  let info = build_conv_proof file g1 g2 ju.ju_gdef ju'.ju_gdef in 
   pp_cmds fmt info.tacs;
   close_pp fmt ()
 
@@ -665,7 +665,7 @@ let pr_random file (pos,inv1,inv2) ju1 ju2 fmt () =
   open_pp fmt ();
   let lc1 = Util.take pos ju1.ju_gdef in
   let lc2 = Util.take pos ju2.ju_gdef in
-  let info =  build_proof file g1 g2 lc1 lc2 in 
+  let info =  build_conv_proof file g1 g2 lc1 lc2 in 
   F.fprintf fmt "sim.@ ";
   F.fprintf fmt "wp %i %i.@ " (pos + 1) (pos + 1);
   F.fprintf fmt "@[<hov 2>rnd@ %a@ %a.@]@ "
