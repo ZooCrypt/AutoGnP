@@ -1,3 +1,4 @@
+require import ZooUtil.
 require import PrimeField.
 
 theory CG.
@@ -79,7 +80,12 @@ proof.
   rewrite inv_def -{1}(gpow_log x) mul_pow;smt. 
 qed.
 
+lemma log_oif b (x y : group) :
+  log (oif b x y) = oif b (log x) (log y) by case b.
+hint rewrite Ring.rw_algebra : log_oif.
+
 require Ring. 
-hint rewrite Ring.rw_algebra : log_bij log_g log_pow log_mul.
+hint rewrite Ring.inj_algebra : log_bij.
+hint rewrite Ring.rw_algebra : log_g log_pow log_mul.
 
 end CG.
