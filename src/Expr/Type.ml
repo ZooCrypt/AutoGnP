@@ -96,7 +96,10 @@ let rec pp_ty fmt ty =
   match ty.ty_node with
   | BS lv   -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
   | Bool    -> F.fprintf fmt "Bool"
-  | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
   | Fq      -> F.fprintf fmt "Fq"
   | Prod ts -> F.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts
+  | G gv when Groupvar.name gv = "" ->
+    F.fprintf fmt "G" 
+  | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
+
 (*i*)
