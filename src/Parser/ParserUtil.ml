@@ -200,7 +200,8 @@ let odef_of_parse_odef vmap ts (oname, vs, (m,e)) =
       let vs = List.map (fun (v,t) -> create_var vmap v t) vts in
       vs
     | _, [v] -> [create_var vmap v osym.Osym.dom]
-    | _ -> assert false
+    | _ ->
+      Util.tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
   in
   let m = List.map (lcmd_of_parse_lcmd vmap ts) m in
   let e = expr_of_parse_expr vmap ts e in
