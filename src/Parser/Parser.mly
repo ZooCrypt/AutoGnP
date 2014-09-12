@@ -77,6 +77,8 @@
 %token OPERATOR
 %token ASSUMPTION_DECISIONAL
 %token ASSUMPTION_COMPUTATIONAL
+%token ASSUMPTION_DECISIONAL_EX
+%token ASSUMPTION_COMPUTATIONAL_EX
 %token RANDOM
 %token BILINEAR
 %token MAP
@@ -350,8 +352,10 @@ instr :
 | RINDEP { Apply(Rindep) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
-| ASSUMPTION_DECISIONAL exact=option(EXCL) s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(exact<>None,s,d,xs))}
-| ASSUMPTION_COMPUTATIONAL exact=option(EXCL) s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(exact<>None,s,e))}
+| ASSUMPTION_DECISIONAL    s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(false,s,d,xs))}
+| ASSUMPTION_DECISIONAL_EX s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(true,s,d,xs))}
+| ASSUMPTION_COMPUTATIONAL    s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(false,s,e))}
+| ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(true,s,e))}
 | REQUIV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }

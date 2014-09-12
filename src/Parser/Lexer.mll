@@ -41,6 +41,8 @@ rule lex = parse
   | "operator" { OPERATOR }
   | "assumption_decisional" { ASSUMPTION_DECISIONAL }
   | "assumption_computational" { ASSUMPTION_COMPUTATIONAL }
+  | "assumption_decisional!" { ASSUMPTION_DECISIONAL_EX }
+  | "assumption_computational!" { ASSUMPTION_COMPUTATIONAL_EX }
   | "random" { RANDOM }
   | "bilinear" { BILINEAR }
   | "map" { MAP }
