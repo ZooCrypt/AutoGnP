@@ -100,6 +100,7 @@ let f_rinv f = Fapp(Odiv, [Fcnst "1%r";f])
 let f_2 = Fcnst "2"
 let f_2pow f = Fapp(Opow, [f_2;f])
 let f_Fq = Fcnst "F.q"
+let f_r0 = Frofi (Fcnst "0")
 
 let get_pr_ev = function
   | Fpr(_,_,_,ev) -> ev

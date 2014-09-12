@@ -1011,17 +1011,23 @@ let default_proof file mem s pft =
 let rec extract_proof file pft = 
   match pft.pt_rule with
   | Rconv -> extract_conv file pft [] pft
+
   | Rctxt_ev _ ->
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "ctxt_ev")
+
   | Rremove_ev _ -> assert false
+
   | Rmerge_ev _ -> 
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "merge_ev")
+
   | Rrnd (pos,_,inv1,inv2) ->
+
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' 
       (pr_random file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
+
   | Rrnd_orcl (pos, inv1, inv2) ->
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' 
@@ -1038,6 +1044,7 @@ let rec extract_proof file pft =
   | Rswap_orcl _ ->
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "swap oracle")
+
   | Rrnd_indep (side, pos) -> 
     extract_rnd_indep file side pos pft.pt_ju 
     
@@ -1086,7 +1093,16 @@ let rec extract_proof file pft =
   | Rrw_orcl _  -> default_proof file mem "rw_orcl" pft
   | Rbad     _  -> default_proof file mem "bad" pft
   | Radmit _    -> default_proof file mem "admit" pft
-  | Rfalse_ev   -> default_proof file mem "false_ev" pft
+
+  | Rfalse_ev   -> 
+    let ju = pft.pt_ju in
+    let pr = extract_pr file mem ju in
+    let bound = f_r0 in
+    let proof fmt () = 
+      F.fprintf fmt "@[<v>by intros &m; rewrite Pr [mu_false].@]" in
+    let lemma = add_pr_lemma file (mk_cmp pr cmp_eq bound) (Some proof) in
+    lemma, pr, cmp_eq, bound
+
   | Rassm_comp _ -> default_proof file mem "assm_comp" pft
   | Rcase_ev _ -> default_proof file mem "case_ev" pft
   | Rsplit_ev _ -> default_proof file mem "split_ev" pft
