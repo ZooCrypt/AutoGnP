@@ -72,10 +72,7 @@ wszoocrypt :
 # Used for development and testing
 
 test-examples: zoocrypt
-	for file in examples/ok/*.zc examples/extr_fail/*.zc; do\
-	   printf "\e[1;32mFile $$file: \n";\
-	   /usr/bin/time sh -c "./zoocrypt.native $$file  2>&1 | grep --colour=always -i -e 'Finished Proof' -e 'EasyCrypt proof script.extracted'" ;\
-	done
+	scripts/run_tests.sh
 
 Test_Type :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte
