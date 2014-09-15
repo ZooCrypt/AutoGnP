@@ -32,8 +32,8 @@ let xor_to_vec rows bindings e =
      set_idx e);
   arr
 
-let solve_xor ecs e =
-  let es     = L.map snd ecs in
+let solve_xor (ecs : (expr * inverter) list) e =
+  let es     = L.map fst ecs in
   let es_sts = direct_subterms Xor Se.empty es in
   let rows   = Se.cardinal es_sts in
   let e_sts  = direct_subterms Xor Se.empty [e] in
@@ -48,16 +48,19 @@ let solve_xor ecs e =
   let colvecs = List.map (xor_to_vec rows bindings) es in
   let vec = xor_to_vec rows bindings e in
   let msolvec = LinAlg.solve colvecs vec in
-  let cs = L.map fst ecs in
+  let cs = L.map snd ecs in
   let ctxt =
     match msolvec with
     | None -> raise Not_found
     | Some(solvec) ->
         mk_Xor
           (cat_Some
-            (L.map2 (fun b_i ct -> if b_i then Some ct else None) solvec cs))
+             (L.map2
+                (fun b_i ct -> if b_i then Some (expr_of_inverter ct) else None)
+                solvec 
+                cs))
   in
-  ctxt
+  I ctxt
 
 let _test_solve_xor_1 () =
   let l = Lenvar.mk "l" in
@@ -70,7 +73,7 @@ let _test_solve_xor_1 () =
   let c = mk_Xor [z] in
   let p1 = mk_V (Vsym.mk "p1" t) in
   let p2 = mk_V (Vsym.mk "p2" t) in  
-  let c = solve_xor [(p1,a); (p2,b)] c in
+  let I c = solve_xor [(p1,I a); (p2,I b)] c in
   failwith (fsprintf "Deduced context %a\n%!" pp_exp c)
 
 let _test_solve_xor_2 () =
@@ -85,7 +88,7 @@ let _test_solve_xor_2 () =
   let c = mk_Xor [y;z] in
   let p1 = mk_V (Vsym.mk "p1" t) in
   let p2 = mk_V (Vsym.mk "p2" t) in  
-  let c = solve_xor [(p1,a); (p2,b)] c in
+  let I c = solve_xor [(p1,I a); (p2,I b)] c in
   failwith (fsprintf "Deduced context %a\n%!" pp_exp c)
 
 let _test_solve_xor_3 () =
@@ -102,6 +105,6 @@ let _test_solve_xor_3 () =
   let p1 = mk_V (Vsym.mk "p1" t) in
   let p2 = mk_V (Vsym.mk "p2" t) in  
   let p3 = mk_V (Vsym.mk "p3" t) in    
-  let s = solve_xor [(p1,a); (p2,b); (p3,c)] d in
+  let I s = solve_xor [(p1,I a); (p2,I b); (p3,I c)] d in
   failwith (fsprintf "3. Deduced context %a\n%!" pp_exp s)
 

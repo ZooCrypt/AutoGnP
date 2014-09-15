@@ -50,6 +50,7 @@ rule lex = parse
   | "print_goals" { PRINTGOALS }
   | "print_goal" { PRINTGOAL }
   | "print_proof" { PRINTPROOF }
+  | "print_proof!" { PRINTPROOF_EX }
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm" { RNORM }
   | "radd_test" { RADD_TEST }
@@ -61,6 +62,7 @@ rule lex = parse
   | "rrewrite_oracle"  { RREWRITE_ORACLE }  
   | "rrewrite_ev" { RREWRITE_EV }
   | "crush" { RCRUSH }
+  | "deduce" { DEDUCE }
   | "bycrush" { BYCRUSH }
   | "rsimp" { RSIMP }
   | "rsplit_ev" { RSPLIT_EV }
@@ -72,6 +74,7 @@ rule lex = parse
   | "rswap" { RSWAP }
   | "requiv" { REQUIV }
   | "rindep" { RINDEP }
+  | "rindep!" { RINDEP_EX }
   | "rrnd_oracle" { RRND_ORACLE }
   | "rbad"           { RBAD }
   | "rctxt_ev"       { RCTXT_EV }

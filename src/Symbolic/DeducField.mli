@@ -1,6 +1,7 @@
 (*s Deducibility for field expressions. *)
 
 (*i*)
+open Syms
 open Expr
 (*i*)
 
@@ -8,4 +9,7 @@ open Expr
     deduces [e] from [List.map snd es] and returns the
     context assuming that [List.map fst es] are the contexts
     for these known terms. *)
-val solve_fq : (expr * expr) list -> expr -> expr
+val solve_fq : (expr * inverter) list -> expr -> inverter
+
+
+val solve_fq_vars_known : expr -> Vsym.t  -> expr

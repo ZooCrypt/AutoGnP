@@ -1,5 +1,8 @@
 open Lazy
 open Util
+(* open Syms *)
+(* open Expr *)
+
 
 (* Nondeterminism Monad *)
 
@@ -11,7 +14,7 @@ type 'a nondet = 'a stream lazy_t
 
 let mempty = lazy (Nil None)
 
-let mfail s= lazy (Nil (Some s))
+let mfail s = lazy (Nil (Some s))
 
 let ret a = lazy (Cons (a, mempty))
 
@@ -19,11 +22,19 @@ let guard pred =
   if pred then ret () else mempty
 
 let sforce x =
-  try force x
+  try
+    force x
   with
-    e ->
-      eprintf "sforce: exception %s\n%!" (Printexc.to_string e);
-      Nil None
+  | Failure s ->
+    failwith s
+  (*
+  | Wf.Wf_div_zero es ->
+    eprintf "Wf: Cannot prove that %a nonzero\n%!" (pp_list "," pp_exp) es; Nil None
+  | Wf.Wf_var_undef(v,e) ->
+    eprintf  "Wf: Var %a undefined in %a\n%!" Vsym.pp v pp_exp e; Nil None
+  *)
+  | e ->
+    eprintf "sforce: exception %s\n%!" (Printexc.to_string e); Nil None
 
 (* Combine results returned by [a] with results
    returned by [b]. Results from [a] and [b] are

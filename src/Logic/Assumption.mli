@@ -1,35 +1,41 @@
 (*s Decisional and computational assumptions. *)
 
 (*i*)
+open Util
 open Syms
+open Expr
+open Game
 (*i*)
 
 (** Decisional assumptions. *)
-type assm_dec = private
-  { ad_name     : string;
-    ad_prefix1  : Game.gdef;
-    ad_prefix2  : Game.gdef;
-    ad_pubvars  : Vsym.S.t;
-    ad_privvars : Vsym.S.t; 
-  }
+type assm_dec = private {
+  ad_name       : string;       (*r name of assumption *)
+  ad_prefix1    : gdef;         (*r prefix for left *)
+  ad_prefix2    : gdef;         (*r prefix for right *)
+  ad_pubvars    : Vsym.S.t;     (*r public variables *)
+  ad_privvars   : Vsym.S.t;     (*r private variables *)
+  ad_symvars    : vs list list; (*r symmetric in given variables *)
+}
 
-val mk_assm_dec : string -> Game.gdef -> Game.gdef -> Vsym.S.t -> assm_dec
+val mk_assm_dec :
+  string -> gdef -> gdef -> Vsym.S.t -> vs list list -> assm_dec
 
-val needed_var : Util.direction  -> assm_dec -> Vsym.t list
+val needed_var : direction  -> assm_dec -> Vsym.t list
 
 val ad_subst : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
 
 (** Computational assumptions. *)
-type assm_comp = private
-  { ac_name       : string;
-    ac_prefix     : Game.gdef;
-    ac_event_var  : Vsym.t;
-    ac_event      : Expr.expr;
-    ac_pubvars    : Vsym.S.t;
-    ac_privvars   : Vsym.S.t;
-  }
+type assm_comp = private {
+  ac_name       : string;       (*r name of assumption *)
+  ac_prefix     : gdef;         (*r prefix of assumption *)
+  ac_event_var  : Vsym.t;       (*r variable in event *)
+  ac_event      : Expr.expr;    (*r event expression *)
+  ac_pubvars    : Vsym.S.t;     (*r public variables *)
+  ac_privvars   : Vsym.S.t;     (*r private variables *)
+  ac_symvars    : vs list list; (*r symmetric in given variables *)
+}
 
 val mk_assm_comp :
-  string -> Game.gdef -> Vsym.t -> Expr.expr -> Vsym.S.t -> assm_comp
+  string -> gdef -> Vsym.t -> expr -> Vsym.S.t -> vs list list -> assm_comp
 
 val ac_instantiate : Vsym.t Vsym.M.t -> assm_comp -> assm_comp

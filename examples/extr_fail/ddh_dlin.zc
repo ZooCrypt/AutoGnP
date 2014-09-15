@@ -5,12 +5,12 @@ assumption_decisional ddh
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
   [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
-    x y z.
+    (x y z) ([x,y]).
 
 assumption_decisional ifrnd
   [ x <-$ Fq; y <-$ Fq; b <-$ Bool; let u = (b?g^x:g^y); ]
   [ x <-$ Fq; b <-$ Bool; let u = g^x; ]
-    x y.
+    (x y) ([x,y]).
 
 prove
   [ a1 <-$ Fq;

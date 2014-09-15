@@ -262,3 +262,7 @@ val mk_Zero   : ty -> expr
 val typeError_to_string : ty * ty * expr * expr option * string -> string
 
 val catch_TypeError : (unit -> 'a) -> 'a
+
+type inverter = I of expr
+
+val expr_of_inverter : inverter -> expr

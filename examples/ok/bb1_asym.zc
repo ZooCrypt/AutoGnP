@@ -16,7 +16,7 @@ assumption_decisional bddh
     let gb = g_1 ^ b; let gb' = g_2 ^ b;
     let gc = g_1 ^ c; let gc' = g_2 ^ c;
     let t = g_t^d; ]
-    a b c d.
+    (a b c d).
 
 prove
   [ i' <- A1();
@@ -36,7 +36,7 @@ prove
       Kg2(i) = [ (g_1^(c*d + r*(d*i + h)), g_1^r)
                | not (i=i'), r <-$ Fq];
   ] : b = b'.
-  bycrush 6.
+  bycrush 7.
   qed.
   print_proof.
   extract "extraction/bb1_asym.ec".

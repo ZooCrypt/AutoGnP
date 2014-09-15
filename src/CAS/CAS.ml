@@ -61,7 +61,8 @@ let abstract_non_field_multiple before es =
       let n = !c in
       incr c;
       He.add he e n;
-      n in
+      n
+  in
   let rec go e = 
     let e = before e in
     match e.e_node with
@@ -177,14 +178,14 @@ let call_system sys cmd linenum =
       cs
   in
   output_string c_out cmd;
-  (*i F.printf "input: `%s' has been sent\n\n%!" cmd; i*)
+  (* F.printf "input: `%s' has been sent\n\n%!" cmd; *)
   flush c_out;
   let rec loop o linenum =
     if linenum = 0 then o
     else (
       try
         let l = input_line c_in in
-        (*i F.printf "output: `%s'\n%!" l; i*)
+        (* F.printf "output: `%s'\n%!" l; *)
         loop (o @ [l]) (linenum - 1)
       with End_of_file ->
         ignore (Unix.close_process (c_in,c_out)); (* FIXME: close on exit *)
@@ -197,7 +198,7 @@ let import_poly (caller : string) poly (hv : (int, expr) Ht.t) =
        (fun i ->
           try Ht.find hv i
           with Not_found ->
-            failwith ("invalid variable returned by "^caller))
+            failwith ("invalid variable "^(string_of_int i)^" returned by "^caller))
        poly)
 
 let cache_norm_sage = Ht.create 17
@@ -252,6 +253,7 @@ let norm_singular se c hv =
     if e_equal denom mk_FOne then num
     else mk_FDiv num denom
   in
+
   try
     convert_polys (Ht.find cache_norm_singular se)
   with
@@ -263,8 +265,9 @@ let norm_singular se c hv =
                         var_string
                         (string_of_fexp se)
     in
-    match call_system Singular cmd 3 with
-    | [ _; snum; sdenom ] -> (* ring redeclared is first reply *)
+    let no_comment s = String.length s < 2 || String.sub s 0 2 <> "//" in 
+    match L.filter no_comment (call_system Singular cmd 3) with
+    | [ snum; sdenom ] -> (* ring redeclared is first reply *)
       let p1 = parse_poly snum in
       let p2 = parse_poly sdenom in
       Ht.add cache_norm_singular se (p1,p2);
@@ -397,9 +400,9 @@ let parse_field_json ctxs t0 =
     | _                                -> failwith (F.sprintf "parse_field_json: error %s" (YS.pretty_to_string t))
   in go t0
 
-let _solve_fq_sage ecs e =
+let solve_fq_sage (ecs : (expr * inverter) list) e =
   let (se,secs,c) =
-    match abstract_non_field_multiple (fun x -> x) (e::(List.map snd ecs)) with
+    match abstract_non_field_multiple (fun x -> x) (e::(List.map fst ecs)) with
     | (se::secs,c,_) -> (se,secs,c)
     | _ -> assert false
   in

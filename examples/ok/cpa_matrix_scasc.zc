@@ -13,7 +13,7 @@ assumption_decisional twocasc
     let e2 = g ^ (a*r1); let e3 = g^ (r1 + a*r2);
     let e4 = g^t;
   ]
-  a r1 r2 t.
+  (a r1 r2 t).
 
 prove
   [ (* secret key a1,a2 *)

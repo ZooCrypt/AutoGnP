@@ -31,6 +31,11 @@ module Vsym = struct
 
   let pp fmt ps = F.fprintf fmt "%s" (Id.name ps.id)
   let to_string ps = Id.name ps.id
+  let set_of_list l =
+    L.fold_right
+      (fun vs acc -> S.add vs acc)
+      l
+      S.empty
 end
 
 module Hsym = struct

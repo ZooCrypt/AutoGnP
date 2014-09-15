@@ -312,7 +312,6 @@ def interp(req):
       return { 'ok': False
              , 'res': "no solution" }
 
-
   elif cmd == "modReduceZero":
     PR = PolynomialRing(QQ, 'x', req['varnum'])
     a = PR(req['a'])
@@ -351,6 +350,12 @@ if __name__ == "__main__":
   #  , 'varnum': 5
   #  , 'known': [ "x3", "x0 + x1", "x1 + x2", "x4"]
   #  , 'secret': "(x0 - x2) * x3 * x4 * x0"
+  #  })
+  #print interp(
+  #  { 'cmd': "solveFq"
+  #  , 'varnum': 5
+  #  , 'known': [ "x3", "x3*x4"]
+  #  , 'secret': "x4"
   #  })
   # print "interp", json.dumps(
   #   interp({ 'cmd': "normFieldExp"

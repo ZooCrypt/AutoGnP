@@ -14,7 +14,7 @@ assumption_decisional dlin
     let e3 = g ^ (a1*r1); let e4 = g^ (a2*r2);
     let e5 = g^t;
   ]
-  a1 a2 r1 r2 t.
+  (a1 a2 r1 r2 t) ([a1,a2]).
 
 prove
   [ (* secret key a1,a2 *)
@@ -35,7 +35,6 @@ prove
   ] : b = b'.
   rnorm.
   rswap 5 -2. rswap 6 -2.
-
   requiv [
     a1 <-$ Fq;
     a2 <-$ Fq;

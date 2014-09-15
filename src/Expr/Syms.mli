@@ -19,6 +19,8 @@ module Vsym : sig
   module M : Map.S with type key = t
   module S : Set.S with type elt = t
   module H : Hashtbl.S with type key = t
+
+  val set_of_list : t list -> S.t
 end
 
 module Hsym : sig

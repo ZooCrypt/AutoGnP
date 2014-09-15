@@ -1,4 +1,4 @@
-(*s Interface to computer algebra systems Singular and Macaulay. *)
+(*s Interface to computer algebra systems Singular, Sage, and Macaulay. *)
 
 open Expr
 
@@ -15,4 +15,4 @@ val mod_reduce : expr -> expr -> bool
 val norm : (expr -> expr) -> expr -> expr 
 
 
-(* val solve_fq_sage : (expr * expr) list -> expr -> expr *)
+val solve_fq_sage : (expr * inverter) list -> expr -> expr

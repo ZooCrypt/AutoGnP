@@ -1018,7 +1018,7 @@ let rec extract_proof file pft =
   | Rmerge_ev _ -> 
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "merge_ev")
-  | Rrnd (pos,inv1,inv2) ->
+  | Rrnd (pos,_,inv1,inv2) ->
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' 
       (pr_random file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)

@@ -12,6 +12,7 @@ open Rules
 open RewriteRules
 open AssumptionRules
 open RandomRules
+open RindepRules
 open CrushRules
 open Game
 
@@ -41,9 +42,9 @@ let handle_tactic ts tac =
       end
     with
     | Wf.Wf_div_zero es ->
-        tacerror "Wf: Cannot prove that %a nonzero" (pp_list "," pp_exp) es
+      tacerror "Wf: Cannot prove that %a nonzero" (pp_list "," pp_exp) es
     | Wf.Wf_var_undef(v,e) ->
-        tacerror "Wf: Var %a undefined in %a" Vsym.pp v pp_exp e
+      tacerror "Wf: Var %a undefined in %a" Vsym.pp v pp_exp e
   in
   let vmap_g = vmap_of_globals ju.ju_gdef in
   let parse_e se = PU.expr_of_parse_expr vmap_g ts se in
@@ -68,7 +69,7 @@ let handle_tactic ts tac =
   | PU.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
 
   | PU.Rfalse_ev             -> apply CR.t_false_ev
-  | PU.Rindep                -> apply t_random_indep
+  | PU.Rindep(exact)         -> apply (t_random_indep exact)
 
   | PU.Rnorm_unknown(is) ->
     let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
@@ -158,6 +159,23 @@ let handle_tactic ts tac =
     let vx = PU.create_var (vmap_of_globals ju.ju_gdef) sx ty in
     apply (CR.t_bad i vx)
 
+  | PU.Deduce(pes,pe) ->
+    let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
+    let e = PU.expr_of_parse_expr vmap_g ts  pe in
+    eprintf "deduce %a |- %a@\n" (pp_list "," pp_exp) es pp_exp e;
+    (try
+       let frame =
+         L.mapi
+           (fun i e -> (e, I (mk_V (Vsym.mk ("x"^(string_of_int i)) e.e_ty))))
+           es
+       in
+       let recipe = Deduc.invert frame e in
+       eprintf "Found %a@\n" pp_exp recipe
+     with
+       Not_found ->
+         tacerror "Not found@\n");
+    ts
+
 let pp_jus fmt jus =  
   match jus with
   | [] -> F.printf "No remaining goals, proof completed.@\n"
@@ -198,41 +216,37 @@ let handle_instr ts instr =
       (Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared adversary.")
 
-  | PU.AssmDec(s,g0,g1,priv) ->
+  | PU.AssmDec(s,g0,g1,privs,symvs) ->
     let vmap1 = Ht.create 137 in
     let vmap2 = Ht.create 137 in
     let g0 = PU.gdef_of_parse_gdef vmap1 ts g0 in
     let g1 = PU.gdef_of_parse_gdef vmap2 ts g1 in
     let vmap, sigma = merge_vmap vmap1 vmap2 in
     let g1 = subst_v_gdef sigma g1 in
-    let priv =
-      L.fold_left
-        (fun s x -> 
-          try  Vsym.S.add (Ht.find vmap x) s
-          with Not_found -> tacerror "unknown variable %s" x)
-        Vsym.S.empty
-        priv
+    let parse_var s =
+      try  Ht.find vmap s
+      with Not_found -> tacerror "unknown variable %s" s
     in
+    let privs = Vsym.set_of_list (L.map parse_var privs) in
+    let symvs = L.map (L.map parse_var) symvs in
     if Ht.mem ts.ts_assms_dec s then
       tacerror "assumption with the same name already exists";
-    Ht.add ts.ts_assms_dec s (Assumption.mk_assm_dec s g0 g1 priv);
+    Ht.add ts.ts_assms_dec s (Assumption.mk_assm_dec s g0 g1 privs symvs);
     (ts, "Declared decisional assumption.")
 
-  | PU.AssmComp(s,g,ev_var,ev_ty,ev,priv) ->
+  | PU.AssmComp(s,g,ev_var,ev_ty,ev,privs,symvs) ->
     let vmap = Ht.create 137 in
     let g = PU.gdef_of_parse_gdef vmap ts g in
-    let priv =
-      L.fold_left
-        (fun s x -> 
-          try  Vsym.S.add (Ht.find vmap x) s
-          with Not_found -> tacerror "unknown variable %s" x)
-        Vsym.S.empty
-        priv
+    let parse_var s =
+      try  Ht.find vmap s
+      with Not_found -> tacerror "unknown variable %s" s
     in
+    let priv = Vsym.set_of_list (L.map parse_var privs) in
+    let symvs = L.map (L.map parse_var) symvs in
     let ev_ty  = PU.ty_of_parse_ty ts ev_ty in
     let ev_var = PU.create_var vmap ev_var ev_ty in
     let ev = PU.expr_of_parse_expr vmap ts ev in
-    let assm = Assumption.mk_assm_comp s g ev_var ev priv in
+    let assm = Assumption.mk_assm_comp s g ev_var ev priv symvs in
     if Ht.mem ts.ts_assms_comp s then
       tacerror "assumption with the same name already exists";
     Ht.add ts.ts_assms_comp s assm;
@@ -282,7 +296,7 @@ let handle_instr ts instr =
     | ClosedTheory _ -> (ts, "Theory closed.")
     end
 
-  | PU.PrintProof ->
+  | PU.PrintProof(verbose) ->
     begin match ts.ts_ps with
     | BeforeProof -> (ts, "No proof started yet.")
     | ActiveProof _ | ClosedTheory _ ->
@@ -296,7 +310,7 @@ let handle_instr ts instr =
       let buf = Buffer.create 1024 in
       let fbuf = F.formatter_of_buffer buf in
       F.pp_set_margin fbuf 240;
-      F.fprintf fbuf "%a" pp_proof_tree pt;
+      F.fprintf fbuf "%a" (pp_proof_tree verbose) pt;
       (ts, Buffer.contents buf)
     end
 

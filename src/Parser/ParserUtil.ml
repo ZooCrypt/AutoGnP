@@ -270,7 +270,7 @@ type tactic =
   | Rassm_comp     of bool * string option * (parse_expr) option
   | Rlet_abstract  of int * string * parse_expr
   | Rlet_unfold    of int
-  | Rindep
+  | Rindep         of bool
   | Rcrush         of bool * int option
   | Rbad           of int * string
   | Rexcept        of int * parse_expr list
@@ -281,19 +281,20 @@ type tactic =
   | Rremove_ev     of int list
   | Rrewrite_ev    of int * Util.direction
   | Rsplit_ev      of int
-
+  | Deduce     of parse_expr list * parse_expr
 
 type instr =
   | RODecl     of string * bool * parse_ty * parse_ty
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
-  | AssmDec    of string * gdef * gdef * string list
-  | AssmComp   of string * gdef * string * parse_ty * parse_expr * string list
+  | AssmDec    of string * gdef * gdef * string list * (string list) list
+  | AssmComp   of string * gdef * string * parse_ty * parse_expr * string list *
+                  string list list
   | Judgment   of gdef * parse_expr
   | PrintGoal  of string
   | PrintGoals of string
-  | PrintProof
+  | PrintProof of bool
   | Apply      of tactic
   | Admit
   | Last

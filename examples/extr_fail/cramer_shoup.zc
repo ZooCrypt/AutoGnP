@@ -3,7 +3,7 @@ assumption_decisional ddh
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
   [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
-    x y z.
+    (x y z) ([x,y]).
 
 operator H : ( G * G * G) -> Fq.
 
@@ -11,7 +11,7 @@ assumption_computational tcr
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
     let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; ]
   (x : (G * G * G) -> (H(x) = H(ga,gb,gc)) /\ not (x = (ga,gb,gc)) )
-  a b c.
+  (a b c).
 
 adversary A1 : (G * G * G * G) -> (G * G).
 adversary A2 : (G * G * G * G) -> Bool.
@@ -56,9 +56,9 @@ prove
 
   ] : b = b'.
   rnorm. assumption_decisional _ _ v. (* we could use crush 1, but we want to name the variable v *)
-  rexcept 3 u*w.
+  rnorm. rexcept 3 u*w.
   crush 3. rnorm.
-  
+
   (* if a^w = a' for all queries, b not used in game anymore *)
   radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd. bycrush 1.
   rsimp. crush 2. rnorm.

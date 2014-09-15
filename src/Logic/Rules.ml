@@ -30,8 +30,6 @@ let (@||) t1 t2 ju =
   let mps = t1 ju in
   if is_nil mps then t2 ju else mps
 
-let mk_name () = "x__"^string_of_int (unique_int ())
-
 let samplings gd =
   let samp i = function
     | GSamp(vs,(t,e)) -> Some (i,(vs,(t,e)))
@@ -107,6 +105,19 @@ let t_guard f ju =
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Swap maximum amount forward and backward} *)
 
+let rec parallel_swaps old_new_pos =
+  let upd_pos op np p =
+    (* op .. p .. np, if p = np before then p moves one to the right *)
+    if op < np && op < p && p <= np then p - 1
+    (* np .. p .. op, if p = np before then p moves one to the left *)
+    else if np < op && np <= p && p < op then p + 1
+    else p
+  in
+  match old_new_pos with
+  | [] -> []
+  | (op,np)::old_new_pos ->
+    (op,np - op)::parallel_swaps (L.map (fun (op',np') -> (upd_pos op np op',np')) old_new_pos)
+
 type dir = ToFront | ToEnd
 
 let vars_dexc rv es = e_vars (mk_Tuple ((mk_V rv)::es))
@@ -176,40 +187,69 @@ let t_swap_others_max dir i ju =
 (* \subsection{Simplification and pretty printing} *)
 
 let pp_rule fmt ru =
-  let s = 
-    match ru with
-    | Rconv -> "rconv"
-    | Rswap(_pos,_i) -> "rswap"
-    | Rrnd(_pos,_c1,_c2) -> "rrnd"
-    | Rexc(_pos,_es) -> "rexc"
-    | Rrw_orcl(_opos,_dir) -> "rrw_orcl"
-    | Rswap_orcl(_opos,_i) -> "rswap_orcl"
-    | Rrnd_orcl(_opos,_c1,_c2) -> "rrnd_orcl"
-    | Rexc_orcl(_opos,_es) -> "rexc_orcl"
-    | Rcase_ev(_e) -> "rcase"
-    | Radd_test(_opos,_e,_ads,_vss) -> "radd_test"
-    | Rbad(_pos,_vs) -> "rbad"
-    | Rctxt_ev(_i,_c) -> "rctxt"
-    | Rremove_ev(_is) -> "rremove"
-    | Rmerge_ev(_i,_j) -> "rmerge"
-    | Rsplit_ev(_i) -> "rsplit"
-    | Rrw_ev(_i,_dir) -> "rrw_ev"
-    | Rassm_dec(_dir,_ren,assm) -> fsprintf "rassm_dec(%s)" assm.ad_name
-    | Rassm_comp(_e,_ren,assm) -> fsprintf "rassm_comp(%s)" assm.ac_name
-    | Radmit _ -> "radmit"
-    | Rfalse_ev -> "rfalse_ev"
-    | Rrnd_indep(_b,_i) -> "rrnd_indep"
-  in
-  F.fprintf fmt "%s" s
+  match ru with
+  | Rconv ->
+    F.fprintf fmt "rconv"
+  | Rswap(pos,delta) ->
+    F.fprintf fmt "rswap %i %i" pos delta
+  | Rexc(pos,es) ->
+    F.fprintf fmt "rexc %i %a" pos (pp_list "," pp_exp) es
+  | Rrnd(pos,vs,_,(v2,c2)) ->
+    F.fprintf fmt "rrnd %i %a @[<v>%a->%a@]" pos Vsym.pp vs Vsym.pp v2 pp_exp c2
+  | Rrw_orcl((i,j,k),_dir) ->
+    F.fprintf fmt "rrw_orcl (%i,%i,%i)" i j k
+  | Rswap_orcl((i,j,k),_i) ->
+    F.fprintf fmt "rswap_orcl (%i,%i,%i)" i j k
+  | Rrnd_orcl((i,j,k),_c1,_c2)      ->
+    F.fprintf fmt "rrnd_orcl (%i,%i,%i)" i j k
+  | Rexc_orcl((i,j,k),_es)          ->
+    F.fprintf fmt "rexc_orcl (%i,%i,%i)" i j k
+  | Radd_test((i,j,k),_e,_ads,_vss) ->
+    F.fprintf fmt "radd_test (%i,%i,%i)" i j k
+  | Rcase_ev(e)   ->
+    F.fprintf fmt "rcase @[<v 2>%a@]" pp_exp e
+  | Rbad(_pos,_vs) ->
+    F.fprintf fmt "rbad"
+  | Rctxt_ev(_i,_c) ->
+    F.fprintf fmt "rctxt"
+  | Rremove_ev(is) ->
+    F.fprintf fmt "rremove [%a]" (pp_list "," pp_int) is
+  | Rmerge_ev(_i,_j) ->
+    F.fprintf fmt "rmerge"
+  | Rsplit_ev(i) ->
+    F.fprintf fmt "rsplit %i" i
+  | Rrw_ev(i,_dir) ->
+    F.fprintf fmt "rrw_ev %i" i
+  | Rassm_dec(_dir,_ren,assm) ->
+    F.fprintf fmt "rassm_dec(%s)" assm.ad_name
+  | Rassm_comp(_e,_ren,assm) ->
+    F.fprintf fmt "rassm_comp(%s)" assm.ac_name
+  | Radmit _ ->
+    F.fprintf fmt "radmit"
+  | Rfalse_ev ->
+    F.fprintf fmt "rfalse_ev"
+  | Rrnd_indep(b,i) ->
+    F.fprintf fmt "rrnd_indep %b %i" b i
 
-let rec pp_proof_tree fmt pt =
+let rec pp_proof_tree_verbose fmt pt =
   F.fprintf fmt
     ("##########################@\n%a@\n##########################@\n"^^
      "apply %a@\n"^^
-     "  @[<v 0>%a@\n@]")
+     "  @[<v 0>%a@\n@]%!")
     pp_ju pt.pt_ju
     pp_rule pt.pt_rule
-    (pp_list "@\n" pp_proof_tree) pt.pt_children
+    (pp_list "@\n" pp_proof_tree_verbose) pt.pt_children
+
+let pp_proof_tree_non_verbose fmt pt =
+  let rec aux n pt =
+    F.fprintf fmt "@[%s@[<v 0>%a@]@]@\n" (String.make n ' ') pp_rule pt.pt_rule;
+    List.iter (aux (n + 2)) pt.pt_children
+  in
+  aux 0 pt
+
+
+let pp_proof_tree verbose =
+  if verbose then pp_proof_tree_verbose else pp_proof_tree_non_verbose
   
 let rec simplify_proof_tree pt =
   let children = L.map simplify_proof_tree pt.pt_children in

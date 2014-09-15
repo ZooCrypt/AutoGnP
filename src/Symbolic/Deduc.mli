@@ -4,5 +4,4 @@
 open Expr
 (*i*)
 
-
-val invert : (expr * expr) list -> expr -> expr
+val invert : ?ppt_inverter:bool -> (expr * inverter) list -> expr -> expr

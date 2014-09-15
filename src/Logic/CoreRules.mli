@@ -23,7 +23,7 @@ type rule_name =
   (*c equivalence/small statistical distance: main *)
   | Rconv
   | Rswap of gcmd_pos * int
-  | Rrnd  of gcmd_pos * ctxt * ctxt
+  | Rrnd  of gcmd_pos * vs * ctxt * ctxt
   | Rexc  of gcmd_pos * expr list
 
   (*c equivalence/small statistical distance: oracle *)
@@ -75,6 +75,8 @@ type proof_state = {
 type tactic = goal -> proof_state nondet
 
 type 'a rtactic = goal -> ('a * proof_state) nondet
+
+val mk_name : unit -> string
 
 exception NoOpenGoal 
 

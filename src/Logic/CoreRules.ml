@@ -26,7 +26,7 @@ type rule_name =
   | Rconv                                  (*r rename, unfold let, normalize *)
   | Rswap   of gcmd_pos * int              (*r
       $Rswap(p,i)$: swap statement at $p$ forward by $i$ *)
-  | Rrnd    of gcmd_pos * ctxt * ctxt (*r
+  | Rrnd    of gcmd_pos * vs  * ctxt * ctxt (*r
       $Rnd(p,c_1,c_2,v)$: rnd with bij. $c_1=c_2^{-1}$ for $v$ at $p$*)
   | Rexc of gcmd_pos * expr list (*r
       $Rexc(p,\vec{e})$: change sampling at $p$ to exclude $\vec{e}$ *)
@@ -101,6 +101,8 @@ type proof_state = {
 (** A tactic takes a goal and returns a proof state. *)
 type tactic = goal -> proof_state nondet
 type 'a rtactic = goal -> ('a * proof_state) nondet
+
+let mk_name () = "xxxx"^string_of_int (unique_int ())
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{General purpose functions} *)
@@ -222,18 +224,6 @@ let t_ensure_progress t g =
   t g >>= fun ps ->
   guard (ps.subgoals <> [g]) >>= fun _ ->
   ret ps
-  
-(** Apply tactics [ts] to subgoals of proof state [ps]. *)
-(*
-let t_subgoal ts ps = 
-  let ps2s = 
-    try L.map2 (fun t g -> t g) ts ps.subgoals 
-    with Invalid_argument _ -> 
-      tacerror "%i tactics expected, %i are given" 
-        (L.length ps.subgoals) (L.length ts)
-  in
-  merge_proof_states ps2s ps.validation
-*)
 
 (** Apply tactic [t1] to goal [g] or [t2] in case of failure. *)
 let t_or tn1 tn2 g = Nondet.mplus (tn1 g)  (tn2 g)
@@ -282,7 +272,6 @@ let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
         let sigma = Game.unif_ju ju' new_ju' in
         if not (Game.subst_injective sigma) then
           tacerror "rconv: computed renaming is not bijective";
-        Vsym.M.fold (fun vs k () -> eprintf "%a.%i -> %a.%i@\n" Vsym.pp vs (Id.tag vs.Vsym.id) Vsym.pp k (Id.tag k.Vsym.id)) sigma ();
         norm_ju ~norm:nf (subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju')
       with
         Not_found ->
@@ -293,9 +282,11 @@ let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   in
   if not (ju_equal ju' new_ju') then
     tacerror "rconv: not convertible@\n %a@\n %a" pp_ju ju' pp_ju new_ju';
+  eprintf "!!! conv rule applied@\n%!";
   Rconv, [new_ju]
 
-let t_conv do_norm_terms ?do_rename:(do_rename=false) new_ju = prove_by (rconv do_norm_terms ~do_rename new_ju)
+let t_conv do_norm_terms ?do_rename:(do_rename=false) new_ju =
+  prove_by (rconv do_norm_terms ~do_rename new_ju)
 
 (** Swap instruction. *)
 
@@ -326,6 +317,7 @@ let swap i delta ju =
     if is_call instr && has_call c2
     then tacerror "swap : can not swap";
     let c2,c3 = if delta > 0 then c2, instr::c3 else instr::c2, c3 in
+    eprintf "!!! swap rule applied: i=%i delta=%i@\n%!" i delta;
     set_ju_ctxt c2 {juc_left=c1; juc_right=c3; juc_ev=e}
 
 let rswap i delta ju = Rswap(i, delta), [swap i delta ju]
@@ -350,7 +342,7 @@ let rrnd p c1 c2 ju =
   | GSamp(vs,((_t,[]) as d)), juc ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v;
-    let vslet = Vsym.mk (fsprintf "x__%i" (unique_int ())) vs.Vsym.ty in
+    let vslet = Vsym.mk (mk_name ()) vs.Vsym.ty in
     let cmds =
       [ GSamp(vs,d);
         GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
@@ -364,8 +356,8 @@ let rrnd p c1 c2 ju =
         juc_right = map_gdef_exp subst juc.juc_right;
         juc_ev = juc.juc_ev }
     in
-    eprintf "## rrnd performed@\n";
-    Rrnd(p,c1,c2), [ set_ju_ctxt cmds juc ]
+    eprintf "!!! rrnd applied at %i for %a@\n" p Vsym.pp vs;
+    Rrnd(p,vs,c1,c2), [ set_ju_ctxt cmds juc ]
   | _ -> tacerror "rrnd: position given is not a sampling"
 
 let t_rnd p c1 c2 = prove_by (rrnd p c1 c2)
@@ -401,7 +393,7 @@ let rrewrite_oracle op dir ju =
                  juoc_return = subst juoc.juoc_return }
     in
     let (i,j,k) = op in
-    eprintf "## rrw_oracle %i,%i,%i @\n" i j k;
+    eprintf "!!! rrw_oracle %i,%i,%i @\n" i j k;
     Rrw_orcl(op,dir), [ set_ju_octxt [lc] juoc ]
   | _ -> assert false
 
@@ -450,7 +442,8 @@ let rrnd_oracle p c1 c2 ju =
                  juoc_return = juoc.juoc_return;
                  juoc_cright = juoc.juoc_cright }
     in
-    eprintf "## rrnd_oracle performed@\n";
+    let (i,j,k) = p in
+    eprintf "!!! rrnd_oracle applied at (%i,%i,%i) for %a@\n" i j k Vsym.pp vs;
     Rrnd_orcl(p,c1,c2), [set_ju_octxt cmds juoc]
   | _ -> tacerror "random: position given is not a sampling"
 
@@ -567,10 +560,11 @@ let rctxt_ev i c ju =
       mk_Exists (inst_ctxt c e1) (inst_ctxt c e2) h 
     else tacerror "rctxt_ev: bad event, expected equality or exists"
   in
-  let ev = mk_Land (L.rev_append l (b:: r)) in
+  let ev = mk_Land (L.rev_append l (b::r)) in
   let wfs = wf_gdef NoCheckDivZero (ju.ju_gdef) in
   wf_exp CheckDivZero wfs ev;
   let new_ju = {ju with ju_ev = ev} in
+  eprintf "!!! rctxt_ev applied at %i for %a -> %a@\n" i Vsym.pp (fst c) pp_exp (snd c);
   Rctxt_ev(i, c), [new_ju]
 
 let t_ctxt_ev i c = prove_by (rctxt_ev i c)
@@ -586,7 +580,7 @@ let rremove_ev (rm:int list) ju =
       if L.mem i rm then evs else ev::evs in
   let ev = ju.ju_ev in
   let evs = aux 0 (destruct_Land ev) in
-  let new_ju = {ju with ju_ev = mk_Land evs} in
+  let new_ju = {ju with ju_ev = if evs = [] then mk_True else mk_Land evs} in
   (*i TODO : should we check DivZero i*)
   Rremove_ev rm, [new_ju]
 
@@ -690,7 +684,7 @@ let rassm_dec dir subst assm' ju =
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
   let diff = Se.inter priv read in
   if not (Se.is_empty diff) then tacerror "assm_dec: does not respect private variables";
-  eprintf "## rassm_dec performed@\n";
+  eprintf "!! rassm_dec performed@\n";
   Rassm_dec(dir,subst,assm'), [{ ju with ju_gdef = c' @ tl }]
 
 let t_assm_dec dir subst assm = prove_by (rassm_dec dir subst assm)
@@ -743,14 +737,19 @@ let t_false_ev = prove_by rfalse_ev
 let check_event r ev =
   let rec aux i evs =
     match evs with
-    | [] -> tacerror "can not apply rrandom_indep"
+    | [] ->
+      tacerror "can not apply rindep for variable %a and event@\  %a@\n" Vsym.pp r pp_exp ev
     | ev::evs -> 
       let r = mk_V r in
       let test_eq e1 e2 = e_equal e1 r && not (Se.mem r (e_vars e2)) in
       let check_eq e1 e2 = 
-        if test_eq e1 e2 then Rrnd_indep(true, i)
-        else if test_eq e2 e1 then Rrnd_indep(false, i)
-        else raise Not_found in
+        if test_eq e1 e2 then (
+          eprintf "!!! rindep applied to %i@\n" i;
+          Rrnd_indep(true, i)
+        ) else if test_eq e2 e1 then (
+          eprintf "!!! rindep applied to %i@\n" i;
+          Rrnd_indep(false, i)
+        )else raise Not_found in
       try 
         if is_Eq ev then
           let e1, e2 = destr_Eq ev in
@@ -763,7 +762,7 @@ let check_event r ev =
   in
   aux 0 (destruct_Land ev)
 
-let rrandom_indep ju = 
+let rrandom_indep ju =
   match L.rev ju.ju_gdef with
   | GSamp(r,_)::_ -> check_event r ju.ju_ev,  []
   | _             -> tacerror "rindep: the last instruction is not a random"

@@ -74,7 +74,7 @@ let exp_of_poly p =
       else mk_FOpp (mk_FMult (mk_FNat (-i) :: mes))        
   in
   let s = L.map summand p in
-  let e = mk_FPlus (L.sort e_compare s) in
+  let e = if s = [] then mk_FZ else mk_FPlus (L.sort e_compare s) in
   if (not (is_norm_field_exp e)) then F.printf "ERROR: %a\n\n%!" pp_exp e;
   assert (is_norm_field_exp e);
   e
@@ -125,7 +125,9 @@ let factor_out a p =
          match L.partition (fun (e,_) -> e_equal e a) es with
          | ([(_,1)],others) -> Left(c,others)
          | ([],others)      -> Right(c,others)
-         | _ -> failwith (fsprintf "cannot factor out %a" pp_exp a))
+         | _ ->
+           eprintf "cannot factor out %a\n%!" pp_exp a;
+           raise Not_found)
       p)
 
 (*i*)

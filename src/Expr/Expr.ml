@@ -279,6 +279,7 @@ let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 let rec pp_exp_p above fmt e =
   match e.e_node with
   | V(v)       -> 
+    (* F.fprintf fmt "%a.%i" Vsym.pp v (Vsym.hash v) *)
     F.fprintf fmt "%a" Vsym.pp v
   | H(h,e)     -> 
     F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p PrefixApp) e
@@ -785,3 +786,7 @@ let rec is_Zero e =
   | Tuple es             -> L.for_all is_Zero es
   | App(GExp _, [e1;e2]) -> is_Zero e2 || is_Zero e1
   | _                    -> false
+
+type inverter = I of expr
+
+let expr_of_inverter (I e) = e

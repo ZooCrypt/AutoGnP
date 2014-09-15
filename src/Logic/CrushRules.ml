@@ -9,6 +9,7 @@ open RewriteRules
 open Assumption
 open AssumptionRules
 open RandomRules
+open RindepRules
 
 module CR = CoreRules
 module Ht = Hashtbl
@@ -68,6 +69,7 @@ let t_rewrite_oracle_maybe mopos mdir ju =
       (if (is_V b) then (ret RightToLeft) else mempty) >>= fun dir ->
     ret (opos,dir)
   ) >>= fun (opos,dir) ->
+  
   (CR.t_ensure_progress (CR.t_rewrite_oracle opos dir)) ju
 
 let t_fix must_finish max t ju =
@@ -84,7 +86,8 @@ let t_fix must_finish max t ju =
       let ps2 = CR.merge_proof_states pss ps.CR.validation in
       aux (i - 1) ps2
     )
-  in aux max ps0
+  in
+  aux max ps0
 
 let t_simp i must_finish _ts ju =
   let step ju =
@@ -127,7 +130,7 @@ let psis_of_pt pt =
         { psi with psi_assms = Sstring.add ad.ad_name psi.psi_assms }
       in
       L.iter (aux psi) children
-    | CR.Rrnd(pos,_,_) ->
+    | CR.Rrnd(pos,_,_,_) ->
       let rands = samplings gd in
       let (rv,_) = L.assoc pos rands in
       let psi =
@@ -142,7 +145,7 @@ let psis_of_pt pt =
       in
       L.iter (aux psi) children
     | CR.Radmit "current" ->
-      (* we ignore admit's with label other from other branches of the proof *)
+      (* we ignore admits with label other from other branches of the proof *)
       admit_psis := psi::!admit_psis
     | _ ->
       L.iter (aux psi) children
@@ -150,47 +153,68 @@ let psis_of_pt pt =
   aux psi_empty pt;
   !admit_psis
 
+let rec bycrush step get_pt j ps1 =
+  let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
+  let gs = ps1.CR.subgoals in
+  assert (L.length gs = L.length psis);
+  mapM (fun (psi,g) -> step (j <= 0) psi g) (L.combine psis gs) >>= fun pss ->
+  let ps2 = CR.merge_proof_states pss ps1.CR.validation in
+  if j > 1 then (
+    mplus
+      (guard (ps2.CR.subgoals = []) >>= fun _ -> ret ps2)
+      (guard (ps2.CR.subgoals <> []) >>= fun _ -> bycrush step get_pt (j - 1) ps2)
+  ) else (
+    (* return all proof states if must_finish is not given and finished ones otherwise *)
+    guard (ps2.CR.subgoals = []) >>= fun _ ->
+    ret ps2
+  )
+
+let rec crush step get_pt j ps1 =
+  let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
+  let gs = ps1.CR.subgoals in
+  assert (L.length gs = L.length psis);
+  mapM (fun (psi,g) -> step (j <= 0) psi g) (L.combine psis gs) >>= fun pss ->
+  let ps2 = CR.merge_proof_states pss ps1.CR.validation in
+  if j > 1 then (
+    (* return only proof states with exactly i steps for must_finish=false *)
+    crush step get_pt (j - 1) ps2
+  ) else (
+    ret ps2
+  )
+
+
 let t_crush must_finish mi ts ps ju =
   let i = from_opt 5 mi in
-  (* ps2 are the proof states reached after exactly i - j steps *)
-
-  let step psi =
+  let step finish_now psi =
     let ias = psi.psi_assms in
     let irvs = psi.psi_rvars in
     let iorvs = psi.psi_rvars in
     let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in
-    (   t_norm_xor_id
-     @> (    (((t_simp false 10 ts @> t_norm_xor_id) @|| CR.t_id)
-              @> (t_random_indep @|| t_assm_comp ts false None None))
-         @|| (   t_simp true 10 ts
-              @| t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
-              @| t_rnd_maybe ~i_rvars:irvs ts false None None None
-              @| t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None)))
+    let t_close =
+      ((t_simp false 10 ts @> t_norm_xor_id) @|| CR.t_id)
+      @> (t_random_indep false @|| t_assm_comp ts false None None)
+    in
+    let t_progress = 
+         t_simp true 10 ts
+      @| t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
+      @| t_rnd_maybe ~i_rvars:irvs ts false None None None
+      @| t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None
+    in
+    t_norm_xor_id @>
+    (    t_close
+     @|| (if must_finish && finish_now then CR.t_fail "not finished" else t_progress))
   in
   let get_pt ps2 =
     CR.get_proof (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps2) ps)))
-  in
-  let rec aux j ps1 =
-    let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
-    let gs = ps1.CR.subgoals in
-    assert (L.length gs = L.length psis);
-    mapM (fun (psi,g) -> step psi g) (L.combine psis gs) >>= fun pss ->
-    let ps2 = CR.merge_proof_states pss ps1.CR.validation in
-    if j > 1 then (
-      if must_finish then (
-        mplus
-          (guard (ps2.CR.subgoals = []) >>= fun _ -> ret ps2)
-          (guard (ps2.CR.subgoals <> []) >>= fun _ -> aux (j - 1) ps2)
-      ) else (
-        (* return only proof states with exactly i steps for must_finish=false *)
-        (aux (j - 1) ps2)
-      )
-    ) else (
-      (* return all proof states if must_finish is not given and finished ones otherwise *)
-      (guard (not must_finish || ps2.CR.subgoals = []) >>= fun _ ->
-       ret ps2))
-  in
-  aux i (first (CR.t_id ju))
+   in
+  if i > 0 then (
+    if must_finish then 
+      bycrush step get_pt i (first (CR.t_id ju))
+    else
+      crush step get_pt i (first (CR.t_id ju))
+  ) else (
+    CR.t_fail "crush: number of steps cannot be smaller than one" ju
+  )
 
 
 

@@ -12,13 +12,13 @@ assumption_decisional ddh
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
   [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
-    x y z.
+    (x y z).
 
 assumption_computational tcr
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
     let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; ]
   (x : (G * G * G) -> (H(x) = H(ga,gb,gc)) /\ not (x = (ga,gb,gc)) )
-  a b c.
+  (a b c).
 
 prove
 [
@@ -90,5 +90,4 @@ prove
 
 assumption_computational _ _.
 qed.
-print_proof.
 extract "extraction/t_comp_assm.ec".

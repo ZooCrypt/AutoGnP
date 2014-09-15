@@ -79,6 +79,7 @@
 %token ASSUMPTION_COMPUTATIONAL
 %token ASSUMPTION_DECISIONAL_EX
 %token ASSUMPTION_COMPUTATIONAL_EX
+%token RINDEP_EX
 %token RANDOM
 %token BILINEAR
 %token MAP
@@ -87,6 +88,7 @@
 %token PRINTGOALS
 %token PRINTGOAL
 %token PRINTPROOF
+%token PRINTPROOF_EX
 %token RNORM
 %token RNORM_UNKNOWN
 %token RNORM_NOUNFOLD
@@ -117,6 +119,7 @@
 %token BACK
 %token QED
 %token EXTRACT
+%token DEDUCE
 %token <string> STRING
 
 /************************************************************************/
@@ -326,6 +329,16 @@ opos:
 ctx :
 | LPAREN i = ID TO e = expr0 RPAREN { (i,e) }
 
+private_vars:
+| LPAREN priv=ID* RPAREN {priv}
+| priv=ID {[priv]}
+
+symmetric_class:
+| LBRACKET vs = separated_nonempty_list(COMMA,ID) RBRACKET { vs }
+
+symmetric_vars:
+| LPAREN symclass=symmetric_class* RPAREN {symclass}
+
 instr :
 | ADMIT { Admit }
 | LAST { Last }
@@ -337,19 +350,22 @@ instr :
 | OPERATOR i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,false,t1,t2) }
 | BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG { EMDecl(i,g1,g2,g3) }
 | ASSUMPTION_DECISIONAL i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
-   p=ID*
-    { AssmDec(i,g0,g1,p) }
-| ASSUMPTION_COMPUTATIONAL i1 = ID LBRACKET g = gdef0 RBRACKET LPAREN i2 = ID COLON t = typ0 TO e = expr0 RPAREN p=ID*
-    { AssmComp(i1,g,i2,t,e,p) }
+    priv=private_vars sym=option(symmetric_vars)
+    { AssmDec(i,g0,g1,priv,opt id [] sym) }
+| ASSUMPTION_COMPUTATIONAL i1 = ID LBRACKET g = gdef0 RBRACKET LPAREN i2 = ID COLON t = typ0 TO e = expr0 RPAREN
+    priv=private_vars  sym=option(symmetric_vars)
+    { AssmComp(i1,g,i2,t,e,priv,opt id [] sym) }
 | PROVE LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
 | PRINTGOALS COLON i = ID { PrintGoals(i) }
 | PRINTGOAL COLON i = ID { PrintGoal(i) }
-| PRINTPROOF { PrintProof }
+| PRINTPROOF { PrintProof(false) }
+| PRINTPROOF_EX { PrintProof(true) }
 | PRINTGOALS { PrintGoals("") }
 | RNORM { Apply(Rnorm) }
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
 | RNORM_UNKNOWN is = ID* { Apply(Rnorm_unknown(is)) }
-| RINDEP { Apply(Rindep) }
+| RINDEP { Apply(Rindep(false)) }
+| RINDEP_EX { Apply(Rindep(true)) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
 | ASSUMPTION_DECISIONAL    s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(false,s,d,xs))}
@@ -364,6 +380,8 @@ instr :
 | REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_orcl(op,es)) }
 | RRND exact=option(EXCL) mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
   { Apply(Rrnd(exact<>None,map_opt (fun i -> i -1) mi,mc1,mc2)) }
+| DEDUCE  LBRACKET es=separated_list(COMMA,expr0) RBRACKET e=expr0
+   { Apply(Deduce(es,e)) }
 | RSIMP { Apply(Rsimp) }
 | RCRUSH  mi = uoption(NAT) { Apply(Rcrush(false,mi)) }
 | BYCRUSH { Apply(Rcrush(false,None)) }

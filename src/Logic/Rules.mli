@@ -1,27 +1,27 @@
 (*s Logical rules built on top of core rules. *)
 
-open CoreRules
-open Game
-open Type
-open Expr
 open Util
+open Type
+open Syms
+open Expr
+open Game
+open CoreRules
 
 val ( @> ) : tactic -> tactic -> tactic
 val ( @>= ) : 'a rtactic -> ('a -> tactic) -> tactic
 val ( @>>= ) : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
-(* val ( @+ ) : tactic -> tactic list -> tactic *)
 val ( @| ) : tactic -> tactic -> tactic
 val ( @|| ) : tactic -> tactic -> tactic
 
 type dir = ToFront | ToEnd
 
-val vars_dexc : Syms.Vsym.t -> Expr.expr list -> Expr.Se.t
+val vars_dexc : Vsym.t -> Expr.expr list -> Expr.Se.t
+
+val parallel_swaps : (int * int) list -> (int * int) list
 
 val t_swap_max : dir -> gcmd_pos -> Se.t -> int rtactic
 
 val t_swap_others_max : dir -> gcmd_pos -> int rtactic
-
-val mk_name : unit -> string
 
 val samplings : gcmd list -> (gcmd_pos * (vs * (ty * expr list))) list
 
@@ -47,7 +47,7 @@ val t_debug : string -> tactic
 
 val t_guard : (goal -> bool) -> tactic
 
-val pp_proof_tree : Util.F.formatter -> CoreRules.proof_tree -> unit
+val pp_proof_tree : bool -> Util.F.formatter -> CoreRules.proof_tree -> unit
 
 val simplify_proof_tree : proof_tree -> proof_tree
 
