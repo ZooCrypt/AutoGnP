@@ -20,11 +20,8 @@ rexcept 1 0.
 rrnd 2 (c -> c * a) (c -> c / a).
 rnorm.
 rctxt_ev (x -> log(x)). rnorm.
-rcase_ev (a = 0).
-rremove_ev 1. admit. (* propagate excepted inequalities *)
 rctxt_ev (x -> x / a) 2.
 rnorm.
-rremove_ev 2.
 rctxt_ev (x -> g_t^x) 2.
 rnorm.
 rexcept 1.
@@ -37,7 +34,6 @@ rlet_abstract 3 ga g_1^a.
 rlet_abstract 4 gc g_1^c.
 rlet_abstract 5 gac g_1^(a*c).
 assumption_decisional! ddh -> d.
-rnorm.
-crush 1.
+bycrush.
 qed.
 print_proof!.
