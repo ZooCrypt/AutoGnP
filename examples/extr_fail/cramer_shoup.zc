@@ -5,7 +5,7 @@ assumption_decisional ddh
     let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
     (x y z) ([x,y]).
 
-operator H : ( G * G * G) -> Fq.
+operator H : (G * G * G) -> Fq.
 
 assumption_computational tcr
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq;

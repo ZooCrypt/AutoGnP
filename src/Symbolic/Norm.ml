@@ -23,7 +23,6 @@ let rec norm_ggt e =
   | Fq | Bool | BS _ -> e
   | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_ggt (mk_Proj i e)) lt)
 
-
 let mk_proj_simpl i e = 
   match e.e_node with 
   | Tuple es -> 

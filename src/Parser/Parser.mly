@@ -95,7 +95,7 @@
 %token RRND
 %token RRND_ORACLE
 %token RSWAP
-%token REQUIV
+%token RCONV
 %token RINDEP
 %token RCRUSH
 %token BYCRUSH
@@ -372,7 +372,7 @@ instr :
 | ASSUMPTION_DECISIONAL_EX s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(true,s,d,xs))}
 | ASSUMPTION_COMPUTATIONAL    s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(false,s,e))}
 | ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(true,s,e))}
-| REQUIV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
+| RCONV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }

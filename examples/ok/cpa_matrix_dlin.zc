@@ -35,7 +35,7 @@ prove
   ] : b = b'.
   rnorm.
   rswap 5 -2. rswap 6 -2.
-  requiv [
+  rconv [
     a1 <-$ Fq;
     a2 <-$ Fq;
     r1 <-$ Fq;

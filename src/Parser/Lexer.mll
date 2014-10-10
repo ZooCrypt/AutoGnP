@@ -72,7 +72,7 @@ rule lex = parse
   | "rexcept_oracle" { REXCEPT_ORACLE }  
   | "rrnd" { RRND }
   | "rswap" { RSWAP }
-  | "requiv" { REQUIV }
+  | "rconv" { RCONV }
   | "rindep" { RINDEP }
   | "rindep!" { RINDEP_EX }
   | "rrnd_oracle" { RRND_ORACLE }
