@@ -8,11 +8,11 @@ prove
     u <- A();
     y <-$ G;
   ] : exists x <- L_H: g^log(x) = g^log(y).
-  requiv
+  rconv
     [
       u <- A();
       y <-$ G;
     ] : exists x <- L_H: x = y.
   admit.
   qed.
-  extract "extraction/t_requiv.ec".
+  extract "extraction/t_conv.ec".
