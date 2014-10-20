@@ -27,7 +27,7 @@ op oif b (x1 x2:'a) = if b then x1 else x2.
 lemma if_oif b (x1 x2:'a) : (if b then x1 else x2) = oif b x1 x2 by trivial.
 hint rewrite Ring.rw_algebra : if_oif.
 
-instance bring with bool
+(*instance bring with bool
   op rzero = false
   op rone  = true
   op add   = (^^)
@@ -44,12 +44,11 @@ instance bring with bool
   proof mulrDl    by smt
   proof mulrK     by smt.
 
-require import Real.
-
 lemma neqeqf_rw (a b:'a) : (a <> b) = false <=> a = b by smt.
 lemma eqeqt_rw (a b:'a) : (a = b) = true <=> a = b by smt.
-
-hint rewrite Ring.rw_algebra : neqeqf_rw eqeqt_rw.
+lemma neg_xor (a:bool) : (!a) = (true ^^ a) by case a.
+hint rewrite Ring.rw_algebra : neqeqf_rw eqeqt_rw Logic.anda_and neg_xor.
+*)
 
 (*
 require import Real.

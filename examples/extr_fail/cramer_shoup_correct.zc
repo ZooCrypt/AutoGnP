@@ -27,4 +27,4 @@ prove
   ] : not ((d = d') /\ (m = m')).
   rnorm. rfalse_ev.
   qed.
-  extract "extraction/cramer_shoup_correct.zc".
+  extract "extraction/cramer_shoup_correct.ec".

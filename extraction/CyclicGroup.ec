@@ -85,7 +85,10 @@ lemma log_oif b (x y : group) :
 hint rewrite Ring.rw_algebra : log_oif.
 
 require Ring. 
-hint rewrite Ring.inj_algebra : log_bij.
-hint rewrite Ring.rw_algebra : log_g log_pow log_mul.
+
+lemma inj_gpow_log (a:group): a = g ^ (log a) by smt.
+
+hint rewrite Ring.inj_algebra : inj_gpow_log.
+hint rewrite Ring.rw_algebra : log_oif log_g log_pow log_mul.
 
 end CG.

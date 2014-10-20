@@ -382,6 +382,7 @@ type tactic =
   | TRepeat  of tactic
   | TSeq     of tactics
   | TSeqSub  of tactic * tactics 
+  | Tstring  of string
 
 and tactics = tactic list
 
@@ -428,12 +429,8 @@ let t_aa  = TSeq [Auto;t_algebra]
 let t_id  = TSeq []
 
 let t_pr_if = 
-  TSeq [
-    Progress ["-split"];
-    TRepeat (TOr (Apply "iff_and", TOr (Apply "iff_neq", Apply "iff_eq")));
-    Progress [];
-    t_algebra
-  ]
+  Tstring 
+    "by (move=> &m1 &m2 H;rewrite -eq_iff;move: H;progress;(algebra || smt))"
 
 let rec pp_tac fmt = function
   | Admit     -> F.fprintf fmt "admit" 
@@ -463,6 +460,7 @@ let rec pp_tac fmt = function
     F.fprintf fmt "@[<hov 2>%a;@ [ @[<hov 0>%a@]]@]" 
       pp_tac t
       (pp_list " |@ " pp_tac) ts
+  | Tstring s -> F.fprintf fmt "%s" s
 
 
 let rec pp_cmd fmt = function
