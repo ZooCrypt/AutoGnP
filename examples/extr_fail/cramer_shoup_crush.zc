@@ -66,8 +66,8 @@ prove
   radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
     last. bycrush 1.
   rnorm_solve y2.
-  rcase_ev (H(ea,ea',ec) = H(g ^ u,g ^ xxxx63,g ^ z2)).
-    rcase_ev ((ea,ea',ec) = (g ^ u,g ^ xxxx63,g ^ z2)).
+  rcase_ev (H(ea,ea',ec) = H(g ^ u,g ^ xxxx53,g ^ z2)).
+    rcase_ev ((ea,ea',ec) = (g ^ u,g ^ xxxx53,g ^ z2)).
       bycrush 1.
     bycrush.
   bycrush.
