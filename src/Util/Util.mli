@@ -136,6 +136,20 @@ val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
 
 val sorted_nub :('a -> 'a -> int) -> 'a list -> 'a list
 
+val list_compare : ('a -> 'b -> int) -> 'a list -> 'b list -> int
+
+val list_equal : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
+
+val pair_equal : ('a -> 'b -> bool) -> ('c -> 'd -> bool) -> 'a * 'c -> 'b * 'd -> bool
+
+val pair_compare :('a -> 'b -> int) -> ('c -> 'd -> int) -> 'a * 'c -> 'b * 'd -> int
+
+val sum : int list -> int
+
+val catSome : ('a option) list -> 'a list
+
+val last : 'a list -> 'a
+
 (* \subsection{String functions} *)
 
 val splitn : string -> char -> string list

@@ -2,24 +2,24 @@
 
 (*i*)
 open Util
-open Poly
 (* open Syms *)
 open Expr
-open CAS
+open NormField
+(* open CAS *)
 open Norm
 (*i*)
 
 (** Special purpose routine to deduce a variable [v] from an expression [e]
-    assuming all other variables are known. Returns  *)
+    assuming all other variables are known. *)
 let solve_fq_vars_known e v =
   (* eprintf "solve_fq_vars e=%a v=%a\n%!" pp_exp e Vsym.pp v; *)
   let ev = mk_V v in
   let v_occurs p =
-    L.exists (fun (_,m) -> L.exists (fun (e,_) -> Se.mem ev (e_vars e)) m) p
+    L.exists (fun (m,_) -> L.exists (fun (e,_) -> Se.mem ev (e_vars e)) m) (EP.to_terms p)
   in
   let (num,mdenom) = polys_of_field_expr (CAS.norm id e) in
   let (g,h) = factor_out ev num in
-  if g <> [] then (
+  if not (EP.equal g EP.zero) then (
     match mdenom with
     | None ->
       (*i v = v' * g + h => v' = (v - h) / g i*)
@@ -29,7 +29,9 @@ let solve_fq_vars_known e v =
       (*i v = (v' * g + h) / denom => v' = (v * denom - h) / g i*)
       let (g,h) = factor_out ev num in
       let e' = mk_FDiv
-                 (mk_FMinus (mk_FMult [ev; exp_of_poly denom]) (exp_of_poly h))
+                 (mk_FMinus
+                    (mk_FMult [ev; exp_of_poly denom])
+                    (exp_of_poly h))
                  (exp_of_poly g)
       in
       Game.norm_expr_def e'
@@ -39,15 +41,12 @@ let solve_fq_vars_known e v =
     raise Not_found
   )
 
-
 let solve_fq_var (ecs : (expr * inverter) list) e =
   if not (is_V e) then raise Not_found;
   let v = destr_V e in
   let ecs_v,ecs_poly = L.partition (fun (e,_w) -> is_V e || is_H e) ecs in
   match L.filter (fun (f,_) -> Se.mem e (e_vars f)) ecs_poly with
   | [(f,w_f)] ->
-    (* if not (L.for_all (fun (e,_w) -> is_V e) ecs_v) then raise Not_found; *)
-    (* eprintf "solve_fq_fast e=%a\n%!" pp_exp f; *)
     (* to check {w1->x1,...,wk->xk,wk+1->f} |- v, we take f and replace
        xi by wi and v by wk+1 in f, then we know that (f - g)/h = v. *)
     let f =
@@ -62,6 +61,8 @@ let solve_fq_var (ecs : (expr * inverter) list) e =
     c
   | _ -> raise Not_found
 
+(* If recipes for all variables in secret e are
+   known, we can just substitute the recipes in. *)
 let solve_fq_poly (ecs : (expr * inverter) list) e =
   let subst =
     L.fold_right
@@ -82,12 +83,5 @@ let solve_fq (ecs : (expr * inverter) list) e =
   ) else if not (Se.is_empty (Se.diff vars known_occ_vars)) then (
     raise Not_found
   ) else (
-    try I (solve_fq_var ecs e)
-    with Not_found ->
-      eprintf "$$$$$$$$$$$$$ calling Sage with %a |- %a@\n"
-        (pp_list "," pp_exp) (L.map fst ecs)
-        pp_exp e;
-      let res = norm_expr (solve_fq_sage ecs e) in
-      eprintf "$$$$$$$$$$$$$ sage result %a@\n" pp_exp res;
-      I res
+    I (solve_fq_var ecs e)
   )

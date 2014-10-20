@@ -1,4 +1,4 @@
-<src/Util> or <src/Expr> or <src/Test>: include
+<src/Util> or <src/Expr> or <src/Test> or <src/Poly>: include
 
 <src/Logic> or <src/Tactic> or <src/Symbolic> or <src/Extract>: include
 
@@ -8,9 +8,13 @@
 
 <src/Main/zoocrypt.d.byte>: thread, package(unix), package(yojson)
 
-<src/Main/zoocrypt.native>: thread, package(unix), package(yojson)
+<src/Main/zoocrypt.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num)
 <src/Main/zoocrypt.p.native>: thread, package(unix), package(yojson)
+
+<src/CAS/Factory.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num)
+
+<src/CAS/Factory.ml>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num)
 
 <src/CAS/CAS.ml>: package(yojson)
 
-<src/Main/wszoocrypt.ml> or <src/Main/wszoocrypt.native>: thread, package(unix), package(websocket), package(yojson)
+<src/Main/wszoocrypt.ml> or <src/Main/wszoocrypt.native>: thread, package(unix), package(websocket), package(yojson), package(ctypes.foreign), package(num)

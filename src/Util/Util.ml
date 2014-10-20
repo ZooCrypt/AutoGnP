@@ -230,6 +230,65 @@ let group rel xs =
 let sorted_nub cmp xs =
   xs |> L.sort cmp |> group (fun a b -> cmp a b = 0) |> L.map L.hd
 
+(* \ic{[list_equal e_equal l1 l2] returns true if the two lists are
+       equal with respect to [e_equal].} *)
+let list_equal eq xs0 ys0 =
+  let rec go xs ys = 
+    match xs,ys with
+    | [], []       -> true
+    | x::xs, y::ys -> eq x y && go xs ys
+    | _            -> assert false
+  in
+  (L.length xs0 = L.length ys0) && go xs0 ys0
+
+(* \ic{[list_compare e_compare l1 l2] compares the two lists
+        with respect to length and [e_compare].} *)
+let list_compare cmp xs0 ys0 =
+  let rec go xs ys =
+    match xs, ys with
+    | [], []       -> 0
+    | x::xs, y::ys ->
+      let d = cmp x y in
+      if d <> 0 then d
+      else go xs ys
+    | _            -> assert false
+  in
+  let d = L.length xs0 - L.length ys0 in
+  if d > 0 then 1
+  else if d < 0 then -1
+  else go xs0 ys0
+
+let pair_equal eq1 eq2 (x1,x2) (y1,y2) =
+  eq1 x1 y1 && eq2 x2 y2
+
+let pair_compare cmp1 cmp2 (x1,x2) (y1,y2) =
+  let r1 = cmp1 x1 y1 in
+  if r1 <> 0 then r1
+  else cmp2 x2 y2
+
+let sum xs =
+  match xs with
+  | []    -> 0
+  | x::xs -> L.fold_left (+) x xs
+
+let catSome xs0 =
+  let rec go xs acc =
+    match xs with
+    | [] -> L.rev acc
+    | Some x::xs -> go xs (x::acc)
+    | None::xs   -> go xs acc
+  in
+  go xs0 []
+
+let last xs =
+  let rec go xs = match xs with
+    | []              -> raise Not_found
+    | x::[]           -> x
+    | _::(_::_ as xs) -> go xs
+
+  in
+  go xs
+
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{String functions} *)
 

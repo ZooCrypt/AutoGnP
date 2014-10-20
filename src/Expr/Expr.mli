@@ -216,6 +216,8 @@ val e_find_all : (expr -> bool) -> expr -> Se.t
     in a bottom-up fashion. *)
 val e_map : (expr -> expr) -> expr -> expr
 
+val e_map_ty_maximal : ty -> (expr -> expr) -> expr -> expr
+
 (** [e_ty_outermost ty e] returns the list of outmost subterms of [e] of
     type [ty] *)
 val e_ty_outermost : ty -> expr -> expr list

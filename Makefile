@@ -1,6 +1,6 @@
 -include Makefile.local
 
-OCAMLBUILDFLAGS=-cflags "-w +a-e-9" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind
+OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind
 
 .PHONY : clean all doc test\
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
@@ -19,6 +19,15 @@ TACTIC_MODULES=Tactic/TheoryState.ml Tactic/TheoryState.mli Tactic/Tactic.ml Tac
 
 UTIL_FILES=$(addprefix src/,$(UTIL_MODULES))
 EXPR_FILES=$(addprefix src/,$(EXPR_MODULES))
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+  LIBFLAGS=-lflags -cclib,-Xlinker,-cclib,--no-as-needed,-cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
+endif
+ifeq ($(UNAME_S),Darwin)
+  LIBFLAGS=-lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
+endif
+
 CAS_FILES=$(addprefix src/,$(CAS_MODULES))
 SYMBOLIC_FILES=$(addprefix src/,$(SYMBOLIC_MODULES))
 GAME_FILES=$(addprefix src/,$(GAME_MODULES))
@@ -29,6 +38,16 @@ TACTIC_FILES=$(addprefix src/,$(TACTIC_MODULES))
 cur-dir := $(shell pwd)
 
 all: wszoocrypt
+
+stubs:
+	test -d _build/c_src || mkdir -p _build/c_src
+	c++ -fPIC -c c_src/factory_stubs.cc -o _build/c_src/factory_stubs.o -I/usr/local/include/factory
+	ar rc _build/c_src/libfactorystubs.a _build/c_src/factory_stubs.o
+	c++ -shared -o _build/c_src/libfactorystubs.so _build/c_src/factory_stubs.o -lfactory
+
+stubtest:
+	c++ c_src/factory_stubs.cc -o factory_test -I/usr/local/include/factory -DWITHMAIN -lfactory 
+	./factory_test
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
@@ -62,11 +81,17 @@ clean:
 	ocamlbuild -clean
 	-@rm -rf tutor.docdir
 
-zoocrypt :
-	ocamlbuild $(OCAMLBUILDFLAGS) zoocrypt.native
+zoocrypt : stubs
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) zoocrypt.native
 
-wszoocrypt :
-	ocamlbuild $(OCAMLBUILDFLAGS) wszoocrypt.native 
+factory : stubs
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Factory.native
+
+
+wszoocrypt : stubs
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wszoocrypt.native
+	-killall wszoocrypt.native
+	# ./wszoocrypt.native $(wildcard examples/*.zc)
 
 ##########################################################################
 # Used for development and testing

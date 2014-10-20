@@ -26,7 +26,7 @@ type theory_state =
     ts_rodecls    : (string, Hsym.t) Ht.t;         (*r declared hash functions *)
     ts_odecls     : (string, Osym.t) Ht.t;         (*r declared oracles *)
     ts_adecls     : (string, Asym.t) Ht.t;         (*r declared adversaries *)
-    ts_emdecls    : (string, Esym.t) Ht.t;         (*r declared adversaries *)
+    ts_emdecls    : (string, Esym.t) Ht.t;         (*r declared bilinear maps *)
     ts_assms_dec  : (string, assm_dec) Ht.t;       (*r defined decisional assumptions *)
     ts_assms_comp : (string, assm_comp) Ht.t;      (*r defined computational assumptions *)
     ts_ps         : theory_proof_state             (*r proof state *)
@@ -55,7 +55,6 @@ let get_proof_state_back ts =
   | ActiveProof (_,bg)  -> bg
   | BeforeProof         -> tacerror "cannot apply tactic: no active proof"
   | ClosedTheory _      -> tacerror "cannot apply tactic: theory closed"
-
 
 let get_proof_tree ts = 
   match ts.ts_ps with

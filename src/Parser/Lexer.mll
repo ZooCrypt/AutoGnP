@@ -52,6 +52,7 @@ rule lex = parse
   | "print_proof" { PRINTPROOF }
   | "print_proof!" { PRINTPROOF_EX }
   | "rnorm_unknown" { RNORM_UNKNOWN }
+  | "rnorm_solve" { RNORM_SOLVE }
   | "rnorm" { RNORM }
   | "radd_test" { RADD_TEST }
   | "rcase_ev" { RCASE_EV }

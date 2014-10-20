@@ -8,6 +8,7 @@ open Syms
 open Expr
 open Game
 open Rules
+open NormField
 open ParserUtil
 
 module Ht = Hashtbl
@@ -70,11 +71,11 @@ let transform_expr ju rv rvs e =
   let factor_out_vars = rves @ (Se.elements (Se.diff evs gvars)) in
   mconcat (sorted_nub e_compare factor_out_vars) >>= fun v ->
   guard (ty_equal e.e_ty mk_Fq) >>= fun _ ->
-  match Poly.polys_of_field_expr (CAS.norm id e) with
+  match polys_of_field_expr (CAS.norm id e) with
   | (nom, None) ->
     (*i v = v' * g + h => v' = (v - h) / g i*)
-    let (g,_h) = Poly.factor_out v nom in
-    let e' = Poly.exp_of_poly g in
+    let (g,_h) = factor_out v nom in
+    let e' = exp_of_poly g in
     guard (not (e_equal erv e')) >>= fun _ ->
     guard (Se.mem erv (e_vars e')) >>= fun _ ->
     (* eprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'; *)

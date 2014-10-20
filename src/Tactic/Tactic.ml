@@ -32,8 +32,13 @@ let handle_tactic ts tac =
     | ju::_ -> ju
     | []    -> tacerror "cannot apply tactic: there is no goal"
   in
-  let apply r =
+  let apply ?adecls r =
     try
+      let ts =
+        match adecls with
+        | None   -> ts
+        | Some ad -> { ts with ts_adecls = ad }
+      in
       let pss = CR.apply_first r ps in
       begin match pull pss with
       | Left None     -> tacerror "mempty"
@@ -89,6 +94,10 @@ let handle_tactic ts tac =
   | PU.Rassm_dec(exact,maname,mdir,msvs) ->
     apply (t_assm_dec ts exact maname mdir msvs)
 
+  | PU.Rnorm_solve(se) ->
+    let e = parse_e se in
+    apply (RewriteRules.t_norm_solve e)
+
   | PU.Rexcept_orcl(_op,_es) ->
     failwith "undefined"
     (*i
@@ -141,12 +150,13 @@ let handle_tactic ts tac =
     fail_unless (fun () -> not (Ht.mem ts.ts_adecls aname))
       "radd_test: adversary with same name already declared";
     let asym = Asym.mk aname (mk_Prod []) oty in
-    Ht.add ts.ts_adecls aname asym;
+    let adecls = Ht.copy ts.ts_adecls in
+    Ht.add adecls aname asym;
     let tys = destr_prod  oty in
     fail_unless (fun () -> L.length fvs = L.length tys)
       "number of given variables does not match type";
     let fvs = L.map2 (fun v ty -> PU.create_var vmap v ty) fvs tys in
-    apply (CR.t_add_test op t asym fvs)
+    apply ~adecls (CR.t_add_test op t asym fvs)
 
   | PU.Rbad(i,sx) ->
     let ty =

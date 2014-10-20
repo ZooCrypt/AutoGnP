@@ -5,6 +5,7 @@ open Game
 open CoreRules
 open Expr
 open Norm
+open NormField
 open Util
 
 module Ht = Hashtbl
@@ -135,6 +136,64 @@ let t_norm_unknown unknown ju =
     in aux false e0
   in
   iter_ju_exp ~iexc:false check_unknown new_ju; *)
+  t_conv true new_ju ju
+
+let rewrite_div_reduce a e =
+  let solve a e =
+    assert (Type.is_Fq e.e_ty);
+    let (p1,p2) = polys_of_field_expr e in
+    let (a1,a2) = polys_of_field_expr a in
+    if a2 <> None then e
+    else
+      let g = div_factor p1 a1 in
+      let f = reduce p1 a1 in
+      let mult = if e_equal (mk_FNat 1) g then a else mk_FMult [g; a] in
+      let res =
+        if e_equal (mk_FNat 0) g then (exp_of_poly p1)
+        else if e_equal (mk_FNat 0) f then mult
+        else mk_FPlus [mult; f]
+      in
+      match p2 with
+      | None -> res
+      | Some d ->
+        let e' = mk_FDiv res (exp_of_poly d) in
+        F.eprintf "@[@\n@\nbefore: %a@\n after: res :%a@\n e' %a@\n%!@]" pp_exp e pp_exp res pp_exp e';
+        e'
+  in
+  e_map_ty_maximal Type.mk_Fq (solve a) e
+(*   let rec go in_fe e =
+    match e.e_node with
+    | App(GExp _,[a;b]) ->
+      assert (is_GGen a);
+      let gen = a in
+      let (ies,ce) = simp_exp b unknown in
+      let expio b ie moe =
+        let gen = match b with None -> gen | Some a -> a in
+        match moe with
+        | Some oe -> mk_GExp (mk_GExp gen ie) oe
+        | None    -> mk_GExp gen ie
+      in
+      let a =
+        match ies with
+        | []         -> gen
+        | [b,ie,moe] -> expio b ie moe
+        | ies        -> mk_GMult (List.map (fun (b,ie,moe) -> expio b ie moe) ies)
+      in
+      begin match ce with
+      | None    -> a
+      | Some oe -> mk_GExp a (mk_FInv oe)
+      end
+    | _ ->
+      if is_Fq e.e_type then
+      else e
+  in
+  go e0 *)
+
+(*i normalize field expressions (in exponents and elsewhere such that polynomials are
+    expressed as a*f + g i*)
+let t_norm_solve a ju =
+  let norm e = abbrev_ggen (rewrite_div_reduce (norm_expr a) (norm_expr e)) in
+  let new_ju = map_ju_exp norm ju in
   t_conv true new_ju ju
 
 let t_let_abstract p vs e ju =

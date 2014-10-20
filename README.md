@@ -1,9 +1,32 @@
-All required software can be locally installed in
+# Toolchain
+
+Most required software can be locally installed in
 the source directory using 'make toolchain'.
 
 Note that on debian, the following packages must
 be installed:
   curl libssl-dev make libpcre3-dev m4
+
+# C(++) libraries
+
+To get the required C(++) library, follow these instructions.
+
+1. download and install NTL from
+http://www.shoup.net/ntl/ntl-6.2.1.tar.gz
+
+cd src
+./configure NTL_GMP_LIP=on SHARED=on
+sudo make install
+(make sure to use libtool from ocamlbrew, this should be glibtool
+ installed as /usr/local/bin/libtool)
+
+2. download and install libfactory from
+http://www.mathematik.uni-kl.de/ftp/pub/Math/Factory/factory-4.0.1.tar.gz
+
+./configure --disable-streamio --without-Singular --disable-static
+sudo make install
+
+# Compile ZooCrypt
 
 Then, the websocket server can be compiled
 with 'make'.
@@ -15,27 +38,5 @@ manager for OCaml (see http://opam.ocamlpro.com/):
 - ounit
 - yojson
 - websocket
+- ctypes
 - ... (and their dependencies)
-
-You need an installation of singular [1] to use
-the field simplification.
-
-On mac, you can just download
-  ftp://www.mathematik.uni-kl.de/pub/Math/Singular/UNIX/Singular-3-1-6-ix86Mac-darwin.tar.gz
-and
-  ftp://www.mathematik.uni-kl.de/pub/Math/Singular/UNIX/Singular-3-1-6-share.tar.gz
-and follow the installation instructions on:
-  http://www.singular.uni-kl.de/index.php/singular-download/109.html
-After the installation is finished, you should be able to start "Singular"
-from the commandline.
-
-You also need an installation of Sage [2] for
-field deducibility.
-
-On mac, you can download binaries on:
-  http://www.sagemath.org/download-mac.html
-Afterwards, you have to ensure that "sage" is in
-your path.
-
-[1] http://www.singular.uni-kl.de/
-[2] http://sagemath.org

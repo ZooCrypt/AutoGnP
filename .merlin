@@ -3,6 +3,7 @@ S src/CAS/
 S src/Expr/
 S src/Extract/
 S src/Game/
+S src/Poly/
 S src/Logic/
 S src/Main/
 S src/Parser/
@@ -17,6 +18,7 @@ B _build/src/CAS/
 B _build/src/Expr/
 B _build/src/Extract/
 B _build/src/Game/
+B _build/src/Poly/
 B _build/src/Logic/
 B _build/src/Main/
 B _build/src/Parser/
@@ -26,4 +28,4 @@ B _build/src/Test/
 B _build/src/Type/
 B _build/src/Util/
 
-PKG unix websocket yojson
+PKG unix websocket yojson ctypes

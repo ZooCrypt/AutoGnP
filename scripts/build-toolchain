@@ -108,7 +108,7 @@ EOF
 
 source "${OCONFIG}"
 
-opam install -v -y ounit yojson menhir websocket
+opam install -v -y ounit yojson menhir websocket ctypes
 
 # --------------------------------------------------------------------
 set +xe

@@ -1,0 +1,10 @@
+adversary A : Fq -> Fq.
+
+prove
+  [ a <-$ Fq;
+    b <-$ Fq;
+    a' <- A(b + a);
+  ] : a + b = a'.
+  bycrush. print_proof.
+qed.
+extract "t_rnd_field.zc".

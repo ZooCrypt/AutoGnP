@@ -13,6 +13,3 @@ val mod_reduce : expr -> expr -> bool
     using [f] recursively to normalize all non-field
     subexpressions. *)
 val norm : (expr -> expr) -> expr -> expr 
-
-
-val solve_fq_sage : (expr * inverter) list -> expr -> expr

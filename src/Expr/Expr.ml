@@ -84,13 +84,13 @@ type expr = {
   e_tag  : int
 }
 and expr_node =
-  | V     of Vsym.t          (*r variables (program, logical, random, ...) *)
-  | H     of Hsym.t * expr   (*r hash function application *)
-  | Tuple of expr list       (*r tuples *)
-  | Proj  of int * expr      (*r projection *)
-  | Cnst  of cnst            (*r constants *)
-  | App   of op * expr list  (*r fixed arity operators *)
-  | Nary  of nop * expr list (*r variable arity AC operators *)
+  | V      of Vsym.t          (*r variables (program, logical, random, ...) *)
+  | H      of Hsym.t * expr   (*r hash function application *)
+  | Tuple  of expr list       (*r tuples *)
+  | Proj   of int * expr      (*r projection *)
+  | Cnst   of cnst            (*r constants *)
+  | App    of op * expr list  (*r fixed arity operators *)
+  | Nary   of nop * expr list (*r variable arity AC operators *)
   | Exists of expr * expr * (Vsym.t * Hsym.t) list
     (*r $Exists(e_1,e_2,[(x_1,L_{H_{h1}}),\ldots]$: $\exists x_1 \in L_{H_{h1}}.\, e_1 = e_2$ *)
 
@@ -715,6 +715,36 @@ let e_map f =
       He.add tbl e e';
       e' in
   aux
+
+let e_map_ty_maximal ty g e0 = 
+  let rec go ie e =
+    (* me = e is a maximal expression of the desired type *)
+    let me = not ie && ty_equal e.e_ty ty in
+    (* ie = immediate subterms of e are inside a larger expression of the desired type *)
+    let ie = me || (ie && ty_equal e.e_ty ty) in
+    let trans = if me then g else id in
+    match e.e_node with
+    | V(_) | Cnst(_) -> e
+    | H(f,e) ->
+      let e = go ie e in
+      trans (mk_H f e)
+    | Tuple(es) ->
+      let es = L.map (go ie) es in
+      trans (mk_Tuple es)
+    | Proj(i,e) ->
+      let e = go ie e in
+      trans (mk_Proj i (go ie e))
+    | App(o,es) ->
+      let es = L.map (go ie) es in
+      trans (mk_App o es e.e_ty) 
+    | Nary(o,es) -> 
+      let es = L.map (go ie) es in
+      trans (mk_e (Nary(o,es)) e.e_ty)
+    | Exists(e1,e2,vh) ->
+      let (e1, e2) = (go ie e1, go ie e2) in
+      trans (mk_Exists e1 e2 vh)
+  in
+  go false e0
 
 let e_map_top f = 
   let tbl = He.create 103 in

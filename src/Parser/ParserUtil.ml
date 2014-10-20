@@ -260,6 +260,7 @@ type tactic =
   | Rfalse_ev
   | Rnorm_nounfold
   | Rnorm_unknown  of string list
+  | Rnorm_solve    of parse_expr
   | Rswap          of int * int
   | Rswap_oracle   of G.ocmd_pos * int
   | Rctxt_ev       of string * parse_expr * int
@@ -281,7 +282,7 @@ type tactic =
   | Rremove_ev     of int list
   | Rrewrite_ev    of int * Util.direction
   | Rsplit_ev      of int
-  | Deduce     of parse_expr list * parse_expr
+  | Deduce         of parse_expr list * parse_expr
 
 type instr =
   | RODecl     of string * bool * parse_ty * parse_ty

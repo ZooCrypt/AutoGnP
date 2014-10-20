@@ -92,6 +92,7 @@ type tactic =
   | Rfalse_ev
   | Rnorm_nounfold
   | Rnorm_unknown  of string list
+  | Rnorm_solve    of parse_expr
   | Rswap          of int * int
   | Rswap_oracle   of ocmd_pos * int
   | Rctxt_ev       of string * parse_expr * int

@@ -152,40 +152,26 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
  
   (* Try do deduce interesting subterms for the given type using solvers *)
   let solve ty subexprs = 
-    match ty.ty_node with
-    | BS _ | Bool -> 
-      let k,u = Se.partition is_in subexprs in
-      if Se.is_empty u then Hty.remove tytbl ty
-      else
-        let k = Se.elements k in
-        let k = ref (List.map (fun e -> (e, I (get e))) k) in
-        Se.iter (fun u ->
-          try 
+    if is_G ty then () else
+    let solver =
+      match ty.ty_node with
+      | BS _ | Bool  -> DeducXor.solve_xor
+      | Fq           -> solve_Fq
+      | Prod _ | G _ -> assert false
+    in
+    let k,u = Se.partition is_in subexprs in
+    if Se.is_empty u then Hty.remove tytbl ty
+    else
+      let k = Se.elements k in
+      let k = ref (List.map (fun e -> (e, I (get e))) k) in
+      Se.iter (fun u ->
+        try 
             (* eprintf "trying: solve_xor %a |- %a@\n%!"
               (pp_list "," pp_exp) (L.map fst !k) pp_exp u; *)
-            let inv = DeducXor.solve_xor !k u in
-            add_known u (expr_of_inverter inv);
-            k := (u,inv) :: !k
-          with Not_found -> ()) u
-    | Fq ->
-      let k,u = Se.partition is_in subexprs in
-      if Se.is_empty u then Hty.remove tytbl ty 
-      else
-        let k = Se.elements k in
-        let k = ref (List.map (fun e -> (e,I (get e))) k) in
-        Se.iter
-          (fun u ->
-            try
-              (* eprintf "trying: solve_fq %a |- %a@\n%!"
-                (pp_list "," pp_exp) (L.map fst !k) pp_exp u; *)
-              let inv = solve_Fq !k u in
-              add_known u (expr_of_inverter inv);
-              (* eprintf "found it@\n%!"; *)
-              k := (u,inv) :: !k
-            with Not_found -> ())
-          u
-    | G _gn -> ()
-    | Prod _ -> assert false
+          let inv =  solver !k u in
+          add_known u (expr_of_inverter inv);
+          k := (u,inv) :: !k
+        with Not_found -> ()) u
   in
 
   (* Initialisation *)

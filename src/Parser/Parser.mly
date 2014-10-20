@@ -91,6 +91,7 @@
 %token PRINTPROOF_EX
 %token RNORM
 %token RNORM_UNKNOWN
+%token RNORM_SOLVE
 %token RNORM_NOUNFOLD
 %token RRND
 %token RRND_ORACLE
@@ -364,6 +365,7 @@ instr :
 | RNORM { Apply(Rnorm) }
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
 | RNORM_UNKNOWN is = ID* { Apply(Rnorm_unknown(is)) }
+| RNORM_SOLVE e = expr0 { Apply(Rnorm_solve(e)) }
 | RINDEP { Apply(Rindep(false)) }
 | RINDEP_EX { Apply(Rindep(true)) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
@@ -381,7 +383,7 @@ instr :
 | RRND exact=option(EXCL) mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
   { Apply(Rrnd(exact<>None,map_opt (fun i -> i -1) mi,mc1,mc2)) }
 | DEDUCE  LBRACKET es=separated_list(COMMA,expr0) RBRACKET e=expr0
-   { Apply(Deduce(es,e)) }
+  { Apply(Deduce(es,e)) }
 | RSIMP { Apply(Rsimp) }
 | RCRUSH  mi = uoption(NAT) { Apply(Rcrush(false,mi)) }
 | BYCRUSH { Apply(Rcrush(false,None)) }
@@ -389,15 +391,15 @@ instr :
 | RRND_ORACLE op = uoption(opos) c1 = uoption(ctx) c2 = uoption(ctx) { Apply(Rrnd_orcl(op,c1,c2)) }
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN j = NAT
-   { Apply(Rctxt_ev(i1,e1,j - 1)) }
+  { Apply(Rctxt_ev(i1,e1,j - 1)) }
 | RREMOVE_EV i = int
-   { Apply(Rremove_ev([i - 1])) }
+  { Apply(Rremove_ev([i - 1])) }
 | RSPLIT_EV i = int
-   { Apply(Rsplit_ev(i - 1)) }
+  { Apply(Rsplit_ev(i - 1)) }
 | RCASE_EV e = expr0
-   { Apply(Rcase_ev(e)) }
+  { Apply(Rcase_ev(e)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
-   { Apply(Rctxt_ev(i1,e1,0)) }
+  { Apply(Rctxt_ev(i1,e1,0)) }
 | RFALSE_EV {Apply(Rfalse_ev)}
 | RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_orcl(op,d)) }
 | RREWRITE_EV i = int d = dir { Apply(Rrewrite_ev(i - 1,d)) }
