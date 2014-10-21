@@ -20,4 +20,4 @@ prove
   bycrush 4.
   qed.
   print_proof.
-  extract "extraction/elgamal.ec".
+  extract "extraction/elgamal_std.ec".
