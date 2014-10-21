@@ -17,8 +17,8 @@ http://www.shoup.net/ntl/ntl-6.2.1.tar.gz
 cd src
 ./configure NTL_GMP_LIP=on SHARED=on
 sudo make install
-(make sure to use libtool from ocamlbrew, this should be glibtool
- installed as /usr/local/bin/libtool)
+(on OS X, you have to install glibtool (e.g., using homebrew) and use
+ ./configure NTL_GMP_LIP=on SHARED=on LIBTOOL="glibtool --tag" )
 
 2. download and install libfactory from
 http://www.mathematik.uni-kl.de/ftp/pub/Math/Factory/factory-4.0.1.tar.gz
