@@ -31,3 +31,5 @@ test -n "$SUCCESS_ZC" && printf "\n\e[1;32mSucced ZooCrypt: $SUCCESS_ZC\e[1;0m"
 test -n "$FAILED_ZC" && printf  "\n\e[1;31mFailed ZooCrypt: $FAILED_ZC\e[1;0m"
 test -n "$SUCCESS_EC" && printf "\n\e[1;32mSucced EasyCrypt: $SUCCESS_EC\e[1;0m"
 test -n "$FAILED_EC" && printf  "\n\e[1;31mFailed EasyCrypt: $FAILED_EC\e[1;0m"
+echo ""
+exit 0
