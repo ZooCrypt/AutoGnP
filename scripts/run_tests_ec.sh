@@ -1,18 +1,25 @@
 #! /bin/sh
 
-EC_CMD=echo
+EC_CMD="$HOME/easycrypt/ec.native -I ZooLib -I extraction"
 
-FAILED=""
+FAILED_ZC=""
+FAILED_EC=""
+SUCCESS_ZC=""
+SUCCESS_EC=""
+
 for file in examples/ok/*.zc; do
   printf "File $file: \n"
   before=$(date +%s)
   if ! ./zoocrypt.native $file 2>&1 | grep --colour=always -i -e 'Finished Proof' -e 'EasyCrypt proof script.extracted'; then
     FAILED_ZC="$FAILED_ZC $file"
   else
+    SUCCESS_ZC="$SUCCESS_ZC $file"
     name=`basename $file`
     ec_file=extraction/${name%.zc}.ec
     if ! $EC_CMD ${ec_file}; then
-      FAILED_EC="$FAILED_EC $file"
+      FAILED_EC="$FAILED_EC $ec_file"
+    else
+      SUCCESS_EC="$SUCCESS_EC $ec_file"
     fi
   fi
   after=$(date +%s)
@@ -20,5 +27,7 @@ for file in examples/ok/*.zc; do
   printf  "  \e[1;32m$dt seconds\e[1;0m\n"
 done
 
-echo "\nFailed ZooCrypt: $FAILED_ZC"
-echo "\nFailed EasyCrypt: $FAILED_ZC"
+test -n "$SUCCESS_ZC" && printf "\n\e[1;32mSucced ZooCrypt: $SUCCESS_ZC\e[1;0m"
+test -n "$FAILED_ZC" && printf  "\n\e[1;31mFailed ZooCrypt: $FAILED_ZC\e[1;0m"
+test -n "$SUCCESS_EC" && printf "\n\e[1;32mSucced EasyCrypt: $SUCCESS_EC\e[1;0m"
+test -n "$FAILED_EC" && printf  "\n\e[1;31mFailed EasyCrypt: $FAILED_EC\e[1;0m"
