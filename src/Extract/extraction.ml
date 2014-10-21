@@ -345,7 +345,7 @@ let init_same file ju1 ju2 =
   let g2 = get_game file ju2.ju_gdef in
   let ev1 = formula file [g1.mod_name] (Some "1") ju1.ju_ev in  
   let ev2 = formula file [g2.mod_name] (Some "2") ju2.ju_ev in
-  let ev  = f_eq ev1 ev2 in 
+  let ev  = f_iff ev1 ev2 in 
   let open_pp fmt () = 
     F.fprintf fmt "@[<v>intros &m;byequiv (_: ={glob A} ==> %a);@ "
       pp_form ev;
@@ -422,15 +422,15 @@ let add_rnd cont =
     Tac (TSeq (Rnd::ts)) :: cont
   | _ -> Tac Rnd :: cont
 
-let t_algebra = TOr(Algebra, Smt)
+let t_algebra = TSeq[Algebra; Smt]
 let t_spa = TSeq [Skip;Progress [];t_algebra]
 let t_pa  = TSeq [Progress [];t_algebra]
 let t_aa  = TSeq [Auto;t_algebra]
 let t_id  = TSeq []
 
 let t_pr_if = 
-  Tstring 
-    "by (move=> &m1 &m2 H;rewrite -eq_iff;move: H;progress;(algebra || smt))"
+  Tstring "by progress;algebra *;smt"
+
 
 let rec pp_tac fmt = function
   | Admit     -> F.fprintf fmt "admit" 
@@ -443,7 +443,7 @@ let rec pp_tac fmt = function
     else 
       F.fprintf fmt "progress @[[%a]@]" 
         (pp_list "@ " (fun fmt -> F.fprintf fmt "%s")) s
-  | Algebra   -> F.fprintf fmt "algebra"
+  | Algebra   -> F.fprintf fmt "algebra *"
   | Smt       -> F.fprintf fmt "smt"
   | Call inv  -> F.fprintf fmt "call (_:%a)" pp_form inv
   | If        -> F.fprintf fmt "if" 
@@ -672,10 +672,10 @@ let pr_random file (pos,inv1,inv2) ju1 ju2 fmt () =
     pp_form info.invs;
   let ty = (fst inv1).Vsym.ty in 
   F.fprintf fmt "  progress.@ ";
-  F.fprintf fmt "    by algebra.@ ";
+  F.fprintf fmt "    by algebra *.@ ";
   F.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
   F.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
-  F.fprintf fmt "    by algebra.@ ";
+  F.fprintf fmt "    by algebra *.@ ";
   pp_cmds fmt info.tacs;
   close_pp fmt ()
 
@@ -755,10 +755,10 @@ let pr_random_orcl file (pos, inv1, inv2) ju1 ju2 fmt () =
     pp_form info.invs;
   let ty = (fst inv1).Vsym.ty in 
   F.fprintf fmt "    progress.@ ";
-  F.fprintf fmt "      by algebra.@ ";
+  F.fprintf fmt "      by algebra *.@ ";
   F.fprintf fmt "      by rewrite !%a.@ " (mu_x_def file) ty;
   F.fprintf fmt "      by apply %a.@ " (supp_def file) ty;
-  F.fprintf fmt "      by algebra.@ ";
+  F.fprintf fmt "      by algebra *.@ ";
   F.fprintf fmt "    auto.@ ";
 
 (* End proof of the oracle *)

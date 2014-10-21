@@ -23,6 +23,7 @@ type op =
  | Omul (* * *)
  | Odiv (* / *)
  | Oeq
+ | Oiff 
  | Ole
  | Ostr of string
  | Oand
@@ -90,6 +91,7 @@ type form =
 
 let f_true = Fcnst "true"
 let f_not f = Fapp(Onot, [f])
+let f_iff f1 f2 = Fapp(Oiff, [f1;f2])
 let f_eq f1 f2 = Fapp(Oeq,[f1;f2])
 let f_neq f1 f2 = f_not (f_eq f1 f2)
 let f_le f1 f2 = Fapp(Ole,[f1;f2])

@@ -34,7 +34,8 @@ let   add_lvl = next_lvl mul_lvl
 let    eq_lvl = next_lvl add_lvl 
 let   not_lvl = next_lvl eq_lvl
 let   and_lvl = next_lvl not_lvl 
-let    if_lvl = next_lvl and_lvl 
+let   iff_lvl = next_lvl and_lvl
+let    if_lvl = next_lvl iff_lvl 
 let quant_lvl = next_lvl if_lvl 
 let   max_lvl = max_int 
   
@@ -107,8 +108,9 @@ let rec pp_form_lvl outer fmt = function
       | Odiv, [e1;e2] -> pp_infix pp_form_lvl mul_lvl "/" e1 e2, mul_lvl
       | Oeq,  [e1;e2] -> pp_eq    pp_form_lvl         "=" e1 e2, eq_lvl
       | Ole,  [e1;e2] -> pp_eq    pp_form_lvl         "<=" e1 e2, eq_lvl
-      | Oand, [e1;e2] -> pp_infix pp_form_lvl mul_lvl "/\\" e1 e2, and_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot), _ -> 
+      | Oand, [e1;e2] -> pp_infix pp_form_lvl not_lvl "/\\" e1 e2, and_lvl
+      | Oiff, [e1;e2] -> pp_infix pp_form_lvl and_lvl "<=>" e1 e2, iff_lvl
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot | Oiff), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -173,8 +175,9 @@ let rec pp_exp_lvl outer fmt = function
       | Odiv, [e1;e2] -> pp_infix pp_exp_lvl mul_lvl "/" e1 e2, mul_lvl
       | Oeq,  [e1;e2] -> pp_eq    pp_exp_lvl         "=" e1 e2, eq_lvl
       | Ole,  [e1;e2] -> pp_eq    pp_exp_lvl         "<=" e1 e2, eq_lvl
-      | Oand, [e1;e2] -> pp_infix pp_exp_lvl mul_lvl "/\\" e1 e2, and_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot), _ -> 
+      | Oand, [e1;e2] -> pp_infix pp_exp_lvl not_lvl "/\\" e1 e2, and_lvl
+      | Oiff, [e1;e2] -> pp_infix pp_exp_lvl and_lvl "<=>" e1 e2, iff_lvl
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot | Oiff), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
