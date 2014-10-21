@@ -97,7 +97,10 @@ wszoocrypt : stubs
 # Used for development and testing
 
 test-examples: zoocrypt
-	scripts/run_tests.sh
+	sh scripts/run_tests.sh
+
+test-examples-ec: zoocrypt
+	sh scripts/run_tests_ec.sh
 
 Test_Type :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte
