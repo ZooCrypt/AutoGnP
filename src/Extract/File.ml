@@ -190,15 +190,25 @@ type adv_info = {
   adv_g    : game_info
 }
                       
-type assumption_info = {
-  a_name  : string;
-  a_priv  : Vsym.S.t; 
-  a_param : Vsym.t list;
-  a_advty : string;
-  a_cmd1  : mod_def;
-  a_len1  : int;
-  a_cmd2  : mod_def;
-  a_len2  : int;
+type assumption_dec_info = {
+  ad_name  : string;
+  ad_priv  : Vsym.S.t; 
+  ad_param : Vsym.t list;
+  ad_advty : string;
+  ad_cmd1  : mod_def;
+  ad_len1  : int;
+  ad_cmd2  : mod_def;
+  ad_len2  : int;
+}
+
+type assumption_comp_info = {
+  ac_name  : string;
+  ac_priv  : Vsym.S.t;
+  ac_param : Vsym.t list;
+  ac_advret: ty;
+  ac_advty : string;
+  ac_cmd   : mod_def;
+  ac_len   : int;
 }
 
 type bmap_info = string
@@ -209,7 +219,8 @@ type file = {
   grvar : tvar_info Groupvar.H.t;
   hvar  : hash_info Hsym.H.t;
   bvar  : bmap_info Esym.H.t;
-  assump : (string, assumption_info) Ht.t;
+  assump_dec  : (string, assumption_dec_info) Ht.t;
+  assump_comp : (string, assumption_comp_info) Ht.t;
   mutable game_trans : (gdef * mod_def) list;
   mutable glob_decl  : cmd list;
   mutable adv_info   : adv_info option;
@@ -217,16 +228,17 @@ type file = {
 }
 
 let empty_file = {
-  top_name = Sstring.empty;
-  levar    = Lenvar.H.create 7;
-  grvar    = Groupvar.H.create 7;
-  hvar     = Hsym.H.create 7;
-  bvar     = Esym.H.create 7;
-  assump   = Ht.create 3;
-  game_trans = [];
-  glob_decl  = [];
-  adv_info   = None;
-  loca_decl  = []
+  top_name    = Sstring.empty;
+  levar       = Lenvar.H.create 7;
+  grvar       = Groupvar.H.create 7;
+  hvar        = Hsym.H.create 7;
+  bvar        = Esym.H.create 7;
+  assump_dec  = Ht.create 3;
+  assump_comp = Ht.create 3;
+  game_trans  = [];
+  glob_decl   = [];
+  adv_info    = None;
+  loca_decl   = []
 }
 
 let add_top file s = 
@@ -289,7 +301,7 @@ let bvar_mod file bv =
 
 let add_hash file h = 
   if Hsym.is_ro h then 
-    assert false (* FIXME *)
+    failwith "No able to extract random oracle for the moment"
   else
     let name = top_name file (Hsym.to_string h) in
     let info = { 

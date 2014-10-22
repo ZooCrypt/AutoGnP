@@ -2,7 +2,6 @@ open Util
 open Type
 open Expr 
 open Game 
-open Assumption
 open TheoryState 
 open CoreRules
 open File
@@ -245,11 +244,12 @@ let game ?(local=true) file g =
     else file.glob_decl <- Cmod(modu) :: file.glob_decl;
     modu
 
-let add_assumption file name assum = 
+module Ass = Assumption
+let add_assumption_dec file name assum = 
   let advty = top_name file ("Adv_"^name) in
   let ngame1 = top_name file ("G_"^name^string_of_int 1) in
   let ngame2 = top_name file ("G_"^name^string_of_int 2) in
-  let pub = assum.ad_pubvars in
+  let pub = assum.Ass.ad_pubvars in
   let params = Vsym.S.elements pub in
   let vparams = 
     List.map (fun v -> pvar [] v, v.Vsym.ty) params in
@@ -278,22 +278,71 @@ let add_assumption file name assum =
       mod_body = Mod_def [MCfun main];
     }, List.length init in 
 
-  let g1, len1 = game ngame1 assum.ad_prefix1 in
-  let g2, len2 = game ngame2 assum.ad_prefix2 in
+  let g1, len1 = game ngame1 assum.Ass.ad_prefix1 in
+  let g2, len2 = game ngame2 assum.Ass.ad_prefix2 in
   let info = {
-    a_name  = assum.ad_name;
-    a_priv  = assum.ad_privvars;
-    a_param = params;
-    a_advty = advty;
-    a_cmd1  = g1;
-    a_len1  = len1; 
-    a_cmd2  = g2; 
-    a_len2  = len2;
+    ad_name  = assum.Ass.ad_name;
+    ad_priv  = assum.Ass.ad_privvars;
+    ad_param = params;
+    ad_advty = advty;
+    ad_cmd1  = g1;
+    ad_len1  = len1; 
+    ad_cmd2  = g2; 
+    ad_len2  = len2;
   } in
-  Ht.add file.assump name info
+  Ht.add file.assump_dec name info
+
+let add_assumption_comp file name assum = 
+  let advty = top_name file ("Adv_"^name) in
+  let ngame = top_name file ("G_"^name) in
+  let pub = assum.Ass.ac_pubvars in
+  let params = Vsym.S.elements pub in
+  let vparams = 
+    List.map (fun v -> pvar [] v, v.Vsym.ty) params in
+
+  let game name gdef = 
+    let ares = pvar [] assum.Ass.ac_event_var in
+    let local = 
+      Se.fold (fun e l ->
+        let v = destr_V e in
+        if Vsym.S.mem v pub then l else
+        (pvar [] v, v.Vsym.ty) :: l) (gdef_global_vars gdef) 
+        [ares, assum.Ass.ac_event_var.Vsym.ty]
+    in 
+
+    let res = ([],"_res") in
+    let init = instructions file (mod_name "A" []) gdef in
+    let main = {
+      f_name = "main";
+      f_param = [];
+      f_local = (res,mk_Bool) :: vparams @ local;
+      f_res = Some (res,mk_Bool);
+      f_body = 
+        init @
+          [Icall([ares], (mod_name "A" [], "main"), 
+                 Etuple(List.map (fun v -> Epv(pvar [] v)) params));
+           Iasgn([res], expression file assum.Ass.ac_event)];
+    } in
+    { mod_name = name;
+      mod_param = ["A", advty];
+      mod_body = Mod_def [MCfun main];
+    }, List.length init in 
+
+  let g, len = game ngame assum.Ass.ac_prefix in
+  let info = {
+    ac_name  = assum.Ass.ac_name;
+    ac_priv  = assum.Ass.ac_privvars;
+    ac_param = params;
+    ac_advty = advty;
+    ac_advret = assum.Ass.ac_event_var.Vsym.ty;
+    ac_cmd   = g;
+    ac_len   = len; 
+  } in
+  Ht.add file.assump_comp name info
   
 let add_assumptions file ts = 
-  Ht.iter (fun n a -> add_assumption file n a) ts.ts_assms_dec
+  Ht.iter (fun n a -> add_assumption_dec  file n a) ts.ts_assms_dec;
+  Ht.iter (fun n a -> add_assumption_comp file n a) ts.ts_assms_comp
 
 let init_file ts pft = 
   let file = empty_file in
@@ -776,7 +825,7 @@ let extract_assum file dir subst ainfo pft pft' =
   let g  = game file pft.pt_ju.ju_gdef in
   let g'  = game file pft'.pt_ju.ju_gdef in
   let ev = pft.pt_ju.ju_ev in
-  let len = if dir = LeftToRight then ainfo.a_len1 else ainfo.a_len2 in
+  let len = if dir = LeftToRight then ainfo.ad_len1 else ainfo.ad_len2 in
   let fadv =
     let comp = match g.mod_body with 
       | Mod_def cmp -> cmp 
@@ -788,7 +837,7 @@ let extract_assum file dir subst ainfo pft pft' =
     let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
     let priv = 
       Vsym.S.fold (fun v p -> Sstring.add (Vsym.to_string (subst_v v)) p)
-        ainfo.a_priv Sstring.empty in
+        ainfo.ad_priv Sstring.empty in
     (* The private variables should be remove *)
     let tokeep = function
       | MCvar ((_,v),_) -> not (Sstring.mem v priv) 
@@ -797,8 +846,8 @@ let extract_assum file dir subst ainfo pft pft' =
     let main = 
       let mk_param v = 
         (([], "_" ^ Vsym.to_string v), v.Vsym.ty) in
-      let param = List.map mk_param ainfo.a_param in
-      let glob = List.map subst_v ainfo.a_param in
+      let param = List.map mk_param ainfo.ad_param in
+      let glob = List.map subst_v ainfo.ad_param in
       let assign_global = 
         List.map2 (fun vg (v,_) -> Iasgn([pvar [] vg], Epv v)) glob param in
       let res = ([], "_res") in
@@ -812,14 +861,14 @@ let extract_assum file dir subst ainfo pft pft' =
           assign_global @ 
             (* The head should be remove *)
             drop len f.f_body @ [Iasgn([res], ev)] } in
-    let advname = top_name file ("Fadv_"^ainfo.a_name) in 
+    let advname = top_name file ("Fadv_"^ainfo.ad_name) in 
     { mod_name = advname;
       mod_param = g.mod_param;
       mod_body = Mod_def (comp @ [MCfun main]) } in
   file.glob_decl <- Cmod fadv :: file.glob_decl;
   let fa = mod_name fadv.mod_name [mod_name (adv_name file) []] in
-  let a1 = mod_name ainfo.a_cmd1.mod_name [fa] in
-  let a2 = mod_name ainfo.a_cmd2.mod_name [fa] in
+  let a1 = mod_name ainfo.ad_cmd1.mod_name [fa] in
+  let a2 = mod_name ainfo.ad_cmd2.mod_name [fa] in
   let pr = extract_pr file mem pft.pt_ju in
   let pr' = extract_pr file mem pft'.pt_ju in
   let pra1 = Fpr((a1,"main"), mem, [], Fv(([],"res"),None)) in
@@ -1014,7 +1063,10 @@ let rec extract_proof file pft =
     let pft' = List.hd pft.pt_children in
     extract_proof_sb1 file pft pft' (pr_admit "ctxt_ev")
 
-  | Rremove_ev _ -> assert false
+  | Rremove_ev _ ->
+    let pft' = List.hd  pft.pt_children in
+    extract_proof_sb1_le file pft pft' 
+      (fun fmt () -> F.fprintf fmt "rewrite Pr [mu_sub] => //.")
 
   | Rmerge_ev _ -> 
     let pft' = List.hd pft.pt_children in
@@ -1050,7 +1102,8 @@ let rec extract_proof file pft =
     let pft' = List.hd pft.pt_children in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
     let ainfo = 
-      try Ht.find file.assump assum.ad_name with Not_found -> assert false in
+      try Ht.find file.assump_dec assum.Ass.ad_name 
+      with Not_found -> assert false in
     let lemma2, pr, abs = extract_assum file dir subst ainfo pft pft' in
     let proof fmt () = 
       F.fprintf fmt "@[<v>intros &m.@ ";
@@ -1066,6 +1119,8 @@ let rec extract_proof file pft =
     let lemma3 = 
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
     lemma3, pr, cmp_le, bound 
+
+  | Rassm_comp _ -> default_proof file mem "assm_comp" pft
 
   | Rexc (pos,l)   -> 
     let pft' = List.hd pft.pt_children in
@@ -1101,7 +1156,6 @@ let rec extract_proof file pft =
     let lemma = add_pr_lemma file (mk_cmp pr cmp_eq bound) (Some proof) in
     lemma, pr, cmp_eq, bound
 
-  | Rassm_comp _ -> default_proof file mem "assm_comp" pft
   | Rcase_ev _ -> default_proof file mem "case_ev" pft
   | Rsplit_ev _ -> default_proof file mem "split_ev" pft
   | Rrw_ev (_, _) -> default_proof file mem "rw_ev" pft
@@ -1124,6 +1178,22 @@ and extract_proof_sb1 file pft pft' proof =
   let lemma3 = 
     add_pr_lemma file (mk_cmp pr cmp bound) 
       (Some (pr_intr_rw1_app lemma2 lemma1)) in
+  lemma3, pr, cmp, bound
+
+and extract_proof_sb1_le file pft pft' proof = 
+  let (lemma1, pr',cmp,bound) = extract_proof file pft' in
+  let pr = extract_pr file mem pft.pt_ju in
+  let lemma2 = 
+    add_pr_lemma file (mk_cmp pr cmp_le pr') 
+      (Some proof) in
+  let proof fmt () =
+    F.fprintf fmt "intros &m; cut H1 := %s &m.@ " lemma2;
+    F.fprintf fmt "apply (real_le_trans _ _ _ H1).@ ";
+    F.fprintf fmt "by %s (%s &m)." 
+      (if cmp = cmp_eq then "rewrite" else "apply") lemma1 in
+  let lemma3 = 
+    add_pr_lemma file (mk_cmp pr cmp bound) 
+      (Some proof) in
   lemma3, pr, cmp, bound
   
 

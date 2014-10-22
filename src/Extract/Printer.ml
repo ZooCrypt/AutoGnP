@@ -378,26 +378,45 @@ let pp_var_decl file fmt x =
   F.fprintf fmt "%a:%a"
     Vsym.pp x (pp_type file) (x.Vsym.ty)
 
-let pp_assumption fmt file _name assum =
+let pp_assumption_dec fmt file _name assum =
   (* Declare the module type for the adversary *)
   let pp_adv_decl file fmt pub = 
     F.fprintf fmt "proc main (@[%a@]) : bool"
       (pp_list ",@ " (pp_var_decl file)) pub in
   let pp_mod_ty fmt pub = 
     F.fprintf fmt "module type %s = {@   %a@ }.@ "
-      assum.a_advty (pp_adv_decl file) pub in
+      assum.ad_advty (pp_adv_decl file) pub in
     
   F.fprintf fmt "@[<v>%a@ %a.@ @ %a.@]@ @ "
-    pp_mod_ty assum.a_param
-    (pp_mod_def file) assum.a_cmd1
-    (pp_mod_def file) assum.a_cmd2
+    pp_mod_ty assum.ad_param
+    (pp_mod_def file) assum.ad_cmd1
+    (pp_mod_def file) assum.ad_cmd2
 
+let pp_assumption_comp fmt file _name assum =
+  (* Declare the module type for the adversary *)
+  let pp_adv_decl file fmt pub = 
+    F.fprintf fmt "proc main (@[%a@]) : %a"
+      (pp_list ",@ " (pp_var_decl file)) pub 
+    (pp_type file) assum.ac_advret in
+  let pp_mod_ty fmt pub = 
+    F.fprintf fmt "module type %s = {@   %a@ }.@ "
+      assum.ac_advty (pp_adv_decl file) pub in
+    
+  F.fprintf fmt "@[<v>%a@ %a.@]@ @ "
+    pp_mod_ty assum.ac_param
+    (pp_mod_def file) assum.ac_cmd
     
 let pp_assumptions fmt file = 
-  if Ht.length file.assump <> 0 then begin
-    F.fprintf fmt "(** { Assumptions. } *)@ @ ";
-    Ht.iter (pp_assumption fmt file) file.assump
+  if Ht.length file.assump_dec <> 0 then begin
+    F.fprintf fmt "(** { Decisional Assumptions. } *)@ @ ";
+    Ht.iter (pp_assumption_dec fmt file) file.assump_dec
+  end;
+  if Ht.length file.assump_comp <> 0 then begin
+    F.fprintf fmt "(** { Computational Assumptions. } *)@ @ ";
+    Ht.iter (pp_assumption_comp fmt file) file.assump_comp
   end
+  
+    
 
 let pp_oname1 fmt name = F.fprintf fmt "o%a" Osym.pp name
 let pp_oname fmt name = F.fprintf fmt "O.%a" pp_oname1 name
@@ -409,6 +428,7 @@ let abinding tbl =
   Asym.H.fold (fun k v l -> (k,v)::l) tbl [] 
 
 let pp_adv_type fmt file = 
+  
   let pp_orcl_decl fmt (oname, oinfo) = 
     F.fprintf fmt "@[proc %a (@[%a@]) :@ %a@]"
       pp_oname1 oname 
@@ -426,6 +446,7 @@ let pp_adv_type fmt file =
       (pp_list "@ " pp_adv_decl) (List.rev (abinding ainfo))
   in
   let ginfo = (adv_info file).adv_g in
+  F.fprintf fmt "(** { Adversary Type. } *)@ @ ";
   F.fprintf fmt "@[<v>%a@ %a@ @]"
     pp_orcl_ty ginfo.oinfo
     pp_adv_ty  ginfo.ainfo
