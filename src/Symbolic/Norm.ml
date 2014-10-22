@@ -86,7 +86,9 @@ and mk_simpl_nop op l =
     if l = [] then mk_Zero e.e_ty 
     else mk_Xor (aux l)
       
-  | Land -> 
+  | Land ->
+    (* FIXME: is this really usefull?
+       we should handle conjunctions manually. *)
     let l = List.flatten (List.map destruct_Land l) in
     let l = List.sort e_compare l in
     let rec aux l = 

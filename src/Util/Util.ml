@@ -371,6 +371,9 @@ let rec pp_list sep pp_elt f l =
 let pp_list_c pe = (pp_list "," pe)
 let pp_list_s = pp_list_c (fun fmt -> F.fprintf fmt "%s")
 
+let pp_around before after pp fmt x =
+  F.fprintf fmt "%s%a%s" before pp x after
+
 let pp_string fmt s = F.fprintf fmt "%s" s
 
 let pp_int fmt i = F.fprintf fmt "%i" i

@@ -746,6 +746,38 @@ let e_map_ty_maximal ty g e0 =
   in
   go false e0
 
+let e_iter_ty_maximal ty g e0 = 
+  let rec go ie e0 =
+    (* me = e is a maximal expression of the desired type *)
+    let me = not ie && ty_equal e0.e_ty ty in
+    (* ie = immediate subterms of e inside a larger expression of the desired type *)
+    let ie = me || (ie && ty_equal e0.e_ty ty) in
+    F.printf "### %a ie=%b me=%b\n\n" pp_exp e0 ie me;
+    let run = if me then g else fun _ -> () in
+    match e0.e_node with
+    | V(_) | Cnst(_) -> ()
+    | H(_,e) ->
+      go ie e;
+      run e0
+    | Tuple(es) ->
+      L.iter (go ie) es;
+      run e0
+    | Proj(_,e) ->
+      go ie e;
+      run e0
+    | App(_,es) ->
+      L.iter (go ie) es;
+      run e0
+    | Nary(_,es) -> 
+      L.iter (go ie) es;
+      run e0
+    | Exists(e1,e2,_) ->
+      go ie e1; go ie e2;
+      run e0
+  in
+  go false e0
+
+
 let e_map_top f = 
   let tbl = He.create 103 in
   let rec aux e = 

@@ -182,6 +182,9 @@ val pp_int : F.formatter -> int -> unit
 
 val pp_if : bool -> ('a -> 'b -> 'c) -> ('a -> 'b -> 'c) -> 'a -> 'b -> 'c
 
+val pp_around :
+  string -> string -> (F.formatter -> 'a -> unit) -> F.formatter -> 'a -> unit
+
 val pp_pair : (F.formatter -> 'a -> unit) -> (F.formatter -> 'b -> unit) -> F.formatter -> 'a * 'b -> unit
 
 (** [fsprintf f] executes the format function with the standard
