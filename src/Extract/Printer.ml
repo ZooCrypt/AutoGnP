@@ -319,15 +319,18 @@ let pp_lvars_mod fmt lvars =
     F.fprintf fmt "@ "
 
 let pp_gvars_mod fmt gvars = 
+  F.fprintf fmt "(** { Field declarations. } *)@ @ ";
+  F.fprintf fmt "require import PrimeField.@ ";
+  F.fprintf fmt "require import SDField.@ ";
+  F.fprintf fmt "import FSet.Dexcepted.@ ";
+  F.fprintf fmt "import F.@ ";
+  F.fprintf fmt "@ ";
+
   if Groupvar.H.length gvars <> 0 then 
     let out _ {tvar_mod = name} = 
       F.fprintf fmt "clone import CyclicGroup.CG as %s.@ " name
     in
     F.fprintf fmt "(** { Group declarations. } *)@ @ ";
-    F.fprintf fmt "require import PrimeField.@ ";
-    F.fprintf fmt "require import SDField.@ ";
-    F.fprintf fmt "import FSet.Dexcepted.@ ";
-    F.fprintf fmt "import F.@ ";
     F.fprintf fmt "require CyclicGroup.@ @ ";
     Groupvar.H.iter out gvars;
     F.fprintf fmt "@ "
@@ -483,7 +486,7 @@ let pp_adv_decl fmt file =
 
 let pp_file fmt file = 
   F.fprintf fmt "@[<v>require import Real.@ ";
-  F.fprintf fmt "require import ZooUtil.@ ";
+  F.fprintf fmt "require import ZooUtil.@ @ ";
   pp_lvars_mod fmt file.levar;
   pp_gvars_mod fmt file.grvar;
   pp_bilinear_mod file fmt file.bvar;

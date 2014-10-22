@@ -979,7 +979,7 @@ let bound_rnd_indep file pos ju =
     | BS lv -> f_2pow (bs_length file lv), lvar_mod file lv ^".Dword.mu_x_def"
     | Bool  -> f_2  , "Bool.Dbool.mu_x_def"
     | G _   -> f_Fq,  assert false (* FIXME *)
-    | Fq    -> f_Fq,  "F.FDistr.mu_x_def_in"
+    | Fq    -> f_Fq,  "FDistr.mu_x_def_in"
     | _     -> assert false (* FIXME *) in
   let isize = f_rinv (Frofi size) in
   assert (l = []);
@@ -1001,7 +1001,7 @@ let extract_rnd_indep file side pos ju =
       F.fprintf fmt 
         "proc; rnd ((=) %a); conseq (_ : _ ==> true); last by [].@ "
         pp_form (formula file [g.mod_name] None e);
-      F.fprintf fmt "simplify; intros &m1;progress.@ ";
+      F.fprintf fmt "progress.@ ";
       F.fprintf fmt "apply Real.eq_le;apply %s." lemma
     else assert false;
     F.fprintf fmt "@]" in
@@ -1119,9 +1119,18 @@ let rec extract_proof file pft =
   match pft.pt_rule with
   | Rconv -> extract_conv file pft [] pft
 
-  | Rctxt_ev _ ->
+  | Rctxt_ev (i,_) ->
     let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 file pft pft' (pr_admit "ctxt_ev")
+    let ev = pft.pt_ju.ju_ev in
+    let nev = List.length (destruct_Land ev) in
+    let proof fmt () = 
+      let rec pp_intro fmt i = 
+        if i = nev then F.fprintf fmt "H%i" i
+        else F.fprintf fmt "[H%i %a]" i pp_intro (i+1) in
+      F.fprintf fmt "move=> &m; rewrite Pr [mu_sub]; last by done.@ ";
+      F.fprintf fmt "by intros &hr %a;rewrite H%i." pp_intro 1 (i+1) in
+
+    extract_proof_sb1_le file pft pft' proof
 
   | Rremove_ev _ ->
     let pft' = List.hd  pft.pt_children in
