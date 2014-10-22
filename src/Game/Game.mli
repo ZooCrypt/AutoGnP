@@ -136,6 +136,34 @@ val set_ju_octxt : lcmd list -> ju_octxt -> judgment
 
 val set_ju_lcmd : judgment -> ocmd_pos -> lcmd list -> judgment
 
+(* \subsection{Iterate with context} *) 
+
+type iter_pos =
+  | InEv
+  | InMain       of gcmd_pos
+  | InOrcl       of ocmd_pos
+  | InOrclReturn of odef_pos
+
+val pp_iter_pos : Util.F.formatter -> iter_pos -> unit
+
+type iter_ctx = {
+  ic_pos     : iter_pos;
+  ic_isZero  : expr list;
+  ic_nonZero : expr list
+}
+
+val pp_iter_ctx : Util.F.formatter -> iter_ctx -> unit
+
+val iter_ctx_odef_exp :
+  int -> int -> expr list ->
+  ?iexc:bool -> (iter_ctx -> expr -> unit) -> odef -> unit
+
+val iter_ctx_gdef_exp :
+  ?iexc:bool -> (iter_ctx -> expr -> unit) -> gcmd list -> expr list
+
+val iter_ctx_ju_exp :
+  ?iexc:bool -> (iter_ctx -> expr -> unit) -> judgment -> unit
+
 (*i ----------------------------------------------------------------------- i*)
 (*  \subsection{Equality} *)
 

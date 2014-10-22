@@ -6,6 +6,7 @@ open Type
 open Expr
 open Syms
 open Gsyms
+open Norm
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -267,12 +268,137 @@ let set_ju_lcmd ju p cmds =
   set_ju_octxt cmds ctxt
 
 (*i ----------------------------------------------------------------------- i*)
+(* \subsection{Iterate with context} *)
+
+type iter_pos =
+  | InEv
+  | InMain       of gcmd_pos
+  | InOrcl       of ocmd_pos
+  | InOrclReturn of odef_pos
+
+let pp_iter_pos fmt ip =
+  match ip with
+  | InEv                     -> F.fprintf fmt "inEv"
+  | InMain(i)                -> F.fprintf fmt "inMain(%i)" i
+  | InOrcl(gpos,o_idx,opos)  -> F.fprintf fmt "inOrcl(%i,%i,%i)" gpos o_idx opos
+  | InOrclReturn(gpos,o_idx) -> F.fprintf fmt "inOreturn(%i,%i)" gpos o_idx
+
+type iter_ctx = {
+  ic_pos     : iter_pos;
+  ic_isZero  : expr list;
+  ic_nonZero : expr list
+}
+
+let empty_iter_ctx pos = {
+  ic_pos     = pos;
+  ic_isZero  = [];
+  ic_nonZero = []
+}
+
+let pp_iter_ctx fmt ic =
+  F.fprintf fmt "pos: %a, isZero: %a, nonZero: %a"
+    pp_iter_pos ic.ic_pos
+    (pp_list " /\\ " (pp_around "" " = 0" pp_exp)) ic.ic_isZero
+    (pp_list " /\\ " (pp_around "" " <> 0" pp_exp)) ic.ic_nonZero
+
+let destr_eq e =
+  (* F.printf ">>> destr_eq: %a\n%!" pp_exp e; *)
+  match e.e_node with
+  | App(Eq,[e1;e2]) ->
+    begin match e1.e_ty.ty_node with
+    | G(_gid) ->
+      Some (norm_expr (mk_FMinus (mk_GLog e1) (mk_GLog e2)))
+    | Fq ->
+      Some (norm_expr (mk_FMinus e1 e2))
+    | _ ->
+      None
+    end
+  | _ ->
+    None
+
+let destr_neq e =
+  match e.e_node with
+  | App(Not,[e1]) ->
+    destr_eq e1
+  | _ ->
+    None
+
+let iter_ctx_odef_exp gpos o_idx nz ?iexc:(iexc=false) f (_o,_vs,ms,e) =
+  let nonZero = ref nz in
+  let isZero  = ref [] in
+  let go lcmd_idx lcmd =
+    let ctx = { (empty_iter_ctx (InOrcl(gpos,o_idx,lcmd_idx)))
+                  with ic_nonZero = !nonZero; ic_isZero = !isZero }
+    in
+    match lcmd with
+    | LLet(_,e) ->
+      f ctx e
+    | LBind(_) ->
+      ()
+    | LSamp(v,(_,es)) ->
+      if iexc then L.iter (f ctx) es;
+      let ve = mk_V v in
+      let neqs = L.map (fun e -> destr_eq (mk_Eq ve e)) es in
+      nonZero := catSome neqs @ !nonZero
+    | LGuard(e)  ->
+      f ctx e;
+      isZero := (catSome (L.map destr_eq [e])) @ !isZero;
+      nonZero := (catSome (L.map destr_neq [e])) @ !nonZero
+  in
+  L.iteri go ms;
+  let ctx = { ic_pos = InOrclReturn(gpos,o_idx);
+              ic_nonZero = !nonZero; ic_isZero = !isZero }
+  in
+  f ctx e
+
+let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
+  let nonZero = ref [] in
+  let go pos gcmd =
+    let ctx = { ic_pos = InMain(pos); ic_isZero = []; ic_nonZero = !nonZero } in
+    match gcmd with
+    | GLet(_,e) ->
+      f ctx e
+    | GCall(_,_,e,os) ->
+      f ctx e;
+      L.iteri (fun oi -> iter_ctx_odef_exp pos oi !nonZero ~iexc f) os
+    | GSamp(v,(_,es)) ->
+      if iexc then L.iter (f ctx) es;
+      let ve = mk_V v in
+      let neqs = L.map (fun e -> destr_eq (mk_Eq ve e)) es in
+      nonZero := catSome neqs @ !nonZero
+  in
+  L.iteri go gdef;
+  !nonZero
+
+let iter_ctx_ju_exp ?iexc:(iexc=false) f ju =
+  let nz = iter_ctx_gdef_exp ~iexc f ju.ju_gdef in
+  if is_Land ju.ju_ev then (
+    let conjs = destr_Land ju.ju_ev in
+    let (ineqs,eqs) = L.partition is_Not conjs in
+    let nonZero = ref nz in
+    let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
+    let iter_ineq ineq =
+      (* f ctx ineq; *) (* FIXME: useless for the case we are interested in *)
+      match destr_neq ineq with
+      | Some e ->
+        nonZero := e :: !nonZero
+      | None -> ()
+    in
+    L.iter iter_ineq ineqs;
+    let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = !nonZero } in
+    L.iter (f ctx) eqs
+  ) else (
+    let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
+    f ctx ju.ju_ev
+  )
+
+(*i ----------------------------------------------------------------------- i*)
 (* \subsection{Equality} *) 
 
-let distr_equal (ty1,es1) (ty2,es2) = 
+let distr_equal (ty1,es1) (ty2,es2) =
   ty_equal ty1 ty2 && list_eq_for_all2 e_equal es1 es2
   
-let lcmd_equal i1 i2 = 
+let lcmd_equal i1 i2 =
   match i1, i2 with
   | LLet(x1,e1), LLet(x2,e2) ->
     Vsym.equal x1 x2 && e_equal e1 e2
@@ -288,7 +414,7 @@ let lcmd_equal i1 i2 =
 
 let lcmds_equal c1 c2 = list_eq_for_all2 lcmd_equal c1 c2
 
-let odef_equal (o1,xs1,c1,e1) (o2,xs2,c2,e2) = 
+let odef_equal (o1,xs1,c1,e1) (o2,xs2,c2,e2) =
   Osym.equal o1 o2 &&
     list_eq_for_all2 Vsym.equal xs1 xs2 &&
     lcmds_equal c1 c2 &&
@@ -311,7 +437,7 @@ let gcmd_equal i1 i2 =
 
 let gdef_equal c1 c2 = list_eq_for_all2 gcmd_equal c1 c2
 
-let ju_equal ju1 ju2 = 
+let ju_equal ju1 ju2 =
   gdef_equal ju1.ju_gdef ju2.ju_gdef &&
     e_equal ju1.ju_ev ju2.ju_ev
 
