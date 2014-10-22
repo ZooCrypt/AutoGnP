@@ -90,6 +90,7 @@
 %token PRINTGOAL
 %token PRINTPROOF
 %token PRINTPROOF_EX
+%token PRINTDEBUG
 %token RNORM
 %token RNORM_UNKNOWN
 %token RNORM_SOLVE
@@ -364,6 +365,7 @@ instr :
 | PRINTPROOF { PrintProof(false) }
 | PRINTPROOF_EX { PrintProof(true) }
 | PRINTGOALS { PrintGoals("") }
+| PRINTDEBUG s=STRING { Debug s }
 | RNORM { Apply(Rnorm) }
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
 | RNORM_UNKNOWN is = ID* { Apply(Rnorm_unknown(is)) }

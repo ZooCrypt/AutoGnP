@@ -51,6 +51,7 @@ rule lex = parse
   | "print_goal" { PRINTGOAL }
   | "print_proof" { PRINTPROOF }
   | "print_proof!" { PRINTPROOF_EX }
+  | "print_debug" { PRINTDEBUG }
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm_solve" { RNORM_SOLVE }
   | "rnorm" { RNORM }
@@ -108,6 +109,7 @@ rule lex = parse
   | "/"     { SLASH }
   | "/\\"   { LAND }
   | "<-"    { LEFTARROW }
+  | "<>"    { NEQ }
   | "<-$"   { SAMP }
   | "\\"    { BACKSLASH }
   | "["     { LBRACKET }

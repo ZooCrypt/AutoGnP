@@ -134,5 +134,6 @@ type instr =
   | Back
   | Qed
   | Extract    of string
+  | Debug      of string
 
 type theory = instr list
