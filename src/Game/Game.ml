@@ -376,7 +376,7 @@ let iter_ctx_ju_exp ?iexc:(iexc=false) f ju =
     let conjs = destr_Land ju.ju_ev in
     let (ineqs,eqs) = L.partition is_Not conjs in
     let nonZero = ref nz in
-    let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
+    let _ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
     let iter_ineq ineq =
       (* f ctx ineq; *) (* FIXME: useless for the case we are interested in *)
       match destr_neq ineq with
