@@ -43,12 +43,17 @@ let t_rewrite_ev_maybe mi mdir ju =
     end
   | None ->
     guard (is_Land ev) >>= fun _ ->
-    mconcat (L.mapi (fun i e -> (i,e)) (destr_Land ev)) >>= fun (i,e) ->
+    let conjs = L.mapi (fun i e -> (i,e)) (destr_Land ev) in
+    mconcat conjs >>= fun (i,e) ->
+    let others = L.filter (fun (j,_) -> i <> j) conjs in
+    let occ_others e' = L.exists (fun (_,e) -> e_exists (e_equal e') e) others in
     guard (is_Eq e) >>= fun _ ->
     let (a,b) = destr_Eq e in
-    mplus 
-      (if (is_V a) then (ret LeftToRight) else mempty)
-      (if (is_V b) then (ret RightToLeft) else mempty) >>= fun dir ->
+    msum
+      [ if (is_V a) || (is_H a && is_H b && occ_others a && e_compare a b > 0)
+        then (ret LeftToRight) else mempty
+      ; if (is_V b) || (is_H a && is_H b && occ_others b && e_compare b a > 0)
+        then (ret RightToLeft) else mempty ] >>= fun dir ->
     ret (i,dir)
   ) >>= fun (i,dir) ->
   (CR.t_ensure_progress (CR.t_rw_ev i dir)) ju
@@ -64,12 +69,11 @@ let t_rewrite_oracle_maybe mopos mdir ju =
     mconcat (oguards ju.ju_gdef) >>= fun (opos,e) ->
     guard (is_Eq e) >>= fun _ ->
     let (a,b) = destr_Eq e in
-    mplus 
-      (if (is_V a) then (ret LeftToRight) else mempty)
-      (if (is_V b) then (ret RightToLeft) else mempty) >>= fun dir ->
+    msum
+      [ if (is_V a) then (ret LeftToRight) else mempty
+      ; if (is_V b) then (ret RightToLeft) else mempty ] >>= fun dir ->
     ret (opos,dir)
   ) >>= fun (opos,dir) ->
-  
   (CR.t_ensure_progress (CR.t_rewrite_oracle opos dir)) ju
 
 let t_fix must_finish max t ju =
@@ -206,7 +210,7 @@ let t_crush must_finish mi ts ps ju =
   in
   let get_pt ps2 =
     CR.get_proof (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps2) ps)))
-   in
+  in
   if i > 0 then (
     if must_finish then 
       bycrush step get_pt i (first (CR.t_id ju))
