@@ -195,7 +195,7 @@ let t_crush must_finish mi ts ps ju =
     let iorvs = psi.psi_rvars in
     let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in
     let t_close =
-      ((t_simp false 10 ts @> t_norm_xor_id) @|| CR.t_id)
+      ((t_simp false 20 ts @> t_norm_xor_id) @|| CR.t_id)
       @> (t_random_indep false @|| t_assm_comp ts false None None)
     in
     let t_progress = 
