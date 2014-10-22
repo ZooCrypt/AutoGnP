@@ -7,4 +7,4 @@ prove
   ] : a + b = a'.
   bycrush. print_proof.
 qed.
-extract "t_rnd_field.zc".
+extract "extraction/t_rnd_field.ec".

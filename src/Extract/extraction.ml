@@ -999,7 +999,7 @@ let extract_rnd_indep file side pos ju =
       let e1,e2 = destr_Eq ev in
       let e = if side then e2 else e1 in
       F.fprintf fmt 
-        "proc; rnd ((=) %a); conseq (_ : _ ==> true); last by [].@ "
+        "proc; rnd ((=) (%a)); conseq (_ : _ ==> true); last by [].@ "
         pp_form (formula file [g.mod_name] None e);
       F.fprintf fmt "progress.@ ";
       F.fprintf fmt "apply Real.eq_le;apply %s." lemma
