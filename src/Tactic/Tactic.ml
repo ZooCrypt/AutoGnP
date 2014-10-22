@@ -350,7 +350,15 @@ let handle_instr ts instr =
 
   | PU.Extract filename ->
     Extraction.extract ts filename;
-    (ts, "EasyCrypt proof script extracted.")
+    (ts, "EasyCrypt proof script extracted into file: "^filename)
+
+  | PU.Debug cmd ->
+    begin match cmd with
+    | "cases" ->
+      CaseRules.print_cases ts
+    | _ ->
+      tacerror "Unknown debug command."
+    end
 
 let eval_theory s =
   let pt = Parse.theory s in
