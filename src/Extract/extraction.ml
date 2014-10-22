@@ -880,7 +880,7 @@ let extract_assum file dir subst ainfo pft pft' =
       "@[<v> intros &m; byequiv (_: @[={glob A} ==>@ %a@]) => //.@ "
       pp_form (f_eq ev (Fv(([], "res"), Some "2")));
     F.fprintf fmt
-      "by proc; inline{2} %a; wp; sim.@]"
+      "by proc; inline{2} %a; wp => /=; sim.@]"
       pp_fun_name (fa,"main") in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
@@ -898,6 +898,66 @@ let extract_assum file dir subst ainfo pft pft' =
       (mk_cmp pr cmp_le (f_radd abs pr'))
       (Some proof) in
   concl, pr, abs 
+
+let extract_assum_comp file subst ainfo expr pft =
+  let g  = game file pft.pt_ju.ju_gdef in
+  let len = ainfo.ac_len in
+  let fadv =
+    let comp = match g.mod_body with 
+      | Mod_def cmp -> cmp 
+      | _ -> assert false in
+    let comp, f = 
+      match List.rev comp with 
+      | MCfun f :: r -> List.rev r, f
+      | _ -> assert false in
+    let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
+    let priv = 
+      Vsym.S.fold (fun v p -> Sstring.add (Vsym.to_string (subst_v v)) p)
+        ainfo.ac_priv Sstring.empty in
+    (* The private variables should be remove *)
+    let tokeep = function
+      | MCvar ((_,v),_) -> not (Sstring.mem v priv) 
+      | _ -> true in
+    let comp = List.filter tokeep comp in
+    let main = 
+      let mk_param v = 
+        (([], "_" ^ Vsym.to_string v), v.Vsym.ty) in
+      let param = List.map mk_param ainfo.ac_param in
+      let glob = List.map subst_v ainfo.ac_param in
+      let assign_global = 
+        List.map2 (fun vg (v,_) -> Iasgn([pvar [] vg], Epv v)) glob param in
+      let res = ([], "_res") in
+      let dres = res, ainfo.ac_advret in
+      let ev = expression file expr in
+      { f_name = "main";
+        f_param = param;
+        f_local = [dres];
+        f_res   = Some dres;
+        f_body  = 
+          assign_global @ 
+            (* The head should be remove *)
+            drop len f.f_body @ [Iasgn([res], ev)] } in
+    let advname = top_name file ("Fadv_"^ainfo.ac_name) in 
+    { mod_name = advname;
+      mod_param = g.mod_param;
+      mod_body = Mod_def (comp @ [MCfun main]) } in
+  file.glob_decl <- Cmod fadv :: file.glob_decl;
+  let fa = mod_name fadv.mod_name [mod_name (adv_name file) []] in
+  let a = mod_name ainfo.ac_cmd.mod_name [fa] in
+  let pr = extract_pr file mem pft.pt_ju in
+  let pra = Fpr((a,"main"), mem, [], Fv(([],"res"),None)) in
+  let proof_ass g ev fmt () = 
+    let ev = formula file [g.mod_name] (Some "1") ev in
+    F.fprintf fmt 
+      "@[<v> intros &m; byequiv (_: @[={glob A} ==>@ %a@]) => //.@ "
+      pp_form (f_eq ev (Fv(([], "res"), Some "2")));
+    F.fprintf fmt
+      "by proc; inline{2} %a; wp => /=; sim.@]"
+      pp_fun_name (fa,"main") in
+  let lemma = 
+    add_pr_lemma file (mk_cmp pr cmp_eq pra) 
+      (Some (proof_ass g pft.pt_ju.ju_ev)) in
+  lemma, pr, cmp_eq, pra
 
 let rec skip_conv pft = 
   match pft.pt_rule with
@@ -1120,7 +1180,11 @@ let rec extract_proof file pft =
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
     lemma3, pr, cmp_le, bound 
 
-  | Rassm_comp _ -> default_proof file mem "assm_comp" pft
+  | Rassm_comp (expr,subst, assum) -> 
+    let ainfo = 
+      try Ht.find file.assump_comp assum.Ass.ac_name 
+      with Not_found -> assert false in
+    extract_assum_comp file subst ainfo expr pft
 
   | Rexc (pos,l)   -> 
     let pft' = List.hd pft.pt_children in
