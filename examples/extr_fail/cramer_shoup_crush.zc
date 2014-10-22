@@ -72,10 +72,9 @@ prove
   rsimp.
   print_debug "cases".
 
-  rcase_ev (H(ea,ea',ec) = H(g ^ u,g ^ xxxx61,g ^ z2)). rsimp.
-    rnorm_solve y2. rrewrite_ev 4 ->.
+  rcase_ev (H(ea,ea',ec) = H(g ^ u,g ^ xxxx1,g ^ z2)). rsimp.
     print_debug "cases".
-    rcase_ev ((ea,ea',ec) = (g ^ u,g ^ xxxx61,g ^ z2)).
+    rcase_ev ((ea,ea',ec) = (g ^ u,g ^ xxxx1,g ^ z2)).
       bycrush 1.
     bycrush.
   bycrush.
