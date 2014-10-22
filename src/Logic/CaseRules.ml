@@ -6,6 +6,8 @@ open Type
 open Expr
 open Game
 open Syms
+open Nondet
+open Rules
 open TheoryState
 open CoreRules
 open NormField
@@ -51,14 +53,15 @@ let pp_useful_cases fmt uc =
   | AppExceptOrcl((g_idx,oi,o_idx),e) ->
     F.fprintf fmt "app(rexcept_orcl (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e
   | AppExcept(g_idx,e) ->
-    F.fprintf fmt "app(rexcept (%i) %a" g_idx pp_exp e
+    F.fprintf fmt "app(rexcept (%i) %a)" g_idx pp_exp e
   | AppCaseEv(e) ->
     F.fprintf fmt "app(rcase_ev %a)" pp_exp e
 
 let is_Useless e =
   is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e)) || is_H e
 
-let compute_case cases mhidden _fbuf ctx e =
+let compute_case gdef mhidden _fbuf ctx e =
+  let cases = ref [] in
   let fes = ref Se.empty in
   e_iter_ty_maximal mk_Fq (fun e -> fes := Se.add e !fes) e;
   (* F.fprintf fbuf "@[  max_field:    %a@\n@]%!"
@@ -78,27 +81,49 @@ let compute_case cases mhidden _fbuf ctx e =
         (Se.elements !fes))
     mhidden;
   let facs = Se.diff !facs (se_of_list (ctx.ic_nonZero @ ctx.ic_isZero)) in
+  let samps = samplings gdef in
+  let rvars = se_of_list (L.map (fun (_,(v,_)) -> mk_V v) samps) in
+  let is_invertible e =
+    (not (is_Zero e)) &&
+      (is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e)))
+  in
+  (* NOTE: we could also take into account that v can be moved forward and
+           the required variables could be moved forward *)
+  let used_vars_defined uvs j =
+    L.for_all
+      (fun uv ->
+        L.mem (destr_V uv)
+          (catSome (L.map (fun (i,(v,_)) -> if i < j then Some(v) else None) samps)))
+      (Se.elements uvs)
+  in
   let add_case e =
-    (* 
     let (num,denom) = polys_of_field_expr e in
     if denom = None then (
-      (* check if num solvable for random variable, then we can ensure that
-         num <> 0 by applying rexcept *)
-      ()
-    ) else (
-    *)
-    (
-      (* we cannot make the value non-zero, so we try to make it zero *)
+      (* check if num solvable for random variable, then we can possibly
+         ensure that num <> 0 by applying rexcept *)
+      L.iter
+        (fun (j,(v,_)) ->
+          let ve = mk_V v in
+          let (coeff,rem) = NormField.div_reduce num (EP.var ve) in
+          let uvs = e_vars rem in
+          if is_invertible coeff && used_vars_defined uvs j then (
+            let exce = Norm.norm_expr (mk_FDiv rem (mk_FOpp coeff)) in
+            cases := AppExcept(j,exce) :: !cases;
+            (* F.fprintf fbuf "@[  for %a, except %a@\n@]%!"
+                pp_exp ve
+                pp_exp exce *)
+          )
+        )
+        samps
+    );
+    (* Schwartz-Zippel tells us that we cannot make the value zero in the other case *)
+    if not (Se.subset (e_vars e) rvars) then (
       match ctx.ic_pos with
-      | InEv ->
-        cases := AppCaseEv(e) :: !cases
-      | InMain(_gpos) ->
-        (* can we do anything here? rexcept is already handled above if possible *)
-        ()
-      | InOrcl(gpos,oi,_opos) ->
-        cases := AppAddTest((gpos,oi,0),e) :: !cases
-      | InOrclReturn(gpos,oi) ->
-        cases := AppAddTest((gpos,oi,0),e) :: !cases
+      | InEv                  -> cases := AppCaseEv(e) :: !cases
+      | InOrcl(gpos,oi,_opos) -> cases := AppAddTest((gpos,oi,0),e) :: !cases
+      | InOrclReturn(gpos,oi) -> cases := AppAddTest((gpos,oi,0),e) :: !cases
+      | InMain(_gpos)         -> ()
+        (* can we do anything above? rexcept is already handled above if possible *)
     )
   in
   if not (Se.is_empty facs) then (
@@ -108,7 +133,8 @@ let compute_case cases mhidden _fbuf ctx e =
     F.fprintf fbuf "@[  facs:    %a@\n@]%!"
       (pp_list ", " pp_exp) (Se.elements facs);
    *)                        
-  )
+  );
+  !cases
 
 let destr_Rev_Var e =
   match e.e_node with
@@ -134,10 +160,8 @@ let maybe_hidden_rvars gdef =
   in
   go [] gdef
 
-let print_cases ts =
+let get_cases fbuf ts =
   let ju   =  L.hd (get_proof_state ts).subgoals in
-  let buf  = Buffer.create 127 in
-  let fbuf = F.formatter_of_buffer buf in
   let maybe_hidden = maybe_hidden_rvars ju.ju_gdef in
   let cases = ref [] in
   F.fprintf fbuf "@[maybe hidden: %a@\n@\n@]" (pp_list ", " Vsym.pp) maybe_hidden;
@@ -145,7 +169,11 @@ let print_cases ts =
      and potentially hidden variables *)
   (* write function that traverses all maximal expression of type F_p together
      with position and determines useful case rule applications *)
-  iter_ctx_ju_exp (compute_case cases maybe_hidden fbuf) ju;
+  iter_ctx_ju_exp
+    (fun ctx e ->
+      let cs = compute_case ju.ju_gdef maybe_hidden fbuf ctx e in
+      cases := cs @ !cases)
+    ju;
   let cases = sorted_nub compare_uc !cases in
   (* we choose the earliest position if there are multiple occurences with the
      same expression *)
@@ -153,5 +181,37 @@ let print_cases ts =
     group (fun uc1 uc2 -> e_equal (uc_exp uc1) (uc_exp uc2)) cases
     |> L.map L.hd
   in
-  F.fprintf fbuf "@[cases: %a@\n@\n@]" (pp_list ", " pp_useful_cases) cases;
+  cases
+
+let print_cases ts =
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  let cases = get_cases fbuf ts in
+  F.fprintf fbuf "@[cases after:@\n  %a@\n@\n@]" (pp_list ",@\n  " pp_useful_cases) cases;
   (ts, "Here:\n\n"^(Buffer.contents buf))
+
+let t_rexcept_maybe ts mi mes ju =
+  if mes <> None
+  then failwith "rexcept: placeholder for index, but not for expression not supported";
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  let cases = get_cases fbuf ts in
+  let except = catSome (L.map (function AppExcept(i,e) -> Some(i,e) | _ -> None) cases) in
+  mconcat except >>= fun (j,e) ->
+  guard (match mi with Some i -> i = j | None -> true) >>= fun _ ->
+  CoreRules.t_except j [e] ju
+
+(*
+let t_addtest_maybe ts mopos mt ju =
+  if mt <> None
+  then failwith "radd_test: placeholder for oracle position, but not for test not supported";
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  let cases = get_cases fbuf ts in
+  let except =
+    catSome (L.map (function AppAddTest(opos,e) -> Some(opos,e) | _ -> None) cases)
+  in
+  mconcat except >>= fun (opos,t) ->
+  guard (match mopos with Some opos' -> opos' = opos | None -> true) >>= fun _ ->
+  CoreRules.t_add_test opos t [] ju
+*)

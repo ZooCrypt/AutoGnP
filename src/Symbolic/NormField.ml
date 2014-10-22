@@ -301,3 +301,11 @@ let reduce pe1 pe2 =
     let p3 = Factory.reduce p1 p2 in
     import_ipoly "reduce" p3 hr
   | _ -> assert false
+
+let div_reduce pe1 pe2 =
+  match ep_to_ip [pe1; pe2] with
+  | [p1;p2], hr ->
+    let p3 = Factory.div p1 p2 in
+    let p4 = Factory.reduce p1 p2 in
+    (import_ipoly "div" p3 hr,import_ipoly "reduce" p4 hr)
+  | _ -> assert false

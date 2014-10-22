@@ -14,6 +14,7 @@ open AssumptionRules
 open RandomRules
 open RindepRules
 open CrushRules
+open CaseRules
 open Game
 
 module Ht = Hashtbl
@@ -63,12 +64,17 @@ let handle_tactic ts tac =
   | PU.Rnorm_nounfold        -> apply t_norm_nounfold
   | PU.Rlet_unfold(i)        -> apply (t_let_unfold i)
   | PU.Rswap(i,j)            -> apply (CR.t_swap i j)
-  | PU.Rexcept(i,ses)        -> apply (CR.t_except i (L.map (parse_e) ses))
   | PU.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
   | PU.Rsplit_ev(i)          -> apply (CR.t_split_ev i)
   | PU.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev i d)
   | PU.Rcase_ev(se)          -> apply (CR.t_case_ev (parse_e se))
   | PU.Rcrush(finish,mi)     -> apply (t_crush finish mi ts ps)
+
+  | PU.Rexcept(Some(i),Some(ses)) ->
+    apply (CR.t_except i (L.map (parse_e) ses))
+
+  | PU.Rexcept(i,ses) ->
+    apply (t_rexcept_maybe ts i ses)
 
   | PU.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
   | PU.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
