@@ -1111,8 +1111,8 @@ let default_proof file mem s pft =
   let pr = extract_pr ~local:false file mem pft.pt_ju in
   let lemma = add_pr_lemma file (mk_cmp pr cmp_eq pr) 
     (Some (fun fmt () -> 
-      F.fprintf fmt "(* %s *)@ " s;
-      F.fprintf fmt "trivial.@ ")) in
+      F.fprintf fmt "(* WARNING rule %s not extracted*)@ " s;
+      F.fprintf fmt "trivial.")) in
   lemma, pr, cmp_eq, pr 
 
 let rec extract_proof file pft = 
