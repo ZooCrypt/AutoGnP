@@ -375,6 +375,7 @@ let t_assm_comp_auto ts assm mev_e ju =
       match_samps
     |> cat_Some
   in
+  (* FIXME: use case_ev and rfalse to handle case with missing events *)
   let remove_events =
     if not (is_Land assm.ac_event && is_Land ju.ju_ev) then ( [] )
     else (

@@ -247,7 +247,6 @@ let pp_proof_tree_non_verbose fmt pt =
   in
   aux 0 pt
 
-
 let pp_proof_tree verbose =
   if verbose then pp_proof_tree_verbose else pp_proof_tree_non_verbose
   

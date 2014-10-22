@@ -116,7 +116,7 @@ let rewrite_exps unknown e0 =
 let t_norm_unknown unknown ju =
   let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
   let new_ju = map_ju_exp norm ju in
-  (* this is too restricting, maybe we should give the allowed contexts?
+  (* this is too restrictive, maybe we should give the allowed contexts?
   let unknown_se = se_of_list unknown in
   let check_unknown e0 =
     let rec aux ok_ctxt (e : expr) =
@@ -161,33 +161,6 @@ let rewrite_div_reduce a e =
         e'
   in
   e_map_ty_maximal Type.mk_Fq (solve a) e
-(*   let rec go in_fe e =
-    match e.e_node with
-    | App(GExp _,[a;b]) ->
-      assert (is_GGen a);
-      let gen = a in
-      let (ies,ce) = simp_exp b unknown in
-      let expio b ie moe =
-        let gen = match b with None -> gen | Some a -> a in
-        match moe with
-        | Some oe -> mk_GExp (mk_GExp gen ie) oe
-        | None    -> mk_GExp gen ie
-      in
-      let a =
-        match ies with
-        | []         -> gen
-        | [b,ie,moe] -> expio b ie moe
-        | ies        -> mk_GMult (List.map (fun (b,ie,moe) -> expio b ie moe) ies)
-      in
-      begin match ce with
-      | None    -> a
-      | Some oe -> mk_GExp a (mk_FInv oe)
-      end
-    | _ ->
-      if is_Fq e.e_type then
-      else e
-  in
-  go e0 *)
 
 (*i normalize field expressions (in exponents and elsewhere such that polynomials are
     expressed as a*f + g i*)
