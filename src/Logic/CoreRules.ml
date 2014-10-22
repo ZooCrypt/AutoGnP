@@ -20,7 +20,7 @@ type renaming = vs Vsym.M.t
 let id_renaming = Vsym.M.empty
 
 (** Low-level rules (extractable to EasyCrypt). *)
-type rule_name = 
+type rule_name =
 
   (*c equivalence/small statistical distance: main *)
   | Rconv                                  (*r rename, unfold let, normalize *)
@@ -82,7 +82,7 @@ let pt_replace_children pt pts =
   assert (Util.list_eq_for_all2 equal_fact pt.pt_children pts);
   { pt with pt_children = pts }
 
-(** A goal is just a judgment (for now). *) 
+(** A goal is just a judgment (for now). *)
 type goal = judgment
 
 (** A rule takes a [goal] and returns a [rule_name] and the new goals. *)
@@ -92,7 +92,7 @@ type rule = goal -> rule_name * goal list
     It returns a proof tree given proof trees for the holes. *)
 type validation = proof_tree list -> proof_tree
 
-(** A proof state consists of the remaining goals and the validation. *) 
+(** A proof state consists of the remaining goals and the validation. *)
 type proof_state = {
   subgoals   : goal list;
   validation : validation
@@ -108,7 +108,7 @@ let mk_name () = "xxxx"^string_of_int (unique_int ())
 (* \subsection{General purpose functions} *)
 
 (** Raised if there is no open goal. *)
-exception NoOpenGoal 
+exception NoOpenGoal
 
 (** Fail with message [s] if variable [vs] occurs in [ju]. *)
 let fail_if_occur vs ju s =
@@ -117,7 +117,7 @@ let fail_if_occur vs ju s =
 
 (** Prove goal [g] by rule [ru] which yields [subgoals]. *)
 let prove_by ru g =
-  try    
+  try
     let (rn, subgoals) = ru g in
     ret
       { subgoals = subgoals;
@@ -134,14 +134,14 @@ let prove_by ru g =
       mfail s
 
 (** Get proof from proof state with no open goals. *)
-let get_proof ps = 
+let get_proof ps =
   if ps.subgoals <> [] then tacerror "get_proof: open subgoals remaining";
   ps.validation []
 
 (** Given a list of proof states and a validation, create a new proof state
     with the combined subgoals and a combined validation. *)
 let merge_proof_states pss validation =
-  let rec validation' accu pss pts = 
+  let rec validation' accu pss pts =
     match pss with
     | [] ->
       assert (pts = []);
@@ -157,11 +157,11 @@ let merge_proof_states pss validation =
 (* \subsection{Tacticals and goal management} *)
 
 (** Tactic that moves the first subgoal to the last position. *)
-let move_first_last ps = 
+let move_first_last ps =
   match ps.subgoals with
   | [] -> tacerror "last: no goals"
   | ju :: jus ->
-    let validation pts = 
+    let validation pts =
       match L.rev pts with
       | pt :: pts -> ps.validation (pt::L.rev pts)
       | _ -> assert false in
@@ -169,12 +169,12 @@ let move_first_last ps =
       validation = validation }
 
 (** Apply the tactic [t] to the [n]-th subgoal of proof state [ps]. *)
-let apply_on_n n t ps = 
+let apply_on_n n t ps =
   let len = L.length ps.subgoals in
   if len = 0 then raise NoOpenGoal;
   if len <= n then tacerror "there is only %i subgoals" len;
-  let hd, g, tl = 
-    Util.split_n n ps.subgoals  
+  let hd, g, tl =
+    Util.split_n n ps.subgoals
   in
   t g >>= fun gsn ->
   let vali pts =
@@ -266,8 +266,8 @@ let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   (*i eprintf "sigma(ju) >> %a\n%!" pp_ju ju; i*)
   let ju' = norm_ju ~norm:nf ju in
   let new_ju' = norm_ju ~norm:nf new_ju in
-  let ju' = 
-    if do_rename then 
+  let ju' =
+    if do_rename then
       try
         let sigma = Game.unif_ju ju' new_ju' in
         if not (Game.subst_injective sigma) then
@@ -300,13 +300,13 @@ let check_swap read write i c =
   let cw = write c in
   if not (disjoint iw cw && disjoint ir cw && disjoint cr iw)
   then tacerror "swap : can not swap"
-    
-let swap i delta ju = 
+
+let swap i delta ju =
   if delta = 0 then ju
   else
     let instr,{juc_left=hd; juc_right=tl; juc_ev=e} = get_ju_ctxt ju i in
-    let c1,c2,c3 = 
-      if delta < 0 then 
+    let c1,c2,c3 =
+      if delta < 0 then
         let hhd, thd = cut_n (-delta) hd in
         thd, hhd, tl
       else
@@ -401,11 +401,11 @@ let t_rewrite_oracle op dir = prove_by (rrewrite_oracle op dir)
 
 (** Swap instruction. *)
 
-let swap_oracle i delta ju = 
+let swap_oracle i delta ju =
   if delta = 0 then ju
   else
     let i, juoc = get_ju_octxt ju i in
-    let c1_rev,c2,c3 = 
+    let c1_rev,c2,c3 =
       if delta < 0 then
         let hhd,thd = cut_n (-delta) juoc.juoc_cleft in
         thd,hhd,juoc.juoc_cright
@@ -413,7 +413,7 @@ let swap_oracle i delta ju =
         let htl, ttl = cut_n delta juoc.juoc_cright in
         juoc.juoc_cleft, L.rev htl, ttl in
     check_swap read_lcmds write_lcmds i c2;
-    let c2, c3 = 
+    let c2, c3 =
       if delta > 0 then c2, i::c3 else i::c2, c3 in
     set_ju_octxt c2 { juoc with juoc_cleft = c1_rev; juoc_cright = c3 }
 
@@ -482,8 +482,8 @@ let t_case_ev e = prove_by (rcase_ev e)
       of the first $i$ lines of $G'$)
    \end{itemize}
 *)
-let radd_test p tnew asym fvs ju =
-  match get_ju_octxt ju p with
+let radd_test opos tnew asym fvs ju =
+  match get_ju_octxt ju opos with
   | LGuard(t), juoc ->
     assert (ty_equal tnew.e_ty mk_Bool);
     let destr_guard lcmd =
@@ -495,22 +495,24 @@ let radd_test p tnew asym fvs ju =
              pp_lcmd lcmd
     in
     let tests = L.map destr_guard (L.rev juoc.juoc_cleft) in
-    let subst = 
+    let subst =
       L.fold_left2
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
         Me.empty juoc.juoc_oargs fvs
     in
     let juoc =
-      { juoc with (* we add the new test first *)
+      { juoc with
         juoc_cleft = juoc.juoc_cleft @ [ LGuard(tnew)] }
     in
-    Radd_test(p, tnew, asym, fvs),
+    Radd_test(opos, tnew, asym, fvs),
       [ set_ju_octxt [ LGuard(t) ]
           { juoc with
+            juoc_asym = asym;
+            juoc_avars = fvs;
             juoc_juc =
               { juoc.juoc_juc with
                 juc_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
-                juc_right = [ GCall(fvs,asym,mk_Tuple [],[]) ]
+                juc_right = []
               }
           };
         set_ju_octxt [ LGuard(t) ] juoc
@@ -526,7 +528,7 @@ let rbad p vsx ju =
   match get_ju_ctxt ju p with
   | GLet(vs,e'), ctxt when is_H e' ->
     let h,e = destr_H e' in
-    if not (Hsym.is_ro h) then 
+    if not (Hsym.is_ro h) then
       tacerror "the function %a is not a random oracle" Hsym.pp h;
     (*i TODO CHECK THAT h is only used here, and that call are guarded in
        oracle i*)
@@ -536,7 +538,7 @@ let rbad p vsx ju =
     let ev = mk_Exists e vx [vsx,h] in
     let ju2 = { ju1 with ju_ev = ev } in
     Rbad(p,vsx), [ju1;ju2]
-  | _ -> 
+  | _ ->
     tacerror "can not apply bad rule"
 
 let t_bad p vsx = prove_by (rbad p vsx)
@@ -550,14 +552,14 @@ let rctxt_ev i c ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
-  let l,b,r = Util.split_n i evs in 
-  let b = 
+  let l,b,r = Util.split_n i evs in
+  let b =
     if is_Eq b then
       let (e1,e2) = destr_Eq b in
-      mk_Eq (inst_ctxt c e1) (inst_ctxt c e2) 
+      mk_Eq (inst_ctxt c e1) (inst_ctxt c e2)
     else if is_Exists b then
       let (e1,e2,h) = destr_Exists b in
-      mk_Exists (inst_ctxt c e1) (inst_ctxt c e2) h 
+      mk_Exists (inst_ctxt c e1) (inst_ctxt c e2) h
     else tacerror "rctxt_ev: bad event, expected equality or exists"
   in
   let ev = mk_Land (L.rev_append l (b::r)) in
@@ -571,11 +573,11 @@ let t_ctxt_ev i c = prove_by (rctxt_ev i c)
 
 (** Remove events. *)
 
-let rremove_ev (rm:int list) ju = 
-  let rec aux i evs = 
+let rremove_ev (rm:int list) ju =
+  let rec aux i evs =
     match evs with
     | [] -> []
-    | ev::evs -> 
+    | ev::evs ->
       let evs = aux (i+1) evs in
       if L.mem i rm then evs else ev::evs in
   let ev = ju.ju_ev in
@@ -596,7 +598,7 @@ let merge_base_event ev1 ev2 =
     mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
   | Exists(e11,e12, l), App (Eq,[e21;e22]) ->
     mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
-  | Exists(e11,e12, l1), Exists(e21,e22, l2) ->  
+  | Exists(e11,e12, l1), Exists(e21,e22, l2) ->
     (*i TODO we should be sure that bound variables in l1 and l2 are disjoint i*)
     mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) (l1 @ l2)
   | _, _ -> failwith "do not knwon how to merge the event"
@@ -604,9 +606,9 @@ let merge_base_event ev1 ev2 =
 let rmerge_ev i j ju =
   let i,j = if i <= j then i, j else j, i in
   let evs = destruct_Land ju.ju_ev in
-  let l,b1,r = Util.split_n i evs in 
-  let l',b2,r = 
-    if i = j then [], b1, r 
+  let l,b1,r = Util.split_n i evs in
+  let l',b2,r =
+    if i = j then [], b1, r
     else Util.split_n (j - i - 1) r in
   let ev = merge_base_event b1 b2 in
   let evs = L.rev_append l (L.rev_append l' (ev::r)) in
@@ -622,7 +624,7 @@ let rsplit_ev i ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
-  let l,b,r = Util.split_n i evs in 
+  let l,b,r = Util.split_n i evs in
   let b =
     if not (is_Eq b)
       then tacerror "rsplit_ev: bad event, expected equality";
@@ -647,7 +649,7 @@ let rrw_ev i d ju =
   let ev = ju.ju_ev in
   let evs = destruct_Land ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
-  let l,b,r = Util.split_n i evs in 
+  let l,b,r = Util.split_n i evs in
   let u,v =
     if not (is_Eq b)
       then tacerror "rrw_ev: bad event, expected equality";
@@ -669,7 +671,7 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
 
 let rassm_dec dir subst assm' ju =
   let assm = Assumption.ad_subst subst assm' in
-  let c,c' = 
+  let c,c' =
     if dir = LeftToRight
     then assm.ad_prefix1,assm.ad_prefix2
     else assm.ad_prefix2,assm.ad_prefix1
@@ -731,7 +733,7 @@ let rfalse_ev ju =
   )
 
 let t_false_ev = prove_by rfalse_ev
- 
+
 (** Bound random independence. *)
 
 let check_event r ev =
@@ -739,10 +741,10 @@ let check_event r ev =
     match evs with
     | [] ->
       tacerror "can not apply rindep for variable %a and event@\  %a@\n" Vsym.pp r pp_exp ev
-    | ev::evs -> 
+    | ev::evs ->
       let r = mk_V r in
       let test_eq e1 e2 = e_equal e1 r && not (Se.mem r (e_vars e2)) in
-      let check_eq e1 e2 = 
+      let check_eq e1 e2 =
         if test_eq e1 e2 then (
           eprintf "!!! rindep applied to %i@\n" i;
           Rrnd_indep(true, i)
@@ -750,14 +752,14 @@ let check_event r ev =
           eprintf "!!! rindep applied to %i@\n" i;
           Rrnd_indep(false, i)
         )else raise Not_found in
-      try 
+      try
         if is_Eq ev then
           let e1, e2 = destr_Eq ev in
           check_eq e1 e2
         else if is_Exists ev then
           let e1,e2,_ = destr_Exists ev in
-          check_eq e1 e2 
-        else aux (i+1) evs 
+          check_eq e1 e2
+        else aux (i+1) evs
       with Not_found -> aux (i+1) evs
   in
   aux 0 (destruct_Land ev)

@@ -138,10 +138,12 @@ let handle_tactic ts tac =
   | PU.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
     apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
    
-  | PU.Radd_test(op,t,aname,fvs) ->
-    let _, juoc = get_ju_octxt ju op in
-    let vmap = vmap_in_orcl ju op in
+  | PU.Radd_test(opos,t,aname,fvs) ->
+    (* create symbol for new adversary *)
+    let _, juoc = get_ju_octxt ju opos in
+    let vmap = vmap_in_orcl ju opos in
     let t = PU.expr_of_parse_expr vmap ts t in
+    let oasym = juoc.juoc_asym in
     let oty = juoc.juoc_osym.Osym.dom in
     let destr_prod ty = match oty.ty_node with
       | Prod(tys) -> tys
@@ -149,14 +151,15 @@ let handle_tactic ts tac =
     in
     fail_unless (fun () -> not (Ht.mem ts.ts_adecls aname))
       "radd_test: adversary with same name already declared";
-    let asym = Asym.mk aname (mk_Prod []) oty in
+    let asym = Asym.mk aname oasym.Asym.dom oty in
     let adecls = Ht.copy ts.ts_adecls in
     Ht.add adecls aname asym;
-    let tys = destr_prod  oty in
+    let tys = destr_prod oty in
+    (* create variables for returned values *)
     fail_unless (fun () -> L.length fvs = L.length tys)
       "number of given variables does not match type";
     let fvs = L.map2 (fun v ty -> PU.create_var vmap v ty) fvs tys in
-    apply ~adecls (CR.t_add_test op t asym fvs)
+    apply ~adecls (CR.t_add_test opos t asym fvs)
 
   | PU.Rbad(i,sx) ->
     let ty =
