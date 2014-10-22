@@ -282,6 +282,19 @@ let div_factor pe1 pe2 =
     end
   | _ -> assert false
 
+let div_factors pe1 pe2 =
+  match ep_to_ip [pe1; pe2] with
+  | [p1; p2], hr  ->
+    let p3 = Factory.div p1 p2 in
+    if (IP.equal p3 IP.zero)
+    then None
+    else (
+      let facs = Factory.factor p3 in
+      Some (L.map (fun (p,_exp) -> (import_ipoly "div" p hr)) facs)
+    )
+  | _ ->
+    None
+
 let reduce pe1 pe2 =
   match ep_to_ip [pe1; pe2] with
   | [p1;p2], hr ->
