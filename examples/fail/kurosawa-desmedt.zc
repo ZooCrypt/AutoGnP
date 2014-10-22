@@ -1,0 +1,103 @@
+(* We use the DDH assumption *)
+assumption_decisional ddh
+  [ e <-$ Fq; x <-$ Fq; y <-$ Fq;
+    let gx = g ^ (e*x); let gy = g ^ (e*y); let gxy = g ^ (e * x * y); ]
+  [ e <-$ Fq; x <-$ Fq; y <-$ Fq; z <-$ Fq;
+    let gx = g ^ (e* x); let gy = g ^ (e*y); let gxy = g ^ (e * z); ]
+    e x y z.
+
+(* TCR hash funcion, the first component is the index of the
+   hash function in the family (i.e., sample a random H in HH) *)
+operator H : (Fq * G * G) -> Fq.
+
+assumption_computational tcr
+  [ i <-$ Fq; a <-$ Fq; let ga = g ^ a; ]
+  ( xy : (G * G)-> (H(i,ga,xy\0) = H(i,ga,xy\1)) /\ not ((xy\0) = (xy\1)) )
+  a.
+
+(* We use Fq as the type of keys, but we should allow
+   the definition of abstract types. *)
+operator KDF : G  -> (Fq * Fq).
+
+assumption_decisional kdf
+  [ x <-$ Fq; let k = KDF(g^x); ]
+  [ a <-$ Fq; b <-$ Fq; let k = (a,b); ]
+  x a b.
+
+(* We fix Fq for keys, messages, and ciphertext. *)
+operator Enc : (Fq * Fq) -> Fq.
+
+(* We fix Fq for keys, messages, and ciphertext. *)
+operator Dec : (Fq * Fq) -> Fq.
+
+(* FIXME: We cannot define CPA1 since it is interactive. *)
+
+(* We use Fq for keys, messages, and tags. *)
+operator MAC : (Fq * Fq) -> Fq.
+
+(* FIXME: We cannot define CMA1 since it is interactive. *)
+
+adversary A1 : (G * G * G * G) -> (Fq * Fq).
+adversary A2 : (G * G * Fq * Fq) -> Bool.
+
+oracle Dec1 : (G * G * Fq * Fq) -> Fq.
+oracle Dec2 : (G * G * Fq * Fq) -> Fq.
+
+prove
+  [ 
+    (* public parameters are g1 and g2, for now we fix g1 and also
+       use the corresponding DDH assumption *)
+    i <-$ Fq;
+    
+    e1 <-$ Fq;
+    w  <-$ Fq;
+    let g1 = g^e1;
+    let g2 = g^w;
+
+    (* secret key is x1,x2,y1,y2,z1 *)
+    x1 <-$ Fq;
+    x2 <-$ Fq;
+    y1 <-$ Fq;
+    y2 <-$ Fq;
+    let c = g1^x1*g2^x2;
+    let d = g1^y1*g2^y2;
+    (m0,m1) <- A1(g1,g2,c,d) with
+      Dec1(u1,u2,e,t) =
+        [ Dec(k2,e)
+        | let alpha = H(i,u1,u2),
+          let v = u1^(x1 + y1*alpha)*u2^(x1 +y2*alpha),
+          let k = KDF(v),
+          let k1 = k \ 0,
+          let k2 = k \ 1,
+          MAC(k1,e) = t ];
+    
+    b <-$ Bool;
+    let mb = (b?m0:m1);
+    
+    (* ciphertext with randomness r *)
+    r <-$ Fq;
+    let cu1 = g1^r;
+    let cu2 = g2^r;
+    let ca = H(i,cu1,cu2);
+    let cv = c^r*d^(r*ca);
+    let ck = KDF(cv);
+    let ce = Enc(ck\1,mb);
+    let ct = MAC(ck\0,ce);
+    b' <- A2(cu1,cu2,ce,ct) with
+      Dec2(u1,u2,e,t) =
+        [ Dec(k2,e)
+        | not ((u1,u2,e,t) = (cu1,cu2,ce,ct)),
+          let alpha = H(i,u1,u2),
+          let v = u1^(x1 + y1*alpha)*u2^(x1 +y2*alpha),
+          let k = KDF(v),
+          let k1 = k \ 0,
+          let k2 = k \ 1,
+          MAC(k1,e) = t ];
+  ] : b = b'.
+(* Step1: First we assume that g2 is sampled as g1^w => w' = w*e1 *)
+rexcept 2 0. rrnd 3 (w -> w*e1) (w -> w/e1). rnorm.
+  (* FIXME: allow placeholder at first position, allow for noswap option *)
+assumption_decisional ddh -> z. back. back.
+  (* DDH applicable for x2,r and w,r and w x2 *)
+back. back. rnorm.
+rrnd 
