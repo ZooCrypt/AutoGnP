@@ -102,7 +102,8 @@ type proof_state = {
 type tactic = goal -> proof_state nondet
 type 'a rtactic = goal -> ('a * proof_state) nondet
 
-let mk_name () = "xxxx"^string_of_int (unique_int ())
+let counter = ref 0
+let mk_name () = "xxxx"^string_of_int (incr counter; !counter)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{General purpose functions} *)
