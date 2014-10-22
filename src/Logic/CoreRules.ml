@@ -354,7 +354,7 @@ let rrnd p c1 c2 ju =
     let juc =
       { juc with
         juc_right = map_gdef_exp subst juc.juc_right;
-        juc_ev = juc.juc_ev }
+        juc_ev    = subst juc.juc_ev }
     in
     eprintf "!!! rrnd applied at %i for %a@\n" p Vsym.pp vs;
     Rrnd(p,vs,c1,c2), [ set_ju_ctxt cmds juc ]
