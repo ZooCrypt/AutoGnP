@@ -56,7 +56,7 @@ prove
 
   ] : b = b'.
   
-  crush 14.
+  bycrush 12.
   qed.
   print_proof.
   extract "extraction/cramer_shoup_crush.ec".

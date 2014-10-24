@@ -309,18 +309,25 @@ let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e j
   (* eprintf "##########################@\nsubst = %a@\n%!" pp_exp assm_ju.ju_ev; *)
   let conjs = destr_Land assm_ju.ju_ev in
   let ineq = L.hd (L.filter is_Not conjs) in
-  let ineq = norm_expr_def (mk_Not ineq) in
+  let nineq = norm_expr_def (mk_Not ineq) in
   guard (not (Se.mem ineq icases)) >>= fun _ ->
   let assm_tac = 
-    (    CR.t_case_ev ~flip:true ineq
+    (    CR.t_case_ev ~flip:true nineq
      @>> [ (* t_print "before_remove_ev" *)
                 before_t_assm
              @> CR.t_assm_comp assm ev_e subst
          ; CR.t_id])
   in
-  if is_Land ju.ju_ev && L.mem ineq (destr_Land ju.ju_ev)
-  then CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
-  else CR.t_assm_comp assm ev_e subst ju >>= fun ps -> ret (None,ps)
+  let sconjs = destr_Land sassm_ev in
+  let sineq = L.hd (L.filter is_Not sconjs) in
+  let snineq = Norm.abbrev_ggen sineq in
+  if is_Land ju.ju_ev &&
+     L.exists (fun e ->
+       eprintf "$$$$ %a <> %a ???@\n" pp_exp snineq pp_exp e;
+       e_equal (Norm.abbrev_ggen e) snineq) (destr_Land ju.ju_ev)
+  then CR.t_assm_comp assm ev_e subst ju >>= fun ps -> ret (None,ps)
+  else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
+
 
 
 let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
