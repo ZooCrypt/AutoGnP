@@ -61,27 +61,16 @@ prove
 
   (* if a^w = a' for all queries, b not used in game anymore *)
   radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd. bycrush 1.
-  rsimp. crush 2. rnorm.
+  crush 2. rnorm.
 
   radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed. last. bycrush 1.
   rsimp.
 
   rcase_ev  H(ea,ea',ec) = H(g ^ u,g ^ v,g ^ z2). last. bycrush 1.
   rnorm.
+  assumption_computational _ _.
+  bycrush.
 
-  (* if EV ==> not ((ga,ga',gc) = (g ^ u,g ^ v,g ^ z2)) /\ H(ga,ga',gc) = H(g ^ u,g ^ v,g ^ z2), we can apply TCR *)
-  rcase_ev (ea,ea',ec) = (g ^ u,g ^ v,g ^ z2). bycrush 1.
-  
-  (*
-  rremove_ev 1. rremove_ev 1. rremove_ev 1. rswap 2 -1. rnorm_unknown u v z2. rexcept 3. rswap 3 -1. rswap 11 -8.
-  rlet_abstract 4 gu g^u. rlet_abstract 5 gv g^v. rlet_abstract 6 gz2 g^z2.
-  assumption_computational! tcr (ea,ea',ec).
-  *)
-  bycrush 1.
   qed.
   print_proof.
   extract "extraction/cramer_shoup.ec".
-  
-  (* note that for all add_test or case_ev, we can immediately discharge one branch with
-     bycrush 1, maybe this allows us not to perform backtracking on the different choices
-     for applying these rules *)
