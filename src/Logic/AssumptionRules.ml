@@ -318,8 +318,9 @@ let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e j
              @> CR.t_assm_comp assm ev_e subst
          ; CR.t_id])
   in
-  CR.t_id ju >>= fun ps ->
-  ret (assm_tac,ps)
+  if is_Land ju.ju_ev && L.mem ineq (destr_Land ju.ju_ev)
+  then CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
+  else CR.t_assm_comp assm ev_e subst ju >>= fun ps -> ret (None,ps)
 
 
 let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
@@ -414,8 +415,10 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm mev_e ju =
   in
   guard (not (is_Land assm.ac_event && not (is_Land ju.ju_ev))) >>= fun _ ->
   before_t_assm ju >>= fun ps ->
-  CR.rapply_all (t_assm_comp_aux ~icases before_t_assm assm mev_e) ps >>= fun (t,_ps) ->
-  t ju
+  CR.rapply_all (t_assm_comp_aux ~icases before_t_assm assm mev_e) ps >>= fun (ot,ps) ->
+  match ot with
+  | Some t -> t ju
+  | None   -> ret ps
   
 
 let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mev_e ju =
