@@ -8,6 +8,7 @@ open Game
 open CoreRules
 
 val ( @> ) : tactic -> tactic -> tactic
+val ( @>> ) : tactic -> tactic list -> tactic
 val ( @>= ) : 'a rtactic -> ('a -> tactic) -> tactic
 val ( @>>= ) : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 val ( @| ) : tactic -> tactic -> tactic
@@ -47,8 +48,11 @@ val t_debug : string -> tactic
 
 val t_guard : (goal -> bool) -> tactic
 
-val pp_proof_tree : bool -> Util.F.formatter -> CoreRules.proof_tree -> unit
+val pp_proof_tree :
+  ?hide_admit:bool -> bool -> Util.F.formatter -> CoreRules.proof_tree -> unit
 
 val simplify_proof_tree : proof_tree -> proof_tree
 
-val prove_by_admit: string -> proof_state -> proof_state
+val prove_by_admit : string -> proof_state -> proof_state
+
+val diff_proof_tree : proof_tree * proof_tree -> proof_tree list

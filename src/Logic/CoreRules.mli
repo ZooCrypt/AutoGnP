@@ -84,12 +84,15 @@ exception NoOpenGoal
 val get_proof : proof_state -> proof_tree
 val move_first_last : proof_state -> proof_state
 val apply_on_n : int -> tactic -> proof_state -> proof_state nondet
+val apply_all : tactic -> proof_state -> proof_state nondet
+val rapply_all : 'a rtactic -> proof_state -> ('a * proof_state) nondet
 val apply_first : tactic -> proof_state -> proof_state nondet
 
 val merge_proof_states : proof_state list -> (proof_tree list -> proof_tree) -> proof_state
 
 val t_id : tactic
 val t_seq : tactic -> tactic -> tactic
+val t_seq_list : tactic -> tactic list -> tactic
 val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
 val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 val t_cut : tactic -> tactic
@@ -120,8 +123,8 @@ val t_conv : bool -> ?do_rename:bool -> judgment -> tactic
 val rctxt_ev  : int -> ctxt -> rule 
 val t_ctxt_ev : int -> ctxt -> tactic
 
-val rcase_ev  : expr -> rule
-val t_case_ev : expr -> tactic
+val rcase_ev  : ?flip:bool -> expr -> rule
+val t_case_ev : ?flip:bool -> expr -> tactic
 
 val rremove_ev  : int list -> rule 
 val t_remove_ev : int list -> tactic 

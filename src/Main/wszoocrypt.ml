@@ -116,7 +116,7 @@ let split_proof_script s =
   go 0 []
 
 let process_eval fname proofscript =
-  let buf = Util.set_debug_buffer () in
+  (* let buf = Util.set_debug_buffer () in *)
   let l = split_proof_script proofscript in
   (* F.printf "Eval: ``%a''\n%!" (pp_list ";" pp_string) l; *)
   let ((ts0, msgs0), handled_cmds, rem_cmds) = lookup_ts_cache fname l in
@@ -159,17 +159,17 @@ let process_eval fname proofscript =
       match !rts.ts_ps with
       | BeforeProof    -> "No proof started."
       | ClosedTheory _ -> "Theory closed."
-      | ActiveProof ({ CoreRules.subgoals = [] },_) -> "No goals."
-      | ActiveProof (gs,_) ->
+      | ActiveProof ({ CoreRules.subgoals = [] },_,_,_) -> "No goals."
+      | ActiveProof (gs,_,_,_) ->
         fsprintf "@[%a@.%s@]"
-          pp_jus 
-          (Util.take 1 gs.subgoals)
+          (pp_jus 1)
+          gs.subgoals
           (let rem = 
              List.length gs.CoreRules.subgoals - 1 in if rem = 0 then "" else
           string_of_int rem^" other goals")
     in `Assoc [ ("cmd", `String "setGoal");
                 ("ok_upto", `Int (ok_upto ()));
-                ("debug", `String (Buffer.contents buf));
+                ("debug", `String "" (* (Buffer.contents buf) *));
                 ("err", error);
                 ("msgs", `List (List.map (fun s -> `String s) !rmsgs));
                 ("arg", `String g) ]

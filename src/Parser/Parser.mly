@@ -120,6 +120,8 @@
 %token ADMIT
 %token LAST
 %token BACK
+%token UNDOBACK
+%token UNDOBACK_EXCL
 %token QED
 %token EXTRACT
 %token DEDUCE
@@ -347,6 +349,8 @@ instr :
 | ADMIT { Admit }
 | LAST { Last }
 | BACK { Back }
+| UNDOBACK { UndoBack(false) }
+| UNDOBACK_EXCL { UndoBack(true) }
 | QED { Qed }
 | ADVERSARY i = AID  COLON t1 = typ0 TO t2 = typ0 { ADecl(i,t1,t2) }
 | ORACLE    i = AID  COLON t1 = typ0 TO t2 = typ0 { ODecl(i,t1,t2) }
@@ -381,7 +385,9 @@ instr :
 | RCONV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
-| RADD_TEST op = opos e = expr0 asym = AID fvs = ID* { Apply(Radd_test(op,e,asym,fvs)) }
+| RADD_TEST op = opos e = expr0 asym = AID fvs = ID*
+  { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }
+| RADD_TEST UNDERSCORE { Apply(Radd_test(None,None,None,None)) }
 | REXCEPT i = uoption(NAT) es = uoption(expr0*)
   { Apply(Rexcept(map_opt (fun i -> i-1) i,es)) }
 | REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_orcl(op,es)) }
@@ -391,7 +397,8 @@ instr :
   { Apply(Deduce(es,e)) }
 | RSIMP { Apply(Rsimp) }
 | RCRUSH  mi = uoption(NAT) { Apply(Rcrush(false,mi)) }
-| BYCRUSH { Apply(Rcrush(false,None)) }
+| RCRUSH  { Apply(Rcrush(false,Some(1))) }
+| BYCRUSH { Apply(Rcrush(true,None)) }
 | BYCRUSH mi = uoption(NAT) { Apply(Rcrush(true,mi)) }
 | RRND_ORACLE op = uoption(opos) c1 = uoption(ctx) c2 = uoption(ctx) { Apply(Rrnd_orcl(op,c1,c2)) }
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
@@ -401,7 +408,7 @@ instr :
   { Apply(Rremove_ev([i - 1])) }
 | RSPLIT_EV i = int
   { Apply(Rsplit_ev(i - 1)) }
-| RCASE_EV e = expr0
+| RCASE_EV e = uoption(expr0)
   { Apply(Rcase_ev(e)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN
   { Apply(Rctxt_ev(i1,e1,0)) }

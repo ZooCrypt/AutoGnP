@@ -752,7 +752,7 @@ let e_iter_ty_maximal ty g e0 =
     let me = not ie && ty_equal e0.e_ty ty in
     (* ie = immediate subterms of e inside a larger expression of the desired type *)
     let ie = me || (ie && ty_equal e0.e_ty ty) in
-    F.printf "### %a ie=%b me=%b\n\n" pp_exp e0 ie me;
+    (* F.printf "### %a ie=%b me=%b\n\n" pp_exp e0 ie me; *)
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_) -> ()

@@ -141,8 +141,9 @@ val set_ju_lcmd : judgment -> ocmd_pos -> lcmd list -> judgment
 type iter_pos =
   | InEv
   | InMain       of gcmd_pos
-  | InOrcl       of ocmd_pos
-  | InOrclReturn of odef_pos
+  | InOrclReturn of ocmd_pos * Type.ty * Type.ty
+  | InOrcl       of ocmd_pos * Type.ty * Type.ty
+    (* position, adversary argument type, oracle type *)
 
 val pp_iter_pos : Util.F.formatter -> iter_pos -> unit
 
@@ -155,7 +156,7 @@ type iter_ctx = {
 val pp_iter_ctx : Util.F.formatter -> iter_ctx -> unit
 
 val iter_ctx_odef_exp :
-  int -> int -> expr list ->
+  Type.ty -> int -> int -> expr list ->
   ?iexc:bool -> (iter_ctx -> expr -> unit) -> odef -> unit
 
 val iter_ctx_gdef_exp :

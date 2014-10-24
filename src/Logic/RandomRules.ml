@@ -107,6 +107,7 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju =
   | None           ->
     let e2s = run (-1) (contexts ju rv rvs) in
     mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
+    guard (not (e_equal (mk_FOpp (mk_V rv)) e2)) >>= fun () ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
   (* eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2; *)
@@ -150,7 +151,6 @@ let parse_ctxt_oracle ts opos ju ty (sv,se) =
   let v = Vsym.mk sv ty in
   Hashtbl.add vmap sv v;
   (v,expr_of_parse_expr vmap ts se)
-
 
 let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   let osamps = osamplings ju.ju_gdef in

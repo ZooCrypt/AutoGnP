@@ -124,6 +124,14 @@ let prove_by ru g =
       { subgoals = subgoals;
         validation = fun pts ->
           assert (L.length pts = L.length subgoals);
+          (*
+          L.iter
+            (fun (pt,ju) ->
+              if not (ju_equal pt.pt_ju g) then
+                F.printf "@[INEQ:@\n%a@\n<>@\n %a\n@]%!"
+                  pp_ju pt.pt_ju pp_ju ju)
+            (L.combine pts subgoals);
+          *)
           assert (L.for_all2 (fun pt g -> ju_equal pt.pt_ju g) pts subgoals);
           { pt_ju       = g;
             pt_rule     = rn;
@@ -216,6 +224,24 @@ let t_bind (t1 : 'a rtactic) (ft2 : 'a -> 'b rtactic) g =
   | _ ->
     mfail "t_bind: expected exactly one goal"
 
+let apply_all t ps =
+  mapM t ps.subgoals >>= fun pss ->
+  ret (merge_proof_states pss ps.validation)
+
+let rapply_all rt ps =
+  mapM rt ps.subgoals >>= fun pss ->
+  match pss with
+  | [y,ps2] ->
+    ret (y,merge_proof_states [ps2] ps.validation)
+  | _ ->
+    mfail "t_bind: expected exactly one goal"
+
+let t_seq_list t1 t2s g =
+  t1 g >>= fun ps1 ->
+  assert (L.length t2s = L.length ps1.subgoals);
+  mapM (fun (t2,g) -> t2 g) (L.combine t2s ps1.subgoals) >>= fun ps2s ->
+  ret (merge_proof_states ps2s ps1.validation)
+
 let t_seq t1 t2 g =
   t1 g >>= fun ps1 ->
   mapM t2 ps1.subgoals >>= fun ps2s ->
@@ -283,7 +309,7 @@ let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   in
   if not (ju_equal ju' new_ju') then
     tacerror "rconv: not convertible@\n %a@\n %a" pp_ju ju' pp_ju new_ju';
-  eprintf "!!! conv rule applied@\n%!";
+  (* eprintf "!!! conv rule applied@\n%!"; *)
   Rconv, [new_ju]
 
 let t_conv do_norm_terms ?do_rename:(do_rename=false) new_ju =
@@ -318,7 +344,7 @@ let swap i delta ju =
     if is_call instr && has_call c2
     then tacerror "swap : can not swap";
     let c2,c3 = if delta > 0 then c2, instr::c3 else instr::c2, c3 in
-    eprintf "!!! swap rule applied: i=%i delta=%i@\n%!" i delta;
+    (* eprintf "!!! swap rule applied: i=%i delta=%i@\n%!" i delta; *)
     set_ju_ctxt c2 {juc_left=c1; juc_right=c3; juc_ev=e}
 
 let rswap i delta ju = Rswap(i, delta), [swap i delta ju]
@@ -367,7 +393,10 @@ let t_rnd p c1 c2 = prove_by (rrnd p c1 c2)
 
 let rexcept p es ju =
   match get_ju_ctxt ju p with
-  | GSamp(vs,(t,_es)), juc ->
+  | GSamp(_,(_,es')), _ when list_equal e_equal es' es ->
+    tacerror "rexcept: identical exceptions already present"    
+  | GSamp(vs,(t,_)), juc ->
+    eprintf "!!! except applied: %a@\n%!" (pp_list "," pp_exp) es;
     Rexc(p, es), [ set_ju_ctxt [ GSamp(vs,(t,es)) ] juc ]
   | _ ->
     tacerror "rexcept: position given is not a sampling"
@@ -465,13 +494,18 @@ let t_except_oracle p es = prove_by (rexcept_oracle p es)
 
 (** Perform case distinction on event. *)
 
-let rcase_ev e ju =
+let rcase_ev ?flip:(flip=false) e ju =
   let ev = ju.ju_ev in
   let ju1 = {ju with ju_ev = mk_Land [ev;e] } in
   let ju2 = {ju with ju_ev = mk_Land [ev; (mk_Not e)] } in
-  Rcase_ev(e), [ju1; ju2]
+  if is_Land ev &&
+    let evs = L.map Norm.norm_expr (destr_Land ev) in
+    (L.mem (Norm.norm_expr e) evs || L.mem (Norm.norm_expr (mk_Not e)) evs)
+  then tacerror "rcase_ev: event or negation already in event";
+  eprintf "!!! case_ev rule applied: %a@\n%!" pp_exp e;
+  Rcase_ev(e), if flip then [ju2; ju1] else [ju1;ju2]
 
-let t_case_ev e = prove_by (rcase_ev e)
+let t_case_ev ?flip:(flip=false) e = prove_by (rcase_ev ~flip e)
 
 (** Up-to bad: add new test to oracle.\\
    We get two new judgments for $G : E$ after
@@ -505,6 +539,7 @@ let radd_test opos tnew asym fvs ju =
       { juoc with
         juoc_cleft = juoc.juoc_cleft @ [ LGuard(tnew)] }
     in
+    eprintf "!!! add_test rule applied: %a@\n%!" pp_exp tnew;
     Radd_test(opos, tnew, asym, fvs),
       [ set_ju_octxt [ LGuard(t) ]
           { juoc with
@@ -699,7 +734,7 @@ let rassm_comp assm ev_e subst ju =
   let assm_ev = e_replace (mk_V assm.ac_event_var) ev_e assm.ac_event in
   if ju.ju_ev <> assm_ev
   then (tacerror "assm_comp: event not equal, expected %a, got %a"
-          pp_exp ju.ju_ev pp_exp assm_ev);
+          pp_exp assm_ev pp_exp ju.ju_ev);
   let c = assm.ac_prefix in
   let cju = Util.take (L.length c) ju.ju_gdef in
   if not (gdef_equal c cju) then tacerror "assm_comp: prefix does not match";
@@ -710,6 +745,7 @@ let rassm_comp assm ev_e subst ju =
   let diff = Se.inter priv read in
   if not (Se.is_empty diff) then tacerror "assm_comp: does not respect private variables";
   if not (is_ppt_ju ju') then tacerror "assm_comp: game or event not ppt";
+  eprintf "!! rassm_comp performed!@\n%!";
   Rassm_comp(ev_e,subst,assm), []
 
 let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)

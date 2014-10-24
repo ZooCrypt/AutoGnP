@@ -18,6 +18,8 @@ module Ht = Hashtbl
 
 let ( @> ) = t_seq
 
+let ( @>> ) = t_seq_list
+
 let ( @>>= ) = t_bind
 
 let ( @>= ) = t_bind_ignore
@@ -186,7 +188,7 @@ let t_swap_others_max dir i ju =
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Simplification and pretty printing} *)
 
-let pp_rule fmt ru =
+let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   match ru with
   | Rconv ->
     F.fprintf fmt "rconv"
@@ -204,8 +206,8 @@ let pp_rule fmt ru =
     F.fprintf fmt "rrnd_orcl (%i,%i,%i)" i j k
   | Rexc_orcl((i,j,k),_es)          ->
     F.fprintf fmt "rexc_orcl (%i,%i,%i)" i j k
-  | Radd_test((i,j,k),_e,_ads,_vss) ->
-    F.fprintf fmt "radd_test (%i,%i,%i)" i j k
+  | Radd_test((i,j,k),e,_ads,_vss) ->
+    F.fprintf fmt "radd_test (%i,%i,%i) (%a)" i j k pp_exp e
   | Rcase_ev(e)   ->
     F.fprintf fmt "rcase @[<v 2>%a@]" pp_exp e
   | Rbad(_pos,_vs) ->
@@ -225,30 +227,32 @@ let pp_rule fmt ru =
   | Rassm_comp(_e,_ren,assm) ->
     F.fprintf fmt "rassm_comp(%s)" assm.ac_name
   | Radmit _ ->
-    F.fprintf fmt "radmit"
+    if not hide_admit then F.fprintf fmt "radmit"
   | Rfalse_ev ->
     F.fprintf fmt "rfalse_ev"
   | Rrnd_indep(b,i) ->
     F.fprintf fmt "rrnd_indep %b %i" b i
 
-let rec pp_proof_tree_verbose fmt pt =
+let rec pp_proof_tree_verbose ?hide_admit:(hide_admit=false) fmt pt =
   F.fprintf fmt
     ("##########################@\n%a@\n##########################@\n"^^
      "apply %a@\n"^^
      "  @[<v 0>%a@\n@]%!")
     pp_ju pt.pt_ju
-    pp_rule pt.pt_rule
+    (pp_rule ~hide_admit) pt.pt_rule
     (pp_list "@\n" pp_proof_tree_verbose) pt.pt_children
 
-let pp_proof_tree_non_verbose fmt pt =
+let pp_proof_tree_non_verbose ?hide_admit:(hide_admit=false) fmt pt =
   let rec aux n pt =
-    F.fprintf fmt "@[%s@[<v 0>%a@]@]@\n" (String.make n ' ') pp_rule pt.pt_rule;
+    F.fprintf fmt "@[%s@[<v 0>%a@]@]@\n%!" (String.make n ' ')
+      (pp_rule ~hide_admit) pt.pt_rule;
     List.iter (aux (n + 2)) pt.pt_children
   in
   aux 0 pt
 
-let pp_proof_tree verbose =
-  if verbose then pp_proof_tree_verbose else pp_proof_tree_non_verbose
+let pp_proof_tree ?hide_admit:(hide_admit=false) verbose =
+  if verbose then pp_proof_tree_verbose ~hide_admit
+  else pp_proof_tree_non_verbose ~hide_admit
   
 let rec simplify_proof_tree pt =
   let children = L.map simplify_proof_tree pt.pt_children in
@@ -272,4 +276,12 @@ let rec prove_by_admit s ps =
   else
     let ps = Nondet.first (apply_first (t_admit s) ps) in
     prove_by_admit s ps
+
+let rec diff_proof_tree (pt1,pt2) =
+  let is_Radmin ru = match ru with Radmit _ -> true | _ -> false in
+  match pt1.pt_rule, pt2.pt_rule with
+  | Radmit _, ru2 when not (is_Radmin ru2)  ->
+    [ pt2 ]
+  | _ ->
+    conc_map diff_proof_tree (L.combine pt1.pt_children pt2.pt_children)
 

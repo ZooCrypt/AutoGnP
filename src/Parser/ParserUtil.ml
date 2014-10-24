@@ -276,9 +276,9 @@ type tactic =
   | Rbad           of int * string
   | Rexcept        of int option * (parse_expr list) option
   | Rexcept_orcl   of G.ocmd_pos * parse_expr list
-  | Radd_test      of G.ocmd_pos * parse_expr * string * string list
+  | Radd_test      of G.ocmd_pos option * parse_expr option * string option * (string list) option
   | Rrewrite_orcl  of G.ocmd_pos * Util.direction
-  | Rcase_ev       of parse_expr
+  | Rcase_ev       of parse_expr option
   | Rremove_ev     of int list
   | Rrewrite_ev    of int * Util.direction
   | Rsplit_ev      of int
@@ -300,6 +300,7 @@ type instr =
   | Admit
   | Last
   | Back
+  | UndoBack   of bool
   | Qed
   | Extract    of string
   | Debug      of string

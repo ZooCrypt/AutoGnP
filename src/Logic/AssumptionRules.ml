@@ -276,7 +276,23 @@ let match_exprs_assm ju assm =
 
 let tries = ref 0
 
-let t_assm_comp_match assm subst mev_e ju =
+let conj_type e =
+  if is_Eq e then (
+    let (a,_) = destr_Eq e in
+    Some (true,a.e_ty)
+  ) else if is_Not e then (
+    let e = destr_Not e in
+    if is_Eq e then (
+      let (a,_) = destr_Eq e in
+      Some (false,a.e_ty)
+    ) else (
+      None
+    )
+  ) else (
+    None
+  )
+
+let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e ju =
   let assm = ac_instantiate subst assm in
   (match mev_e with
   | Some e -> ret e
@@ -284,17 +300,36 @@ let t_assm_comp_match assm subst mev_e ju =
     match_exprs_assm ju assm >>= fun (pat,e) ->
     match_expr assm.ac_event_var pat e
   ) >>= fun ev_e ->
-  eprintf "##########################@\nev_e = %a@\n" pp_exp ev_e;
-  CR.t_assm_comp assm ev_e subst ju
+  (* eprintf "##########################@\nev_e = %a@\n%!" pp_exp ev_e; *)
+  let sassm = Assumption.ac_instantiate subst assm in
+  let sassm_ev = e_replace (mk_V sassm.ac_event_var) ev_e sassm.ac_event in
+  let assm_ju = { ju_gdef = sassm.ac_prefix; ju_ev = sassm_ev } in
+  let assm_ju = norm_ju ~norm:(fun x -> x) assm_ju in
+  (* eprintf "##########################@\nev_e = %a@\n%!" pp_exp sassm_ev; *)
+  (* eprintf "##########################@\nsubst = %a@\n%!" pp_exp assm_ju.ju_ev; *)
+  let conjs = destr_Land assm_ju.ju_ev in
+  let ineq = L.hd (L.filter is_Not conjs) in
+  let ineq = norm_expr_def (mk_Not ineq) in
+  guard (not (Se.mem ineq icases)) >>= fun _ ->
+  let assm_tac = 
+    (    CR.t_case_ev ~flip:true ineq
+     @>> [ (* t_print "before_remove_ev" *)
+                before_t_assm
+             @> CR.t_assm_comp assm ev_e subst
+         ; CR.t_id])
+  in
+  CR.t_id ju >>= fun ps ->
+  ret (assm_tac,ps)
 
 
-let t_assm_comp_aux assm mev_e ju =
+let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
   let assm_cmds = assm.ac_prefix in
   let samp_assm = samplings assm_cmds in
   let lets_assm = lets assm_cmds in
   let samp_gdef = samplings ju.ju_gdef |> Util.take (L.length samp_assm) in
   guard
-    (list_eq_for_all2 (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2) samp_assm samp_gdef)
+    (list_eq_for_all2 (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2)
+       samp_assm samp_gdef)
   >>= fun _ ->
   let subst =
     L.fold_left2
@@ -312,30 +347,15 @@ let t_assm_comp_aux assm mev_e ju =
   in
   let (subst, let_abstrs) = map_accum ltac subst lets_assm in
   incr tries;
+  let t_before = t_seq_list let_abstrs in
+     (* @> t_debug (fsprintf "assm_comp_auto tried %i combinations so far@\n" !tries) *)
   try
-    (   t_seq_list let_abstrs
-     @> t_debug (fsprintf "assm_comp_auto tried %i combinations so far@\n" !tries)
-     @> t_assm_comp_match assm subst mev_e) ju
+    t_before ju >>= fun ps ->
+    CR.rapply_all (t_assm_comp_match ~icases (before_t_assm @> t_before) assm subst mev_e) ps
   with
     Invalid_rule s -> eprintf "%s%!"s; mempty
 
-let conj_type e =
-  if is_Eq e then (
-    let (a,_) = destr_Eq e in
-    Some (true,a.e_ty)
-  ) else if is_Not e then (
-    let e = destr_Not e in
-    if is_Eq e then (
-      let (a,_) = destr_Eq e in
-      Some (false,a.e_ty)
-    ) else (
-      None
-    )
-  ) else (
-    None
-  )
-
-let t_assm_comp_auto ts assm mev_e ju =
+let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm mev_e ju =
   tries := 0;
   eprintf "###############################\n%!";
   eprintf "t_assm_comp assm=%s\n%!" assm.ac_name;
@@ -386,14 +406,19 @@ let t_assm_comp_auto ts assm mev_e ju =
       |> L.map fst
     )
   in
+  let before_t_assm =
+    CR.t_remove_ev remove_events
+    @> t_norm_unknown priv_exprs
+    @> t_seq_list excepts
+    @> t_seq_list swaps
+  in
   guard (not (is_Land assm.ac_event && not (is_Land ju.ju_ev))) >>= fun _ ->
-  (   CR.t_remove_ev remove_events
-   @> t_norm_unknown priv_exprs
-   @> t_seq_list excepts
-   @> t_seq_list swaps
-   @> t_assm_comp_aux assm mev_e) ju
+  before_t_assm ju >>= fun ps ->
+  CR.rapply_all (t_assm_comp_aux ~icases before_t_assm assm mev_e) ps >>= fun (t,_ps) ->
+  t ju
+  
 
-let t_assm_comp_no_exact ts maname mev_e ju =
+let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mev_e ju =
   (match maname with
   | Some aname ->
     begin try ret (Ht.find ts.ts_assms_comp aname)
@@ -403,7 +428,7 @@ let t_assm_comp_no_exact ts maname mev_e ju =
     mconcat (Ht.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_comp [])
   ) >>= fun assm ->
   (* try all assumptions *)
-  t_assm_comp_auto ts assm mev_e ju
+  t_assm_comp_auto ~icases ts assm mev_e ju
 
 let t_assm_comp_exact ts maname mev_e ju =
   let aname =
@@ -438,8 +463,8 @@ let t_assm_comp_exact ts maname mev_e ju =
   in
   (CR.t_assm_comp assm ev_e subst) ju
 
-let t_assm_comp ts exact maname mev_e ju =
+let t_assm_comp ?icases:(icases=Se.empty) ts exact maname mev_e ju =
   if exact then
     t_assm_comp_exact ts maname mev_e ju
   else
-    t_assm_comp_no_exact ts maname mev_e ju
+    t_assm_comp_no_exact ~icases ts maname mev_e ju

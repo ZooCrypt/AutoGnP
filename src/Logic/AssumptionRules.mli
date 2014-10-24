@@ -12,6 +12,7 @@ val t_assm_dec :
   tactic
 
 val t_assm_comp :
+  ?icases:Expr.Se.t ->
   theory_state ->
   bool ->
   string option ->

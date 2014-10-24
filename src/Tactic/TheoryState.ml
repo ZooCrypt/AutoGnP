@@ -15,7 +15,8 @@ module G = Game
 
 type theory_proof_state =
   | BeforeProof
-  | ActiveProof  of (proof_state * proof_state nondet) 
+  | ActiveProof
+    of proof_state * proof_state list * proof_state nondet * proof_state option
   | ClosedTheory of proof_tree
 
 type theory_state =
@@ -46,15 +47,15 @@ let mk_ts () =
 
 let get_proof_state ts = 
   match ts.ts_ps with
-  | ActiveProof (g,_)  -> g
-  | BeforeProof        -> tacerror "cannot apply tactic: no active proof"
-  | ClosedTheory _     -> tacerror "cannot apply tactic: theory closed"
+  | ActiveProof (g,_,_,_) -> g
+  | BeforeProof           -> tacerror "cannot apply tactic: no active proof"
+  | ClosedTheory _        -> tacerror "cannot apply tactic: theory closed"
 
 let get_proof_state_back ts = 
   match ts.ts_ps with
-  | ActiveProof (_,bg)  -> bg
-  | BeforeProof         -> tacerror "cannot apply tactic: no active proof"
-  | ClosedTheory _      -> tacerror "cannot apply tactic: theory closed"
+  | ActiveProof (_,_,bg,_)  -> bg
+  | BeforeProof             -> tacerror "cannot apply tactic: no active proof"
+  | ClosedTheory _          -> tacerror "cannot apply tactic: theory closed"
 
 let get_proof_tree ts = 
   match ts.ts_ps with

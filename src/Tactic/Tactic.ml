@@ -27,6 +27,15 @@ module CR = CoreRules
 let fail_unless c s =
   if not (c ()) then tacerror s
 
+let diff_step ops nps =
+  match ops with
+  | Some ops ->
+    let get_pt ps = CR.get_proof (prove_by_admit "" ps) |> simplify_proof_tree in
+    fsprintf "@\n  @[%a@]"
+      (pp_list "@\n" (pp_proof_tree ~hide_admit:true false))
+      (diff_proof_tree (get_pt ops,get_pt nps))
+  | None -> ""
+
 let handle_tactic ts tac =
   let ps = get_proof_state ts in
   let ju = match ps.CR.subgoals with
@@ -44,7 +53,10 @@ let handle_tactic ts tac =
       begin match pull pss with
       | Left None     -> tacerror "mempty"
       | Left (Some s) -> tacerror "%s" s
-      | Right(ps,pss) -> { ts with ts_ps = ActiveProof(ps,pss) }
+      | Right(ps,pss) ->
+        let ops = Some (get_proof_state ts) in
+        let ts' = { ts with ts_ps = ActiveProof(ps,[],pss,ops) } in
+        (ts', diff_step ops ps)
       end
     with
     | Wf.Wf_div_zero es ->
@@ -67,14 +79,18 @@ let handle_tactic ts tac =
   | PU.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
   | PU.Rsplit_ev(i)          -> apply (CR.t_split_ev i)
   | PU.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev i d)
-  | PU.Rcase_ev(se)          -> apply (CR.t_case_ev (parse_e se))
   | PU.Rcrush(finish,mi)     -> apply (t_crush finish mi ts ps)
+
+  | PU.Rcase_ev(Some(se)) ->
+    apply (CR.t_case_ev (parse_e se))
+
+  | PU.Rcase_ev(None) ->
+    apply t_case_ev_maybe
 
   | PU.Rexcept(Some(i),Some(ses)) ->
     apply (CR.t_except i (L.map (parse_e) ses))
-
   | PU.Rexcept(i,ses) ->
-    apply (t_rexcept_maybe ts i ses)
+    apply (t_rexcept_maybe i ses)
 
   | PU.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
   | PU.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
@@ -144,7 +160,7 @@ let handle_tactic ts tac =
   | PU.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
     apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
    
-  | PU.Radd_test(opos,t,aname,fvs) ->
+  | PU.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
     (* create symbol for new adversary *)
     let _, juoc = get_ju_octxt ju opos in
     let vmap = vmap_in_orcl ju opos in
@@ -166,6 +182,12 @@ let handle_tactic ts tac =
       "number of given variables does not match type";
     let fvs = L.map2 (fun v ty -> PU.create_var vmap v ty) fvs tys in
     apply ~adecls (CR.t_add_test opos t asym fvs)
+
+  | PU.Radd_test(None,None,None,None) ->
+    apply t_add_test_maybe
+
+  | PU.Radd_test(_,_,_,_) ->
+    tacerror "radd_test expects either all values or only placeholders"
 
   | PU.Rbad(i,sx) ->
     let ty =
@@ -193,16 +215,18 @@ let handle_tactic ts tac =
      with
        Not_found ->
          tacerror "Not found@\n");
-    ts
+    (ts,"")
 
-let pp_jus fmt jus =  
+let pp_jus i fmt jus =  
   match jus with
   | [] -> F.printf "No remaining goals, proof completed.@\n"
   | jus ->
+    let n = L.length jus in
+    let goal_num = if n = 1 then "" else F.sprintf " (of %i)" n in
     let pp_goal i ju =
-      F.fprintf fmt "goal %i:@\n%a@\n@\n" (i + 1) pp_ju ju in
-    L.iteri pp_goal jus 
-
+      F.fprintf fmt "goal %i%s:@\n%a@\n@\n" (i + 1) goal_num pp_ju ju
+    in
+    L.iteri pp_goal (Util.take i jus)
 
 let handle_instr ts instr =
   match instr with
@@ -271,45 +295,79 @@ let handle_instr ts instr =
     Ht.add ts.ts_assms_comp s assm;
     (ts, "Declared computational assumption.")
     
-  | PU.Judgment(gd, e) ->
+  | PU.Judgment(gd,e) ->
     let vmap = Ht.create 137 in
     let ju = PU.ju_of_parse_ju vmap ts gd e in
-    ({ ts with ts_ps = ActiveProof(first (CR.t_id ju),mempty) }
+    let ps = first (CR.t_id ju) in
+    ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }
     , "Started proof of judgment.")
 
   | PU.Apply(tac) ->
-    (handle_tactic ts tac, "Applied tactic.")
+    let (ts,s) = handle_tactic ts tac in
+    (ts, "Applied tactic: "^s)
 
   | PU.Back ->
     begin match ts.ts_ps with
-    | ActiveProof(_,back) -> 
+    | ActiveProof(_,uback,back,ops) -> 
       begin match pull back with
       | Left _ -> tacerror "Cannot backtrack"
       | Right(ps',pss) ->
-        ({ ts with ts_ps = ActiveProof(ps',pss) }, "Backtracked to next alternative.")
+        let ts' =
+          { ts with ts_ps = ActiveProof(ps',(get_proof_state ts)::uback,pss,ops) }
+        in
+        (ts', "Backtracked to next alternative:"^diff_step ops ps')
+      end
+    | _ -> tacerror "last: no goals"
+    end
+
+  | PU.UndoBack(false) ->
+    begin match ts.ts_ps with
+    | ActiveProof(_,uback,back,ops) -> 
+      begin match uback with
+      | [] -> tacerror "Cannot undo backtrack"
+      | ps'::pss ->
+        ({ ts with
+           ts_ps = ActiveProof(ps',pss,mplus (ret (get_proof_state ts)) back,ops) }
+        , "Backtracked to previous alternative:"^diff_step ops ps')
+      end
+    | _ -> tacerror "last: no goals"
+    end
+
+  | PU.UndoBack(true) ->
+    begin match ts.ts_ps with
+    | ActiveProof(_,uback,back,ops) -> 
+      begin match L.rev uback with
+      | [] -> tacerror "Cannot undo backtrack"
+      | ps'::pss ->
+        let back' = mplus (mconcat pss) (mplus (ret (get_proof_state ts)) back) in
+        ({ ts with
+           ts_ps = ActiveProof(ps',[],back',ops) }
+        , "Backtracked to first alternative:"^diff_step ops ps')
       end
     | _ -> tacerror "last: no goals"
     end
 
   | PU.Last ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,back) -> 
-      ({ ts with ts_ps = ActiveProof(CR.move_first_last ps,back) }, "Delayed current goal")
+    | ActiveProof(ps,uback,back,ops) -> 
+      ({ ts with ts_ps = ActiveProof(CR.move_first_last ps,uback,back,ops) }
+      , "Delayed current goal")
     | _ -> tacerror "last: no goals"
     end
 
   | PU.Admit ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,_) -> 
-      ({ts with ts_ps = ActiveProof(first (CR.apply_first (CR.t_admit "") ps),mempty)}
+    | ActiveProof(ps,_,_,_) -> 
+      ({ts with ts_ps =
+          ActiveProof(first (CR.apply_first (CR.t_admit "") ps),[],mempty,Some(ps))}
       , "Admit goal.")
     | _ -> tacerror "admit: no goals"
     end
 
   | PU.PrintGoals(s) ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,_back) -> 
-      let msg = fsprintf "@[<v>Proof state %s:@\n%a@]" s pp_jus ps.CR.subgoals in
+    | ActiveProof(ps,_uback,_back,_) -> 
+      let msg = fsprintf "@[<v>Proof state %s:@\n%a@]" s (pp_jus 100) ps.CR.subgoals in
       (ts, msg)
     | BeforeProof    -> (ts, "No proof started yet.")
     | ClosedTheory _ -> (ts, "Theory closed.")
@@ -322,8 +380,8 @@ let handle_instr ts instr =
       let pt =
         match ts.ts_ps with
         | BeforeProof -> assert false
-        | ClosedTheory pt      -> pt
-        | ActiveProof  (ps,_)  -> CR.get_proof (prove_by_admit "" ps)
+        | ClosedTheory pt          -> pt
+        | ActiveProof  (ps,_,_,_)  -> CR.get_proof (prove_by_admit "" ps)
       in
       let pt = simplify_proof_tree pt in
       let buf = Buffer.create 1024 in
@@ -335,10 +393,10 @@ let handle_instr ts instr =
 
   | PU.PrintGoal(s) ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,_back) -> 
+    | ActiveProof(ps,_uback,_back,_) -> 
       let msg = fsprintf "Current goal in state %s:%a@."
         s
-        pp_jus
+        (pp_jus 100)
         (Util.take 1 ps.CR.subgoals)
       in
       (ts, msg)
@@ -348,7 +406,7 @@ let handle_instr ts instr =
 
   | PU.Qed ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,_back) ->
+    | ActiveProof(ps,_uback,_back,_) ->
       if ps.CR.subgoals = [] then
         ({ts with ts_ps = ClosedTheory (ps.CR.validation [])}, "Finished proof.")
       else
@@ -365,6 +423,15 @@ let handle_instr ts instr =
     begin match cmd with
     | "cases" ->
       CaseRules.print_cases ts
+    | "alternatives" ->
+      begin match ts.ts_ps with
+      | ActiveProof(_,_,back,_) ->
+        (ts, F.sprintf "There are %i alternatives left." (L.length (run (-1) back)))
+      | BeforeProof  -> (ts, "No proof started yet.")
+      | ClosedTheory _ -> (ts, "Proof finished.")
+      end
+
+
     | _ ->
       tacerror "Unknown debug command."
     end

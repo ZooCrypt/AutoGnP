@@ -10,6 +10,7 @@ open Assumption
 open AssumptionRules
 open RandomRules
 open RindepRules
+open CaseRules
 
 module CR = CoreRules
 module Ht = Hashtbl
@@ -88,41 +89,44 @@ let t_fix must_finish max t ju =
     ) else (
       npss >>= fun pss ->
       let ps2 = CR.merge_proof_states pss ps.CR.validation in
-      aux (i - 1) ps2
+      if list_equal ju_equal ps2.CR.subgoals ps.CR.subgoals then
+        ret ps
+      else
+        aux (i - 1) ps2
     )
   in
   aux max ps0
 
 let t_simp i must_finish _ts ju =
-  let step ju =
-        ((CR.t_cut ((t_norm ~fail_eq:true) @| CR.t_id))
+  let step =
+    (   (t_norm ~fail_eq:true @|| CR.t_id)
      @> (    CR.t_false_ev 
          @|| t_rewrite_oracle_maybe None None
          @|| t_split_ev_maybe None
-         @|| t_rewrite_ev_maybe None None )) ju
+         @|| t_rewrite_ev_maybe None None))
   in
   t_fix i must_finish step ju
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Automated crush tactic} *)
 
-
 type proof_search_info = {
   psi_assms  : Sstring.t;
   psi_rvars  : Vsym.S.t;
-  psi_orvars : Vsym.S.t
+  psi_orvars : Vsym.S.t;
+  psi_cases  : Se.t
 }
 
 let psi_empty = {
   psi_assms = Sstring.empty;
   psi_rvars = Vsym.S.empty;
-  psi_orvars = Vsym.S.empty
+  psi_orvars = Vsym.S.empty;
+  psi_cases  = Se.empty
 }
 
 exception Disallowed
 
-(* compute proof search information on path of each admit
-   for given proof tree *)
+(* compute proof search information on path of each admit for given proof tree *)
 let psis_of_pt pt =
   let admit_psis = ref [] in
   let rec aux psi pt =
@@ -134,6 +138,11 @@ let psis_of_pt pt =
         { psi with psi_assms = Sstring.add ad.ad_name psi.psi_assms }
       in
       L.iter (aux psi) children
+    | CR.Rcase_ev(e) ->
+      let psi =
+        { psi with psi_cases = Se.add e psi.psi_cases }
+      in
+      L.iter (aux psi) children    
     | CR.Rrnd(pos,_,_,_) ->
       let rands = samplings gd in
       let (rv,_) = L.assoc pos rands in
@@ -157,7 +166,32 @@ let psis_of_pt pt =
   aux psi_empty pt;
   !admit_psis
 
-let rec bycrush step get_pt j ps1 =
+let rec t_crush_step ts must_finish finish_now psi =
+  let ias = psi.psi_assms in
+  let irvs = psi.psi_rvars in
+  let iorvs = psi.psi_rvars in
+  let icases = psi.psi_cases in
+  (* let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in *)
+
+  let t_prepare =
+    (   (CR.t_ensure_progress (t_simp false 40 ts) @|| CR.t_id)
+        @> (t_norm ~fail_eq:true @|| CR.t_id))
+  in
+  let t_close = t_random_indep false @|| t_assm_comp ~icases ts false None None in
+  let t_progress = 
+       t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
+    @| t_rnd_maybe ~i_rvars:irvs ts false None None None
+    @| t_rexcept_maybe None None
+    @| t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None
+    @| t_add_test_maybe
+    @| t_case_ev_maybe
+  in
+      t_prepare
+   @> (    t_close
+       @|| (if must_finish && finish_now then CR.t_fail "not finished" else t_progress))
+
+and bycrush ts get_pt j ps1 =
+  let step = t_crush_step ts true in
   let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
   let gs = ps1.CR.subgoals in
   assert (L.length gs = L.length psis);
@@ -166,58 +200,38 @@ let rec bycrush step get_pt j ps1 =
   if j > 1 then (
     mplus
       (guard (ps2.CR.subgoals = []) >>= fun _ -> ret ps2)
-      (guard (ps2.CR.subgoals <> []) >>= fun _ -> bycrush step get_pt (j - 1) ps2)
+      (guard (ps2.CR.subgoals <> []) >>= fun _ -> bycrush ts get_pt (j - 1) ps2)
   ) else (
-    (* return all proof states if must_finish is not given and finished ones otherwise *)
+    (* return only finished pstates *)
     guard (ps2.CR.subgoals = []) >>= fun _ ->
     ret ps2
   )
 
-let rec crush step get_pt j ps1 =
+and crush ts get_pt j ps1 =
+  let step = t_crush_step ts false in
   let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
   let gs = ps1.CR.subgoals in
   assert (L.length gs = L.length psis);
   mapM (fun (psi,g) -> step (j <= 0) psi g) (L.combine psis gs) >>= fun pss ->
   let ps2 = CR.merge_proof_states pss ps1.CR.validation in
   if j > 1 then (
-    (* return only proof states with exactly i steps for must_finish=false *)
-    crush step get_pt (j - 1) ps2
+    (* return only proof states with exactly i steps *)
+    crush ts get_pt (j - 1) ps2
   ) else (
     ret ps2
   )
 
-let t_crush must_finish mi ts ps ju =
+and t_crush must_finish mi ts ps ju =
   let i = from_opt 5 mi in
-  let step finish_now psi =
-    let ias = psi.psi_assms in
-    let irvs = psi.psi_rvars in
-    let iorvs = psi.psi_rvars in
-    let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in
-    let t_close =
-      ((t_simp false 20 ts @> t_norm_xor_id) @|| CR.t_id)
-      @> (t_random_indep false @|| t_assm_comp ts false None None)
-    in
-    let t_progress = 
-         t_simp true 10 ts
-      @| t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
-      @| t_rnd_maybe ~i_rvars:irvs ts false None None None
-      @| t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None
-    in
-    t_norm_xor_id @>
-    (    t_close
-     @|| (if must_finish && finish_now then CR.t_fail "not finished" else t_progress))
-  in
-  let get_pt ps2 =
-    CR.get_proof (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps2) ps)))
+  let get_pt ps' =
+    CR.get_proof
+      (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps') ps)))
   in
   if i > 0 then (
     if must_finish then 
-      bycrush step get_pt i (first (CR.t_id ju))
+      bycrush ts get_pt i (first (CR.t_id ju))
     else
-      crush step get_pt i (first (CR.t_id ju))
+      crush ts get_pt i (first (CR.t_id ju))
   ) else (
     CR.t_fail "crush: number of steps cannot be smaller than one" ju
   )
-
-
-

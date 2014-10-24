@@ -273,15 +273,16 @@ let set_ju_lcmd ju p cmds =
 type iter_pos =
   | InEv
   | InMain       of gcmd_pos
-  | InOrcl       of ocmd_pos
-  | InOrclReturn of odef_pos
+  | InOrclReturn of ocmd_pos * ty * ty
+  | InOrcl       of ocmd_pos * ty * ty
+    (* position, adversary argument type, oracle type *)
 
 let pp_iter_pos fmt ip =
   match ip with
-  | InEv                     -> F.fprintf fmt "inEv"
-  | InMain(i)                -> F.fprintf fmt "inMain(%i)" i
-  | InOrcl(gpos,o_idx,opos)  -> F.fprintf fmt "inOrcl(%i,%i,%i)" gpos o_idx opos
-  | InOrclReturn(gpos,o_idx) -> F.fprintf fmt "inOreturn(%i,%i)" gpos o_idx
+  | InEv                           -> F.fprintf fmt "inEv"
+  | InMain(i)                      -> F.fprintf fmt "inMain(%i)" i
+  | InOrcl((gpos,o_idx,opos),_,_)  -> F.fprintf fmt "inOrcl(%i,%i,%i)" gpos o_idx opos
+  | InOrclReturn((gpos,o_idx,_),_,_) -> F.fprintf fmt "inOreturn(%i,%i)" gpos o_idx
 
 type iter_ctx = {
   ic_pos     : iter_pos;
@@ -323,11 +324,12 @@ let destr_neq e =
   | _ ->
     None
 
-let iter_ctx_odef_exp gpos o_idx nz ?iexc:(iexc=false) f (_o,_vs,ms,e) =
+let iter_ctx_odef_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (o,_vs,ms,e) =
+  let tests = ref 0 in
   let nonZero = ref nz in
   let isZero  = ref [] in
-  let go lcmd_idx lcmd =
-    let ctx = { (empty_iter_ctx (InOrcl(gpos,o_idx,lcmd_idx)))
+  let go _lcmd_idx lcmd =
+    let ctx = { (empty_iter_ctx (InOrcl((gpos,o_idx,!tests),argtype,o.Osym.dom)))
                   with ic_nonZero = !nonZero; ic_isZero = !isZero }
     in
     match lcmd with
@@ -341,12 +343,13 @@ let iter_ctx_odef_exp gpos o_idx nz ?iexc:(iexc=false) f (_o,_vs,ms,e) =
       let neqs = L.map (fun e -> destr_eq (mk_Eq ve e)) es in
       nonZero := catSome neqs @ !nonZero
     | LGuard(e)  ->
+      incr tests;
       f ctx e;
       isZero := (catSome (L.map destr_eq [e])) @ !isZero;
       nonZero := (catSome (L.map destr_neq [e])) @ !nonZero
   in
   L.iteri go ms;
-  let ctx = { ic_pos = InOrclReturn(gpos,o_idx);
+  let ctx = { ic_pos = InOrclReturn((gpos,o_idx,!tests),argtype,o.Osym.dom);
               ic_nonZero = !nonZero; ic_isZero = !isZero }
   in
   f ctx e
@@ -360,7 +363,9 @@ let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
       f ctx e
     | GCall(_,_,e,os) ->
       f ctx e;
-      L.iteri (fun oi -> iter_ctx_odef_exp pos oi !nonZero ~iexc f) os
+      L.iteri
+        (fun oi -> iter_ctx_odef_exp e.e_ty pos oi !nonZero ~iexc f)
+        os
     | GSamp(v,(_,es)) ->
       if iexc then L.iter (f ctx) es;
       let ve = mk_V v in

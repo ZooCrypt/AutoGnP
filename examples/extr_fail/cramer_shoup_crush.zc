@@ -55,29 +55,8 @@ prove
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
 
   ] : b = b'.
-
-  crush 4. rnorm.
-  print_debug "cases".
-
-  radd_test (10,1,1) (a^w = a') B1 ga ga' gc gd.
-    bycrush 1.
-  rsimp. rnorm.
-  rexcept _ _.
-  crush 1. back. back. rnorm.
-  crush 1. rnorm.
-
-  print_debug "cases".
-  radd_test (12,1,2) (a^w = a') C1 ea ea' ec ed.
-    last. bycrush 1.
-  rsimp.
-  print_debug "cases".
-
-  rcase_ev (H(ea,ea',ec) = H(g ^ u,g ^ xxxx1,g ^ z2)).
-    print_debug "cases".
-    rcase_ev ((ea,ea',ec) = (g ^ u,g ^ xxxx1,g ^ z2)).
-      bycrush 1.
-    bycrush.
-  bycrush.
+  
+  crush 14.
   qed.
   print_proof.
   extract "extraction/cramer_shoup_crush.ec".

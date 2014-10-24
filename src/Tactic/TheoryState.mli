@@ -15,7 +15,8 @@ open CoreRules
    After the proof, the theory is closed (the proof is completed). *)
 type theory_proof_state =
   | BeforeProof
-  | ActiveProof  of (proof_state * proof_state nondet) 
+  | ActiveProof
+    of proof_state * proof_state list * proof_state nondet * proof_state option
   | ClosedTheory of proof_tree
 
 type theory_state = {

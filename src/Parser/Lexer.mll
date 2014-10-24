@@ -32,6 +32,8 @@ rule lex = parse
   | "true"  { TRUE }
   | "false" { FALSE }
   | "let"   { LET }
+  | "undo_back"  { UNDOBACK }
+  | "undo_back!"  { UNDOBACK_EXCL }
   | "adversary" { ADVERSARY }
   | "admit" { ADMIT }
   | "last" { LAST }

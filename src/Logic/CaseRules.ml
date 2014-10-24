@@ -5,6 +5,7 @@ open Util
 open Type
 open Expr
 open Game
+open Gsyms
 open Syms
 open Nondet
 open Rules
@@ -18,17 +19,17 @@ module CR = CoreRules
 
 (* Useful (in)equalities that can be obtained by applying one of the three rules *)
 type useful_cases =
-  | AppAddTest    of ocmd_pos * expr
+  | AppAddTest    of ocmd_pos * expr * ty * ty
   | AppExceptOrcl of ocmd_pos * expr
   | AppExcept     of gcmd_pos * expr
   | AppCaseEv     of expr
 
 let uc_exp uc = match uc with
-  | AppAddTest(_,e) | AppExceptOrcl(_,e) | AppExcept(_,e) | AppCaseEv(e) -> e
+  | AppAddTest(_,e,_,_) | AppExceptOrcl(_,e) | AppExcept(_,e) | AppCaseEv(e) -> e
 
 let compare_uc uc1 uc2 =
   match uc1, uc2 with
-  | AppAddTest(opos1,e1), AppAddTest(opos2,e2) ->
+  | AppAddTest(opos1,e1,_,_), AppAddTest(opos2,e2,_,_) ->
     let cmp = compare opos1 opos2 in
     if cmp <> 0 then cmp else e_compare e1 e2
   | AppExceptOrcl(opos1,e1), AppExceptOrcl(opos2,e2) ->
@@ -48,7 +49,7 @@ let compare_uc uc1 uc2 =
 
 let pp_useful_cases fmt uc =
   match uc with
-  | AppAddTest((g_idx,oi,o_idx),e) ->
+  | AppAddTest((g_idx,oi,o_idx),e,_,_) ->
     F.fprintf fmt "app(raddtest (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e
   | AppExceptOrcl((g_idx,oi,o_idx),e) ->
     F.fprintf fmt "app(rexcept_orcl (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e
@@ -108,7 +109,7 @@ let compute_case gdef mhidden _fbuf ctx e =
           let uvs = e_vars rem in
           if is_invertible coeff && used_vars_defined uvs j then (
             let exce = Norm.norm_expr (mk_FDiv rem (mk_FOpp coeff)) in
-            cases := AppExcept(j,exce) :: !cases;
+            if not (is_Zero exce) then cases := AppExcept(j,exce) :: !cases
             (* F.fprintf fbuf "@[  for %a, except %a@\n@]%!"
                 pp_exp ve
                 pp_exp exce *)
@@ -119,9 +120,12 @@ let compute_case gdef mhidden _fbuf ctx e =
     (* Schwartz-Zippel tells us that we cannot make the value zero in the other case *)
     if not (Se.subset (e_vars e) rvars) then (
       match ctx.ic_pos with
-      | InEv                  -> cases := AppCaseEv(e) :: !cases
-      | InOrcl(gpos,oi,_opos) -> cases := AppAddTest((gpos,oi,0),e) :: !cases
-      | InOrclReturn(gpos,oi) -> cases := AppAddTest((gpos,oi,0),e) :: !cases
+      | InEv                  ->
+        cases := AppCaseEv(e) :: !cases
+      | InOrcl((gpos,oi,opos),aty,oty) ->
+        cases := AppAddTest((gpos,oi,opos),e,aty,oty) :: !cases
+      | InOrclReturn((gpos,oi,opos),aty,oty) ->
+        cases := AppAddTest((gpos,oi,opos),e,aty,oty) :: !cases
       | InMain(_gpos)         -> ()
         (* can we do anything above? rexcept is already handled above if possible *)
     )
@@ -160,8 +164,7 @@ let maybe_hidden_rvars gdef =
   in
   go [] gdef
 
-let get_cases fbuf ts =
-  let ju   =  L.hd (get_proof_state ts).subgoals in
+let get_cases fbuf ju =
   let maybe_hidden = maybe_hidden_rvars ju.ju_gdef in
   let cases = ref [] in
   F.fprintf fbuf "@[maybe hidden: %a@\n@\n@]" (pp_list ", " Vsym.pp) maybe_hidden;
@@ -184,34 +187,103 @@ let get_cases fbuf ts =
   cases
 
 let print_cases ts =
+  let ju   =  L.hd (get_proof_state ts).subgoals in
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
-  let cases = get_cases fbuf ts in
+  let cases = get_cases fbuf ju in
   F.fprintf fbuf "@[cases after:@\n  %a@\n@\n@]" (pp_list ",@\n  " pp_useful_cases) cases;
   (ts, "Here:\n\n"^(Buffer.contents buf))
 
-let t_rexcept_maybe ts mi mes ju =
+let t_rexcept_maybe mi mes ju =
   if mes <> None
   then failwith "rexcept: placeholder for index, but not for expression not supported";
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
-  let cases = get_cases fbuf ts in
-  let except = catSome (L.map (function AppExcept(i,e) -> Some(i,e) | _ -> None) cases) in
+  let cases = get_cases fbuf ju in
+  let except =
+    catSome (L.map (function AppExcept(i,e) -> Some(i,e) | _ -> None) cases)
+  in
   mconcat except >>= fun (j,e) ->
   guard (match mi with Some i -> i = j | None -> true) >>= fun _ ->
   CoreRules.t_except j [e] ju
 
-(*
-let t_addtest_maybe ts mopos mt ju =
-  if mt <> None
-  then failwith "radd_test: placeholder for oracle position, but not for test not supported";
+let simp_eq e =
+  assert (is_Fq e.e_ty);
+  let sort_pair (a,b) =
+    if e_compare a b > 0 then (a,b) else (b,a)
+  in
+  let res =
+    match e.e_node with
+    | Nary(FPlus,[a;b]) when is_FOpp a ->
+      let (e1,e2) = sort_pair (destr_FOpp a, b) in
+      mk_Eq e1 e2
+    | Nary(FPlus,[a;b]) when is_FOpp b ->
+      let (e1,e2) = sort_pair (destr_FOpp b, a) in
+      mk_Eq e1 e2
+    | _ ->
+      mk_Eq e mk_FZ
+  in
+  norm_expr_def res
+
+let t_case_ev_maybe ju =
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
-  let cases = get_cases fbuf ts in
-  let except =
-    catSome (L.map (function AppAddTest(opos,e) -> Some(opos,e) | _ -> None) cases)
+  let cases = get_cases fbuf ju in
+  let except = catSome (L.map (function AppCaseEv(e) -> Some(e) | _ -> None) cases) in
+  mconcat except >>= fun e ->
+  CoreRules.t_case_ev (simp_eq e) ju
+
+let simp_eq_group e =
+  let to_g =
+    match (destr_GLog (e_find is_GLog e)).e_ty.ty_node with
+    | Type.G gn ->
+      (fun fe -> mk_GExp (mk_GGen gn) fe)
+    | _         -> id
   in
-  mconcat except >>= fun (opos,t) ->
-  guard (match mopos with Some opos' -> opos' = opos | None -> true) >>= fun _ ->
-  CoreRules.t_add_test opos t [] ju
-*)
+  assert (is_Fq e.e_ty);
+  let sort_pair (a,b) =
+    if e_compare a b > 0 then (a,b) else (b,a)
+  in
+  let res =
+    match e.e_node with
+    | Nary(FPlus,[a;b]) when is_FOpp a ->
+      let (e1,e2) = sort_pair (destr_FOpp a, b) in
+      if is_H e1 && is_H e2 then
+        mk_Eq e1 e2
+      else
+        mk_Eq (to_g e1) (to_g e2)
+    | Nary(FPlus,[a;b]) when is_FOpp b ->
+      let (e1,e2) = sort_pair (destr_FOpp b, a) in
+      if is_H e1 && is_H e2 then
+        mk_Eq e1 e2
+      else
+        mk_Eq (to_g e1) (to_g e2)
+    | _ ->
+      mk_Eq e mk_FZ
+  in
+  norm_expr_def res
+
+let t_add_test_maybe ju =
+  let buf  = Buffer.create 127 in
+  let fbuf = F.formatter_of_buffer buf in
+  let cases = get_cases fbuf ju in
+  let destr_prod oty = match oty.ty_node with
+    | Prod(tys) -> tys
+    | _ -> [oty]
+  in
+  let except =
+    L.map
+      (function AppAddTest(opos,e,aty,oty) -> Some(opos,e,aty,oty) | _ -> None)
+      cases
+    |> catSome
+  in
+  mconcat except >>= fun (opos,t,aty,oty) ->
+  let tys = destr_prod oty in
+  let wvars = write_gcmds ju.ju_gdef in
+  (* test must contain oracle arguments, otherwise useless for type of examples
+     we consider *)
+  guard (not (Se.subset (e_vars t) wvars)) >>= fun _ ->
+  CoreRules.t_add_test
+    opos
+    (simp_eq_group t)
+    (Asym.mk "BBB" aty oty) (L.map (fun ty -> Vsym.mk (mk_name ()) ty) tys) ju
