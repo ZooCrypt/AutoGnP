@@ -10,7 +10,7 @@ operator H : (G * G * G) -> Fq.
 assumption_computational tcr
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
     let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; ]
-  (x : (G * G * G) -> (H(x) = H(ga,gb,gc)) /\ not (x = (ga,gb,gc)) )
+  (x : (G * G * G) -> (H(ga,gb,gc) = H(x)) /\ not (x = (ga,gb,gc)) )
   (a b c).
 
 adversary A1 : (G * G * G * G) -> (G * G).
