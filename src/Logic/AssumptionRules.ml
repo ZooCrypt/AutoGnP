@@ -55,7 +55,7 @@ let t_assm_dec_aux assm dir subst samp_assm lets_assm ju =
   let ((_,subst), let_abstrs) =  map_accum ltac (1,subst) lets_assm in
   (* try conversion between gdef = gprefix;grest and inst(assm);grest *)
   let conv_common_prefix ju =
-    let a_rn = ad_subst subst assm in
+    let a_rn = ad_inst subst assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
     let grest = Util.drop (L.length c) ju.ju_gdef in
     (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
@@ -152,10 +152,10 @@ let t_assm_dec_non_exact ?i_assms:(iassms=Sstring.empty) ts massm_name mdir mvna
   t_assm_dec_auto assm dir subst ju
 
 let t_assm_dec_exact ts massm_name mdir mvnames ju =
-  let dir = match mdir with Some s -> s | None -> tacerror "exact required dir" in
+  let dir = match mdir with Some s -> s | None -> tacerror "exact requires dir" in
   let assm_name = match massm_name with
     | Some s -> s
-    | None -> tacerror "exact required sname"
+    | None -> tacerror "exact requires sname"
   in
   let assm =
       try Ht.find ts.ts_assms_dec assm_name
@@ -169,40 +169,40 @@ let t_assm_dec_exact ts massm_name mdir mvnames ju =
   in
   if List.length needed <> List.length vnames then
     tacerror "Bad number of variables";
-  let subst =
+  let ren =
     List.fold_left2
       (fun s v x ->
         let v' = Vsym.mk x v.Vsym.ty in
         Vsym.M.add v v' s)
       Vsym.M.empty
       needed
-     vnames
+      vnames
   in
   let c =
     if dir = LeftToRight then assm.Assumption.ad_prefix1
-    else assm.Assumption.ad_prefix1
+    else assm.Assumption.ad_prefix2
   in
   let jc = Util.take (List.length c) ju.ju_gdef in
-  let subst =
-    List.fold_left2 (fun s i1 i2 ->
-      match i1, i2 with
-      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_)
-        when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
-        Vsym.M.add x1 x2 s
-      | _ -> tacerror "assumption_decisional : can not infer substitution")
-      subst
+  let ren =
+    List.fold_left2
+      (fun rn  i1 i2 ->
+        match i1, i2 with
+        | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_)
+          when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
+          Vsym.M.add x1 x2 rn
+        | _ -> tacerror "assumption_decisional : can not infer renaming")
+      ren
       c
       jc
   in
   let conv_common_prefix ju =
-    let a_rn = ad_subst subst assm in
+    let a_rn = ad_inst ren assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
     let grest = Util.drop (L.length c) ju.ju_gdef in
     (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
-     @> CoreRules.t_assm_dec dir subst assm) ju
+     @> CoreRules.t_assm_dec dir ren assm) ju
   in
-  (CR.t_assm_dec dir subst assm @|| conv_common_prefix) ju
-
+  (CR.t_assm_dec dir ren assm @|| conv_common_prefix) ju
 
 let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mvnames ju =
   if exact then
@@ -293,7 +293,7 @@ let conj_type e =
   )
 
 let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e ju =
-  let assm = ac_instantiate subst assm in
+  let assm = ac_inst subst assm in
   (match mev_e with
   | Some e -> ret e
   | None   ->
@@ -301,7 +301,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e j
     match_expr assm.ac_event_var pat e
   ) >>= fun ev_e ->
   (* eprintf "##########################@\nev_e = %a@\n%!" pp_exp ev_e; *)
-  let sassm = Assumption.ac_instantiate subst assm in
+  let sassm = Assumption.ac_inst subst assm in
   let sassm_ev = e_replace (mk_V sassm.ac_event_var) ev_e sassm.ac_event in
   let assm_ju = { ju_gdef = sassm.ac_prefix; ju_ev = sassm_ev } in
   let assm_ju = norm_ju ~norm:(fun x -> x) assm_ju in

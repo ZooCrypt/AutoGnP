@@ -58,18 +58,18 @@ let needed_var dir assm =
   if dir = LeftToRight then Vsym.S.elements (Vsym.S.diff w2 w1)
   else Vsym.S.elements (Vsym.S.diff w1 w2)
 
-let ad_subst subst assm =
-  let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
-  let subst_s s =
-    Vsym.S.fold (fun x -> Vsym.S.add (subst_v x)) s Vsym.S.empty
+let ad_inst ren assm =
+  let ren_v (x:Vsym.t) = try Vsym.M.find x ren with Not_found -> x in
+  let ren_s s =
+    Vsym.S.fold (fun x -> Vsym.S.add (ren_v x)) s Vsym.S.empty
   in
-  let subst_g = Game.subst_v_gdef subst_v in
+  let subst_g = Game.subst_v_gdef ren_v in
   { ad_name     = assm.ad_name;
     ad_prefix1  = subst_g assm.ad_prefix1;
     ad_prefix2  = subst_g assm.ad_prefix2;
-    ad_pubvars  = subst_s assm.ad_pubvars;
-    ad_privvars = subst_s assm.ad_privvars;
-    ad_symvars  = L.map (L.map subst_v) assm.ad_symvars;
+    ad_pubvars  = ren_s assm.ad_pubvars;
+    ad_privvars = ren_s assm.ad_privvars;
+    ad_symvars  = L.map (L.map ren_v) assm.ad_symvars;
   }
 
 (*i ----------------------------------------------------------------------- i*)
@@ -99,17 +99,17 @@ let mk_assm_comp name pref ev_var ev priv_vars sym_vars =
     ac_symvars    = sym_vars;
   }
 
-let ac_instantiate subst assm = 
-  let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
-  let subst_s s =
-    Vsym.S.fold (fun x -> Vsym.S.add (subst_v x)) s Vsym.S.empty
+let ac_inst ren assm =
+  let ren_v (x:Vsym.t) = try Vsym.M.find x ren with Not_found -> x in
+  let ren_s s =
+    Vsym.S.fold (fun x -> Vsym.S.add (ren_v x)) s Vsym.S.empty
   in
-  let subst_g = Game.subst_v_gdef subst_v in
+  let subst_g = Game.subst_v_gdef ren_v in
   { ac_name       = assm.ac_name;
     ac_prefix     = subst_g assm.ac_prefix;
     ac_event_var  = assm.ac_event_var;
-    ac_event      = subst_v_e subst_v assm.ac_event;
-    ac_pubvars    = subst_s assm.ac_pubvars;
-    ac_privvars   = subst_s assm.ac_privvars;
-    ac_symvars    = L.map (L.map subst_v) assm.ac_symvars;
+    ac_event      = subst_v_e ren_v assm.ac_event;
+    ac_pubvars    = ren_s assm.ac_pubvars;
+    ac_privvars   = ren_s assm.ac_privvars;
+    ac_symvars    = L.map (L.map ren_v) assm.ac_symvars;
   }

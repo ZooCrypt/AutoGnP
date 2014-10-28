@@ -21,7 +21,7 @@ val mk_assm_dec : string -> gdef -> gdef -> Vsym.S.t -> vs list list -> assm_dec
 
 val needed_var : direction  -> assm_dec -> Vsym.t list
 
-val ad_subst : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
+val ad_inst : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
 
 (** Computational assumptions. *)
 type assm_comp = private {
@@ -37,4 +37,4 @@ type assm_comp = private {
 val mk_assm_comp :
   string -> gdef -> Vsym.t -> expr -> Vsym.S.t -> vs list list -> assm_comp
 
-val ac_instantiate : Vsym.t Vsym.M.t -> assm_comp -> assm_comp
+val ac_inst : Vsym.t Vsym.M.t -> assm_comp -> assm_comp
