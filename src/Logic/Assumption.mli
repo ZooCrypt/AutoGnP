@@ -17,8 +17,7 @@ type assm_dec = private {
   ad_symvars    : vs list list; (*r symmetric in given variables *)
 }
 
-val mk_assm_dec :
-  string -> gdef -> gdef -> Vsym.S.t -> vs list list -> assm_dec
+val mk_assm_dec : string -> gdef -> gdef -> Vsym.S.t -> vs list list -> assm_dec
 
 val needed_var : direction  -> assm_dec -> Vsym.t list
 

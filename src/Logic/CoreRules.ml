@@ -705,8 +705,9 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
 
 (** Reduction to decisional assumptions. *)
 
-let rassm_dec dir subst assm' ju =
-  let assm = Assumption.ad_subst subst assm' in
+let rassm_dec dir subst assm0 ju =
+  (* FIXME: check that substitution bijective *)
+  let assm = Assumption.ad_subst subst assm0 in
   let c,c' =
     if dir = LeftToRight
     then assm.ad_prefix1,assm.ad_prefix2
@@ -717,20 +718,22 @@ let rassm_dec dir subst assm' ju =
     then tacerror "assm_dec: cannot match decisional assumption";
   let tl = Util.drop (L.length c) ju.ju_gdef in
   let ju' = { ju with ju_gdef = tl } in
-  if not (is_ppt_ju ju') then tacerror "@[assm_dec: game or event not ppt @\n%a@\n@]" pp_ju ju';
+  if not (is_ppt_ju ju')
+    then tacerror "@[assm_dec: game or event not ppt @\n%a@\n@]" pp_ju ju';
   let read = read_ju ju' in
   let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
   let diff = Se.inter priv read in
-  if not (Se.is_empty diff) then tacerror "assm_dec: does not respect private variables";
+  if not (Se.is_empty diff)
+    then tacerror "assm_dec: does not respect private variables";
   eprintf "!! rassm_dec performed@\n";
-  Rassm_dec(dir,subst,assm'), [{ ju with ju_gdef = c' @ tl }]
+  Rassm_dec(dir,subst,assm0), [{ ju with ju_gdef = c' @ tl }]
 
 let t_assm_dec dir subst assm = prove_by (rassm_dec dir subst assm)
 
 (** Reduction to computational assumption. *)
 
-let rassm_comp assm ev_e subst ju =
-  let assm = Assumption.ac_instantiate subst assm in
+let rassm_comp assm0 ev_e subst ju =
+  let assm = Assumption.ac_instantiate subst assm0 in
   let assm_ev = e_replace (mk_V assm.ac_event_var) ev_e assm.ac_event in
   if ju.ju_ev <> assm_ev
   then (tacerror "assm_comp: event not equal, expected %a, got %a"
@@ -746,7 +749,7 @@ let rassm_comp assm ev_e subst ju =
   if not (Se.is_empty diff) then tacerror "assm_comp: does not respect private variables";
   if not (is_ppt_ju ju') then tacerror "assm_comp: game or event not ppt";
   eprintf "!! rassm_comp performed!@\n%!";
-  Rassm_comp(ev_e,subst,assm), []
+  Rassm_comp(ev_e,subst,assm0), []
 
 let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
 
