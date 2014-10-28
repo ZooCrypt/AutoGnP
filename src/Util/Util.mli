@@ -74,6 +74,8 @@ val input_file : string -> string
 
 val output_file : string -> string -> unit
 
+val append_file : string -> string -> unit
+
 val assert_msg : bool -> string -> unit
 
 type ('a,'b) either = Left of 'a | Right of 'b

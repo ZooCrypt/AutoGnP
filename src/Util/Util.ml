@@ -91,6 +91,10 @@ let output_file file_name content =
   output_string out_channel content;
   close_out_noerr out_channel
 
+let append_file file_name content =
+  let s = input_file file_name in
+  output_file file_name (s^content)
+
 let assert_msg b m = if not b then failwith m
 
 type ('a,'b) either = Left of 'a | Right of 'b
