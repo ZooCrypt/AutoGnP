@@ -207,6 +207,8 @@ val write_gcmd : gcmd -> Se.t
 
 val write_gcmds : gcmd list -> Se.t
 
+val asym_gcmds : gcmd list -> ads list
+
 val read_ju : judgment -> Se.t
 
 (*i ----------------------------------------------------------------------- i*)

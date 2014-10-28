@@ -310,7 +310,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e j
   let conjs = destr_Land assm_ju.ju_ev in
   let ineq = L.hd (L.filter is_Not conjs) in
   let nineq = norm_expr_def (mk_Not ineq) in
-  guard (not (Se.mem ineq icases)) >>= fun _ ->
+  guard (not (Se.mem nineq icases)) >>= fun _ ->
   let assm_tac = 
     (    CR.t_case_ev ~flip:true nineq
      @>> [ (* t_print "before_remove_ev" *)

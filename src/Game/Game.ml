@@ -499,6 +499,14 @@ let write_gcmd = function
 
 let write_gcmds c = fold_union write_gcmd c
 
+let asym_gcmd gcmd =
+  match gcmd with
+  | GCall(_,asym,_,_) -> Some asym
+  | _                 -> None
+
+let asym_gcmds gcmds =
+  L.map asym_gcmd gcmds |> catSome
+
 (** Judgments. *)
 
 let read_ju ju = Se.union (read_gcmds ju.ju_gdef) (e_vars ju.ju_ev)

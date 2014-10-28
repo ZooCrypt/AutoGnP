@@ -263,6 +263,8 @@ let simp_eq_group e =
   in
   norm_expr_def res
 
+let case_vars = ref []
+
 let t_add_test_maybe ju =
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
@@ -280,10 +282,28 @@ let t_add_test_maybe ju =
   mconcat except >>= fun (opos,t,aty,oty) ->
   let tys = destr_prod oty in
   let wvars = write_gcmds ju.ju_gdef in
-  (* test must contain oracle arguments, otherwise useless for type of examples
-     we consider *)
+  (* test must contain oracle arguments, otherwise useless for type
+     of examples we consider *)
   guard (not (Se.subset (e_vars t) wvars)) >>= fun _ ->
-  CoreRules.t_add_test
-    opos
-    (simp_eq_group t)
-    (Asym.mk "BBB" aty oty) (L.map (fun ty -> Vsym.mk (mk_name ()) ty) tys) ju
+  let test = simp_eq_group t in
+  let (asym,vars) =
+    try
+      let (_,(asym,vars)) =
+        L.find
+          (fun ((opos',test'),_v) -> opos = opos' && e_equal test test')
+          !case_vars
+      in
+      eprintf "+++++++++ found case_ev already!@\n%!";
+      if not (Se.is_empty
+                (Se.inter (se_of_list (L.map mk_V vars)) (write_gcmds ju.ju_gdef)))
+      then raise Not_found;
+      if L.mem asym (asym_gcmds ju.ju_gdef) then raise Not_found;
+      eprintf "+++++++++ occurs check OK!@\n%!";
+      (asym,vars)
+    with Not_found ->
+      let asym = Asym.mk "BBB" aty oty in
+      let vars = L.map (fun ty -> Vsym.mk (mk_name ()) ty) tys in
+      case_vars := ((opos,test),(asym,vars))::!case_vars;
+      (asym,vars)
+  in
+  CoreRules.t_add_test opos test asym vars ju

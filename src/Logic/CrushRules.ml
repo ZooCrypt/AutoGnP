@@ -166,32 +166,69 @@ let psis_of_pt pt =
   aux psi_empty pt;
   !admit_psis
 
-let rec t_crush_step ts must_finish finish_now psi =
+type stats = {
+  nstates   : int;
+  unqstates : int;
+  jus       : judgment list
+}
+
+let log_games = false
+
+let rec t_crush_step depth stats ts must_finish finish_now psi =
+  let gdir = "games_h" in
   let ias = psi.psi_assms in
   let irvs = psi.psi_rvars in
   let iorvs = psi.psi_rvars in
   let icases = psi.psi_cases in
   (* let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in *)
-
+  let t_after_simp ju =
+    let (jus,unqstates,is_old) =
+      let ju = { ju with ju_gdef = L.sort compare ju.ju_gdef } in
+      eprintf "+++++ state: %i, unique state: %i@\n%a\n%!"
+        !stats.nstates !stats.unqstates
+        pp_ju ju;
+      if not (L.mem ju !stats.jus)
+      then (ju::!stats.jus, !stats.unqstates + 1,false)
+      else (!stats.jus, !stats.unqstates,true)
+    in
+    let s = fsprintf "%a" pp_ju ju in
+    stats := { nstates = !stats.nstates + 1; unqstates = unqstates; jus = jus };
+    if log_games then (
+      Util.output_file (F.sprintf "%s/g%i.zc" gdir !stats.nstates)
+        (s^(F.sprintf "\n depth %i\n" depth))
+    );
+    if is_old
+    then CR.t_fail "state already explored!" ju
+    else CR.t_id ju
+  in
+  let t_log s ju =
+    if log_games then
+      Util.append_file (F.sprintf "%s/g%i.zc" gdir !stats.nstates) s;
+    CR.t_id ju
+  in
   let t_prepare =
     (   (CR.t_ensure_progress (t_simp false 40 ts) @|| CR.t_id)
         @> (t_norm ~fail_eq:true @|| CR.t_id))
   in
-  let t_close = t_random_indep false @|| t_assm_comp ~icases ts false None None in
-  let t_progress = 
-       t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
-    @| t_rnd_maybe ~i_rvars:irvs ts false None None None
-    @| t_rexcept_maybe None None
-    @| t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None
-    @| t_add_test_maybe
-    @| t_case_ev_maybe
+  let t_close ju =
+    ( (t_random_indep false @> t_log "random_indep")
+      @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp")) ju
   in
-      t_prepare
+  let t_progress = 
+       (t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
+        @> t_log "\nassm_dec")
+    @| (t_rnd_maybe ~i_rvars:irvs ts false None None None @> t_log "\nrnd")
+    @| (t_rexcept_maybe None None @> t_log "\nrexcept")
+    @| (t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None @> t_log "\nrnd_oracle")
+    @| (t_add_test_maybe @> t_log "\nadd_test")
+    @| (t_case_ev_maybe @> t_log "\ncase_ev")
+  in
+      (t_prepare @> t_after_simp)
    @> (    t_close
        @|| (if must_finish && finish_now then CR.t_fail "not finished" else t_progress))
 
-and bycrush ts get_pt j ps1 =
-  let step = t_crush_step ts true in
+and bycrush stats ts get_pt j ps1 =
+  let step = t_crush_step j stats ts true in
   let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
   let gs = ps1.CR.subgoals in
   assert (L.length gs = L.length psis);
@@ -200,15 +237,15 @@ and bycrush ts get_pt j ps1 =
   if j > 1 then (
     mplus
       (guard (ps2.CR.subgoals = []) >>= fun _ -> ret ps2)
-      (guard (ps2.CR.subgoals <> []) >>= fun _ -> bycrush ts get_pt (j - 1) ps2)
+      (guard (ps2.CR.subgoals <> []) >>= fun _ -> bycrush stats ts get_pt (j - 1) ps2)
   ) else (
     (* return only finished pstates *)
     guard (ps2.CR.subgoals = []) >>= fun _ ->
     ret ps2
   )
 
-and crush ts get_pt j ps1 =
-  let step = t_crush_step ts false in
+and crush stats ts get_pt j ps1 =
+  let step = t_crush_step j stats ts false in
   let psis = psis_of_pt (get_pt (prove_by_admit "current" ps1)) in
   let gs = ps1.CR.subgoals in
   assert (L.length gs = L.length psis);
@@ -216,7 +253,7 @@ and crush ts get_pt j ps1 =
   let ps2 = CR.merge_proof_states pss ps1.CR.validation in
   if j > 1 then (
     (* return only proof states with exactly i steps *)
-    crush ts get_pt (j - 1) ps2
+    crush stats ts get_pt (j - 1) ps2
   ) else (
     ret ps2
   )
@@ -227,11 +264,22 @@ and t_crush must_finish mi ts ps ju =
     CR.get_proof
       (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps') ps)))
   in
+  let stats = ref { nstates = 0; unqstates = 0; jus = [] } in
   if i > 0 then (
-    if must_finish then 
-      bycrush ts get_pt i (first (CR.t_id ju))
-    else
-      crush ts get_pt i (first (CR.t_id ju))
+    let res =
+      if must_finish then
+        bycrush stats ts get_pt i (first (CR.t_id ju))
+      else
+        crush stats ts get_pt i (first (CR.t_id ju))
+    in
+    let s = match pull res with
+      | Left _  -> "proof failed"
+      | Right _ -> "proof found"
+    in
+    eprintf
+      "%s, visited %i proof states (%i unique).@\n%!"
+      s !stats.nstates !stats.unqstates;
+    res
   ) else (
     CR.t_fail "crush: number of steps cannot be smaller than one" ju
   )
