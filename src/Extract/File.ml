@@ -1,6 +1,5 @@
 open Util
 open Type
-open Expr 
 open Game
 open Syms
 open Gsyms
@@ -89,6 +88,80 @@ type form =
   | Fforall_mem of mem * form  
   | Fpr of fun_name * mem * form list * form
 
+type mod_ty = {
+  modt_name : string;
+  modt_param : (string * string) list;
+  modt_proc  : (string * (string option * ty) list * ty * fun_name list) list
+} 
+
+type orcl_info = { 
+  mutable obound  : string;
+  oparams : Vsym.t list;
+  ores    : ty;
+(*  obody   : lcmd list;
+  ores    : Expr.expr; *)
+} 
+  
+type game_info = {
+  oinfo : orcl_info Osym.H.t;
+  ainfo : (Osym.t list) Asym.H.t;
+} 
+
+
+type adv_info = {
+  adv_name  : string;
+  adv_ty    : string;
+  mutable adv_restr : string list;
+  adv_g    : game_info 
+}
+
+
+type proof = F.formatter -> unit -> unit
+
+type clone_with = 
+  | CWtype of string * ty 
+  | CWop   of string * expr
+
+type clone_info =
+  { 
+    ci_local  : bool;
+    ci_import : bool;
+    ci_from   : string;
+    ci_as     : string;
+    ci_with   : clone_with list;
+ (*   ci_lemma  : string list *)
+  }
+      
+    
+type cmd =
+  | Ccomment of string 
+  | Cbound of string
+  | Cmodty of mod_ty
+  | Cmod   of bool * mod_def
+  | Cclone of clone_info
+  | Clemma of bool * string * form * proof option
+  | Csection of section
+
+and section =
+  {         section_name : string;
+    mutable section_glob : cmd list;
+    mutable section_loc  : local_section option;
+  }
+    
+and local_section = {
+          adv_info     : adv_info;
+  mutable loca_decl    : cmd list 
+}
+
+(* type ro_info = {
+  h_th   : string;
+  h_mod  : string;
+  h_log  : string;
+  h_fadv : string;
+}
+*)
+
+
 let f_true = Fcnst "true"
 let f_not f = Fapp(Onot, [f])
 let f_iff f1 f2 = Fapp(Oiff, [f1;f2])
@@ -108,25 +181,10 @@ let get_pr_ev = function
   | Fpr(_,_,_,ev) -> ev
   | _ -> assert false
 
-type proof = F.formatter -> unit -> unit
-
-type cmd = 
-  | Cmod   of mod_def
-  | Clemma of bool * string * form * proof option
-
 type tvar_info = {
   tvar_mod : string;
   tvar_ty  : string;
 }
-
-
-(* type ro_info = {
-  h_th   : string;
-  h_mod  : string;
-  h_log  : string;
-  h_fadv : string;
-}
-*)
   
 type op_info = 
   { o_name : string }
@@ -139,57 +197,7 @@ type hash_info = {
   h_eget : expr -> expr;
   h_fget : mem option -> form -> form;
 }         
-
-type orcl_info = { 
-  oparams : Vsym.t list;
-  obody   : lcmd list;
-  ores    : Expr.expr;
-} 
-
-type game_info = {
-  oinfo : orcl_info Osym.H.t;
-  ainfo : (Osym.t list) Asym.H.t;
-}
-
-let check_game_info i1 i2 = 
-  assert (Osym.H.length i1.oinfo = Osym.H.length i2.oinfo);
-  assert (Asym.H.length i1.ainfo = Asym.H.length i2.ainfo);
-  Osym.H.iter (fun o oi1 ->
-    assert (Osym.H.mem i2.oinfo o);
-    let oi2 = Osym.H.find i2.oinfo o in
-    assert
-      (try List.for_all2 (fun v1 v2 -> ty_equal v1.Vsym.ty v2.Vsym.ty) 
-             oi1.oparams oi2.oparams
-       with Invalid_argument _ -> false);
-    assert (ty_equal oi1.ores.e_ty oi2.ores.e_ty)) i1.oinfo;
-  Asym.H.iter (fun a l1 ->
-    let l2 = Asym.H.find i2.ainfo a in
-    assert
-      (try List.for_all2 (fun o1 o2 -> Osym.equal o1 o2) l1 l2
-       with Invalid_argument _ -> false)) i1.ainfo
-      
-let game_info gdef = 
-  let otbl = Osym.H.create 7 in
-  let atbl = Asym.H.create 3 in
-  let add_oinfo (oname, params, body, e) = 
-    assert (not (Osym.H.mem otbl oname));
-    let info = { oparams = params; obody = body; ores = e } in
-    Osym.H.add otbl oname info in
-  let make_info i =
-    match i with
-    | GCall(_,a,_,odef) ->
-      List.iter add_oinfo odef;
-      Asym.H.add atbl a (List.map (fun (o,_,_,_) -> o) odef)
-    | _ -> () in
-  List.iter make_info gdef;
-  { oinfo = otbl; ainfo = atbl }
-      
-type adv_info = {
-  adv_name : string;
-  adv_ty   : string;
-  adv_g    : game_info
-}
-                      
+                         
 type assumption_dec_info = {
   ad_name  : string;
   ad_priv  : Vsym.S.t; 
@@ -213,6 +221,14 @@ type assumption_comp_info = {
 
 type bmap_info = string
 
+type open_section = {
+          osection_name : string;
+  mutable game_trans   : (gdef * mod_def) list;
+  mutable osection_top     : cmd list;
+  mutable osection_glob : cmd list;
+  mutable osection_loc  : local_section option;
+}
+  
 type file = {
   mutable top_name : Sstring.t;
   levar : tvar_info Lenvar.H.t;
@@ -221,27 +237,23 @@ type file = {
   bvar  : bmap_info Esym.H.t;
   assump_dec  : (string, assumption_dec_info) Ht.t;
   assump_comp : (string, assumption_comp_info) Ht.t;
-  mutable game_trans : (gdef * mod_def) list;
-  mutable glob_decl  : cmd list;
-  mutable adv_info   : adv_info option;
-  mutable loca_decl  : cmd list;
+  mutable top_decl    : cmd list;
+  mutable open_section    : open_section list;
 }
 
 let empty_file = {
-  top_name    = Sstring.empty;
-  levar       = Lenvar.H.create 7;
-  grvar       = Groupvar.H.create 7;
-  hvar        = Hsym.H.create 7;
-  bvar        = Esym.H.create 7;
-  assump_dec  = Ht.create 3;
-  assump_comp = Ht.create 3;
-  game_trans  = [];
-  glob_decl   = [];
-  adv_info    = None;
-  loca_decl   = []
+  top_name     = Sstring.empty;
+  levar        = Lenvar.H.create 7;
+  grvar        = Groupvar.H.create 7;
+  hvar         = Hsym.H.create 7;
+  bvar         = Esym.H.create 7;
+  assump_dec   = Ht.create 3;
+  assump_comp  = Ht.create 3;
+  top_decl     = [];
+  open_section = [];
 }
 
-let add_top file s = 
+let add_top_name file s = 
   assert (not (Sstring.mem s file.top_name));
   file.top_name <- Sstring.add s file.top_name
 
@@ -254,7 +266,7 @@ let top_name file s =
         else s in
       aux 0
     else s in
-  add_top file s;
+  add_top_name file s;
   s
 
 let add_lvar file lv = 
@@ -314,36 +326,6 @@ let add_hash file h =
 let add_hashs file ts = 
   Ht.iter (fun _ h -> add_hash file h) ts.ts_rodecls
 
-let add_adv local file ginfo =
-  match file.adv_info with
-  | None ->
-    assert (local = false);
-    let info = 
-      { adv_name = top_name file "A";
-        adv_ty   = top_name file "Adv";
-        adv_g    = ginfo;
-      } in
-    file.adv_info <- Some info
-  | Some info -> check_game_info info.adv_g ginfo
-    
-
-let adv_decl file = 
-  match file.adv_info with
-  | None -> assert false
-  | Some i -> (i.adv_name,i.adv_ty)
-
-let adv_name file = 
-  match file.adv_info with
-  | None -> assert false
-  | Some i -> i.adv_name
-
-let adv_info file = 
-  match file.adv_info with
-  | None -> assert false
-  | Some i -> i
-  
-let adv_mod file = {mn = adv_name file; ma = []}
-
 let gvar_mod file gv = 
   (Groupvar.H.find file.grvar gv).tvar_mod
 
@@ -352,4 +334,168 @@ let lvar_mod file lv =
 
 let bs_length file lv = 
   Fcnst(lvar_mod file lv ^ ".length")
+
+let get_section file = 
+  match file.open_section with
+  | [] -> assert false
+  | s::_ -> s
+
+let get_lsection file = 
+  let s = get_section file in
+  match s.osection_loc with
+  | None -> assert false
+  | Some sl -> sl
+
+let add_top file c = 
+  let s = get_section file in
+  s.osection_top <- c :: s.osection_top
+
+let add_glob file c = 
+  let s = get_section file in
+  s.osection_glob <- c :: s.osection_glob
+
+let add_local file c = 
+  let s = get_lsection file in
+  s.loca_decl <- c :: s.loca_decl
+
+let add_def file local c =
+  match local with
+  | `Top    -> add_top file c
+  | `Global -> add_glob file c
+  | `Local  -> add_local file c
+
+let start_section file name = 
+  let sec_name = top_name file name in
+  let sec = {
+    osection_name = sec_name;
+    game_trans   = [];
+    osection_top = [];
+    osection_glob = [];
+    osection_loc  = None;
+  } in
+  file.open_section <- sec :: file.open_section
+
+let end_section file = 
+  match file.open_section with
+  | [] -> assert false
+  | s::ss ->
+    let sec = {
+      section_name = s.osection_name;
+      section_glob = s.osection_glob;
+      section_loc  = s.osection_loc;
+    } in
+    file.top_decl <- 
+      Csection sec :: 
+      (s.osection_top @ 
+         Ccomment (Format.sprintf "{ section %s }" s.osection_name) ::
+         file.top_decl);
+    file.open_section <- ss
+
+(* Adv info *)
+let adv_info file = (get_lsection file).adv_info
+
+let adv_decl file =
+  let i = adv_info file in
+  i.adv_name, i.adv_ty
+
+let adv_name file = 
+  let i =  adv_info file in
+  i.adv_name
+  
+let adv_mod file = {mn = adv_name file; ma = []}
+
+
+(* Initialize the adversary info *)
+let oname o = "o" ^ Osym.to_string o 
+let omod = { mn = "O"; ma = [] }
+let oOname o = omod, oname o 
+
+let game_info file gdef = 
+  let otbl = Osym.H.create 7 in
+  let atbl = Asym.H.create 3 in
+  let add_oinfo (o, params, _body, e) = 
+    assert (not (Osym.H.mem otbl o));
+    let qname = top_name file ("q" ^ oname o) in
+    add_glob file (Cbound qname);
+    let info = { 
+      obound  = qname; 
+      oparams = params; 
+      ores    = e.Expr.e_ty } in
+    Osym.H.add otbl o info in
+  let make_info i =
+    match i with
+    | GCall(_,a,_,odef) ->
+      List.iter add_oinfo odef;    
+      Asym.H.add atbl a (List.map (fun (o,_,_,_) -> o) odef)
+    | _ -> () in
+  List.iter make_info gdef;
+  { oinfo = otbl; ainfo = atbl } 
+
+let init_adv_info file gdef = 
+  assert ((get_section file).osection_loc = None);
+  let ginfo = game_info file gdef in
+
+  let oty_name = top_name file "Orcl" in
+  let aty_name = top_name file "Adv" in
+  let a_name   = top_name file "A" in
+
+  (* add the module type Orcl *)
+
+  let oty = {
+    modt_name  = oty_name;
+    modt_param = [];
+    modt_proc  = 
+      Osym.H.fold (fun o od l ->
+        let oname  = oname o in
+        let params = 
+          List.map (fun v -> Some (Vsym.to_string v), v.Vsym.ty) od.oparams in
+        let rty    = od.ores in
+        ( oname, params, rty, [])::l) ginfo.oinfo [];
+  } in
+  add_top file (Cmodty oty);
+  
+  (* add the module type of Adv *)
+  
+  let aty = {
+    modt_name = aty_name;
+    modt_param = ["O", oty_name];
+    modt_proc = 
+      Asym.H.fold (fun a os l ->
+        let aname  = "a" ^ Asym.to_string a in
+        let params = [ None, a.Asym.dom ] in
+        let rty    = a.Asym.codom in
+        (aname, params, rty, List.map oOname os)::l) ginfo.ainfo [];
+  } in
+  add_top file (Cmodty aty);
+  let adv_info =
+    { adv_name  = a_name;
+      adv_ty    = aty_name;
+      adv_restr = [];
+      adv_g = ginfo } in
+  let section_loc = {
+    adv_info;
+    loca_decl = []
+  } in
+  let s = get_section file in
+  s.osection_loc <- Some section_loc
+
+
+let find_game file g = 
+  let s = get_section file in
+  snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
+
+let add_restr file modu =
+  let ai = adv_info file in
+  ai.adv_restr <- modu.mod_name :: ai.adv_restr
+  
+let add_game file local modu = 
+  let loc = local = `Local in
+  add_def file local (Cmod (loc,modu));
+  if not loc then add_restr file modu
+  
+let bind_game file local g modu = 
+  add_game file local modu;
+  let s = get_section file in
+  s.game_trans <- (g,modu) :: s.game_trans
+
 

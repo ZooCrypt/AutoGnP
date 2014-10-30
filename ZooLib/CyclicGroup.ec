@@ -89,6 +89,6 @@ require Ring.
 lemma inj_gpow_log (a:group): a = g ^ (log a) by smt.
 
 hint rewrite Ring.inj_algebra : inj_gpow_log.
-hint rewrite Ring.rw_algebra : log_oif log_g log_pow log_mul.
+hint rewrite Ring.rw_algebra : log_oif log_g log_pow log_mul log_bij.
 
 end CG.

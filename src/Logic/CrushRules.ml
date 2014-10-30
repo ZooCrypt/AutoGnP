@@ -138,7 +138,7 @@ let psis_of_pt pt =
         { psi with psi_assms = Sstring.add ad.ad_name psi.psi_assms }
       in
       L.iter (aux psi) children
-    | CR.Rcase_ev(e) ->
+    | CR.Rcase_ev(_,e) ->
       let psi =
         { psi with psi_cases = Se.add e psi.psi_cases }
       in

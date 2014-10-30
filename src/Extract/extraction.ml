@@ -5,7 +5,6 @@ open Game
 open TheoryState 
 open CoreRules
 open File
-open Printer
 open Syms
 open Gsyms
 
@@ -188,62 +187,6 @@ let ginstr file adv = function
 let instructions file adv gdef =   
   List.map (ginstr file adv) gdef 
 
-let oracles file oinfo = 
-  { mod_name = "O";
-    mod_param = [];
-    mod_body = Mod_def 
-      (List.rev 
-      (Osym.H.fold (fun os oi l ->
-        MCfun(oracle file (os, oi.oparams, oi.obody, oi.ores))::l) oinfo [])) }
-
-let ensure_global file local g =
-  let test = function
-    | Cmod g' -> g.mod_name = g'.mod_name
-    | _ -> false in
-  if not local && not (List.exists test file.glob_decl) then
-    let c = List.find test file.loca_decl in
-    file.loca_decl <- List.filter (fun c -> not (test c)) file.loca_decl;
-    file.glob_decl <- c :: file.glob_decl
-      
-    
-let game ?(local=true) file g = 
-  try 
-    let g = snd (List.find (fun (g',_m) -> gdef_equal g g') file.game_trans) in
-    ensure_global file local g;
-    g
-  with Not_found ->
-    let ginfo = game_info g in
-    add_adv local file ginfo;
-    let globs = globals g in 
-    let m_orcl = oracles file ginfo.oinfo in
-    let alias = (mod_name "A" [mod_name "O" []]) in (* TODO add the H oracle *)
-    let m_adv = {
-      mod_name = "A";
-      mod_param = [];
-      mod_body = Mod_alias alias;
-    } in
-    let f_main = 
-      { f_name = "main";
-        f_param = [];
-        f_local = [];
-        f_res   = None;
-        f_body  = instructions file (mod_name "A" []) g;
-      } in
-    let comp = 
-      globs @ [MCmod m_orcl;
-                       MCmod m_adv;
-                       MCfun f_main] in
-    let name = top_name file "M" in
-    let modu = 
-      { mod_name  = name;
-        mod_param = [adv_decl file];
-        mod_body  = Mod_def comp;
-      } in
-    file.game_trans <- (g,modu)::file.game_trans;
-    if local then file.loca_decl <- Cmod(modu) :: file.loca_decl
-    else file.glob_decl <- Cmod(modu) :: file.glob_decl;
-    modu
-
 module Ass = Assumption
 let add_assumption_dec file name assum = 
   let advty = top_name file ("Adv_"^name) in
@@ -344,23 +287,80 @@ let add_assumptions file ts =
   Ht.iter (fun n a -> add_assumption_dec  file n a) ts.ts_assms_dec;
   Ht.iter (fun n a -> add_assumption_comp file n a) ts.ts_assms_comp
 
-let init_file ts pft = 
+let init_file ts = 
   let file = empty_file in
   add_lvars    file ts;
   add_gvars    file ts;
   add_bilinears file ts;
   add_hashs     file ts;
-  add_assumptions file ts;
-  let _ = game ~local:false file pft.pt_ju.ju_gdef in
+  add_assumptions file ts;  
   file
 
-let extract_pr ?(local=true) file mem ju =
+
+let oracles file oinfo = 
+  { mod_name = "O";
+    mod_param = [];
+    mod_body = Mod_def 
+      (List.rev 
+      (Osym.H.fold (fun os (oparams,obody,ores) l ->
+        MCfun(oracle file (os, oparams, obody, ores))::l) oinfo [])) }
+
+
+    
+let game ?(local=`Local) file g = 
+  try find_game file g 
+  with Not_found ->
+    let oinfo = Osym.H.create 7 in
+    let add_oinfo (o,params,body,e) = 
+      Osym.H.add oinfo o (params,body,e) in
+    let mk_info i = 
+      match i with
+      | GCall(_,_,_,odef) -> List.iter add_oinfo odef
+      | _ -> () in
+    List.iter mk_info g; 
+    
+    let (nA,tA) = adv_decl file in
+    let globs = globals g in 
+    let m_orcl = oracles file oinfo in
+    let alias = (mod_name nA [mod_name "O" []]) in (* TODO add the H oracle *)
+    let m_adv = {
+      mod_name = nA;
+      mod_param = [];
+      mod_body = Mod_alias alias;
+    } in
+    let f_main = 
+      { f_name = "main";
+        f_param = [];
+        f_local = [];
+        f_res   = None;
+        f_body  = instructions file (mod_name nA []) g;
+      } in
+    let comp = 
+      globs @ [MCmod m_orcl;
+                       MCmod m_adv;
+                       MCfun f_main] in
+    let name = top_name file "M" in
+    let modu = 
+      { mod_name  = name;
+        mod_param = [nA,tA];
+        mod_body  = Mod_def comp;
+      } in
+    
+    bind_game file local g modu;
+
+    modu
+
+let init_section file name pft =
+  start_section file name;
+  let g = pft.pt_ju.ju_gdef in
+  init_adv_info file g;
+  ignore (game ~local:`Global file g)
+  
+let extract_pr ?(local=`Local) file mem ju =
   let modm = game ~local file ju.ju_gdef in
   let modma = {mn = modm.mod_name; ma = [adv_mod file]} in
   let ev   = formula file [modm.mod_name] None ju.ju_ev in
   Fpr((modma,"main"), mem, [], ev)
-
-
 
 let mem = "m"
 let cmp_eq = true
@@ -372,14 +372,14 @@ let forall_mem f = Fforall_mem(mem, f)
 let add_pr_lemma file f proof = 
   let name = top_name file "Lem" in
   let body = forall_mem f in
-  file.loca_decl <- Clemma(true, name,body,proof) :: file.loca_decl;
+  add_local file (Clemma(true, name,body,proof));
   name
 
 let get_game file g = 
-  try snd (List.find (fun (g',_m) -> gdef_equal g g') file.game_trans)
+  try find_game file g
   with Not_found -> assert false
 
-let pr_admit s fmt () =
+let pr_admit s _file fmt () =
   F.fprintf fmt "(* %s *) admit." s
 
 let pp_swap side fmt (p,i) = 
@@ -389,26 +389,33 @@ let pp_swaps side fmt sw =
   if sw <> [] then
     F.fprintf fmt "@[%a.@]@ " (pp_list ";@ " (pp_swap side)) sw
 
+let init_same_ev file ev tac =
+  let nA = adv_name file in
+  let open_pp fmt () = 
+    F.fprintf fmt "@[<v>intros &m;byequiv (_: ={glob %s} ==> %a);@ " nA
+      Printer.pp_form ev;
+    F.fprintf fmt "  [ proc | by [] | by %s].@ " tac in
+  let close_pp fmt () = 
+    F.fprintf fmt "@]" in
+  open_pp,close_pp
+
 let init_same file ju1 ju2 = 
   let g1 = get_game file ju1.ju_gdef in
   let g2 = get_game file ju2.ju_gdef in
   let ev1 = formula file [g1.mod_name] (Some "1") ju1.ju_ev in  
   let ev2 = formula file [g2.mod_name] (Some "2") ju2.ju_ev in
   let ev  = f_iff ev1 ev2 in 
-  let open_pp fmt () = 
-    F.fprintf fmt "@[<v>intros &m;byequiv (_: ={glob A} ==> %a);@ "
-      pp_form ev;
-    F.fprintf fmt "  [ proc | by [] | by intros &m1 &m2 ->].@ " in
-  let close_pp fmt () = 
-    F.fprintf fmt "@]" in
-  g1,g2,open_pp,close_pp
+  let open_pp, close_pp = 
+    init_same_ev file ev "intros &m1 &m2 ->" in
+  g1, g2, open_pp, close_pp
 
-let pr_swap file sw ju1 ju2 fmt () =
+let pr_swap sw ju1 ju2 file =
   let _,_,open_pp, close_pp = init_same file ju1 ju2 in
-  open_pp fmt ();
-  pp_swaps 1 fmt sw;
-  F.fprintf fmt "sim.";
-  close_pp fmt ()
+  fun fmt () ->
+    open_pp fmt ();
+    pp_swaps 1 fmt sw;
+    F.fprintf fmt "sim.";
+    close_pp fmt ()
 
 let invert_swap sw = 
   List.fold_left (fun sw (p,i) -> (p+i, -i)::sw) [] sw
@@ -471,7 +478,10 @@ let add_rnd cont =
     Tac (TSeq (Rnd::ts)) :: cont
   | _ -> Tac Rnd :: cont
 
-let t_algebra = TSeq[Algebra; Smt]
+let t_algebra = TSeq[Algebra; 
+                     Tstring 
+                       "rewrite ?supp_def ?FSet.mem_single;progress;algebra *";
+                     Smt]
 let t_spa = TSeq [Skip;Progress [];t_algebra]
 let t_pa  = TSeq [Progress [];t_algebra]
 let t_aa  = TSeq [Auto;t_algebra]
@@ -494,11 +504,11 @@ let rec pp_tac fmt = function
         (pp_list "@ " (fun fmt -> F.fprintf fmt "%s")) s
   | Algebra   -> F.fprintf fmt "algebra *"
   | Smt       -> F.fprintf fmt "smt"
-  | Call inv  -> F.fprintf fmt "call (_:%a)" pp_form inv
+  | Call inv  -> F.fprintf fmt "call (_:%a)" Printer.pp_form inv
   | If        -> F.fprintf fmt "if" 
   | Proc      -> F.fprintf fmt "proc"
   | Seq (i1,i2,f) -> 
-    F.fprintf fmt "@[seq %i %i :@ (@[%a@])@]" i1 i2 pp_form f
+    F.fprintf fmt "@[seq %i %i :@ (@[%a@])@]" i1 i2 Printer.pp_form f
   | Apply s   -> F.fprintf fmt "apply %s" s
   | TOr(t1,t2) -> F.fprintf fmt "(@[%a ||@ %a@])" pp_tac t1 pp_tac t2
   | TRepeat t -> F.fprintf fmt "do ?%a" pp_tac t
@@ -602,12 +612,12 @@ let pp_inv file ?(local=Vsym.S.empty) g fmt (x,inv) =
   let flocal = Vsym.S.singleton x in
   let f = formula file [g.mod_name] (Some "2") ~local ~flocal inv in
   F.fprintf fmt "@[<hov 2>(fun (%a:%a),@ %a)@]"
-    Vsym.pp x (pp_type file) x.Vsym.ty pp_form f 
+    Vsym.pp x (Printer.pp_type file) x.Vsym.ty Printer.pp_form f 
 
 let mu_x_def file fmt ty = 
   match ty.ty_node with
   | BS lv -> 
-    F.fprintf fmt "%a.Dword.mu_x_def" pp_mod_name (mod_lvar file lv)
+    F.fprintf fmt "%a.Dword.mu_x_def" Printer.pp_mod_name (mod_lvar file lv)
   | Bool ->
     F.fprintf fmt "Bool.Dbool.mu_x_def"
   | G _gv -> assert false (* FIXME *)
@@ -617,7 +627,7 @@ let mu_x_def file fmt ty =
 let supp_def file fmt ty = 
   match ty.ty_node with
   | BS lv -> 
-    F.fprintf fmt "%a.Dword.in_supp_def" pp_mod_name (mod_lvar file lv)
+    F.fprintf fmt "%a.Dword.in_supp_def" Printer.pp_mod_name (mod_lvar file lv)
   | Bool ->
     F.fprintf fmt "Bool.Dbool.supp_def"
   | G _gv -> assert false (* FIXME *)
@@ -695,40 +705,43 @@ let build_conv_proof file g1 g2 lc1 lc2 =
       tacs = [Tac t_spa]; invs = f_true } in
   aux lc1 lc2 info 
 
-let pr_conv file sw1 ju1 ju ju' ju2 sw2 fmt () = 
+let pr_conv sw1 ju1 ju ju' ju2 sw2 file = 
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
-  open_pp fmt (); 
-  F.fprintf fmt "(* conv rule *)@ ";
-  pp_swaps 1 fmt sw1;
-  pp_swaps 2 fmt (invert_swap sw2);
   let info = build_conv_proof file g1 g2 ju.ju_gdef ju'.ju_gdef in 
-  pp_cmds fmt info.tacs;
-  close_pp fmt ()
+  fun fmt () -> 
+    open_pp fmt (); 
+    F.fprintf fmt "(* conv rule *)@ ";
+    pp_swaps 1 fmt sw1;
+    pp_swaps 2 fmt (invert_swap sw2);
+    pp_cmds fmt info.tacs;
+    close_pp fmt ()
 
-let pr_random file (pos,inv1,inv2) ju1 ju2 fmt () =
+let pr_random (pos,inv1,inv2) ju1 ju2 file =
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
   (*let write = write_gcmds (Util.take pos ju2.ju_gdef) in
     let eqs = mk_eq_exprs file g1 g2 write in *)
-  open_pp fmt ();
   let lc1 = Util.take pos ju1.ju_gdef in
   let lc2 = Util.take pos ju2.ju_gdef in
   let info =  build_conv_proof file g1 g2 lc1 lc2 in 
-  F.fprintf fmt "sim.@ ";
-  F.fprintf fmt "wp %i %i.@ " (pos + 1) (pos + 1);
-  F.fprintf fmt "@[<hov 2>rnd@ %a@ %a.@]@ "
-    (pp_inv file g2) inv2 (pp_inv file g2) inv1;
-  F.fprintf fmt "@[<hov 2>conseq (_: _ ==>@ %a /\\ ={glob A}).@]@ " 
-    pp_form info.invs;
-  let ty = (fst inv1).Vsym.ty in 
-  F.fprintf fmt "  progress.@ ";
-  F.fprintf fmt "    by algebra *.@ ";
-  F.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
-  F.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
-  F.fprintf fmt "    by algebra *.@ ";
-  pp_cmds fmt info.tacs;
-  close_pp fmt ()
+  let nA = adv_name file in
+  fun fmt () ->
+    open_pp fmt ();
+    F.fprintf fmt "sim.@ ";
+    F.fprintf fmt "wp %i %i.@ " (pos + 1) (pos + 1);
+    F.fprintf fmt "@[<hov 2>rnd@ %a@ %a.@]@ "
+      (pp_inv file g2) inv2 (pp_inv file g2) inv1;
+    F.fprintf fmt "@[<hov 2>conseq (_: _ ==>@ %a /\\ ={glob %s}).@]@ " 
+      Printer.pp_form info.invs nA;
+    let ty = (fst inv1).Vsym.ty in 
+    F.fprintf fmt "  progress.@ ";
+    F.fprintf fmt "    by algebra *.@ ";
+    F.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
+    F.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
+    F.fprintf fmt "    by algebra *.@ ";
+    pp_cmds fmt info.tacs;
+    close_pp fmt ()
 
-let pr_random_orcl file (pos, inv1, inv2) ju1 ju2 fmt () =
+let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
   let _i, ctxt = Game.get_ju_octxt ju1 pos in
   let _i, ctxt2 = Game.get_ju_octxt ju2 pos in
@@ -738,22 +751,6 @@ let pr_random_orcl file (pos, inv1, inv2) ju1 ju2 fmt () =
   let write1c = Se.union write1 writec in
   let write2 = write_gcmds jctxt.juc_right in
   let write = Se.union write1c write2 in
-  open_pp fmt ();
-  F.fprintf fmt "conseq (_: _ ==> @[%a@]) => //.@ "
-    pp_form (mk_eq_exprs file g1 g2 write);
-  let len = List.length jctxt.juc_left in
-  F.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " len len
-      pp_form (mk_eq_exprs file g1 g2 write1);
-  F.fprintf fmt "  [ by sim | ].@ ";
-  if jctxt.juc_right <> [] then begin
-    F.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " 
-      1 1
-      pp_form (mk_eq_exprs file g1 g2 write1c);
-    F.fprintf fmt "  [ | by sim ].@ "
-  end;
-  F.fprintf fmt "call (_: @[%a@]).@ "
-    pp_form (mk_eq_exprs file g1 g2 write1);
-  List.iter (fun _ -> F.fprintf fmt "  sim.@ ") ctxt.juoc_oleft;
   (* The proof of the oracle *)
   let ginv = mk_eq_exprs file g1 g2 write1 in
   let p1 = ctxt.juoc_oargs and p2 = ctxt2.juoc_oargs in
@@ -786,35 +783,173 @@ let pr_random_orcl file (pos, inv1, inv2) ju1 ju2 fmt () =
       { info' with tacs = tacs }
     | _, _ -> assert false in
   let info = 
-      { loc1 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p1;
-        loc2 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p2;
-        pos1 = 0; pos2 = 0;
-        tacs = [];
-        invs  = iinv } in
+    { loc1 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p1;
+      loc2 = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p2;
+      pos1 = 0; pos2 = 0;
+      tacs = [];
+      invs  = iinv } in
   let info = aux ctxt.juoc_cleft ctxt2.juoc_cleft info in
-  F.fprintf fmt "  proc;seq 1 1 : (@[%a@]);[by sim | ].@ "
-    pp_form iinv;
-  F.fprintf fmt "  @[%a@]@ " pp_cmds info.tacs;
-  F.fprintf fmt "  sim.@ ";
-  F.fprintf fmt "  wp 1 1.@ ";
-  F.fprintf fmt "  @[<hov 2>rnd@ %a@ %a.@]@ "
-    (pp_inv file ~local:info.loc2 g2) inv2 (pp_inv file ~local:info.loc2 g2)
-    inv1;
-  F.fprintf fmt "  @[<hov 2>conseq (_: _ ==>@ %a).@]@ " 
-    pp_form info.invs;
-  let ty = (fst inv1).Vsym.ty in 
-  F.fprintf fmt "    progress.@ ";
-  F.fprintf fmt "      by algebra *.@ ";
-  F.fprintf fmt "      by rewrite !%a.@ " (mu_x_def file) ty;
-  F.fprintf fmt "      by apply %a.@ " (supp_def file) ty;
-  F.fprintf fmt "      by algebra *.@ ";
-  F.fprintf fmt "    auto.@ ";
+  let nA = adv_name file in
+  fun fmt () ->
+    (* FIXME use init_same_ev as in pr_rw_oracle *)
+    open_pp fmt ();
+    F.fprintf fmt "conseq (_: _ ==> @[%a@]) => //.@ "
+      Printer.pp_form (mk_eq_exprs file g1 g2 write);
+    let len = List.length jctxt.juc_left in
+    F.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " len len
+      Printer.pp_form (mk_eq_exprs file g1 g2 write1);
+    F.fprintf fmt "  [ by sim | ].@ ";
+    if jctxt.juc_right <> [] then begin
+      F.fprintf fmt "seq %i %i : (@[={glob %s} /\\ %a@]);@ " 
+        1 1 nA
+        Printer.pp_form (mk_eq_exprs file g1 g2 write1c);
+      F.fprintf fmt "  [ | by sim ].@ "
+    end;
 
-(* End proof of the oracle *)
-  List.iter (fun _ -> F.fprintf fmt "  sim.@ ") ctxt.juoc_oright;
-  F.fprintf fmt "auto.";
-  close_pp fmt ()
+    F.fprintf fmt "call (_: @[%a@]).@ "
+      Printer.pp_form (mk_eq_exprs file g1 g2 write1);
+    List.iter (fun _ -> F.fprintf fmt "  by sim.@ ") ctxt.juoc_oleft;
+    (* Start proof of the oracle *)
+    F.fprintf fmt "  proc;seq 1 1 : (@[%a@]);[by sim | ].@ "
+      Printer.pp_form iinv;
+    F.fprintf fmt "  @[%a@]@ " pp_cmds info.tacs;
+    F.fprintf fmt "  sim.@ ";
+    F.fprintf fmt "  wp 1 1.@ ";
+    F.fprintf fmt "  @[<hov 2>rnd@ %a@ %a.@]@ "
+      (pp_inv file ~local:info.loc2 g2) inv2 (pp_inv file ~local:info.loc2 g2)
+      inv1;
+    F.fprintf fmt "  @[<hov 2>conseq (_: _ ==>@ %a).@]@ " 
+      Printer.pp_form info.invs;
+    let ty = (fst inv1).Vsym.ty in 
+    F.fprintf fmt "    progress.@ ";
+    F.fprintf fmt "      by algebra *.@ ";
+    F.fprintf fmt "      by rewrite !%a.@ " (mu_x_def file) ty;
+    F.fprintf fmt "      by apply %a.@ " (supp_def file) ty;
+    F.fprintf fmt "      by algebra *.@ ";
+    F.fprintf fmt "    auto.@ ";
+    
+    (* End proof of the oracle *)
+    List.iter (fun _ -> F.fprintf fmt "  by sim.@ ") ctxt.juoc_oright;
+    F.fprintf fmt "auto.";
+    close_pp fmt ()
   
+  
+let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file = 
+  let g1 = get_game file ju1.ju_gdef in
+  let g2 = get_game file ju2.ju_gdef in
+  let fv = Expr.e_vars ju1.ju_ev in
+  let ev = mk_eq_exprs file g1 g2 fv in
+  let open_pp, close_pp = init_same_ev file ev "done" in
+  let lg, ju_o = Game.get_ju_octxt ju1 op in
+  let n1 = List.length ju_o.juoc_juc.juc_left in
+  let w1 = Game.write_gcmds (List.rev ju_o.juoc_juc.juc_left) in
+  let ev1 = mk_eq_exprs file g1 g2 w1 in
+  let gc, _ = Game.get_ju_ctxt ju1 i in
+  let w2 = Se.union w1 (Game.write_gcmd gc) in
+  let ev2 = mk_eq_exprs file g1 g2 w2 in
+  let nA = adv_name file in
+  let pp_invA fmt ev = 
+    F.fprintf fmt "={glob %s} /\\ %a" nA Printer.pp_form ev in
+  let add_bind_info add_tac v info =
+    let loc1 = Vsym.S.add v info.loc1 in
+    let loc2 = Vsym.S.add v info.loc2 in
+    let e1 = formula file [g1.mod_name] (Some "1") ~local:loc1 (Expr.mk_V v) in
+    let e2 = formula file [g2.mod_name] (Some "2") ~local:loc2 (Expr.mk_V v) in
+    { loc1 = loc1;
+      loc2 = loc2;
+      pos1 = info.pos1 + 1;
+      pos2 = info.pos2 + 1;
+      tacs = add_tac info.tacs;
+      invs = f_and info.invs (f_eq e1 e2) } in
+  let add_let_info v info =
+    add_bind_info (add_wp info.pos1 info.pos2) v info in
+  let add_rnd_info v info = 
+    add_bind_info add_rnd v info in
+  let t_bydone = Tstring "by done" in
+  let rec aux lc info = 
+    match lc with
+    | [] -> info
+    | LLet(v,_) :: lc ->
+      aux lc (add_let_info v info)
+    | LSamp(v,_):: lc ->
+      aux lc (add_rnd_info v info)
+    | LBind _ :: _ -> assert false
+    | LGuard _e :: lc ->
+      let info' = aux lc info in
+      let tacs = 
+        if info.pos1 = 0 && info.pos2 = 0 then 
+          Tac (TSeqSub(If, [t_bydone; t_id; t_bydone])) :: info'.tacs 
+        else
+          Tac (Seq (info.pos1, info.pos2, info.invs)) ::
+            TSub [info.tacs] ::
+            Tac (TSeqSub(If, [t_bydone; t_id; t_bydone])) ::
+            info'.tacs in
+      { info with tacs = tacs } in
+  
+  let p1 = ju_o.juoc_oargs in
+  let iinv = init_inv_oracle p1 p1 ev1 in
+  let loc = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p1 in
+  let info0 = 
+    { loc1 = loc; loc2 = loc;
+      pos1 = 0; pos2 = 0;
+      tacs = []; invs  = iinv } in
+  let info1 = aux ju_o.juoc_cleft info0 in
+
+  let t_end n = 
+    let rec pp_intro n =
+      if n = 0 then Format.sprintf "[H1 H2]" 
+      else Format.sprintf "[%s H%i]" (pp_intro (n-1)) (n+2) in
+    let rec pp_gen n = 
+      if n =0 then ""
+      else Format.sprintf "H%i %s" (n+2) (pp_gen (n-1)) in
+    let s = 
+      Format.sprintf "by move=> &m1 &m2 %s;move: H1 %s;rewrite %sH2"
+        (pp_intro n) (pp_gen n) 
+        (if dir = LeftToRight then "" else "-")
+     in
+    Tstring s in
+
+
+  let rec aux2 nend n lc info =
+    match lc with
+    | [] -> info.tacs @ [Tac (TSeq [Auto; (t_end nend)])]
+    | LLet(v,_) :: lc ->
+      aux2 nend (n+1) lc (add_let_info v info)
+    | LSamp(v,_):: lc ->
+      aux2 nend (n+1) lc (add_rnd_info v info)
+    | LBind _ :: _ -> assert false
+    | LGuard e :: lc ->
+      if info.pos1 = 0 && info.pos2 = 0 then
+         Tac (TSeqSub(If, [t_end nend; t_id; t_bydone]))::
+         aux2 (nend+1) (n+1) lc (add_guard file g1 g2 e e info [])
+      else
+         Tac (Seq (info.pos1, info.pos2, info.invs)) ::
+         TSub ([info.tacs; [Tac (TSeq [Skip; t_end nend])]]) ::
+         Tac (TSeqSub(If, [t_end n; t_id; t_bydone]))::
+         aux2 (n+1) (n+1) lc (add_guard file g1 g2 e e info []) in
+
+  let cond = match lg with LGuard t -> t | _ -> assert false in
+  let info2 = add_guard file g1 g2 cond cond info1 [] in
+  let tac_end = aux2 0 0 ju_o.juoc_cright info2 in 
+  fun fmt () ->
+    open_pp fmt ();
+    F.fprintf fmt "(* Rewrite oracle *)";
+    F.fprintf fmt "seq %i %i : (%a); first by sim.@ " n1 n1 pp_invA ev1;
+    F.fprintf fmt "seq 1 1 : (%a); last by sim.@ " pp_invA ev2;
+    F.fprintf fmt "call (_: %a);last by done.@ " Printer.pp_form ev1;
+    (* Proof of oracles *)
+    let pp_other fmt os =
+      pp_list "" (fun fmt _ -> F.fprintf fmt "  by sim.@ ") fmt os in
+    pp_other fmt ju_o.juoc_oleft;
+    F.fprintf fmt "  proc;sp 1 1.@ ";
+    F.fprintf fmt "  %a@ " pp_cmds info1.tacs;
+    F.fprintf fmt "  if;[by done | | by done].@ ";
+    F.fprintf fmt "  @[<v>%a@]" pp_cmds tac_end;
+    pp_other fmt ju_o.juoc_oright;
+    close_pp fmt ()
+
+
+
   
 
 let pr_intr_rw1_app lemma1 lemma2 fmt () = 
@@ -865,7 +1000,8 @@ let extract_assum file dir subst ainfo pft pft' =
     { mod_name = advname;
       mod_param = g.mod_param;
       mod_body = Mod_def (comp @ [MCfun main]) } in
-  file.glob_decl <- Cmod fadv :: file.glob_decl;
+  add_game file `Top fadv;
+(*  file.glob_decl <- Cmod fadv :: file.glob_decl; *)
   let fa = mod_name fadv.mod_name [mod_name (adv_name file) []] in
   let a1 = mod_name ainfo.ad_cmd1.mod_name [fa] in
   let a2 = mod_name ainfo.ad_cmd2.mod_name [fa] in
@@ -874,14 +1010,16 @@ let extract_assum file dir subst ainfo pft pft' =
   let pra1 = Fpr((a1,"main"), mem, [], Fv(([],"res"),None)) in
   let pra2 = Fpr((a2,"main"), mem, [], Fv(([],"res"),None)) in
   let pra, pra' = if dir = LeftToRight then pra1, pra2 else pra2, pra1 in
-  let proof_ass g ev fmt () = 
+  let nA = adv_name file in
+  let proof_ass g ev = 
     let ev = formula file [g.mod_name] (Some "1") ev in
+    fun fmt () -> 
     F.fprintf fmt 
-      "@[<v> intros &m; byequiv (_: @[={glob A} ==>@ %a@]) => //.@ "
-      pp_form (f_eq ev (Fv(([], "res"), Some "2")));
+      "@[<v> intros &m; byequiv (_: @[={glob %s} ==>@ %a@]) => //.@ " nA
+      Printer.pp_form (f_eq ev (Fv(([], "res"), Some "2")));
     F.fprintf fmt
       "by proc; inline{2} %a; wp => /=; sim.@]"
-      pp_fun_name (fa,"main") in
+      Printer.pp_fun_name (fa,"main") in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
       (Some (proof_ass g pft.pt_ju.ju_ev)) in
@@ -941,19 +1079,21 @@ let extract_assum_comp file subst ainfo expr pft =
     { mod_name = advname;
       mod_param = g.mod_param;
       mod_body = Mod_def (comp @ [MCfun main]) } in
-  file.glob_decl <- Cmod fadv :: file.glob_decl;
+  add_game file `Top fadv;
   let fa = mod_name fadv.mod_name [mod_name (adv_name file) []] in
   let a = mod_name ainfo.ac_cmd.mod_name [fa] in
   let pr = extract_pr file mem pft.pt_ju in
   let pra = Fpr((a,"main"), mem, [], Fv(([],"res"),None)) in
-  let proof_ass g ev fmt () = 
+  let nA = adv_name file in
+  let proof_ass g ev = 
     let ev = formula file [g.mod_name] (Some "1") ev in
+    fun fmt () -> 
     F.fprintf fmt 
-      "@[<v> intros &m; byequiv (_: @[={glob A} ==>@ %a@]) => //.@ "
-      pp_form (f_eq ev (Fv(([], "res"), Some "2")));
+      "@[<v> intros &m; byequiv (_: @[={glob %s} ==>@ %a@]) => //.@ " nA
+      Printer.pp_form (f_eq ev (Fv(([], "res"), Some "2")));
     F.fprintf fmt
       "by proc; inline{2} %a; wp => /=; sim.@]"
-      pp_fun_name (fa,"main") in
+      Printer.pp_fun_name (fa,"main") in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
       (Some (proof_ass g pft.pt_ju.ju_ev)) in
@@ -994,13 +1134,13 @@ let extract_rnd_indep file side pos ju =
   let bound, ev, lemma = bound_rnd_indep file pos ju in
   let proof fmt () = 
     F.fprintf fmt "@[<v>intros &m; byphoare (_ : true ==> %a) => //.@ "
-      pp_form (formula file [g.mod_name] None ev);
+      Printer.pp_form (formula file [g.mod_name] None ev);
     if is_Eq ev then
       let e1,e2 = destr_Eq ev in
       let e = if side then e2 else e1 in
       F.fprintf fmt 
         "proc; rnd ((=) (%a)); conseq (_ : _ ==> true); last by [].@ "
-        pp_form (formula file [g.mod_name] None e);
+        Printer.pp_form (formula file [g.mod_name] None e);
       F.fprintf fmt "progress.@ ";
       F.fprintf fmt "apply Real.eq_le;apply %s." lemma
     else assert false;
@@ -1056,40 +1196,49 @@ let extract_except file pos _l pft pft' =
     side, { mod_name = advname;
       mod_param = [];
       mod_body = Mod_def (comp @ [MCfun a1; MCfun a2]) } in
-  file.loca_decl <- Cmod adv :: file.loca_decl;
-
+  add_game file `Local adv;
+  let clone_info = {
+    ci_local = true;
+    ci_import = true;
+    ci_from   = "SDField";
+    ci_as     = top_name file "SDField_";
+    ci_with   = []
+  } in
+  add_local file (Cclone clone_info);
   let eps = f_rinv (Frofi f_Fq) in
   let bound = f_radd pr' (f_rinv (Frofi f_Fq)) in
   let pr1, pr2 = if side = `LeftToRight then pr, pr' else pr', pr in
   let g1, g2 = if side = `LeftToRight then g, g' else g', g in
 
+  let ev = formula file [adv.mod_name] None ju.ju_ev in 
+  let mk_eqs g fv = 
+    let mk_eq e = 
+      f_eq (formula file [g] (Some "1") e) 
+        (formula file [adv.mod_name] (Some "2") e) in
+    match Se.elements fv with
+    | [] -> f_true
+    | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
+  let fv = Expr.e_vars ju.ju_ev in
+  let nA = adv_name file in
   let proof fmt () = 
     F.fprintf fmt "intros &m.@ ";
-    let ev = formula file [adv.mod_name] None ju.ju_ev in 
-    let mk_eqs g fv = 
-      let mk_eq e = 
-        f_eq (formula file [g] (Some "1") e) 
-          (formula file [adv.mod_name] (Some "2") e) in
-      match Se.elements fv with
-      | [] -> f_true
-      | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
-    let fv = Expr.e_vars ju.ju_ev in
-    F.fprintf fmt 
+      F.fprintf fmt 
       "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, S).main() @@ &m :@ %a]@].@ " 
-      pp_form pr1 adv.mod_name pp_form ev;
-    F.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
-      pp_form (mk_eqs g1.mod_name fv);
+      Printer.pp_form pr1 adv.mod_name Printer.pp_form ev;
+    F.fprintf fmt "byequiv (_ : ={glob %s} ==> %a) => //. @ " nA
+      Printer.pp_form (mk_eqs g1.mod_name fv);
     F.fprintf fmt "  proc;inline *;sim.@ ";
     
     F.fprintf fmt 
       "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, SE).main() @@ &m :@ %a]@].@ " 
-      pp_form pr2 adv.mod_name pp_form ev;
-    F.fprintf fmt "byequiv (_ : ={glob A} ==> %a) => //. @ "
-      pp_form (mk_eqs g2.mod_name fv);
+      Printer.pp_form pr2 adv.mod_name Printer.pp_form ev;
+    F.fprintf fmt "byequiv (_ : ={glob %s} ==> %a) => //. @ " nA
+      Printer.pp_form (mk_eqs g2.mod_name fv);
     F.fprintf fmt "  proc;inline *;sim.@ ";
     F.fprintf fmt "  rnd; wp %i %i => /=.@ " pos (pos + 1);
-    F.fprintf fmt "  conseq (_ : _ ==> ={glob A} /\\ %a) => //.@ "
-    pp_form (mk_eqs g2.mod_name (write_gcmds (Util.take pos ju.ju_gdef)));
+    F.fprintf fmt "  conseq (_ : _ ==> ={glob %s} /\\ %a) => //.@ " nA
+      Printer.pp_form 
+      (mk_eqs g2.mod_name (write_gcmds (Util.take pos ju.ju_gdef)));
     F.fprintf fmt "  sim.@ ";
     F.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
     List.iter (fun e -> 
@@ -1097,8 +1246,9 @@ let extract_except file pos _l pft pft' =
       F.fprintf fmt "  let %a = g.`%s.%a in@ "
         Vsym.pp v adv.mod_name Vsym.pp v) (Se.elements fv);
     F.fprintf fmt "  @[%a@].@ "
-      pp_form (formula file [] None ju.ju_ev);
-    F.fprintf fmt "apply (SDField.%s %s &m EV)." 
+      Printer.pp_form (formula file [] None ju.ju_ev);
+    F.fprintf fmt "apply (%s.%s %s &m EV)." 
+      clone_info.ci_as
       (if side = `LeftToRight then "SD1_conseq_add" else "SD1_conseq_add_E")
       adv.mod_name
   in
@@ -1108,49 +1258,54 @@ let extract_except file pos _l pft pft' =
   
 let default_proof file mem s pft = 
   F.eprintf "WARNING rule %s not extracted@." s;
-  let pr = extract_pr ~local:false file mem pft.pt_ju in
+  let pr = extract_pr ~local:`Top file mem pft.pt_ju in
   let lemma = add_pr_lemma file (mk_cmp pr cmp_eq pr) 
     (Some (fun fmt () -> 
       F.fprintf fmt "(* WARNING rule %s not extracted*)@ " s;
       F.fprintf fmt "trivial.")) in
   lemma, pr, cmp_eq, pr 
 
+
 let rec extract_proof file pft = 
   match pft.pt_rule with
-  | Rconv -> extract_conv file pft [] pft
+  | Rconv -> 
+    extract_conv file pft [] pft
 
   | Rctxt_ev (i,_) ->
     let pft' = List.hd pft.pt_children in
     let ev = pft.pt_ju.ju_ev in
-    let nev = List.length (destruct_Land ev) in
-    let proof fmt () = 
-      let rec pp_intro fmt i = 
-        if i = nev then F.fprintf fmt "H%i" i
-        else F.fprintf fmt "[H%i %a]" i pp_intro (i+1) in
+    let evs = destruct_Land ev in
+    let hs = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
+    let proof _file fmt () = 
+      let pp_intro fmt hs =
+        match hs with
+        | [] -> assert false
+        | [h] -> F.fprintf fmt "%s" h
+        | hs -> 
+          F.fprintf fmt "[* @[<hov>%a@] ]"
+            (pp_list "@ " (fun fmt -> F.fprintf fmt "%s")) hs in
       F.fprintf fmt "move=> &m; rewrite Pr [mu_sub]; last by done.@ ";
-      F.fprintf fmt "by intros &hr %a;rewrite H%i." pp_intro 1 (i+1) in
-
-    extract_proof_sb1_le file pft pft' proof
+      F.fprintf fmt "by intros &hr %a;rewrite H%i //;smt." pp_intro hs i in
+    extract_proof_sb1_le "Ctxt_ev" file pft pft' proof
 
   | Rremove_ev _ ->
     let pft' = List.hd  pft.pt_children in
-    extract_proof_sb1_le file pft pft' 
-      (fun fmt () -> F.fprintf fmt "rewrite Pr [mu_sub] => //.")
+    extract_proof_sb1_le "Remove_ev" file pft pft' 
+      (fun _file fmt () -> F.fprintf fmt "rewrite Pr [mu_sub] => //.")
 
   | Rmerge_ev _ -> 
     let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 file pft pft' (pr_admit "merge_ev")
+    extract_proof_sb1 "Merge_ev" file pft pft' (pr_admit "merge_ev")
 
   | Rrnd (pos,_,inv1,inv2) ->
-
     let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 file pft pft' 
-      (pr_random file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
+    extract_proof_sb1 "Rnd" file pft pft' 
+      (pr_random (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
 
   | Rrnd_orcl (pos, inv1, inv2) ->
     let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 file pft pft' 
-      (pr_random_orcl file (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
+    extract_proof_sb1 "rnd_orcl" file pft pft' 
+      (pr_random_orcl (pos,inv1,inv2) pft.pt_ju pft'.pt_ju)
 
   | Rswap _ ->
     let sw1, pft' = skip_swap pft in
@@ -1158,13 +1313,13 @@ let rec extract_proof file pft =
     | Rconv -> extract_conv file pft sw1 pft'
     | _ ->
       (* FIXME *)
-      extract_proof_sb1 file pft pft' (pr_swap file sw1 pft.pt_ju pft'.pt_ju)
+      extract_proof_sb1 "Swap" file pft pft' (pr_swap sw1 pft.pt_ju pft'.pt_ju)
     end
   | Rswap_orcl _ ->
     let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 file pft pft' (pr_admit "swap oracle")
+    extract_proof_sb1 "Swap_oracle" file pft pft' (pr_admit "swap oracle")
 
-  | Rrnd_indep (side, pos) -> 
+  | Rrnd_indep (side, pos) ->
     extract_rnd_indep file side pos pft.pt_ju 
     
   | Rassm_dec (dir,subst, assum) ->
@@ -1177,9 +1332,9 @@ let rec extract_proof file pft =
     let proof fmt () = 
       F.fprintf fmt "@[<v>intros &m.@ ";
       F.fprintf fmt "@[apply (real_le_trans@ %a@ %a@ %a).@]@ "
-        (pp_form_lvl min_lvl) pr 
-        (pp_form_lvl min_lvl) (f_radd abs pr') 
-        (pp_form_lvl min_lvl) (f_radd abs bound);
+        (Printer.pp_form_lvl Printer.min_lvl) pr 
+        (Printer.pp_form_lvl Printer.min_lvl) (f_radd abs pr') 
+        (Printer.pp_form_lvl Printer.min_lvl) (f_radd abs bound);
       F.fprintf fmt "apply (%s &m).@ " lemma2;
       F.fprintf fmt "apply Real.addleM; first by [].@ ";
       F.fprintf fmt "by %s (%s &m).@]"
@@ -1205,7 +1360,7 @@ let rec extract_proof file pft =
     let proof fmt () = 
       F.fprintf fmt "@[<v>intros &m.@ ";
       F.fprintf fmt "@[apply (real_le_trans@ _@ %a@ _).@]@ "
-        (pp_form_lvl min_lvl) (f_radd pr' eps);
+        (Printer.pp_form_lvl Printer.min_lvl) (f_radd pr' eps);
       F.fprintf fmt "apply (%s &m).@ " lemma2;
       F.fprintf fmt "apply Real.addleM; last by [].@ ";
       F.fprintf fmt "by %s (%s &m).@]"
@@ -1214,9 +1369,29 @@ let rec extract_proof file pft =
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
     lemma3, pr, cmp_le, bound 
 
-  | Rexc_orcl _ -> default_proof file mem "exc_orl" pft
-  | Radd_test _ -> default_proof file mem "add_test" pft
-  | Rrw_orcl _  -> default_proof file mem "rw_orcl" pft
+  | Radd_test _ -> 
+    
+    let pftb = List.hd pft.pt_children in 
+    init_section file "AUXILIARY" pftb;
+    let lemma, pr, cmp, bound = extract_proof file pftb in
+    let name = top_name file "conclusion" in
+    let body = forall_mem (mk_cmp pr cmp bound) in
+    let proof fmt () = 
+      F.fprintf fmt "apply %s." lemma in
+    add_local file (Clemma(false, name,body, Some proof));
+    end_section file;
+    let pft' = List.hd (List.tl pft.pt_children) in
+    extract_proof_sb1 "Add_test" file pft pft' (pr_admit ("add_test "^lemma))
+
+  | Rexc_orcl _ -> 
+    default_proof file mem "exc_orl" pft
+
+  | Rrw_orcl (op,dir)  -> 
+    let pft' = List.hd pft.pt_children in
+    extract_proof_sb1 "Rw_orcl" file pft pft' 
+      (pr_rw_orcl (op,dir) pft.pt_ju pft'.pt_ju)
+
+
   | Rbad     _  -> default_proof file mem "bad" pft
   | Radmit _    -> default_proof file mem "admit" pft
 
@@ -1229,9 +1404,59 @@ let rec extract_proof file pft =
     let lemma = add_pr_lemma file (mk_cmp pr cmp_eq bound) (Some proof) in
     lemma, pr, cmp_eq, bound
 
-  | Rcase_ev _ -> default_proof file mem "case_ev" pft
-  | Rsplit_ev _ -> default_proof file mem "split_ev" pft
-  | Rrw_ev (_, _) -> default_proof file mem "rw_ev" pft
+  | Rcase_ev (flip, e) -> 
+    let pft1 = List.nth pft.pt_children (if flip then 1 else 0) in
+    let pft2 = List.nth pft.pt_children (if flip then 0 else 1) in
+    let (lemma1, _pr1, cmp1, bound1) = extract_proof file pft1 in
+    let (lemma2, _pr2, cmp2, bound2) = extract_proof file pft2 in
+    let pr = extract_pr file mem pft.pt_ju in
+    let cmp = cmp1 && cmp2 in
+    let bound = f_radd bound1 bound2 in
+    let g = find_game file pft.pt_ju.ju_gdef in
+    let ev = formula file [g.mod_name] None e in
+    let proof fmt () =
+      F.fprintf fmt "(* Case event *)@ ";
+      F.fprintf fmt "move=> &m.@ ";
+      F.fprintf fmt "rewrite Pr [mu_split (%a)].@ " Printer.pp_form ev;
+      if cmp = cmp_le then 
+        let rw_ap cmp = if cmp = cmp_eq then "rewrite" else "apply" in
+        F.fprintf fmt "apply Real.addleM.@ ";
+        F.fprintf fmt "  by %s (%s &m).@ " (rw_ap cmp1) lemma1;
+        F.fprintf fmt "by %s (%s &m)." (rw_ap cmp2) lemma2  
+      else 
+        F.fprintf fmt "by rewrite (%s &m) (%s &m)." lemma1 lemma2 in
+
+    let lemma3 = add_pr_lemma file (mk_cmp pr cmp bound) (Some proof) in
+    lemma3, pr, cmp, bound
+
+  | Rsplit_ev _i -> 
+    let pft' = List.hd pft.pt_children in
+    let proof _file fmt () = 
+      F.fprintf fmt "(* split_ev *)@ ";
+      F.fprintf fmt "by move=> &m;rewrite Pr [mu_eq]." in
+    extract_proof_sb1 "split_ev" file pft pft' proof
+
+  | Rrw_ev (i, dir) -> 
+    let pft' = List.hd pft.pt_children in
+    let proof _file fmt () = 
+      let ev = pft.pt_ju.ju_ev in
+      let evs = destruct_Land ev in
+      let hi = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
+      let pp_hi fmt hi = 
+        match hi with
+        | [] -> assert false
+        | [hi] -> F.fprintf fmt "%s" hi
+        | his -> 
+          F.fprintf fmt "[* @[<hov>%a@] ]"
+            (pp_list "@ " (fun fmt -> F.fprintf fmt "%s")) his in
+      F.fprintf fmt "rewrite Pr [mu_sub];last by done.@ ";
+      F.fprintf fmt "by move=> &m %a;rewrite %sH%i;smt." 
+        pp_hi hi 
+        (if dir = LeftToRight then "-" else "")
+        i in
+                         
+    extract_proof_sb1_le "Rw_ev" file pft pft' proof
+
     
  
     
@@ -1239,55 +1464,61 @@ let rec extract_proof file pft =
 and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in
   let sw2, pft' = skip_swap pft2 in 
-  extract_proof_sb1 file pft pft' 
-    (pr_conv file sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2)
+  extract_proof_sb1 "Conv" file pft pft' 
+    (pr_conv sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2)
 
-and extract_proof_sb1 file pft pft' proof = 
+and extract_proof_sb1 msg file pft pft' proof = 
   let (lemma1, pr',cmp,bound) = extract_proof file pft' in
   let pr = extract_pr file mem pft.pt_ju in
+  let proof = proof file in
   let lemma2 = 
     add_pr_lemma file (mk_cmp pr cmp_eq pr') 
       (Some proof) in
   let lemma3 = 
     add_pr_lemma file (mk_cmp pr cmp bound) 
-      (Some (pr_intr_rw1_app lemma2 lemma1)) in
+      (Some (fun fmt () -> 
+        F.fprintf fmt "(* %s *)@ " msg;
+        pr_intr_rw1_app lemma2 lemma1 fmt ())) in
   lemma3, pr, cmp, bound
 
-and extract_proof_sb1_le file pft pft' proof = 
+and extract_proof_sb1_le msg file pft pft' proof = 
   let (lemma1, pr',cmp,bound) = extract_proof file pft' in
   let pr = extract_pr file mem pft.pt_ju in
+  let proof = proof file in
   let lemma2 = 
     add_pr_lemma file (mk_cmp pr cmp_le pr') 
       (Some proof) in
   let proof fmt () =
+    F.fprintf fmt "(* %s *)@ " msg;
     F.fprintf fmt "intros &m; cut H1 := %s &m.@ " lemma2;
     F.fprintf fmt "apply (real_le_trans _ _ _ H1).@ ";
     F.fprintf fmt "by %s (%s &m)." 
       (if cmp = cmp_eq then "rewrite" else "apply") lemma1 in
   let lemma3 = 
-    add_pr_lemma file (mk_cmp pr cmp bound) 
+    add_pr_lemma file (mk_cmp pr cmp_le bound) 
       (Some proof) in
-  lemma3, pr, cmp, bound
+  lemma3, pr, cmp_le, bound
   
 
 let extract_file ts = 
   let pt = get_proof_tree ts in
   let pft = Rules.simplify_proof_tree pt in
-  let file = init_file ts pft in
+  let file = init_file ts in
+  init_section file "MAIN" pft;
   let lemma, pr, cmp, bound = extract_proof file pft in
   let name = top_name file "conclusion" in
   let body = forall_mem (mk_cmp pr cmp bound) in
   let proof fmt () = 
-    F.fprintf fmt "apply %s." lemma in
-    
-  file.loca_decl <- Clemma(false, name,body, Some proof) :: file.loca_decl;
+    F.fprintf fmt "apply %s." lemma in    
+  add_local file (Clemma(false, name,body, Some proof));
+  end_section file;
   file
 
 let extract ts filename = 
   let file = extract_file ts in
   let out = open_out filename in
   let fmt = F.formatter_of_out_channel out in
-  Printer.pp_file fmt file;
+  Printer.pp_file fmt file; 
   close_out out
 
 

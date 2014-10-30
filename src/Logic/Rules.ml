@@ -208,7 +208,7 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "rexc_orcl (%i,%i,%i)" i j k
   | Radd_test((i,j,k),e,_ads,_vss) ->
     F.fprintf fmt "radd_test (%i,%i,%i) (%a)" i j k pp_exp e
-  | Rcase_ev(e)   ->
+  | Rcase_ev(_,e)   ->
     F.fprintf fmt "rcase @[<v 2>%a@]" pp_exp e
   | Rbad(_pos,_vs) ->
     F.fprintf fmt "rbad"

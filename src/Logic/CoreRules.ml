@@ -54,7 +54,7 @@ type rule_name =
       $Rexc\_orcl(p,\vec{e})$: change sampling at $p$ to exclude $\vec{e}$ *)
 
   (*c case distinctions, up-to *)
-  | Rcase_ev  of expr (*r
+  | Rcase_ev  of bool * expr (*r
       $Rcase(e)$: refine event by performing case distinction on $e$ *)
   | Radd_test of ocmd_pos * expr * ads * vs list (*r
       $Radd\_test(p,e,a,\vec{v})$: add test to oracle. *)
@@ -515,7 +515,7 @@ let rcase_ev ?flip:(flip=false) e ju =
     (L.mem (Norm.norm_expr e) evs || L.mem (Norm.norm_expr (mk_Not e)) evs)
   then tacerror "rcase_ev: event or negation already in event";
   eprintf "!!! case_ev rule applied: %a@\n%!" pp_exp e;
-  Rcase_ev(e), if flip then [ju2; ju1] else [ju1;ju2]
+  Rcase_ev(flip, e), if flip then [ju2; ju1] else [ju1;ju2]
 
 let t_case_ev ?flip:(flip=false) e = prove_by (rcase_ev ~flip e)
 

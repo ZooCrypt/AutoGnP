@@ -1,6 +1,5 @@
 open Util
 open Type
-open Expr
 open File
 open Syms
 open Gsyms
@@ -226,6 +225,10 @@ let rec pp_instr file fmt = function
     F.eprintf "multiple restriction not implemented@.";
     assert false
   | Icall(lv,f,e) ->
+    let pp_exp fmt e =
+      match e with
+      | Etuple [] -> ()
+      | _ -> pp_exp fmt e in
     F.fprintf fmt "@[<hov 2>%a =@ %a(%a);@]" 
       pp_lvalue lv pp_fun_name f pp_exp e
   | Iif(e,c1,c2) ->
@@ -321,7 +324,7 @@ let pp_lvars_mod fmt lvars =
 let pp_gvars_mod fmt gvars = 
   F.fprintf fmt "(** { Field declarations. } *)@ @ ";
   F.fprintf fmt "require import PrimeField.@ ";
-  F.fprintf fmt "require import SDField.@ ";
+  F.fprintf fmt "require SDField.@ ";
   F.fprintf fmt "import FSet.Dexcepted.@ ";
   F.fprintf fmt "import F.@ ";
   F.fprintf fmt "@ ";
@@ -430,7 +433,7 @@ let obinding tbl =
 let abinding tbl = 
   Asym.H.fold (fun k v l -> (k,v)::l) tbl [] 
 
-let pp_adv_type fmt file = 
+(*let pp_adv_type fmt file = 
   
   let pp_orcl_decl fmt (oname, oinfo) = 
     F.fprintf fmt "@[proc %a (@[%a@]) :@ %a@]"
@@ -453,10 +456,67 @@ let pp_adv_type fmt file =
   F.fprintf fmt "@[<v>%a@ %a@ @]"
     pp_orcl_ty ginfo.oinfo
     pp_adv_ty  ginfo.ainfo
+*)
 
-let pp_cmd local file fmt = function
-  | Cmod md -> 
+let pp_modty file fmt modt =
+  let pp_modtparam fmt params =
+    if params <> [] then
+      let pp_param fmt (s1,s2) = 
+        F.fprintf fmt "%s:%s" s1 s2 in
+      F.fprintf fmt "(@[<hov>%a@])"
+        (pp_list ",@ " pp_param) params in
+  let pp_modtproc fmt procs = 
+    let pp_arg fmt (ox, ty) = 
+      let pp_ox fmt ox = 
+        match ox with
+        | None -> F.fprintf fmt "_"
+        | Some s -> F.fprintf fmt "%s" s in
+      F.fprintf fmt "@[<hov>%a:@ %a@]"
+        pp_ox ox 
+        (pp_type file) ty in
+    let pp_proc fmt (name,args,ty,restr) =
+      F.fprintf fmt "@[<hov 2>proc %s(@[<hov>%a@]):@ %a@ {@[<hov>%a@]}@]"
+        name 
+        (pp_list ",@ " pp_arg) args  
+        (pp_type file) ty
+        (pp_list ",@ " pp_fun_name) restr
+    in 
+    (pp_list "@ " pp_proc) fmt procs
+  in
+    
+  F.fprintf fmt "module type %s%a = {@   @[<v>%a@]@ }."
+    modt.modt_name
+    pp_modtparam modt.modt_param
+    pp_modtproc  modt.modt_proc
+
+let pp_clone file fmt info = 
+  let pp_local fmt local = 
+    if local then F.fprintf fmt "local@ " in
+  let pp_import fmt import = 
+    if import then F.fprintf fmt "import@ " in
+  let pp_with_to fmt = function
+    | CWtype (s,ty) ->
+      F.fprintf fmt "type %s <- %a" s (pp_type file) ty
+    | CWop(s,e) ->
+      F.fprintf fmt "op %s <- %a" s pp_exp e in
+  let pp_with fmt info =
+    if info.ci_with <> [] then 
+      F.fprintf fmt "with@ @[<v>%a@]" 
+        (pp_list ",@ " pp_with_to) info.ci_with in
+
+  F.fprintf fmt "@[<hov >%aclone %a%s as %s%a.@]"
+    pp_local info.ci_local
+    pp_import info.ci_import
+    info.ci_from info.ci_as
+    pp_with info
+    
+let rec pp_cmd file fmt = function
+  | Ccomment s -> F.fprintf fmt "(** %s *)" s
+  | Cbound s -> F.fprintf fmt "op %s: int." s
+  | Cmodty modty -> pp_modty file fmt modty 
+  | Cmod (local,md) -> 
     F.fprintf fmt "%a." (pp_mod_def ~local file) md
+  | Cclone info -> pp_clone file fmt info
   | Clemma(loc,name,f,Some proof) ->
     F.fprintf fmt "%slemma %s:@   @[%a@]."
       (if loc then "local " else "") name pp_form f;
@@ -464,12 +524,35 @@ let pp_cmd local file fmt = function
       
   | Clemma(loc,name,f,None) ->
     assert (loc = false);
-    F.fprintf fmt "@[<v>axiom %s:@   @[%a@]." name pp_form f 
+    F.fprintf fmt "@[<v>axiom %s:@   @[%a@].@]" name pp_form f 
 
-let pp_cmds local file fmt cmd = 
-  pp_list "@ @ " (pp_cmd local file) fmt cmd
+  | Csection s -> pp_section file fmt s
+
+and pp_cmds file fmt cmds = pp_list "@ @ " (pp_cmd file) fmt (List.rev cmds)
+
+and pp_section file fmt s =
+  let pp_locals fmt = function
+    | None -> ()
+    | Some l ->
+      let pp_adv_info fmt a = 
+        F.fprintf fmt "declare module %s: %s { @[<hov>%a @]}."
+          a.adv_name a.adv_ty
+          (pp_list ",@ " (fun fmt -> F.fprintf fmt "%s")) a.adv_restr
+      in
+      F.fprintf fmt "section.@   @[<v>%a@ @ %a@]@ @ end section."
+        pp_adv_info l.adv_info
+        (pp_cmds file) l.loca_decl
+  in
+  F.fprintf fmt "theory %s.@   @[<v>%a@ @ %a@]@ @ end %s." 
+    s.section_name 
+     (pp_cmds file) s.section_glob 
+      pp_locals     s.section_loc 
+    s.section_name
+    
+
+ 
       
-let pp_adv_decl fmt file = 
+(*let pp_adv_decl fmt file = 
   let r = [] in
   (*  Hsym.H.fold (fun _ info r -> (info.h_th^"."^info.h_mod)::r)
       file.hvar [] in *)
@@ -483,6 +566,11 @@ let pp_adv_decl fmt file =
   let name,ty = adv_decl file in
   F.fprintf fmt "declare module %s : %s {@[<hov 2>%a@]}.@ @ "
     name ty (pp_list ", " F.pp_print_string) r 
+*)
+
+let pp_main_section fmt file =
+  assert (file.open_section = []);
+  pp_cmds file fmt file.top_decl
 
 let pp_file fmt file = 
   F.fprintf fmt "@[<v>require import Real.@ ";
@@ -492,13 +580,7 @@ let pp_file fmt file =
   pp_bilinear_mod file fmt file.bvar;
   pp_hash_mod fmt file;
   pp_assumptions fmt file;
-  pp_adv_type fmt file;
-  pp_cmds false file fmt (List.rev file.glob_decl);
-  F.fprintf fmt "@ @ section.@ @   @[<v>%a%a@]@ @ end section."
-    pp_adv_decl file
-    (pp_cmds true file) (List.rev file.loca_decl);
-
-  
+  pp_main_section fmt file;
   F.fprintf fmt "@]@."
   
     

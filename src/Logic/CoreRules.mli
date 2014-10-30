@@ -33,7 +33,7 @@ type rule_name =
   | Rexc_orcl  of ocmd_pos * expr list 
 
   (*c case distinctions, up-to *)
-  | Rcase_ev   of expr
+  | Rcase_ev   of bool * expr
   | Radd_test  of ocmd_pos * expr * ads * vs list 
   | Rbad       of gcmd_pos * vs
 
