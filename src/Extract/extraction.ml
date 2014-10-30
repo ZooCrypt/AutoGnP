@@ -144,6 +144,15 @@ let rec init_res_expr ty =
   | G gv     -> Expr.mk_GGen gv
   | Fq       -> Expr.mk_FZ
   | Prod tys -> Expr.mk_Tuple (List.map init_res_expr tys)
+  | Int      -> assert false
+
+let vc_oracle modn osym = 
+  modn, Format.sprintf "c%s" (Osym.to_string osym)
+  
+let q_oracle file osym = 
+  let info = adv_info file in
+  try (Osym.H.find info.adv_g.oinfo osym).obound
+  with Not_found -> assert false
 
 let oracle file (osym,param,lc,ret) = 
   let res = "_res" in
@@ -163,9 +172,13 @@ let oracle file (osym,param,lc,ret) =
             body
             } *)
     | LGuard e :: lc-> [Iif (expression file e, body lc, [])] in
+  let vc = vc_oracle [] osym in
+  let c  = Epv vc in 
+  let q  = Ecnst (q_oracle file osym) in 
   let init_res lc = 
     let e = expression file (init_res_expr osym.Osym.codom) in
-    Iasgn([vres], e) :: lc in
+    [ Iasgn([vres], e);
+      Iif (e_lt c q, Iasgn([vc],e_incr c):: lc, []) ] in
   {
     f_name = "o" ^ Osym.to_string osym;
     f_param = List.map (fun v -> pvar [] v, v.Vsym.ty) param;
@@ -305,8 +318,11 @@ let oracles file oinfo =
       (Osym.H.fold (fun os (oparams,obody,ores) l ->
         MCfun(oracle file (os, oparams, obody, ores))::l) oinfo [])) }
 
-
-    
+let vc_oracles file = 
+  let ainfo = adv_info file in
+  Osym.H.fold (fun o _ l -> vc_oracle [] o :: l) 
+    ainfo.adv_g.oinfo []  
+   
 let game ?(local=`Local) file g = 
   try find_game file g 
   with Not_found ->
@@ -320,6 +336,8 @@ let game ?(local=`Local) file g =
     List.iter mk_info g; 
     
     let (nA,tA) = adv_decl file in
+    let vcs = vc_oracles file in
+    let cdecls = List.map (fun v -> MCvar (v, Type.mk_Int)) vcs in
     let globs = globals g in 
     let m_orcl = oracles file oinfo in
     let alias = (mod_name nA [mod_name "O" []]) in (* TODO add the H oracle *)
@@ -328,15 +346,16 @@ let game ?(local=`Local) file g =
       mod_param = [];
       mod_body = Mod_alias alias;
     } in
+    let init_vcs = List.map (fun v -> Iasgn([v], e_int0)) vcs in
     let f_main = 
       { f_name = "main";
         f_param = [];
         f_local = [];
         f_res   = None;
-        f_body  = instructions file (mod_name nA []) g;
+        f_body  = init_vcs @ instructions file (mod_name nA []) g;
       } in
     let comp = 
-      globs @ [MCmod m_orcl;
+      cdecls@globs @ [MCmod m_orcl;
                        MCmod m_adv;
                        MCfun f_main] in
     let name = top_name file "M" in
@@ -382,12 +401,12 @@ let get_game file g =
 let pr_admit s _file fmt () =
   F.fprintf fmt "(* %s *) admit." s
 
-let pp_swap side fmt (p,i) = 
-  F.fprintf fmt "swap{%i} %i %i" side (p+1) i
+let pp_swap nvc side fmt (p,i) = 
+  F.fprintf fmt "swap{%i} %i %i" side (nvc + p+1) i
 
-let pp_swaps side fmt sw = 
+let pp_swaps nvc side fmt sw = 
   if sw <> [] then
-    F.fprintf fmt "@[%a.@]@ " (pp_list ";@ " (pp_swap side)) sw
+    F.fprintf fmt "@[%a.@]@ " (pp_list ";@ " (pp_swap nvc side)) sw
 
 let init_same_ev file ev tac =
   let nA = adv_name file in
@@ -411,9 +430,10 @@ let init_same file ju1 ju2 =
 
 let pr_swap sw ju1 ju2 file =
   let _,_,open_pp, close_pp = init_same file ju1 ju2 in
+  let nvc = List.length (vc_oracles file) in
   fun fmt () ->
     open_pp fmt ();
-    pp_swaps 1 fmt sw;
+    pp_swaps nvc 1 fmt sw;
     F.fprintf fmt "sim.";
     close_pp fmt ()
 
@@ -483,6 +503,7 @@ let t_algebra = TSeq[Algebra;
                        "rewrite ?supp_def ?FSet.mem_single;progress;algebra *";
                      Smt]
 let t_spa = TSeq [Skip;Progress [];t_algebra]
+let t_apa = TSeq [Auto;Progress [];t_algebra]
 let t_pa  = TSeq [Progress [];t_algebra]
 let t_aa  = TSeq [Auto;t_algebra]
 let t_id  = TSeq []
@@ -596,7 +617,6 @@ let init_inv_oracle p1 p2 inv =
     (f_and (f_eq (Fv(([],"_res"), Some "1")) (Fv(([],"_res"), Some "2"))) inv)
     p1 p2
 
-
 let mk_eq_expr file ?(local=Vsym.S.empty) g1 g2 e =
   f_eq (formula file [g1.mod_name] (Some "1") ~local e)
        (formula file [g2.mod_name] (Some "2") ~local e)
@@ -607,6 +627,13 @@ let mk_eq_exprs file ?(local=Vsym.S.empty) g1 g2 es =
   | e::es -> 
     List.fold_left (fun eq e -> f_and (mk_eq_expr file ~local g1 g2 e) eq)
       (mk_eq_expr file ~local g1 g2 e) es
+
+let mk_eq_vcs g1 g2 vcs = 
+  match vcs with
+  | [] -> f_true
+  | v::vs ->
+    let mk_eq v = f_eq (f_v g1 v "1") (f_v g2 v "2") in
+    List.fold_left (fun eq v -> f_and eq (mk_eq v)) (mk_eq v) vs 
 
 let pp_inv file ?(local=Vsym.S.empty) g fmt (x,inv) = 
   let flocal = Vsym.S.singleton x in
@@ -623,6 +650,7 @@ let mu_x_def file fmt ty =
   | G _gv -> assert false (* FIXME *)
   | Fq    -> F.fprintf fmt "FDistr.mu_x_def_in"
   | Prod _ -> assert false (* FIXME *) 
+  | Int -> assert false
 
 let supp_def file fmt ty = 
   match ty.ty_node with
@@ -633,8 +661,9 @@ let supp_def file fmt ty =
   | G _gv -> assert false (* FIXME *)
   | Fq    -> F.fprintf fmt "FDistr.supp_def"
   | Prod _ -> assert false (* FIXME *) 
+  | Int -> assert false
 
-let build_conv_proof file g1 g2 lc1 lc2 = 
+let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 = 
   let add_info1 v1 e1 loc info = 
     add_let_info file g1 v1 e1 true loc info in
   let add_info2 v2 e2 loc info = 
@@ -670,7 +699,9 @@ let build_conv_proof file g1 g2 lc1 lc2 =
         tacs = [Tac t_spa];
         invs  = inv } in
     let tacs = aux lc1 lc2 info in
-    Tac (TSeq [Proc;TSeqSub (Seq(1,1,inv), [Auto; t_id])]) :: tacs in
+    Tac (Tstring "proc;sp 1 1;if;[by done | | by done]") :: 
+    Tac (TSeqSub (Seq (1,1, inv), [Auto; t_id])) ::
+    tacs in
         
   let add_call vs1 odef1 vs2 odef2 info = 
     let prove_orcl o1 o2 = prove_orcl info o1 o2 in
@@ -701,37 +732,44 @@ let build_conv_proof file g1 g2 lc1 lc2 =
     | _, _ -> assert false in
   let info = 
     { loc1 = Vsym.S.empty; loc2 = Vsym.S.empty;
-      pos1 = 0; pos2 = 0;
-      tacs = [Tac t_spa]; invs = f_true } in
+      pos1 = nvc; pos2 = nvc;
+      tacs = [Tac t_apa]; invs = eqvc } in
   aux lc1 lc2 info 
 
 let pr_conv sw1 ju1 ju ju' ju2 sw2 file = 
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
-  let info = build_conv_proof file g1 g2 ju.ju_gdef ju'.ju_gdef in 
+  let vcs = vc_oracles file in
+  let eqvc = mk_eq_vcs g1 g2 vcs in
+  let nvc = List.length vcs in
+  let info = build_conv_proof nvc eqvc file g1 g2 ju.ju_gdef ju'.ju_gdef in 
+
   fun fmt () -> 
     open_pp fmt (); 
     F.fprintf fmt "(* conv rule *)@ ";
-    pp_swaps 1 fmt sw1;
-    pp_swaps 2 fmt (invert_swap sw2);
+    pp_swaps nvc 1 fmt sw1;
+    pp_swaps nvc 2 fmt (invert_swap sw2);
     pp_cmds fmt info.tacs;
     close_pp fmt ()
 
 let pr_random (pos,inv1,inv2) ju1 ju2 file =
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
-  (*let write = write_gcmds (Util.take pos ju2.ju_gdef) in
-    let eqs = mk_eq_exprs file g1 g2 write in *)
+  let vcs = vc_oracles file in
+  let nvc = List.length vcs in
+  let eqvc = mk_eq_vcs g1 g2 vcs in
+  let npos = pos + nvc in
   let lc1 = Util.take pos ju1.ju_gdef in
   let lc2 = Util.take pos ju2.ju_gdef in
-  let info =  build_conv_proof file g1 g2 lc1 lc2 in 
+
+  let info = build_conv_proof nvc eqvc file g1 g2 lc1 lc2 in 
   let nA = adv_name file in
   fun fmt () ->
     open_pp fmt ();
     F.fprintf fmt "sim.@ ";
-    F.fprintf fmt "wp %i %i.@ " (pos + 1) (pos + 1);
+    F.fprintf fmt "wp %i %i.@ " (npos + 1) (npos + 1);
     F.fprintf fmt "@[<hov 2>rnd@ %a@ %a.@]@ "
       (pp_inv file g2) inv2 (pp_inv file g2) inv1;
     F.fprintf fmt "@[<hov 2>conseq (_: _ ==>@ %a /\\ ={glob %s}).@]@ " 
-      Printer.pp_form info.invs nA;
+      Printer.pp_form (f_and info.invs eqvc) nA;
     let ty = (fst inv1).Vsym.ty in 
     F.fprintf fmt "  progress.@ ";
     F.fprintf fmt "    by algebra *.@ ";
@@ -743,6 +781,10 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
 
 let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
   let g1,g2,open_pp, close_pp = init_same file ju1 ju2 in
+  let vcs = vc_oracles file in
+  let eqvc = mk_eq_vcs g1 g2 vcs in
+  let nvc = List.length vcs in
+
   let _i, ctxt = Game.get_ju_octxt ju1 pos in
   let _i, ctxt2 = Game.get_ju_octxt ju2 pos in
   let jctxt = ctxt.juoc_juc in
@@ -752,7 +794,7 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
   let write2 = write_gcmds jctxt.juc_right in
   let write = Se.union write1c write2 in
   (* The proof of the oracle *)
-  let ginv = mk_eq_exprs file g1 g2 write1 in
+  let ginv = f_and (mk_eq_exprs file g1 g2 write1) eqvc in
   let p1 = ctxt.juoc_oargs and p2 = ctxt2.juoc_oargs in
   let iinv = init_inv_oracle p1 p2 ginv in
   let add_info1 v1 e1 loc info = 
@@ -795,22 +837,24 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
     open_pp fmt ();
     F.fprintf fmt "conseq (_: _ ==> @[%a@]) => //.@ "
       Printer.pp_form (mk_eq_exprs file g1 g2 write);
-    let len = List.length jctxt.juc_left in
+    let len = nvc + List.length jctxt.juc_left in
+
     F.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " len len
-      Printer.pp_form (mk_eq_exprs file g1 g2 write1);
+      Printer.pp_form ginv;
     F.fprintf fmt "  [ by sim | ].@ ";
     if jctxt.juc_right <> [] then begin
       F.fprintf fmt "seq %i %i : (@[={glob %s} /\\ %a@]);@ " 
         1 1 nA
-        Printer.pp_form (mk_eq_exprs file g1 g2 write1c);
+        Printer.pp_form  (f_and (mk_eq_exprs file g1 g2 write1c) eqvc);
       F.fprintf fmt "  [ | by sim ].@ "
     end;
 
     F.fprintf fmt "call (_: @[%a@]).@ "
-      Printer.pp_form (mk_eq_exprs file g1 g2 write1);
+      Printer.pp_form ginv;
     List.iter (fun _ -> F.fprintf fmt "  by sim.@ ") ctxt.juoc_oleft;
     (* Start proof of the oracle *)
-    F.fprintf fmt "  proc;seq 1 1 : (@[%a@]);[by sim | ].@ "
+    F.fprintf fmt "  proc;sp 1 1;if;[by done | | by done].@ ";
+    F.fprintf fmt "  seq 1 1 : (@[%a@]);[by sim | ].@ "
       Printer.pp_form iinv;
     F.fprintf fmt "  @[%a@]@ " pp_cmds info.tacs;
     F.fprintf fmt "  sim.@ ";
@@ -837,16 +881,20 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
 let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file = 
   let g1 = get_game file ju1.ju_gdef in
   let g2 = get_game file ju2.ju_gdef in
+  let vcs = vc_oracles file in
+  let eqvc = mk_eq_vcs g1 g2 vcs in
+  let nvc = List.length vcs in
+
   let fv = Expr.e_vars ju1.ju_ev in
   let ev = mk_eq_exprs file g1 g2 fv in
   let open_pp, close_pp = init_same_ev file ev "done" in
   let lg, ju_o = Game.get_ju_octxt ju1 op in
-  let n1 = List.length ju_o.juoc_juc.juc_left in
+  let n1 = nvc + List.length ju_o.juoc_juc.juc_left in
   let w1 = Game.write_gcmds (List.rev ju_o.juoc_juc.juc_left) in
-  let ev1 = mk_eq_exprs file g1 g2 w1 in
+  let ev1 = f_and eqvc (mk_eq_exprs file g1 g2 w1) in
   let gc, _ = Game.get_ju_ctxt ju1 i in
   let w2 = Se.union w1 (Game.write_gcmd gc) in
-  let ev2 = mk_eq_exprs file g1 g2 w2 in
+  let ev2 = f_and eqvc (mk_eq_exprs file g1 g2 w2) in
   let nA = adv_name file in
   let pp_invA fmt ev = 
     F.fprintf fmt "={glob %s} /\\ %a" nA Printer.pp_form ev in
@@ -933,7 +981,7 @@ let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file =
   let tac_end = aux2 0 0 ju_o.juoc_cright info2 in 
   fun fmt () ->
     open_pp fmt ();
-    F.fprintf fmt "(* Rewrite oracle *)";
+    F.fprintf fmt "(* Rewrite oracle *)@ ";
     F.fprintf fmt "seq %i %i : (%a); first by sim.@ " n1 n1 pp_invA ev1;
     F.fprintf fmt "seq 1 1 : (%a); last by sim.@ " pp_invA ev2;
     F.fprintf fmt "call (_: %a);last by done.@ " Printer.pp_form ev1;
@@ -941,7 +989,9 @@ let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file =
     let pp_other fmt os =
       pp_list "" (fun fmt _ -> F.fprintf fmt "  by sim.@ ") fmt os in
     pp_other fmt ju_o.juoc_oleft;
-    F.fprintf fmt "  proc;sp 1 1.@ ";
+    F.fprintf fmt "  proc;sp 1 1;if;[ by done | | by done].@ ";
+    F.fprintf fmt "  %a" pp_cmds 
+      [Tac (TSeqSub (Seq(1, 1, iinv), [Auto; t_id]))];
     F.fprintf fmt "  %a@ " pp_cmds info1.tacs;
     F.fprintf fmt "  if;[by done | | by done].@ ";
     F.fprintf fmt "  @[<v>%a@]" pp_cmds tac_end;
@@ -959,6 +1009,8 @@ let pr_intr_rw1_app lemma1 lemma2 fmt () =
 let extract_assum file dir subst ainfo pft pft' =
   let g  = game file pft.pt_ju.ju_gdef in
   let g'  = game file pft'.pt_ju.ju_gdef in
+  let nvc = List.length (vc_oracles file) in
+
   let ev = pft.pt_ju.ju_ev in
   let len = if dir = LeftToRight then ainfo.ad_len1 else ainfo.ad_len2 in
   let fadv =
@@ -988,6 +1040,7 @@ let extract_assum file dir subst ainfo pft pft' =
       let res = ([], "_res") in
       let dres = res, mk_Bool in
       let ev = expression file ev in
+      let init_vc, main = Util.cut_n nvc f.f_body in 
       { f_name = "main";
         f_param = param;
         f_local = [dres];
@@ -995,7 +1048,8 @@ let extract_assum file dir subst ainfo pft pft' =
         f_body  = 
           assign_global @ 
             (* The head should be remove *)
-            drop len f.f_body @ [Iasgn([res], ev)] } in
+            List.rev_append init_vc
+            (drop len main @ [Iasgn([res], ev)]) } in
     let advname = top_name file ("Fadv_"^ainfo.ad_name) in 
     { mod_name = advname;
       mod_param = g.mod_param;
@@ -1018,7 +1072,7 @@ let extract_assum file dir subst ainfo pft pft' =
       "@[<v> intros &m; byequiv (_: @[={glob %s} ==>@ %a@]) => //.@ " nA
       Printer.pp_form (f_eq ev (Fv(([], "res"), Some "2")));
     F.fprintf fmt
-      "by proc; inline{2} %a; wp => /=; sim.@]"
+      "by proc; inline{2} %a; wp => /=; sim;auto.@]"
       Printer.pp_fun_name (fa,"main") in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
@@ -1039,6 +1093,8 @@ let extract_assum file dir subst ainfo pft pft' =
 
 let extract_assum_comp file subst ainfo expr pft =
   let g  = game file pft.pt_ju.ju_gdef in
+  let nvc = List.length (vc_oracles file) in
+
   let len = ainfo.ac_len in
   let fadv =
     let comp = match g.mod_body with 
@@ -1067,6 +1123,7 @@ let extract_assum_comp file subst ainfo expr pft =
       let res = ([], "_res") in
       let dres = res, ainfo.ac_advret in
       let ev = expression file expr in
+      let init_vc, main = Util.cut_n nvc f.f_body in 
       { f_name = "main";
         f_param = param;
         f_local = [dres];
@@ -1074,7 +1131,8 @@ let extract_assum_comp file subst ainfo expr pft =
         f_body  = 
           assign_global @ 
             (* The head should be remove *)
-            drop len f.f_body @ [Iasgn([res], ev)] } in
+            List.rev_append init_vc
+            (drop len main @ [Iasgn([res], ev)]) } in
     let advname = top_name file ("Fadv_"^ainfo.ac_name) in 
     { mod_name = advname;
       mod_param = g.mod_param;
@@ -1092,7 +1150,7 @@ let extract_assum_comp file subst ainfo expr pft =
       "@[<v> intros &m; byequiv (_: @[={glob %s} ==>@ %a@]) => //.@ " nA
       Printer.pp_form (f_eq ev (Fv(([], "res"), Some "2")));
     F.fprintf fmt
-      "by proc; inline{2} %a; wp => /=; sim.@]"
+      "by proc; inline{2} %a; wp => /=; sim;auto.@]"
       Printer.pp_fun_name (fa,"main") in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
@@ -1155,6 +1213,9 @@ let extract_except file pos _l pft pft' =
   let pr' = extract_pr file mem ju' in
   let g = game file pft.pt_ju.ju_gdef in 
   let g' = game file pft'.pt_ju.ju_gdef in
+  let vcs = vc_oracles file in
+  let nvc = List.length vcs in
+  let npos = pos + nvc in
   let side, adv =
     let comp = match g.mod_body with 
       | Mod_def cmp -> cmp 
@@ -1173,7 +1234,7 @@ let extract_except file pos _l pft pft' =
         assert (Vsym.equal x x');
         `RightToLeft, x, e
       | _, _ -> assert false in
-    let hd,_,tl = Util.split_n pos f.f_body in
+    let hd,_,tl = Util.split_n npos f.f_body in
     let a1 = 
       let res = ([], "_res") in
       let dres = res, mk_Fq in
@@ -1220,6 +1281,7 @@ let extract_except file pos _l pft pft' =
     | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
   let fv = Expr.e_vars ju.ju_ev in
   let nA = adv_name file in
+  let eqvc = mk_eq_vcs g2 adv vcs in
   let proof fmt () = 
     F.fprintf fmt "intros &m.@ ";
       F.fprintf fmt 
@@ -1235,10 +1297,11 @@ let extract_except file pos _l pft pft' =
     F.fprintf fmt "byequiv (_ : ={glob %s} ==> %a) => //. @ " nA
       Printer.pp_form (mk_eqs g2.mod_name fv);
     F.fprintf fmt "  proc;inline *;sim.@ ";
-    F.fprintf fmt "  rnd; wp %i %i => /=.@ " pos (pos + 1);
+    F.fprintf fmt "  rnd; wp %i %i => /=.@ " npos (npos + 1);
     F.fprintf fmt "  conseq (_ : _ ==> ={glob %s} /\\ %a) => //.@ " nA
+      
       Printer.pp_form 
-      (mk_eqs g2.mod_name (write_gcmds (Util.take pos ju.ju_gdef)));
+        (f_and eqvc (mk_eqs g2.mod_name (write_gcmds (Util.take pos ju.ju_gdef))));
     F.fprintf fmt "  sim.@ ";
     F.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
     List.iter (fun e -> 

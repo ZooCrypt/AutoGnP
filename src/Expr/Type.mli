@@ -17,7 +17,7 @@ and ty_node =
   | G of Groupvar.id
   | Fq
   | Prod of ty list
-
+  | Int (* used during extraction *)
 
 val ty_equal : ty -> ty -> bool
 val ty_hash : ty -> int
@@ -35,6 +35,7 @@ val mk_G : Groupvar.id -> ty
 val mk_Fq : ty
 val mk_Bool : ty
 val mk_Prod : ty list -> ty
+val mk_Int  : ty
 
 val is_G : ty -> bool
 val is_Fq : ty -> bool

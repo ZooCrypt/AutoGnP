@@ -75,6 +75,7 @@ let rec pp_type file fmt ty =
       F.fprintf fmt "unit"
     else
       F.fprintf fmt "(@[%a@])" (pp_list " *@ " (pp_type file)) tys
+  | Int -> F.fprintf fmt "int"
 
 let pp_at_mem fmt = function
   | None -> ()
@@ -107,9 +108,10 @@ let rec pp_form_lvl outer fmt = function
       | Odiv, [e1;e2] -> pp_infix pp_form_lvl mul_lvl "/" e1 e2, mul_lvl
       | Oeq,  [e1;e2] -> pp_eq    pp_form_lvl         "=" e1 e2, eq_lvl
       | Ole,  [e1;e2] -> pp_eq    pp_form_lvl         "<=" e1 e2, eq_lvl
+      | Olt,  [e1;e2] -> pp_eq    pp_form_lvl         "<" e1 e2, eq_lvl
       | Oand, [e1;e2] -> pp_infix pp_form_lvl not_lvl "/\\" e1 e2, and_lvl
       | Oiff, [e1;e2] -> pp_infix pp_form_lvl and_lvl "<=>" e1 e2, iff_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot | Oiff), _ -> 
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -174,9 +176,10 @@ let rec pp_exp_lvl outer fmt = function
       | Odiv, [e1;e2] -> pp_infix pp_exp_lvl mul_lvl "/" e1 e2, mul_lvl
       | Oeq,  [e1;e2] -> pp_eq    pp_exp_lvl         "=" e1 e2, eq_lvl
       | Ole,  [e1;e2] -> pp_eq    pp_exp_lvl         "<=" e1 e2, eq_lvl
+      | Olt,  [e1;e2] -> pp_eq    pp_exp_lvl         "<" e1 e2, eq_lvl
       | Oand, [e1;e2] -> pp_infix pp_exp_lvl not_lvl "/\\" e1 e2, and_lvl
       | Oiff, [e1;e2] -> pp_infix pp_exp_lvl and_lvl "<=>" e1 e2, iff_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Oand | Onot | Oiff), _ -> 
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -209,6 +212,7 @@ let pp_ty_distr file fmt ty =
   | G _gv -> assert false (* FIXME *)
   | Fq    -> F.fprintf fmt "FDistr.dt"
   | Prod _ -> assert false (* FIXME *)
+  | Int    -> assert false
 
   
 let rec pp_instr file fmt = function
@@ -277,6 +281,7 @@ let pp_mod_params fmt = function
   | l -> 
     F.fprintf fmt "(@[<hov 2>%a@])"
       (pp_list ",@ " pp_mod_param) l
+
 
 let rec pp_mod_body file fmt = function
   | Mod_def mc ->
@@ -543,8 +548,9 @@ and pp_section file fmt s =
         pp_adv_info l.adv_info
         (pp_cmds file) l.loca_decl
   in
-  F.fprintf fmt "theory %s.@   @[<v>%a@ @ %a@]@ @ end %s." 
+  F.fprintf fmt "theory %s.@   @[<v>%a@ @ theory Local.@ @ %a@ @ %a@ end Local.@]@ end %s." 
     s.section_name 
+     (pp_cmds file) s.section_top 
      (pp_cmds file) s.section_glob 
       pp_locals     s.section_loc 
     s.section_name
@@ -573,7 +579,8 @@ let pp_main_section fmt file =
   pp_cmds file fmt file.top_decl
 
 let pp_file fmt file = 
-  F.fprintf fmt "@[<v>require import Real.@ ";
+  F.fprintf fmt "@[<v>require import Int.@ ";
+  F.fprintf fmt "require import Real.@ ";
   F.fprintf fmt "require import ZooUtil.@ @ ";
   pp_lvars_mod fmt file.levar;
   pp_gvars_mod fmt file.grvar;

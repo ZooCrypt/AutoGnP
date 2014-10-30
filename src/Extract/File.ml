@@ -24,6 +24,7 @@ type op =
  | Oeq
  | Oiff 
  | Ole
+ | Olt
  | Ostr of string
  | Oand
  | Onot
@@ -36,6 +37,14 @@ type expr =
   | Ecnst  of cnst
   | Eapp   of op * expr list
   | Eif    of expr * expr * expr 
+
+let e_pv pv = Epv pv
+let e_add e1 e2 = Eapp(Oadd, [e1;e2])
+let e_int n = Ecnst (string_of_int n)
+let e_int0 = e_int 0
+let e_int1 = e_int 1
+let e_incr e = e_add e e_int1
+let e_lt e1 e2 = Eapp(Olt, [e1;e2])
 
 type lvalue = pvar list
 
@@ -144,6 +153,8 @@ type cmd =
 
 and section =
   {         section_name : string;
+    mutable game_trans   : (gdef * mod_def) list;
+    mutable section_top  : cmd list;            
     mutable section_glob : cmd list;
     mutable section_loc  : local_section option;
   }
@@ -161,6 +172,8 @@ and local_section = {
 }
 *)
 
+
+let f_v g pv m = Fv (([g.mod_name],snd pv),Some m)
 
 let f_true = Fcnst "true"
 let f_not f = Fapp(Onot, [f])
@@ -221,13 +234,13 @@ type assumption_comp_info = {
 
 type bmap_info = string
 
-type open_section = {
+(*type open_section = {
           osection_name : string;
   mutable game_trans   : (gdef * mod_def) list;
   mutable osection_top     : cmd list;
   mutable osection_glob : cmd list;
   mutable osection_loc  : local_section option;
-}
+}*)
   
 type file = {
   mutable top_name : Sstring.t;
@@ -238,7 +251,7 @@ type file = {
   assump_dec  : (string, assumption_dec_info) Ht.t;
   assump_comp : (string, assumption_comp_info) Ht.t;
   mutable top_decl    : cmd list;
-  mutable open_section    : open_section list;
+  mutable open_section    : section list;
 }
 
 let empty_file = {
@@ -342,17 +355,17 @@ let get_section file =
 
 let get_lsection file = 
   let s = get_section file in
-  match s.osection_loc with
+  match s.section_loc with
   | None -> assert false
   | Some sl -> sl
 
 let add_top file c = 
   let s = get_section file in
-  s.osection_top <- c :: s.osection_top
+  s.section_top <- c :: s.section_top
 
 let add_glob file c = 
   let s = get_section file in
-  s.osection_glob <- c :: s.osection_glob
+  s.section_glob <- c :: s.section_glob
 
 let add_local file c = 
   let s = get_lsection file in
@@ -367,11 +380,11 @@ let add_def file local c =
 let start_section file name = 
   let sec_name = top_name file name in
   let sec = {
-    osection_name = sec_name;
+    section_name = sec_name;
     game_trans   = [];
-    osection_top = [];
-    osection_glob = [];
-    osection_loc  = None;
+    section_top = [];
+    section_glob = [];
+    section_loc  = None;
   } in
   file.open_section <- sec :: file.open_section
 
@@ -379,16 +392,10 @@ let end_section file =
   match file.open_section with
   | [] -> assert false
   | s::ss ->
-    let sec = {
-      section_name = s.osection_name;
-      section_glob = s.osection_glob;
-      section_loc  = s.osection_loc;
-    } in
     file.top_decl <- 
-      Csection sec :: 
-      (s.osection_top @ 
-         Ccomment (Format.sprintf "{ section %s }" s.osection_name) ::
-         file.top_decl);
+      Csection s :: 
+         Ccomment (Format.sprintf "{ section %s }" s.section_name) ::
+         file.top_decl;
     file.open_section <- ss
 
 (* Adv info *)
@@ -416,7 +423,7 @@ let game_info file gdef =
   let add_oinfo (o, params, _body, e) = 
     assert (not (Osym.H.mem otbl o));
     let qname = top_name file ("q" ^ oname o) in
-    add_glob file (Cbound qname);
+    add_top file (Cbound qname);
     let info = { 
       obound  = qname; 
       oparams = params; 
@@ -432,7 +439,7 @@ let game_info file gdef =
   { oinfo = otbl; ainfo = atbl } 
 
 let init_adv_info file gdef = 
-  assert ((get_section file).osection_loc = None);
+  assert ((get_section file).section_loc = None);
   let ginfo = game_info file gdef in
 
   let oty_name = top_name file "Orcl" in
@@ -477,7 +484,7 @@ let init_adv_info file gdef =
     loca_decl = []
   } in
   let s = get_section file in
-  s.osection_loc <- Some section_loc
+  s.section_loc <- Some section_loc
 
 
 let find_game file g = 

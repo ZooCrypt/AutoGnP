@@ -19,7 +19,7 @@ and ty_node =
   | G of Groupvar.id
   | Fq
   | Prod of ty list
-
+  | Int 
 
 (** Type equality and hashing. *)
 let ty_equal : ty -> ty -> bool = (==)
@@ -43,6 +43,7 @@ module Hsty = Hashcons.Make (struct
     | G gv    -> Hashcons.combine 3 (Groupvar.hash gv)
     | Fq      -> 4
     | Prod ts -> Hashcons.combine_list ty_hash 3 ts
+    | Int     -> 6
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -67,6 +68,7 @@ let mk_BS lv = mk_ty (BS lv)
 let mk_G gv = mk_ty (G gv)
 let mk_Fq = mk_ty Fq
 let mk_Bool = mk_ty Bool
+let mk_Int = mk_ty Int
 let mk_Prod tys = mk_ty (Prod tys)
 
 (** Indicator functions for types. *)
@@ -101,5 +103,6 @@ let rec pp_ty fmt ty =
   | G gv when Groupvar.name gv = "" ->
     F.fprintf fmt "G" 
   | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
+  | Int     -> F.fprintf fmt "Int"
 
 (*i*)
