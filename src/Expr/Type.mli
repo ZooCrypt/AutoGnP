@@ -21,6 +21,7 @@ and ty_node =
 
 val ty_equal : ty -> ty -> bool
 val ty_hash : ty -> int
+val ty_compare : ty -> ty -> int
 
 module Hsty : Hashcons.S with type t = ty
 

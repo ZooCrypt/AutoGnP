@@ -24,6 +24,7 @@ and ty_node =
 (** Type equality and hashing. *)
 let ty_equal : ty -> ty -> bool = (==)
 let ty_hash t = t.ty_tag
+let ty_compare t1 t2 = t1.ty_tag - t2.ty_tag
 
 (** Hashconsing for types. *)
 module Hsty = Hashcons.Make (struct
