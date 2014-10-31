@@ -1444,7 +1444,7 @@ let rec extract_proof file pft =
     add_local file (Clemma(false, name,body, Some proof));
     end_section file;
     let pft' = List.hd (List.tl pft.pt_children) in
-    extract_proof_sb1 "Add_test" file pft pft' (pr_admit ("add_test "^lemma))
+    extract_proof_sb1 "Add_test" file pft pft' (pr_admit ("add_test "^name))
 
   | Rexc_orcl _ -> 
     default_proof file mem "exc_orl" pft
