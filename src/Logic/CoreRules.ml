@@ -549,7 +549,7 @@ let radd_test opos tnew asym fvs ju =
     in
     let juoc =
       { juoc with
-        juoc_cleft = juoc.juoc_cleft @ [ LGuard(tnew)] }
+        juoc_cleft = LGuard(tnew) :: juoc.juoc_cleft }
     in
     eprintf "!!! add_test rule applied: %a@\n%!" pp_exp tnew;
     Radd_test(opos, tnew, asym, fvs),
