@@ -5,21 +5,27 @@ open Util
 open Syms
 open Expr
 open Game
+open Gsyms
 (*i*)
 
 (** Decisional assumptions. *)
-type assm_dec = private {
+type assm_dec = {
   ad_name       : string;       (*r name of assumption *)
   ad_prefix1    : gdef;         (*r prefix for left *)
   ad_prefix2    : gdef;         (*r prefix for right *)
-  ad_pubvars    : Vsym.S.t;     (*r public variables *)
-  ad_privvars   : Vsym.S.t;     (*r private variables *)
+  ad_acalls     : (Asym.t * Vsym.t list * (expr * expr)) list;
+                                (*r adversary calls (same asym) and
+                                    arguments/returned variables on left and right *)
   ad_symvars    : vs list list; (*r symmetric in given variables *)
 }
 
-val mk_assm_dec : string -> gdef -> gdef -> Vsym.S.t -> vs list list -> assm_dec
+val pp_assm_dec :  Util.F.formatter -> assm_dec -> unit
 
-val needed_var : direction  -> assm_dec -> Vsym.t list
+val mk_assm_dec : string -> gdef -> gdef -> (Vsym.t list) list -> assm_dec
+
+val needed_vars : direction  -> assm_dec -> Vsym.t list
+
+val private_vars : assm_dec -> Se.t
 
 val ad_inst : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
 

@@ -320,6 +320,14 @@ event:
 | COLON e = expr0 { e }
 ;
 
+range:
+| i = NAT MINUS j = NAT { (i - 1,j - 1) }
+;
+
+ranges:
+| LPAREN rs = separated_nonempty_list(COMMA,range) RPAREN {rs} 
+;
+
 dir:
 | LEFTARROW { Util.RightToLeft }
 | TO        { Util.LeftToRight }
@@ -358,9 +366,11 @@ instr :
 | OPERATOR i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,false,t1,t2) }
 | BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG { EMDecl(i,g1,g2,g3) }
 | ASSUMPTION_DECISIONAL i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
-    priv=private_vars sym=option(symmetric_vars)
-    { AssmDec(i,g0,g1,priv,opt id [] sym) }
-| ASSUMPTION_COMPUTATIONAL i1 = ID LBRACKET g = gdef0 RBRACKET LPAREN i2 = ID COLON t = typ0 TO e = expr0 RPAREN
+    sym=option(symmetric_vars)
+    { AssmDec(i,g0,g1,opt id [] sym) }
+| ASSUMPTION_COMPUTATIONAL
+    i1 = ID LBRACKET g = gdef0
+    RBRACKET LPAREN i2 = ID COLON t = typ0 TO e = expr0 RPAREN
     priv=private_vars  sym=option(symmetric_vars)
     { AssmComp(i1,g,i2,t,e,priv,opt id [] sym) }
 | PROVE LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
@@ -378,10 +388,18 @@ instr :
 | RINDEP_EX { Apply(Rindep(true)) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
-| ASSUMPTION_DECISIONAL    s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(false,s,d,xs))}
-| ASSUMPTION_DECISIONAL_EX s=uoption(ID) d=uoption(dir) xs=option(ID+) { Apply (Rassm_dec(true,s,d,xs))}
-| ASSUMPTION_COMPUTATIONAL    s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(false,s,e))}
-| ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID) e = uoption(expr0) { Apply (Rassm_comp(true,s,e))}
+| ASSUMPTION_DECISIONAL    s=uoption(ID) d=uoption(dir)
+    rngs=option(ranges)
+    xs=option(ID+)
+    { Apply (Rassm_dec(false,s,d,rngs,xs))}
+| ASSUMPTION_DECISIONAL_EX s=uoption(ID) d=uoption(dir)
+    rngs=option(ranges)
+    xs=option(ID+)
+    { Apply (Rassm_dec(true,s,d,rngs,xs))}
+| ASSUMPTION_COMPUTATIONAL    s=uoption(ID) e = uoption(expr0)
+  { Apply (Rassm_comp(false,s,e))}
+| ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID) e = uoption(expr0)
+  { Apply (Rassm_comp(true,s,e))}
 | RCONV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }

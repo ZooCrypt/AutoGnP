@@ -65,7 +65,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
     let grest = Util.drop (L.length c) ju.ju_gdef in
     (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
-     @> CoreRules.t_assm_dec dir subst assm) ju
+     @> CoreRules.t_assm_dec dir subst [] assm) ju
   in
   try
     ((*  t_print "after swapping, before unknown"
@@ -73,7 +73,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
      (* @> t_print "after unknown" *)
      @> t_seq_list let_abstrs
      (* @> t_print "after let" *)
-     @> (CoreRules.t_assm_dec dir subst assm @|| conv_common_prefix)) ju
+     @> (CoreRules.t_assm_dec dir subst [] assm @|| conv_common_prefix)) ju
   with
     Invalid_rule s -> eprintf "%s%!"s; mempty
 
@@ -152,7 +152,8 @@ let t_assm_dec_auto assm dir subst ju =
   (t_seq_list swaps @> t_assm_dec_aux assm dir subst assm_samps assm_lets) ju
 
 (** Supports placeholders for which all possible values are tried *)
-let t_assm_dec_non_exact ?i_assms:(iassms=Sstring.empty) ts massm_name mdir mvnames ju =
+let t_assm_dec_non_exact
+    ?i_assms:(iassms=Sstring.empty) ts massm_name mdir _mrngs  mvnames ju =
   (* use assumption with given name or try all decisional assumptions *)
   (match massm_name with
    | Some aname ->
@@ -168,7 +169,7 @@ let t_assm_dec_non_exact ?i_assms:(iassms=Sstring.empty) ts massm_name mdir mvna
   >>= fun dir ->
   (* generate substitution for all required new variable names
      generating new variable names if not enough are provided *)
-  let needed = needed_var dir assm in
+  let needed = needed_vars dir assm in
   let given_vnames = from_opt [] mvnames in
   let required = max 0 (L.length needed - L.length given_vnames) in
   (* FIXME: prevent variable clashes here *)
@@ -184,65 +185,76 @@ let t_assm_dec_non_exact ?i_assms:(iassms=Sstring.empty) ts massm_name mdir mvna
   in
   t_assm_dec_auto assm dir ren ju
 
-let t_assm_dec_exact ts massm_name mdir mvnames ju =
+let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   let dir = match mdir with Some s -> s | None -> tacerror "exact requires dir" in
   let assm_name = match massm_name with
     | Some s -> s
-    | None -> tacerror "exact requires sname"
+    | None   -> tacerror "exact requires sname"
   in
   let assm =
-      try Ht.find ts.ts_assms_dec assm_name
-      with Not_found -> tacerror "error no assumption %s" assm_name
+    try Ht.find ts.ts_assms_dec assm_name
+    with Not_found -> tacerror "error no assumption %s" assm_name
   in
-  let needed = needed_var dir assm in
+  let rngs = match mrngs with
+    | Some rngs -> rngs
+    | None      -> tacerror "exact requires ranges"
+  in
+  let vneeded = needed_vars dir assm in
+  let acalls  = assm.ad_acalls in
   let vnames = match mvnames with
-    | Some names                     -> names
-    | None when L.length needed <> 0 -> tacerror "exact required vnames"
-    | None                           -> []
+    | Some names                      -> names
+    | None when L.length vneeded <> 0 -> tacerror "exact required vnames"
+    | None                            -> []
   in
-  if List.length needed <> List.length vnames then
-    tacerror "Bad number of variables";
+  if L.length vneeded <> L.length vnames then tacerror "Bad number of variables";
+  if L.length acalls <> L.length rngs then tacerror "Bad number of ranges";
   let ren =
     List.fold_left2
-      (fun s v x ->
-        let v' = Vsym.mk x v.Vsym.ty in
-        Vsym.M.add v v' s)
+      (fun s v x -> let v' = Vsym.mk x v.Vsym.ty in Vsym.M.add v v' s)
       Vsym.M.empty
-      needed
+      vneeded
       vnames
   in
-  let c =
-    if dir = LeftToRight then assm.Assumption.ad_prefix1
-    else assm.Assumption.ad_prefix2
-  in
-  let jc = Util.take (List.length c) ju.ju_gdef in
+  let c = if dir = LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
+  let c_ju = Util.take (List.length c) ju.ju_gdef in
+  (* extend renaming with mappings for random samplings in prefix *)
   let ren =
     List.fold_left2
       (fun rn  i1 i2 ->
         match i1, i2 with
-        | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_)
-          when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
+        | GSamp(x1,_), GSamp(x2,_) when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
           Vsym.M.add x1 x2 rn
-        | _ -> tacerror "assumption_decisional : can not infer renaming")
-      ren
-      c
-      jc
+        | _ -> tacerror "assumption_decisional: can not infer renaming")
+      ren c c_ju
+  in
+  (* extend renaming with mappings for variables binding return values *)
+  let ren =
+    List.fold_left2
+      (fun rn  (_,j) (_asym,vres,_) ->
+        let nvres = L.length vres in
+        let vres_ju =
+          Util.take nvres (Util.drop (j + 1 - nvres) ju.ju_gdef)
+          |> (fun cmds -> eprintf "vres_ju: %a@\n" pp_gdef cmds; cmds)
+          |> L.map (function GLet (x,_) -> x | _ -> assert false)
+        in
+        L.fold_left2 (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn) rn vres vres_ju)
+      ren rngs assm.ad_acalls
   in
   let conv_common_prefix ju =
     let a_rn = ad_inst ren assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
     let grest = Util.drop (L.length c) ju.ju_gdef in
-    (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
-     @> CoreRules.t_assm_dec dir ren assm) ju
+    (   CR.t_ensure_progress (CoreRules.t_conv true { ju with ju_gdef=c@grest })
+     @> CoreRules.t_assm_dec dir ren rngs assm) ju
   in
-  (CR.t_assm_dec dir ren assm @|| conv_common_prefix) ju
+  (CR.t_assm_dec dir ren rngs assm @|| conv_common_prefix) ju
 
-let t_assm_dec ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mvnames ju =
+let t_assm_dec
+  ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mrngs mvnames ju =
   if exact then
-    t_assm_dec_exact ts massm_name mdir mvnames ju
-
+    t_assm_dec_exact ts massm_name mdir mrngs mvnames ju
   else
-    t_assm_dec_non_exact ~i_assms:iassms ts massm_name mdir mvnames ju
+    t_assm_dec_non_exact ~i_assms:iassms ts massm_name mdir mrngs mvnames ju
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Derived tactics for dealing with computational assumptions} *)

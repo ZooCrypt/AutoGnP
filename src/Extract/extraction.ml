@@ -202,6 +202,7 @@ let instructions file adv gdef =
 
 module Ass = Assumption
 let add_assumption_dec file name assum = 
+  (*
   let advty = top_name file ("Adv_"^name) in
   let ngame1 = top_name file ("G_"^name^string_of_int 1) in
   let ngame2 = top_name file ("G_"^name^string_of_int 2) in
@@ -247,6 +248,8 @@ let add_assumption_dec file name assum =
     ad_len2  = len2;
   } in
   Ht.add file.assump_dec name info
+  *)
+  failwith "undefined"
 
 let add_assumption_comp file name assum = 
   let advty = top_name file ("Adv_"^name) in

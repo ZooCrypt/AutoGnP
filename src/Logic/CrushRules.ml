@@ -215,7 +215,7 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
       @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp")) ju
   in
   let t_progress = 
-       (t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None
+       (t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None None
         @> t_log "\nassm_dec")
     @| (t_rnd_maybe ~i_rvars:irvs ts false None None None @> t_log "\nrnd")
     @| (t_rexcept_maybe None None @> t_log "\nrexcept")

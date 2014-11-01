@@ -113,8 +113,8 @@ let handle_tactic ts tac =
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
     apply (CR.t_conv true ~do_rename:true { ju_gdef = gd2; ju_ev = ev2 })
 
-  | PU.Rassm_dec(exact,maname,mdir,msvs) ->
-    apply (t_assm_dec ts exact maname mdir msvs)
+  | PU.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
+    apply (t_assm_dec ts exact maname mdir mrngs msvs)
 
   | PU.Rnorm_solve(se) ->
     let e = parse_e se in
@@ -259,7 +259,7 @@ let handle_instr ts instr =
       (Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared adversary.")
 
-  | PU.AssmDec(s,g0,g1,privs,symvs) ->
+  | PU.AssmDec(s,g0,g1,symvs) ->
     let vmap1 = Ht.create 137 in
     let vmap2 = Ht.create 137 in
     let g0 = PU.gdef_of_parse_gdef vmap1 ts g0 in
@@ -270,11 +270,10 @@ let handle_instr ts instr =
       try  Ht.find vmap s
       with Not_found -> tacerror "unknown variable %s" s
     in
-    let privs = Vsym.set_of_list (L.map parse_var privs) in
     let symvs = L.map (L.map parse_var) symvs in
     if Ht.mem ts.ts_assms_dec s then
       tacerror "assumption with the same name already exists";
-    Ht.add ts.ts_assms_dec s (Assumption.mk_assm_dec s g0 g1 privs symvs);
+    Ht.add ts.ts_assms_dec s (Assumption.mk_assm_dec s g0 g1 symvs);
     (ts, "Declared decisional assumption.")
 
   | PU.AssmComp(s,g,ev_var,ev_ty,ev,privs,symvs) ->

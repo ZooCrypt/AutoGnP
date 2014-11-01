@@ -1,0 +1,45 @@
+(* artificial example for 2-phase decisional assumption *)
+operator KDF : (G * G *  G * G) -> (BS_s * BS_m).
+
+(* The second adversary is the distinguisher adversary,
+   we implictly assume that the considered event is his
+   return value. *)
+adversary B1 : G -> (G * G).
+adversary B2 : (BS_s * BS_m) -> Bool.
+
+assumption_decisional kdf
+  [ gx <-$ G;
+    gy <-$ G;
+    (gz1,gz2) <- B1(gy);
+    res <- B2(KDF(gx,gy,gz1,gz2));
+  ]
+  [ gy <-$ G;
+    a <-$ BS_s;
+    b <-$ BS_m;
+    (gz1,gz2) <- B1(gy);
+    res <- B2(a,b);
+  ].
+
+adversary A1 : G -> (G * G).
+adversary A2 : (BS_s * BS_m) -> Bool.
+
+prove
+  [ gx <-$ G;
+    gy <-$ G;
+    ks  <-$ BS_s;
+    km  <-$ BS_m;
+    (gz1,gz2) <- A1(gy);
+    b <-$ Bool;
+    b' <-  A2(b?KDF(gx,gy,gz1,gz2):(ks,km));
+  ] : b = b'.
+rnorm.
+rlet_abstract 3 arg1 gy.
+rlet_abstract 7 res1_1 gz1.
+rlet_abstract 8 res1_2 gz2.
+rlet_abstract 9 arg2 KDF(gx,arg1,res1_1,res1_2).
+rlet_abstract 12 res2_1 (b=b').
+(* gives ranges for both adversaries and names for new
+   variables in right game *)
+assumption_decisional! kdf -> (3-8,9-12) aa bb. back.
+admit.
+qed.

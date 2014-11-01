@@ -8,6 +8,7 @@ val t_assm_dec :
   bool ->
   string option ->
   direction option ->
+  ((int * int) list) option ->
   (string list) option ->
   tactic
 

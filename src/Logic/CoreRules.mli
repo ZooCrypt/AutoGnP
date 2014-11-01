@@ -207,8 +207,8 @@ val t_random_indep : tactic
 (** [rassm_dec dir vmap assm ju] returns the judgment resulting from
     applying the decisional assumption [assm] with the variable renaming
     [vmap] in direction [dir] to [ju]. *)
-val rassm_dec  : direction -> renaming -> assm_dec -> rule
-val t_assm_dec : direction -> renaming -> assm_dec -> tactic
+val rassm_dec  : direction -> renaming -> (int * int) list -> assm_dec -> rule
+val t_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> tactic
 
 val rassm_comp  : assm_comp -> expr -> renaming -> rule
 val t_assm_comp : assm_comp -> expr -> renaming -> tactic

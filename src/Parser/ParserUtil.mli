@@ -99,7 +99,7 @@ type tactic =
   | Rrnd           of bool * int option * (string * parse_expr) option * (string * parse_expr) option
   | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option * (string * parse_expr) option
   | Requiv         of gdef * parse_expr
-  | Rassm_dec      of bool * string option * Util.direction option * (string list) option
+  | Rassm_dec      of bool * string option * Util.direction option * ((int * int) list) option * (string list) option
   | Rassm_comp     of bool * string option * (parse_expr) option
   | Rlet_abstract  of int * string * parse_expr
   | Rlet_unfold    of int
@@ -121,7 +121,7 @@ type instr =
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
-  | AssmDec    of string * gdef * gdef * string list * (string list) list
+  | AssmDec    of string * gdef * gdef * (string list) list
   | AssmComp   of string * gdef * string * parse_ty * parse_expr * string list *
                   string list list
   | Judgment   of gdef * parse_expr
