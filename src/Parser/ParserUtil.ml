@@ -269,7 +269,7 @@ type tactic =
   | Requiv         of gdef * parse_expr
   | Rassm_dec      of bool * string option * Util.direction option * ((int * int) list) option * (string list) option
   | Rassm_comp     of bool * string option * (parse_expr) option
-  | Rlet_abstract  of int * string * parse_expr
+  | Rlet_abstract  of int * string * parse_expr * int option
   | Rlet_unfold    of int
   | Rindep         of bool
   | Rcrush         of bool * int option

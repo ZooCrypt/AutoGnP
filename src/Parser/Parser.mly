@@ -401,7 +401,8 @@ instr :
 | ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID) e = uoption(expr0)
   { Apply (Rassm_comp(true,s,e))}
 | RCONV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
-| RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 { Apply(Rlet_abstract(i-1,i1,e1)) }
+| RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 mupto = option(NAT)
+  { Apply(Rlet_abstract(i-1,i1,e1,map_opt (fun x -> x - 1) mupto)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID*
   { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }

@@ -169,13 +169,23 @@ let t_norm_solve a ju =
   let new_ju = map_ju_exp norm ju in
   t_conv true new_ju ju
 
-let t_let_abstract p vs e ju =
-  let l,r = Util.cut_n p ju.ju_gdef in
+let t_let_abstract p vs e mupto ju =
   let v = mk_V vs in
-  (*c could also try to normalize given expression *)
   let subst a = e_replace e v a in
-  let new_ju = { ju_gdef = List.rev_append l (GLet(vs, e)::map_gdef_exp subst r);
-                 ju_ev = subst ju.ju_ev }
+  let l,r = Util.cut_n p ju.ju_gdef in
+  let new_ju =
+    match mupto with
+    | Some j ->
+      if (j < p) then tacerror "t_let_abstract: invalid upto";
+      let cl = j - p in
+      if (cl > L.length r) then tacerror "t_let_abstract: invalid upto";
+      let r1,r2 = Util.cut_n cl r in
+      let r = List.rev_append (map_gdef_exp subst r1) r2 in
+      { ju_gdef = List.rev_append l (GLet(vs,e)::r);
+        ju_ev = ju.ju_ev }
+    | None ->
+      { ju_gdef = List.rev_append l (GLet(vs,e)::map_gdef_exp subst r);
+        ju_ev = subst ju.ju_ev }
   in
   t_conv false new_ju ju
 

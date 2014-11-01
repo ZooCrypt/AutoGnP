@@ -102,10 +102,10 @@ let handle_tactic ts tac =
     let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
     apply (t_norm_unknown vs)
 
-  | PU.Rlet_abstract(i,sv,se) ->
+  | PU.Rlet_abstract(i,sv,se,mupto) ->
     let e = parse_e se in
     let v = mk_new_var sv e.e_ty in
-    apply (t_let_abstract i v e)
+    apply (t_let_abstract i v e mupto)
 
   | PU.Requiv(sgd,sev) ->
     let vmap2 = Hashtbl.create 134 in

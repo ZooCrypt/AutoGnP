@@ -720,8 +720,8 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
 (* The renaming 'ren' must rename the random variables and the variables for
    return values in the assumption to match with variables in 'ju'.
    The ranges 'rngs' must be disjoint, cover everything except the sampling
-   prefix, start with an assignment 'let arg1 = e1' and end with assignments
-   to the return values of the adversary. Everything except 'e1' cannot use
+   prefix, start with an assignment 'let argi = ei' and end with assignments
+   to the return values of the adversary. Everything except 'ei' cannot use
    the random variables directly and must be ppt. *)
 let rassm_dec dir ren rngs assm0 ju =
   if not (renaming_bij ren) then tacerror "assm_dec: renaming is not bijective";
@@ -734,6 +734,14 @@ let rassm_dec dir ren rngs assm0 ju =
   let prefix_ju = Util.take prefix_old_len ju.ju_gdef in
   let acalls_ju = Util.drop prefix_old_len ju.ju_gdef in
   if not (gdef_equal prefix_old prefix_ju) then tacerror "assm_dec: prefixes not equal";
+
+  (* check that event equal to last returned value *)
+  (match Util.last acalls_ju with
+   | GLet(vs,_) ->
+     if not (e_equal ju.ju_ev (mk_V vs)) then
+       tacerror "assm_dec: event must be equal to variable defined in last line";
+   | _ ->
+     tacerror "assm_dec: event must be equal to variable defined in last line");
 
   (* check that we can instantiate adversary calls in assumption with remainder of ju *)
   let gdef_new_ju = ref prefix_new in
@@ -780,8 +788,8 @@ let rassm_dec dir ren rngs assm0 ju =
     | _, _ ->
       tacerror "assm_dec: ranges and adversary calls do not match up"
   in
-
   valid_ranges (L.length prefix_ju) rngs acalls_ju assm.ad_acalls;
+
   eprintf "!! rassm_dec performed@\n";
   Rassm_dec(dir,ren,assm0), [{ ju with ju_gdef = !gdef_new_ju }]
 
