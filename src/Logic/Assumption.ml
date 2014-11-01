@@ -26,26 +26,25 @@ open Gsyms
    The remainder of 'G' must have the following form:
 
    ---
-   let arg1 = e1;
-   C1;
-   let vs1_1 =  a1_1;
-   ...;
-   let vs1_|vs1| =  a1_|vs1|;
+   C1;                          |
+   let vs1_1 =  a1_1;           \  := D1
+   ...;                         /  
+   let vs1_|vs1| =  a1_|vs1|;   |
 
    ...
 
-   let argk = ek;
-   Ck;
-   let vsk_1 = ak_1;
-   ...;
-   let vsk_|vsk| = ak_|vsk|;
+   Ck;                          |
+   let vsk_1 = ak_1;            \  := Dk
+   ...;                         /
+   let vsk_|vsk| = ak_|vsk|;    |
    --
 
    where for all i in [k],
-     vars(Ci,ai_1,...,ai_|vsi|) \cap {r1,..,rn} = emptyset.
+     vars(Di\sigma_i) \cap {r1,..,rn} = emptyset
+     for \sigma_i = {ei |-> wi} [**].
 
-  To obtain the new game, we just replace the prefix and the expressions
-  ei by bi.
+  To obtain the new game, we just replace the prefix and apply the replacement
+     \sigma'_i = {ei |-> bi} to the Di.
 
   To obtain such a game, it is important that for all i, it holds that
     vars(e_i) <= {r1,..,rn} u vs_earlier.
@@ -57,6 +56,15 @@ open Gsyms
       might be more complicated. This would allow for adaptive sampling,
       i.e., using vsj in the excepted expressions.
 
+ [**] Note that to make this approach work, we must modify the original
+      game to perform explicit state passing between commands Di if required.
+      For example, if D2 uses e1, then we have to add let s1 = e1 to A1 and
+      refer e1 indirectly using the variable s1 in D2. For the other approach
+      where all earlier arguments are automatically replaced, it is unclear
+      how to handle A1(e); A2(e) -> A1(e); A2(e') since we do not know
+      if an occurence of e in D2 refers to the first argument or the second
+      to decide if it should be replaced or not. It becomes even more complicated
+      if the argument of A1 is a subterm of A2's argument ...
 *)
 
 type assm_dec = {
