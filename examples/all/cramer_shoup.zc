@@ -1,9 +1,9 @@
+adversary B : (G * G * G) -> Bool.
+
 assumption_decisional ddh
-  [ x <-$ Fq; y <-$ Fq;
-    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ (x * y); ]
-  [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
-    let gx = g ^ x; let gy = g ^ y; let gxy = g ^ z; ]
-    (x y z) ([x,y]).
+  [ x <-$ Fq; y <-$ Fq;           b <- B(g ^ x,g ^ y,g ^ (x * y)); ]
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq; b <- B(g ^ x,g ^ y,g ^ z);       ]
+  ([x,y]).
 
 operator H : (G * G * G) -> Fq.
 
@@ -55,7 +55,15 @@ prove
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
 
   ] : b = b'.
-  rnorm. assumption_decisional _ _ v. (* we could use crush 1, but we want to name the variable v *)
+  rnorm.
+  rnorm_unknown u w.
+  rswap 10 -8.
+  rlet_abstract 3 arg (g^w, g^u, g^(w*u)).
+  rsubst 4 (g^w) (arg\0).
+  rsubst 4 (g^u) (arg\1).
+  rsubst 4 (g^(w*u)) (arg\2).
+  rlet_abstract 13 res (b=b').
+  assumption_decisional! ddh -> (3-13) v.
   rnorm. rexcept 3 u*w.
   crush 3. rnorm.
 
