@@ -109,7 +109,6 @@ let mk_assm_dec name gd1 gd2 symvars =
     ad_acalls  = go [] suff1 suff2;
     ad_symvars = symvars }
   in
-  F.eprintf "%a%!" pp_assm_dec assm;
   assm
   
 let needed_vars dir assm =

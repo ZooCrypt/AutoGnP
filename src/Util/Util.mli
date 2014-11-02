@@ -38,6 +38,7 @@ module StructMake : functor (X:Tagged) ->
 
 module L : module type of List
 module F : module type of Format
+module BL : module type of Bolt.Logger
 
 module Mint : Map.S with type key = int
 module Sint : Set.S with type elt = int

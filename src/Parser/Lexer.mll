@@ -63,6 +63,7 @@ rule lex = parse
   | "rnorm_nounfold" { RNORM_NOUNFOLD }  
   | "rlet_abstract"  { RLET_ABSTRACT }
   | "rlet_unfold"  { RLET_UNFOLD }
+  | "rsubst" { RSUBST }
   | "rrewrite_oracle"  { RREWRITE_ORACLE }  
   | "rrewrite_ev" { RREWRITE_EV }
   | "crush" { RCRUSH }

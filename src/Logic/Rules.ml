@@ -93,12 +93,12 @@ let rec t_or_list = function
   | []    -> t_id
   | t::ts -> t @| t_or_list ts
 
-let t_print s ju =
-  eprintf "%s:@\n%a@\n%!" s pp_ju ju;
+let t_print log s ju =
+  log (lazy (fsprintf "%s:@\n%a" s pp_ju ju));
   t_id ju
 
-let t_debug s g =
-  eprintf "%s" s;
+let t_debug log s g =
+  log (lazy s);
   t_id g
 
 let t_guard f ju =
@@ -144,7 +144,6 @@ let t_swap_max dir i vs ju =
     then t_id
     else t_swap i offset
   in
-  (* eprintf "swap offset %i from %i\n" offset i; *)
   swap_samp ju >>= fun ps -> ret (i+offset,ps)
 
 let t_swap_others_max dir i ju =
@@ -162,13 +161,10 @@ let t_swap_others_max dir i ju =
     if dir=ToEnd then L.sort (fun a b -> - (compare (fst a) (fst b))) samp_others
     else samp_others
   in
-  (* eprintf "samp_others for %i: %a\n" i
-      (pp_list ", " (pp_pair pp_int Vsym.pp)) (L.map (fun (a,b) -> (a,fst b)) samp_others); *)
   let rec aux i samp_others =
     match samp_others with
     | [] ->
       (fun ju ->
-        (* eprintf "swap others done %i\n%!" i; *)
         t_id ju >>= fun ps ->
         ret (i,ps))
     | (j,(_rv,vs))::samp_others ->
@@ -179,7 +175,6 @@ let t_swap_others_max dir i ju =
           else if (j < i && j' >= i) then i - 1
           else i
         in
-        (* eprintf "swap_other step done j=%i j'=%i i=%i i'=%i\n%!" j j' i i'; *)
         ret (i', ps)
       ) @>>= fun i -> aux i samp_others
   in

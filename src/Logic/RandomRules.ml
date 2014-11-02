@@ -13,6 +13,12 @@ open ParserUtil
 
 module Ht = Hashtbl
 module CR = CoreRules
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"RandomRules" (Lazy.force ls)
+
+let _log_d ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"RandomRules" (Lazy.force ls)
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -46,12 +52,13 @@ let subst_ineq ju rv e =
   mconcat !ineqs >>= fun ie ->
   let inter = Se.inter (e_vars ie) (e_vars e) in
   mconcat (Se.elements inter) >>= fun iv ->
-  (* eprintf  "ineq rewrite: replace %a by %a in expression %a\n%!" pp_exp iv pp_exp ie pp_exp e; *)
+  log_t (lazy (fsprintf "ineq rewrite: replace %a by %a in expression %a\n%!"
+                 pp_exp iv pp_exp ie pp_exp e));
   let erv = mk_V rv in
   let erv' = mk_V (Vsym.mk (CR.mk_name ()) erv.e_ty) in
   let eq = Game.norm_expr_def (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
   guard (is_FPlus eq) >>= fun _ ->
-  (* eprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv'; *)
+  log_t (lazy (fsprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv'));
   let es = destr_FPlus eq in
   let (with_erv,without_erv) = L.partition (fun t -> Se.mem erv (e_vars t)) es in
   (match with_erv with
@@ -78,7 +85,7 @@ let transform_expr ju rv rvs e =
     let e' = exp_of_poly g in
     guard (not (e_equal erv e')) >>= fun _ ->
     guard (Se.mem erv (e_vars e')) >>= fun _ ->
-    (* eprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'; *)
+    log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'));
     ret e'
   | _ -> mempty
 
@@ -95,7 +102,7 @@ let contexts ju rv rvs =
   iter_gdef_exp add_subterms ju.ju_gdef;
   add_subterms ju.ju_ev;
   mconcat !es >>= fun e ->
-  (* eprintf "possible expr=%a@\n%!" pp_exp e; *)
+  log_t (lazy (fsprintf "possible expr=%a@\n%!" pp_exp e));
   guard (not (e_equal e (mk_V rv))) >>= fun _ ->
   mplus (ret e) (transform_expr ju rv rvs e) >>= fun e ->
   mplus (ret e) (subst_ineq ju rv e) >>= fun e ->
@@ -110,14 +117,14 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju =
     guard (not (e_equal (mk_FOpp (mk_V rv)) e2)) >>= fun () ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
-  (* eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2; *)
+  log_t (lazy (fsprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2));
   (match mctxt1 with
   | Some(sv1,e1) -> ret (parse_ctxt ts ju ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->
     ret (v2, DeducField.solve_fq_vars_known e2 v2)
   | None -> mempty
   ) >>= fun (v1,e1) ->
-  (* eprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju; *)
+  log_t (lazy (fsprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju));
   CR.t_rnd i (v1,e1) (v2,e2) ju
 
 let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 ju =
@@ -131,9 +138,9 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 ju =
   let vs = vars_dexc rv es in
   guard (ty_equal ty mk_Fq) >>= fun _ ->
   guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
-  eprintf "###############################\n%!";
-  eprintf "t_rnd_maybe %i\n%!" i;
-  eprintf "sampling: %i, %a@\n%!" i Vsym.pp rv;
+  log_t (lazy "###############################");
+  log_t (lazy (fsprintf "t_rnd_maybe %i\n%!" i));
+  log_t (lazy (fsprintf "sampling: %i, %a@\n%!" i Vsym.pp rv));
   let rnd i = t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i in
   if exact then rnd i ju
   else
@@ -162,8 +169,8 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   ) >>= fun ((i,j,k) as op) ->
   let (rv,(ty,_)) = L.assoc op osamps in
   guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
-  eprintf "###############################\n%!";
-  eprintf "t_rnd_oracle_maybe (%i,%i,%i)\n%!" i j k;
+  log_t (lazy (fsprintf "###############################\n%!"));
+  log_t (lazy (fsprintf "t_rnd_oracle_maybe (%i,%i,%i)\n%!" i j k));
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt_oracle ts op ju ty (sv2,se2))
   | None           ->
@@ -171,7 +178,7 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
     mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
-  (* eprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2; *)
+  log_t (lazy (fsprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2));
   (match mctxt1 with
   | Some(sv1,e1) -> ret (parse_ctxt_oracle ts op ju ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->

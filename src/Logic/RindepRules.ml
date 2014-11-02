@@ -12,6 +12,12 @@ open RewriteRules
 
 module Ht = Hashtbl
 module CR = CoreRules
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"RindepRules" (Lazy.force ls)
+
+let _log_d ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"RindepRules" (Lazy.force ls)
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -81,9 +87,9 @@ let t_last_random_indep ju =
     let vs = L.map (fun x -> (x, I x)) (Se.elements (Se.remove er fv)) in
     let bds = List.map (fun (x,_) -> let e = mk_V x in (e, I e)) bds in
     let known = vs@bds@msv in
-    (* eprintf ">>>>> trying to deduce %a from %a@\n"
-      pp_exp er (pp_list "," (pp_pair pp_exp pp_exp))
-      (L.map (fun (a,b) -> (a,expr_of_inverter b)) known); *)
+    log_t (lazy (fsprintf ">>>>> trying to deduce %a from %a@\n"
+                   pp_exp er (pp_list "," (pp_pair pp_exp pp_exp))
+                   (L.map (fun (a,b) -> (a,expr_of_inverter b)) known)));
     begin match exc_to_opt (fun () -> Deduc.invert known er) with
     | None -> CR.t_fail "cannot find inverter" ju
     | Some inv ->
@@ -123,14 +129,14 @@ let t_random_indep_exact ju =
   CoreRules.t_random_indep ju
 
 let t_random_indep_no_exact ju =
-  eprintf "###############################\n%!";
-  eprintf "t_random_indep\n%!";
+  log_t (lazy "###############################");
+  log_t (lazy "t_random_indep\n%!");
   let ev_vars = e_vars ju.ju_ev in
   let rec aux i rc =
     match rc with
     | Game.GSamp(v,_) :: rc ->
       if Se.mem (mk_V v) ev_vars then (
-        eprintf ">> trying variable %a@\n%!" Vsym.pp v;
+        log_t (lazy (fsprintf "trying variable %a" Vsym.pp v));
         (CR.t_swap (L.length rc) i @> (CR.t_random_indep @|| t_last_random_indep)) @||
         (aux (i+1) rc)
       ) else (

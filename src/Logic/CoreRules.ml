@@ -9,6 +9,12 @@ open Game
 open Wf
 open Assumption
 open Syms
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Core" Bolt.Level.TRACE ~file:"CoreRules" (Lazy.force ls)
+
+let log_d ls =
+  Bolt.Logger.log "Logic.Core" Bolt.Level.DEBUG ~file:"CoreRules" (Lazy.force ls)
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -136,14 +142,6 @@ let prove_by ru g =
       { subgoals = subgoals;
         validation = fun pts ->
           assert (L.length pts = L.length subgoals);
-          (*
-          L.iter
-            (fun (pt,ju) ->
-              if not (ju_equal pt.pt_ju g) then
-                F.printf "@[INEQ:@\n%a@\n<>@\n %a\n@]%!"
-                  pp_ju pt.pt_ju pp_ju ju)
-            (L.combine pts subgoals);
-          *)
           assert (L.for_all2 (fun pt g -> ju_equal pt.pt_ju g) pts subgoals);
           { pt_ju       = g;
             pt_rule     = rn;
@@ -278,7 +276,7 @@ let t_fail fs _g =
     (fun _ ->
       F.pp_print_flush fbuf ();
       let s = Buffer.contents buf in
-      eprintf "%s\n" s;
+      log_t (lazy s);
       mfail s)
     fbuf fs
 
@@ -290,8 +288,8 @@ let t_fail fs _g =
 (** [rconv do_norm sigma new_ju ju] takes a boolean that
     determines if both judgments have to be normalized,
     then it checks that [sigma] is bijective and renames
-    [ju] with [sigma] before
-    normalizing and comparing the two judgments *)
+    [ju] with [sigma] before normalizing and comparing the
+    two judgments *)
 let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   let (nf,ctype) =
     if do_norm_terms
@@ -300,9 +298,6 @@ let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   in
   wf_ju ctype ju;
   wf_ju ctype new_ju;
-  (*i eprintf "ju >> %a\n%!" pp_ju ju; i*)
-  (*i eprintf "new_ju >> %a\n%!" pp_ju new_ju; i*)
-  (*i eprintf "sigma(ju) >> %a\n%!" pp_ju ju; i*)
   let ju' = norm_ju ~norm:nf ju in
   let new_ju' = norm_ju ~norm:nf new_ju in
   let ju' =
@@ -314,14 +309,14 @@ let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
         norm_ju ~norm:nf (subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju')
       with
         Not_found ->
-          eprintf "no renaming found";
+          log_t (lazy "no renaming found");
           ju'
     else
       ju'
   in
   if not (ju_equal ju' new_ju') then
     tacerror "rconv: not convertible@\n %a@\n %a" pp_ju ju' pp_ju new_ju';
-  (* eprintf "!!! conv rule applied@\n%!"; *)
+  log_d (lazy (fsprintf "!!! conv rule applied"));
   Rconv, [new_ju]
 
 let t_conv do_norm_terms ?do_rename:(do_rename=false) new_ju =
@@ -356,7 +351,7 @@ let swap i delta ju =
     if is_call instr && has_call c2
     then tacerror "swap : can not swap";
     let c2,c3 = if delta > 0 then c2, instr::c3 else instr::c2, c3 in
-    (* eprintf "!!! swap rule applied: i=%i delta=%i@\n%!" i delta; *)
+    log_d (lazy (fsprintf "!!! swap rule applied: i=%i delta=%i" i delta));
     set_ju_ctxt c2 {juc_left=c1; juc_right=c3; juc_ev=e}
 
 let rswap i delta ju = Rswap(i, delta), [swap i delta ju]
@@ -395,7 +390,7 @@ let rrnd p c1 c2 ju =
         juc_right = map_gdef_exp subst juc.juc_right;
         juc_ev    = subst juc.juc_ev }
     in
-    eprintf "!!! rrnd applied at %i for %a@\n" p Vsym.pp vs;
+    log_d (lazy (fsprintf "!!! rrnd applied at %i for %a" p Vsym.pp vs));
     Rrnd(p,vs,c1,c2), [ set_ju_ctxt cmds juc ]
   | _ -> tacerror "rrnd: position given is not a sampling"
 
@@ -408,7 +403,7 @@ let rexcept p es ju =
   | GSamp(_,(_,es')), _ when list_equal e_equal es' es ->
     tacerror "rexcept: identical exceptions already present"    
   | GSamp(vs,(t,_)), juc ->
-    eprintf "!!! except applied: %a@\n%!" (pp_list "," pp_exp) es;
+    log_d (lazy (fsprintf "!!! except applied: %a" (pp_list "," pp_exp) es));
     Rexc(p, es), [ set_ju_ctxt [ GSamp(vs,(t,es)) ] juc ]
   | _ ->
     tacerror "rexcept: position given is not a sampling"
@@ -435,7 +430,7 @@ let rrewrite_oracle op dir ju =
                  juoc_return = subst juoc.juoc_return }
     in
     let (i,j,k) = op in
-    eprintf "!!! rrw_oracle %i,%i,%i @\n" i j k;
+    log_d (lazy (fsprintf "!!! rrw_oracle %i,%i,%i @\n" i j k));
     Rrw_orcl(op,dir), [ set_ju_octxt [lc] juoc ]
   | _ -> assert false
 
@@ -485,7 +480,8 @@ let rrnd_oracle p c1 c2 ju =
                  juoc_cright = juoc.juoc_cright }
     in
     let (i,j,k) = p in
-    eprintf "!!! rrnd_oracle applied at (%i,%i,%i) for %a@\n" i j k Vsym.pp vs;
+    log_d (lazy
+      (fsprintf "!!! rrnd_oracle applied at (%i,%i,%i) for %a" i j k Vsym.pp vs));
     Rrnd_orcl(p,c1,c2), [set_ju_octxt cmds juoc]
   | _ -> tacerror "random: position given is not a sampling"
 
@@ -514,7 +510,7 @@ let rcase_ev ?flip:(flip=false) e ju =
     let evs = L.map Norm.norm_expr (destr_Land ev) in
     (L.mem (Norm.norm_expr e) evs || L.mem (Norm.norm_expr (mk_Not e)) evs)
   then tacerror "rcase_ev: event or negation already in event";
-  eprintf "!!! case_ev rule applied: %a@\n%!" pp_exp e;
+  log_d (lazy (fsprintf "!!! case_ev rule applied: %a" pp_exp e));
   Rcase_ev(flip, e), if flip then [ju2; ju1] else [ju1;ju2]
 
 let t_case_ev ?flip:(flip=false) e = prove_by (rcase_ev ~flip e)
@@ -551,7 +547,7 @@ let radd_test opos tnew asym fvs ju =
       { juoc with
         juoc_cleft = LGuard(tnew) :: juoc.juoc_cleft }
     in
-    eprintf "!!! add_test rule applied: %a@\n%!" pp_exp tnew;
+    log_d (lazy (fsprintf "!!! add_test rule applied: %a" pp_exp tnew));
     Radd_test(opos, tnew, asym, fvs),
       [ set_ju_octxt [ LGuard(t) ]
           { juoc with
@@ -578,8 +574,7 @@ let rbad p vsx ju =
     let h,e = destr_H e' in
     if not (Hsym.is_ro h) then
       tacerror "the function %a is not a random oracle" Hsym.pp h;
-    (*i TODO CHECK THAT h is only used here, and that call are guarded in
-       oracle i*)
+    (*i FIXME: check that h is only used here and that calls are guarded in oracle i*)
     let i = [GSamp(vs,(e'.e_ty,[]))] in
     let ju1 = set_ju_ctxt i ctxt in
     let vx = mk_V vsx in
@@ -614,7 +609,9 @@ let rctxt_ev i c ju =
   let wfs = wf_gdef NoCheckDivZero (ju.ju_gdef) in
   wf_exp CheckDivZero wfs ev;
   let new_ju = {ju with ju_ev = ev} in
-  eprintf "!!! rctxt_ev applied at %i for %a -> %a@\n" i Vsym.pp (fst c) pp_exp (snd c);
+  log_d 
+    (lazy (fsprintf "!!! rctxt_ev applied at %i for %a -> %a@\n"
+             i Vsym.pp (fst c) pp_exp (snd c)));
   Rctxt_ev(i, c), [new_ju]
 
 let t_ctxt_ev i c = prove_by (rctxt_ev i c)
@@ -686,7 +683,7 @@ let rsplit_ev i ju =
   in
   let evs = l@b@r in
   let new_ju = {ju with ju_ev = mk_Land evs} in
-  eprintf "## rsplit_ev %i@\n" i;
+  log_d (lazy (fsprintf "rsplit_ev %i" i));
   Rsplit_ev(i), [ new_ju ]
 
 let t_split_ev i = prove_by (rsplit_ev i)
@@ -707,7 +704,7 @@ let rrw_ev i d ju =
   let subst e = e_replace u v e in
   let evs = (L.map subst l)@[b]@(L.map subst r) in
   let new_ju = { ju with ju_ev = mk_Land evs } in
-  eprintf "## rrw_ev %i@\n" i;
+  log_d (lazy (fsprintf "rrw_ev %i" i));
   Rrw_ev(i,d), [ new_ju ]
 
 let t_rw_ev i d = prove_by (rrw_ev i d)
@@ -759,8 +756,7 @@ let rassm_dec dir ren rngs assm0 ju =
       let c_arg  = L.hd acalls_ju in
       let c_body = Util.take len_body (Util.drop 1 acalls_ju) in
       let c_res  = Util.take len_res (Util.drop (1 + len_body) acalls_ju) in
-      eprintf "valid_ranges: @\narg: %a@\nbody: %a@\nres: %a@\n"
-        pp_gdef [c_arg] pp_gdef c_body pp_gdef c_res;
+
       (* check that return variables match and sampled variables are not used *)
       let read = read_gcmds (c_body@c_res) in
       if (not (Se.is_empty (Se.inter read priv_vars))) then
@@ -790,26 +786,11 @@ let rassm_dec dir ren rngs assm0 ju =
   in
   valid_ranges (L.length prefix_ju) rngs acalls_ju assm.ad_acalls;
 
-  eprintf "!! rassm_dec performed@\n";
+  log_d (lazy (fsprintf "rassm_dec performed"));
   Rassm_dec(dir,ren,assm0), [{ ju with ju_gdef = !gdef_new_ju }]
 
 let t_assm_dec dir ren rngs assm = prove_by (rassm_dec dir ren rngs assm)
 
-
-
-
-
-(*
-  let ju_remainder = { ju with ju_gdef = tl } in
-  if not (is_ppt_ju ju_remainder)
-    then tacerror "@[assm_dec: game or event not ppt @\n%a@\n@]" pp_ju ju_remainder;
-  let read = read_ju ju_remainder in
-  (*
-  let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ad_privvars Se.empty in
-  if not (Se.is_empty (Se.inter priv read))
-    then tacerror "assm_dec: does not respect private variables";
-  *)
-*)
 (** Reduction to computational assumption. *)
 
 let rassm_comp assm0 ev_e ren ju =
@@ -831,7 +812,7 @@ let rassm_comp assm0 ev_e ren ju =
   if not (Se.is_empty diff)
     then tacerror "assm_comp: does not respect private variables";
   if not (is_ppt_ju ju') then tacerror "assm_comp: game or event not ppt";
-  eprintf "!! rassm_comp performed!@\n%!";
+  log_d (lazy (fsprintf "rassm_comp performed!"));
   Rassm_comp(ev_e,ren,assm0), []
 
 let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
@@ -849,7 +830,7 @@ let t_admit s = prove_by (radmit s)
 let rfalse_ev ju =
   if is_False ju.ju_ev
   then (
-    eprintf "## rfalse_ev@\n";
+    log_d (lazy (fsprintf "rfalse_ev"));
     Rfalse_ev, []
   ) else (
     tacerror "rfalse_ev: event false expected"
@@ -863,16 +844,17 @@ let check_event r ev =
   let rec aux i evs =
     match evs with
     | [] ->
-      tacerror "can not apply rindep for variable %a and event@\  %a@\n" Vsym.pp r pp_exp ev
+      tacerror "can not apply rindep for variable %a and event@\  %a@\n"
+        Vsym.pp r pp_exp ev
     | ev::evs ->
       let r = mk_V r in
       let test_eq e1 e2 = e_equal e1 r && not (Se.mem r (e_vars e2)) in
       let check_eq e1 e2 =
         if test_eq e1 e2 then (
-          eprintf "!!! rindep applied to %i@\n" i;
+          log_d (lazy (fsprintf "rindep applied to %i" i));
           Rrnd_indep(true, i)
         ) else if test_eq e2 e1 then (
-          eprintf "!!! rindep applied to %i@\n" i;
+          log_d (lazy (fsprintf "rindep applied to %i" i));
           Rrnd_indep(false, i)
         )else raise Not_found in
       try

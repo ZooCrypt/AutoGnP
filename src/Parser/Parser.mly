@@ -111,6 +111,7 @@
 %token RREMOVE_EV
 %token RLET_ABSTRACT
 %token RLET_UNFOLD
+%token RSUBST
 %token RCTXT_EV
 %token REXCEPT
 %token RADD_TEST
@@ -403,6 +404,8 @@ instr :
 | RCONV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
 | RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 mupto = option(NAT)
   { Apply(Rlet_abstract(i-1,i1,e1,map_opt (fun x -> x - 1) mupto)) }
+| RSUBST i = NAT e1 = expr0 e2 = expr0
+  { Apply(Rsubst(i - 1,e1,e2)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID*
   { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }

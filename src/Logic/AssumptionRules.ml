@@ -15,6 +15,12 @@ open RewriteRules
 module Ht = Hashtbl
 module CR = CoreRules
 module PU = ParserUtil
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"AssumptionRules" (Lazy.force ls)
+
+let log_d ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"AssumptionRules" (Lazy.force ls)
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -35,8 +41,8 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
       assm_samps
       gdef_samps
   in
-  eprintf "subst %a\n%!"
-    (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst);
+  log_t (lazy (fsprintf "subst %a"
+                 (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
 
   (* perform let abstractions *)
   let n_let = L.length assm_lets in
@@ -75,7 +81,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
      (* @> t_print "after let" *)
      @> (CoreRules.t_assm_dec dir subst [] assm @|| conv_common_prefix)) ju
   with
-    Invalid_rule s -> eprintf "%s%!"s; mempty
+    Invalid_rule s -> log_t (lazy s); mempty
 
 (** We known which samplings in the assumption are equivalent, so we
     extract the corresponding samplings in the judgment and make sure
@@ -115,17 +121,17 @@ let match_samps symvars assm_samps_typed gdef_samps_typed =
     applications that make assumption applicable. Compute sequence of
     let abstraction applications in next step. *)
 let t_assm_dec_auto assm dir subst ju =
-  eprintf "###############################\n%!";
-  eprintf "t_assm_dec_auto dir=%s assm=%s\n%!" (string_of_dir dir) assm.ad_name;
+  log_t (lazy "###############################");
+  log_t (lazy (fsprintf "t_assm_dec_auto dir=%s ad=%s" (string_of_dir dir) assm.ad_name));
 
   (* extract samplings and lets from assumption and judgment *)
   let assm_cmds  = if dir=LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
   let assm_samps = samplings assm_cmds in
   let assm_lets  = lets assm_cmds in
   let gdef_samps = samplings ju.ju_gdef in
-  eprintf "@[assm samplings:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) assm_samps;
-  eprintf "@[assm lets:@\n%a@\n%!@]" (pp_list "@\n" pp_let)  assm_lets;
-  eprintf "@[gdef samplings:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) gdef_samps;
+  log_t (lazy (fsprintf "@[assm samps:@\n%a@]" (pp_list "@\n" pp_samp) assm_samps));
+  log_t (lazy (fsprintf "@[assm lets:@\n%a@]" (pp_list "@\n" pp_let)  assm_lets));
+  log_t (lazy (fsprintf "@[gdef samplings:@\n%a@]" (pp_list "@\n" pp_samp) gdef_samps));
 
   (* compute matchings between samplings in assumption and judgment (match up types) *)
   let ty_of_samp (_,(_,(t,_))) = t in
@@ -141,8 +147,8 @@ let t_assm_dec_auto assm dir subst ju =
       assm_samp_types
   in
   match_samps assm.ad_symvars assm_samps_typed gdef_samps_typed >>= fun old_new_pos ->
-  eprintf "@[match samps:@\n[%a]@\n%!@]"
-    (pp_list ", " (pp_pair pp_int pp_int)) old_new_pos;
+  log_t (lazy (fsprintf "@[match samps:@\n[%a]@]"
+                 (pp_list ", " (pp_pair pp_int pp_int)) old_new_pos));
   let swaps =
        parallel_swaps old_new_pos
     |> L.map (fun (old_pos,delta) ->
@@ -234,7 +240,6 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
         let nvres = L.length vres in
         let vres_ju =
           Util.take nvres (Util.drop (j + 1 - nvres) ju.ju_gdef)
-          |> (fun cmds -> eprintf "vres_ju: %a@\n" pp_gdef cmds; cmds)
           |> L.map (function GLet (x,_) -> x | _ -> assert false)
         in
         L.fold_left2 (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn) rn vres vres_ju)
@@ -345,13 +350,10 @@ let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e j
     match_exprs_assm ju assm >>= fun (pat,e) ->
     match_expr assm.ac_event_var pat e
   ) >>= fun ev_e ->
-  (* eprintf "##########################@\nev_e = %a@\n%!" pp_exp ev_e; *)
   let sassm = Assumption.ac_inst subst assm in
   let sassm_ev = e_replace (mk_V sassm.ac_event_var) ev_e sassm.ac_event in
   let assm_ju = { ju_gdef = sassm.ac_prefix; ju_ev = sassm_ev } in
   let assm_ju = norm_ju ~norm:(fun x -> x) assm_ju in
-  (* eprintf "##########################@\nev_e = %a@\n%!" pp_exp sassm_ev; *)
-  (* eprintf "##########################@\nsubst = %a@\n%!" pp_exp assm_ju.ju_ev; *)
   let conjs = destr_Land assm_ju.ju_ev in
   let ineq = L.hd (L.filter is_Not conjs) in
   let nineq = norm_expr_def (mk_Not ineq) in
@@ -368,7 +370,6 @@ let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e j
   let snineq = Norm.abbrev_ggen sineq in
   if is_Land ju.ju_ev &&
      L.exists (fun e ->
-       eprintf "$$$$ %a <> %a ???@\n" pp_exp snineq pp_exp e;
        e_equal (Norm.abbrev_ggen e) snineq) (destr_Land ju.ju_ev)
   then CR.t_assm_comp assm ev_e subst ju >>= fun ps -> ret (None,ps)
   else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
@@ -389,7 +390,8 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
       samp_assm
       samp_gdef
   in
-  (* eprintf "subst %a\n%!" (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst); *)
+  log_t (lazy (fsprintf "subst %a"
+                 (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
   let ltac subst (i,((vs:Vsym.t),(e:expr))) =
     let name = CR.mk_name () in
     let vs'  = Vsym.mk name vs.Vsym.ty in
@@ -404,21 +406,21 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
     t_before ju >>= fun ps ->
     CR.rapply_all (t_assm_comp_match ~icases (before_t_assm @> t_before) assm subst mev_e) ps
   with
-    Invalid_rule s -> eprintf "%s%!"s; mempty
+    Invalid_rule s -> log_d (lazy s); mempty
 
 let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm mev_e ju =
   tries := 0;
-  eprintf "###############################\n%!";
-  eprintf "t_assm_comp assm=%s\n%!" assm.ac_name;
+  log_t (lazy (fsprintf "###############################"));
+  log_t (lazy (fsprintf "t_assm_comp assm=%s" assm.ac_name));
   let vmap = vmap_of_globals ju.ju_gdef in
   let mev_e = map_opt (PU.expr_of_parse_expr vmap ts) mev_e in
   let assm_cmds = assm.ac_prefix in
   let samp_assm = samplings assm_cmds in
   let lets_assm = lets assm_cmds in
   let samp_gdef = samplings ju.ju_gdef in
-  eprintf "@[assm:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) samp_assm;
-  eprintf "@[assm:@\n%a@\n%!@]" (pp_list "@\n" pp_let)  lets_assm;
-  eprintf "@[gdef:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) samp_gdef;
+  log_t (lazy (fsprintf "@[assm:@\n%a@]" (pp_list "@\n" pp_samp) samp_assm));
+  log_t (lazy (fsprintf "@[assm:@\n%a@]" (pp_list "@\n" pp_let)  lets_assm));
+  log_t (lazy (fsprintf "@[gdef:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) samp_gdef));
   let assm_samp_num = L.length samp_assm in
   (* FIXME: do not assume samplings in assumption occur first and are from Fq *)
   let samp_gdef = L.filter (fun (_,(_,(ty,_))) -> ty_equal ty mk_Fq) samp_gdef in
@@ -426,9 +428,6 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm mev_e ju =
   permutations match_samps >>= fun match_samps ->
   (* try all type-preserving bijections between random samplings in
      the assumption and the considered game *)
-  (* eprintf "matching permutation %a\n%!"
-    (pp_list "," (pp_pair pp_int Vsym.pp))
-    (L.map (fun x -> (fst x, fst (snd x))) match_samps); *)
   let ordered eq_class = ordered_eqclass samp_assm match_samps eq_class in
   guard (L.for_all ordered assm.ac_symvars) >>= fun _ ->
   

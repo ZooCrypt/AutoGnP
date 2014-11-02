@@ -9,6 +9,9 @@ open NormField
 open Util
 
 module Ht = Hashtbl
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"RewriteRules" (Lazy.force ls)
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -157,7 +160,6 @@ let rewrite_div_reduce a e =
       | None -> res
       | Some d ->
         let e' = mk_FDiv res (exp_of_poly d) in
-        F.eprintf "@[@\n@\nbefore: %a@\n after: res :%a@\n e' %a@\n%!@]" pp_exp e pp_exp res pp_exp e';
         e'
   in
   e_map_ty_maximal Type.mk_Fq (solve a) e
@@ -188,6 +190,17 @@ let t_let_abstract p vs e mupto ju =
         ju_ev = subst ju.ju_ev }
   in
   t_conv false new_ju ju
+
+let t_subst p e1 e2 ju =
+  let subst a = e_replace e1 e2 a in
+  let l,r = cut_n p ju.ju_gdef in
+  let ju' =
+    { ju_gdef = L.rev_append l (map_gdef_exp subst r);
+      ju_ev   = subst ju.ju_ev }
+  in
+  log_t (lazy (fsprintf "t_subst before:@\n  %a@\n" pp_ju ju));
+  log_t (lazy (fsprintf "t_subst after:@\n  %a@\n" pp_ju ju'));
+  t_conv true ju' ju
 
 let t_let_unfold p ju =
   match get_ju_ctxt ju p with

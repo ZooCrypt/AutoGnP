@@ -42,9 +42,9 @@ val t_seq_list : tactic list -> tactic
 
 val t_or_list : tactic list -> tactic
 
-val t_print : string -> tactic
+val t_print : (string lazy_t -> unit) -> string -> tactic
 
-val t_debug : string -> tactic
+val t_debug : (string lazy_t -> unit) -> string -> tactic
 
 val t_guard : (goal -> bool) -> tactic
 

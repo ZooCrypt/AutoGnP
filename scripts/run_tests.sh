@@ -1,11 +1,13 @@
 #! /bin/sh
 
 FAILED=""
-for file in examples/ok/*.zc examples/extr_fail/*.zc; do
+for file in examples/all/*.zc; do
   printf "File $file: \n"
   before=$(date +%s)
   if ! ./zoocrypt.native $file 2>&1 | grep --colour=always -i -e 'Finished Proof' -e 'EasyCrypt proof script.extracted'; then
     FAILED="$FAILED $file"
+  else
+    OK="$OK `basename $file`"
   fi
   after=$(date +%s)
   dt=$((after - before))
@@ -13,3 +15,4 @@ for file in examples/ok/*.zc examples/extr_fail/*.zc; do
 done
 
 echo "\nFailed: $FAILED"
+echo "\nOK: $OK"

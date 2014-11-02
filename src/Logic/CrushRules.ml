@@ -14,6 +14,15 @@ open CaseRules
 
 module CR = CoreRules
 module Ht = Hashtbl
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Crush" Bolt.Level.TRACE ~file:"CrushRules" (Lazy.force ls)
+
+let log_d ls =
+  Bolt.Logger.log "Logic.Crush" Bolt.Level.DEBUG ~file:"CrushRules" (Lazy.force ls)
+
+let log_i ls =
+  Bolt.Logger.log "Logic.Crush" Bolt.Level.INFO ~file:"CrushRules" (Lazy.force ls)
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -184,9 +193,8 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
   let t_after_simp ju =
     let (jus,unqstates,is_old) =
       let ju = { ju with ju_gdef = L.sort compare ju.ju_gdef } in
-      eprintf "+++++ state: %i, unique state: %i@\n%a\n%!"
-        !stats.nstates !stats.unqstates
-        pp_ju ju;
+      log_t (lazy (fsprintf "+++++ state: %i, unique state: %i@\n%a"
+                     !stats.nstates !stats.unqstates pp_ju ju));
       if not (L.mem ju !stats.jus)
       then (ju::!stats.jus, !stats.unqstates + 1,false)
       else (!stats.jus, !stats.unqstates,true)
@@ -276,9 +284,9 @@ and t_crush must_finish mi ts ps ju =
       | Left _  -> "proof failed"
       | Right _ -> "proof found"
     in
-    eprintf
-      "%s, visited %i proof states (%i unique).@\n%!"
-      s !stats.nstates !stats.unqstates;
+    log_i
+      (lazy (fsprintf "%s, visited %i proof states (%i unique).@\n%!"
+               s !stats.nstates !stats.unqstates));
     res
   ) else (
     CR.t_fail "crush: number of steps cannot be smaller than one" ju

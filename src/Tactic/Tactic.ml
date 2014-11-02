@@ -84,6 +84,9 @@ let handle_tactic ts tac =
   | PU.Rcase_ev(Some(se)) ->
     apply (CR.t_case_ev (parse_e se))
 
+  | PU.Rsubst(pos,e1,e2) ->
+    apply (t_subst pos (parse_e e1) (parse_e e2))
+
   | PU.Rcase_ev(None) ->
     apply t_case_ev_maybe
 

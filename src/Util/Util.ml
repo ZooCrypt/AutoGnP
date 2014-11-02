@@ -40,6 +40,7 @@ end)
 
 module L = List
 module F = Format
+module BL = Bolt.Logger
 
 module Mint = Ints.M
 module Sint = Ints.S
@@ -427,4 +428,3 @@ let tacerror fmt =
       eprintf "%s\n" s;
       raise (Invalid_rule s))
     fbuf fmt
-

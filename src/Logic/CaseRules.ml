@@ -15,6 +15,12 @@ open NormField
 
 module Ht = Hashtbl
 module CR = CoreRules
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"CaseRules" (Lazy.force ls)
+
+let log_d ls =
+  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"CaseRules" (Lazy.force ls)
 (*i*)
 
 (* Useful (in)equalities that can be obtained by applying one of the three rules *)
@@ -293,12 +299,12 @@ let t_add_test_maybe ju =
           (fun ((opos',test'),_v) -> opos = opos' && e_equal test test')
           !case_vars
       in
-      eprintf "+++++++++ found case_ev already!@\n%!";
+      log_t (lazy "found case_ev already!");
       if not (Se.is_empty
                 (Se.inter (se_of_list (L.map mk_V vars)) (write_gcmds ju.ju_gdef)))
       then raise Not_found;
       if L.mem asym (asym_gcmds ju.ju_gdef) then raise Not_found;
-      eprintf "+++++++++ occurs check OK!@\n%!";
+      log_t (lazy "occurs check OK!@\n%!");
       (asym,vars)
     with Not_found ->
       let asym = Asym.mk "BBB" aty oty in
