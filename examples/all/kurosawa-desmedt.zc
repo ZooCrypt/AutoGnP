@@ -165,7 +165,7 @@ rlet_abstract 13 res (b = b').
 rsubst 5 g1^r1 arg\2. rsubst 5 g2^r1 arg\3.
 rsubst 5 g1 arg\0. rsubst 5 g2 arg\1.
 assumption_decisional! ddh -> (4-13) r2.
-rnorm. rnorm_unknown.
+rlet_unfold. rnorm_unknown.
 
 (* sample exponent of g2 directly *)
 rswap 2 -1. rlet_abstract 2 arg g2. rlet_abstract 14 res (b = b').
@@ -173,7 +173,7 @@ assumption_decisional! samp_gen -> (2-14) w. rnorm.
 
 (* define g2 using the generator g1 instead of g2 *)
 rswap 2 -1. rexcept 2. rrnd! 2 (w -> w*log(g1)) (w -> w/log(g1)).
-rnorm. rnorm_unknown.
+rlet_unfold. rnorm_unknown.
 
 rnorm.
 rrnd 6 _ (x1 -> x1 + x2*w). rnorm.
@@ -181,7 +181,7 @@ rrnd 7 _ (y1 -> y1 + y2*w). rnorm.
 
 rnorm_solve x2.
 radd_test (10,1,1) (u1^w = u2) CC tu1 tu2 te tt.
-  rsimp. rnorm.
+  rsimp. rlet_unfold.
   rnorm_solve x2.
   rswap 6 4.
   rlet_abstract 10 d (log(tu2) - w*log(tu1)).
@@ -309,12 +309,12 @@ rlet_unfold 12.
 rremove_ev 7.
 rnorm. rnorm_solve y2.
 rrnd 12 _ _. rnorm.
-rswap 12 -11. rremove_ev 1. rremove_ev 1. rremove_ev 1. rremove_ev 1. rremove_ev 1.
+rswap 12 -11. rremove_ev 1 2 3 4 5.
 rnorm_unknown.
 rlet_abstract 2 arg Kdf(g^y2).
 rlet_abstract _ res _.
 assumption_decisional! kdf -> (2-14) km ks.
-rnorm. rnorm_unknown.
+rlet_unfold. rnorm_unknown.
 rlet_abstract 2 arg ().
 rlet_abstract 15 res1 te.
 rlet_abstract 16 res2 tt.
