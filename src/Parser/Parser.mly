@@ -407,7 +407,7 @@ instr :
                        ,i1,e1,map_opt (fun x -> x - 1) mupto)) }
 | RSUBST i = NAT e1 = expr0 e2 = expr0 mupto = option(NAT)
   { Apply(Rsubst(i - 1,e1,e2,mupto)) }
-| RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
+| RLET_UNFOLD i = option(NAT) { Apply(Rlet_unfold(map_opt (fun x -> x - 1) i)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID*
   { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }
 | RADD_TEST UNDERSCORE { Apply(Radd_test(None,None,None,None)) }
@@ -427,8 +427,8 @@ instr :
 | RBAD i=NAT s = ID { Apply(Rbad (i-1,s)) }
 | RCTXT_EV LPAREN i1 = ID TO e1 = expr0 RPAREN j = NAT
   { Apply(Rctxt_ev(i1,e1,j - 1)) }
-| RREMOVE_EV i = int
-  { Apply(Rremove_ev([i - 1])) }
+| RREMOVE_EV is = int+
+  { Apply(Rremove_ev(L.map (fun x -> x - 1) is)) }
 | RSPLIT_EV i = int
   { Apply(Rsplit_ev(i - 1)) }
 | RCASE_EV e = uoption(expr0)

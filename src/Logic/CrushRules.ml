@@ -15,14 +15,9 @@ open CaseRules
 module CR = CoreRules
 module Ht = Hashtbl
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Crush" Bolt.Level.TRACE ~file:"CrushRules" (Lazy.force ls)
-
-let log_d ls =
-  Bolt.Logger.log "Logic.Crush" Bolt.Level.DEBUG ~file:"CrushRules" (Lazy.force ls)
-
-let log_i ls =
-  Bolt.Logger.log "Logic.Crush" Bolt.Level.INFO ~file:"CrushRules" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
+let log_d ls = mk_logger "Logic.Crush" Bolt.Level.DEBUG "CrushRules" ls
+let log_i ls = mk_logger "Logic.Crush" Bolt.Level.INFO "CrushRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)

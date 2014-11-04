@@ -10,8 +10,7 @@ open Util
 
 module Ht = Hashtbl
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"RewriteRules" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RewriteRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -32,13 +31,12 @@ let t_norm_tuple_proj ju =
 
 (** Norm without unfolding. *)
 let t_norm_nounfold ju = 
-  let new_ju = map_ju_exp norm_expr_def ju in
+  let new_ju = map_ju_exp id ju in
   t_conv true new_ju ju
-
 
 (** Unfold without norm. *)
 let t_unfold_only ju = 
-  let new_ju = norm_ju ~norm:(fun x -> x) ju in
+  let new_ju = norm_ju ~norm:id ju in
   t_conv false new_ju ju
 
 (*i [simp e unknown] takes an exponent expression [e] and a

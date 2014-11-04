@@ -10,12 +10,9 @@ open Wf
 open Assumption
 open Syms
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Core" Bolt.Level.TRACE ~file:"CoreRules" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "CoreRules" ls
 
-let log_d ls =
-  Bolt.Logger.log "Logic.Core" Bolt.Level.DEBUG ~file:"CoreRules" (Lazy.force ls)
-
+let log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "CoreRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)

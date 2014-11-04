@@ -13,11 +13,8 @@ open RewriteRules
 module Ht = Hashtbl
 module CR = CoreRules
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"RindepRules" (Lazy.force ls)
-
-let _log_d ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"RindepRules" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RindepRules" ls
+let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RindepRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)

@@ -7,11 +7,8 @@ open Util
 open Syms
 open Gsyms
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Core" Bolt.Level.TRACE ~file:"Assumption" (Lazy.force ls)
-
-let _log_d ls =
-  Bolt.Logger.log "Logic.Core" Bolt.Level.DEBUG ~file:"Assumption" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "Assumption" ls
+let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)

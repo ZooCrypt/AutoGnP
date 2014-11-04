@@ -9,8 +9,6 @@ open Util
 open Gsyms
 (*i*)
 
-val set_unsafe : bool  -> unit
-
 (* \subsection{Proofs representation} *)
 
 (** Low-level rules (extractable to EasyCrypt). *)

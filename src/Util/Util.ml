@@ -428,3 +428,6 @@ let tacerror fmt =
       eprintf "%s\n" s;
       raise (Invalid_rule s))
     fbuf fmt
+
+let mk_logger tag level file ls =
+  Bolt.Logger.log tag level ~file (Lazy.force ls)

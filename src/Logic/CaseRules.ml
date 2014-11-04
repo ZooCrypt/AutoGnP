@@ -16,11 +16,8 @@ open NormField
 module Ht = Hashtbl
 module CR = CoreRules
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"CaseRules" (Lazy.force ls)
-
-let log_d ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"CaseRules" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
+let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
 (*i*)
 
 (* Useful (in)equalities that can be obtained by applying one of the three rules *)

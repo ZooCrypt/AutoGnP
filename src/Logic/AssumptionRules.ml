@@ -16,11 +16,8 @@ module Ht = Hashtbl
 module CR = CoreRules
 module PU = ParserUtil
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"AssumptionRules" (Lazy.force ls)
-
-let log_d ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"AssumptionRules" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "AssumptionRules" ls
+let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "AssumptionRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)

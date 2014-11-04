@@ -14,11 +14,8 @@ open ParserUtil
 module Ht = Hashtbl
 module CR = CoreRules
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.TRACE ~file:"RandomRules" (Lazy.force ls)
-
-let _log_d ls =
-  Bolt.Logger.log "Logic.Derived" Bolt.Level.DEBUG ~file:"RandomRules" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RandomRules" ls
+let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RandomRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)

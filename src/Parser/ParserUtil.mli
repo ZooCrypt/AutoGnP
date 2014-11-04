@@ -103,7 +103,7 @@ type tactic =
   | Rassm_comp     of bool * string option * ((int * int) list) option
   | Rlet_abstract  of int option * string * parse_expr option * int option
   | Rsubst         of int * parse_expr * parse_expr * int option
-  | Rlet_unfold    of int
+  | Rlet_unfold    of int option
   | Rindep         of bool
   | Rcrush         of bool * int option
   | Rbad           of int * string

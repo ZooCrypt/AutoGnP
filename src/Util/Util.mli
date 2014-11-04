@@ -208,3 +208,4 @@ val eprintf : ('a, F.formatter, unit) format -> 'a
 
 val set_debug_buffer : unit -> Buffer.t
 
+val mk_logger : string -> Bolt.Level.t -> string -> string Lazy.t -> unit

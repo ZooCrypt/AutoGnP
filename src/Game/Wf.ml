@@ -9,11 +9,8 @@ open Syms
 open Gsyms
 open Norm
 
-let log_t ls =
-  Bolt.Logger.log "Logic.Wf" Bolt.Level.TRACE ~file:"Wf" (Lazy.force ls)
-
-let _log_d ls =
-  Bolt.Logger.log "Logic.Wf" Bolt.Level.DEBUG ~file:"Wf" (Lazy.force ls)
+let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
+let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
 
 (*i*)
 

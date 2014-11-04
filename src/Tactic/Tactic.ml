@@ -74,7 +74,8 @@ let handle_tactic ts tac =
   (* Rules with primitive arguments *)
   | PU.Rnorm                 -> apply t_norm
   | PU.Rnorm_nounfold        -> apply t_norm_nounfold
-  | PU.Rlet_unfold(i)        -> apply (t_let_unfold i)
+  | PU.Rlet_unfold(Some(i))  -> apply (t_let_unfold i)
+  | PU.Rlet_unfold(None)     -> apply (t_unfold_only)
   | PU.Rswap(i,j)            -> apply (CR.t_swap i j)
   | PU.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
   | PU.Rsplit_ev(i)          -> apply (CR.t_split_ev i)
