@@ -427,7 +427,6 @@ let handle_instr ts instr =
     (ts, "EasyCrypt proof script extracted into file: "^filename)
 
   | PU.Unsafe b ->
-    CR.set_unsafe b;
     (ts, (if b then "Enabled" else "Disabled")^" unsafe mode")
 
   | PU.Debug cmd ->

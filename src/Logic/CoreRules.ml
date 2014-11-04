@@ -16,9 +16,6 @@ let log_t ls =
 let log_d ls =
   Bolt.Logger.log "Logic.Core" Bolt.Level.DEBUG ~file:"CoreRules" (Lazy.force ls)
 
-let no_div_zero_check = ref false
-
-let set_unsafe b = no_div_zero_check := b
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -279,9 +276,8 @@ let t_fail fs _g =
     two judgments *)
 let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   let (nf,ctype) =
-    (* FIXME FIXME FIXME FIXME FIXME : NoCheckDivZero only for testing *)
     if do_norm_terms
-    then (Norm.norm_expr,if !no_div_zero_check then NoCheckDivZero else CheckDivZero)
+    then (Norm.norm_expr,CheckDivZero)
     else (id,NoCheckDivZero)
   in
   wf_ju ctype ju;
@@ -370,11 +366,8 @@ let rrnd p c1 c2 ju =
         GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
     let wfs = wf_gdef NoCheckDivZero (L.rev juc.juc_left) in
-    (* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME *)
-    (* NoCheckDivZero only for testing *)
-    let checkdz = if !no_div_zero_check then NoCheckDivZero else CheckDivZero in
-    wf_exp checkdz (ensure_varname_fresh wfs (fst c1)) (snd c1);
-    wf_exp checkdz (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let subst e = e_replace v (mk_V vslet) e in
     let juc =
       { juc with
