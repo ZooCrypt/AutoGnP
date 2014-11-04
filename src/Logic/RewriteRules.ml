@@ -191,16 +191,26 @@ let t_let_abstract p vs e mupto ju =
   in
   t_conv false new_ju ju
 
-let t_subst p e1 e2 ju =
+let t_subst p e1 e2 mupto ju =
   let subst a = e_replace e1 e2 a in
   let l,r = cut_n p ju.ju_gdef in
-  let ju' =
-    { ju_gdef = L.rev_append l (map_gdef_exp subst r);
-      ju_ev   = subst ju.ju_ev }
+  let new_ju = 
+    match mupto with
+    | Some j ->
+      if (j < p) then tacerror "t_let_abstract: invalid upto";
+      let cl = j - p in
+      if (cl > L.length r) then tacerror "t_let_abstract: invalid upto";
+      let r1,r2 = Util.cut_n cl r in
+      let r = List.rev_append (map_gdef_exp subst r1) r2 in
+      { ju_gdef = List.rev_append l r;
+        ju_ev = ju.ju_ev }
+    | None ->
+      { ju_gdef = L.rev_append l (map_gdef_exp subst r);
+        ju_ev   = subst ju.ju_ev }
   in
   log_t (lazy (fsprintf "t_subst before:@\n  %a@\n" pp_ju ju));
-  log_t (lazy (fsprintf "t_subst after:@\n  %a@\n" pp_ju ju'));
-  t_conv true ju' ju
+  log_t (lazy (fsprintf "t_subst after:@\n  %a@\n" pp_ju new_ju));
+  t_conv true new_ju ju
 
 let t_let_unfold p ju =
   match get_ju_ctxt ju p with

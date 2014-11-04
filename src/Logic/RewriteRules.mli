@@ -20,4 +20,4 @@ val t_let_unfold : int -> tactic
 
 val t_norm_tuple_proj : tactic
 
-val t_subst : int -> expr -> expr -> tactic
+val t_subst : int -> expr -> expr -> int option -> tactic

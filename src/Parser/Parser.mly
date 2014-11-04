@@ -405,8 +405,8 @@ instr :
 | RLET_ABSTRACT i = uoption(NAT) i1 = ID e1 = uoption(expr0) mupto = option(NAT)
   { Apply(Rlet_abstract(map_opt (fun x -> x -1) i
                        ,i1,e1,map_opt (fun x -> x - 1) mupto)) }
-| RSUBST i = NAT e1 = expr0 e2 = expr0
-  { Apply(Rsubst(i - 1,e1,e2)) }
+| RSUBST i = NAT e1 = expr0 e2 = expr0 mupto = option(NAT)
+  { Apply(Rsubst(i - 1,e1,e2,mupto)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }
 | RADD_TEST op = opos e = expr0 asym = AID fvs = ID*
   { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }
