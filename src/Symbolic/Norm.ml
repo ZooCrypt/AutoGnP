@@ -42,8 +42,13 @@ let rec mk_simpl_op op l =
     let p2 = destr_gexp es.Esym.source2 g2 in
     let p = norm_field_expr (mk_FMult [p1; p2]) in
     mk_gexp es.Esym.target p
-  | Eq, [e1;e2] -> 
-    if e_equal e1 e2 then mk_True else mk_Eq e1 e2
+  | Eq, [e1;e2] ->
+    if e_equal e1 e2 then mk_True 
+    else if is_False e1 then mk_Not e2
+    else if is_False e2 then mk_Not e1
+    else if is_True e1 then  e2
+    else if is_True e2 then e1
+    else mk_Eq e1 e2
   | Ifte, [e1;e2;e3] ->
     if is_True e1 then e2 
     else if is_False e1 then e3 
