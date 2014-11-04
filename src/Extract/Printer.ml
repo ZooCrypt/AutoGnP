@@ -123,7 +123,7 @@ let rec pp_form_lvl outer fmt = function
     maybe_paren outer inner pp fmt ()
   | Fif(e1,e2,e3) ->
     let pp fmt () = 
-      F.fprintf fmt "@[<hov 2>%a ?@ %a :@ %a@]" 
+      F.fprintf fmt "@[<hov 2>(%a)?@ %a :@ %a@]" 
         (pp_form_lvl if_lvl) e1 (pp_form_lvl if_lvl) e2
         (pp_form_lvl if_lvl) e3 in
     maybe_paren outer if_lvl pp fmt () 
