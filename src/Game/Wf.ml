@@ -8,6 +8,13 @@ open Game
 open Syms
 open Gsyms
 open Norm
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Wf" Bolt.Level.TRACE ~file:"Wf" (Lazy.force ls)
+
+let _log_d ls =
+  Bolt.Logger.log "Logic.Wf" Bolt.Level.DEBUG ~file:"Wf" (Lazy.force ls)
+
 (*i*)
 
 exception Wf_var_undef of Vsym.t * expr
@@ -122,18 +129,32 @@ let rec add_ineq ctype wfs e1 e2 =
     _ -> wfs
 
 and check_nonzero ctype wfs e =
+  log_t (lazy (fsprintf "check_nonzero @[<hov 2> %a@]" pp_exp e));
   if ctype = NoCheckDivZero then true
   else
-    (* we know e itself is division-safe *)
-    match wfs.wf_nzero with
-    | Some nz ->
-      let e = norm_expr e in
-      (* the normal form is either f/g or f for polynomials f,g *)
-      begin match e.e_node with
-      | App(FDiv, [a;_b]) -> CAS.mod_reduce nz a (* division-safe => b<>0 *)
-      | _                 -> CAS.mod_reduce nz e (* e is polynomial *)
-      end
-    | None    -> false
+    let check e =
+      (* we know e itself is division-safe *)
+      match wfs.wf_nzero with
+      | Some nz -> CAS.mod_reduce nz e
+      | None    -> false
+    in
+    let e = norm_expr e in
+    match e.e_node with
+    | App(Ifte, [c; a; b])
+      when
+        is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in is_Zero v && e_equal u b) ->
+      true
+    (*
+    | App(Ifte, [c; a; b])
+      when
+        log_t (lazy (fsprintf "%a, %a, %a" pp_exp c pp_exp a pp_exp b));
+        is_FOne b && is_Not c &&
+        (let e = destr_Not c in is_Eq e && (let (u,v) = destr_Eq e in is_Zero v && e_equal u a)) ->
+      true
+    *)
+    | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
+    | _                 -> check e (* e is polynomial *)
+
 (* TODO Remark: I think the type checking is not necessary, it is ensured by the
    smart constructor ... *)
 and wf_exp ctype wfs e0 =
