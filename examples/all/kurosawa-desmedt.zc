@@ -183,14 +183,16 @@ rnorm_solve x2.
 radd_test (10,1,1) (u1^w = u2) CC tu1 tu2 te tt.
   rsimp. rnorm.
   rnorm_solve x2.
-  (* we require assert here, we cannot exploit
-     'g ^ (w*log(tu1))) = tu2' for rexcept otherwise
-     which is required for:
-       rrnd 10 _ (x2 -> x2 * (w*log(tu1) -  log(tu2))).
-  *)
-  set_unsafe.
-  rrnd 6 _ _. rnorm.
-  unset_unsafe.
+  rswap 6 4.
+  rlet_abstract 10 d (log(tu2) - w*log(tu1)).
+  rlet_abstract 11 e (x1*log(tu1) + y1*log(tu1)*H(i,tu1,tu2) + y2*log(tu2)*H(i,tu1,tu2) + -(y2*w*log(tu1)*H(i,tu1,tu2))).
+  rrnd! 12 (x2 -> (x2 - e) / ((d=0)?1:d)) (x2 -> x2 * ((d=0)?1:d) + e).
+  rnorm.
+  rcase_ev (((log(tu2) + -(w*log(tu1))) = 0) = false).
+    last. rnorm. rctxt_ev (c -> c + w*log(tu1)) 2. rnorm.
+    rctxt_ev (c -> g^c) 3. rnorm. rrewrite_ev 3. rsimp. last.
+  rrewrite_ev 3 ->. rnorm.
+  rremove_ev 2.
   rswap 10 -9.
   rnorm_unknown.
   rlet_abstract 2 arg Kdf(g^x2).
@@ -280,11 +282,34 @@ rexcept 4 r1.
 rrnd 6 _ _. back. back. back. back. 
 rnorm.
 rnorm_solve y2.
-(* works only because of disabled div_zero check, requires assert *)
-set_unsafe.
-rrnd 6 _ _. rnorm.
-unset_unsafe.
-rswap 12 -11. rremove_ev 1. rremove_ev 1. rremove_ev 1.
+rlet_abstract 13 d (H(i,tu1,tu2) + -H(i,g ^ (r1*log(g1)),g ^ (log(g1)*r2*w))).
+rswap 6 7.
+rrnd! 13 (y -> (y/(((d=0)?1:d)))) (y -> y * ((d=0)?1:d)). rlet_unfold 14.
+rcase_ev ((d=0)=false).
+  last. rremove_ev 4. rnorm. rctxt_ev (c -> c + H(i,g ^ (r1*log(g1)),g ^ (log(g1)*r2*w))) 4. rnorm. rrewrite_ev 3. rsimp.
+  last. last.
+rrewrite_ev 5.
+rcase_ev ((false?1:d) = d).
+  last. rremove_ev 1. rsimp.
+rrewrite_ev 6.
+rlet_unfold 12.
+rremove_ev 6.
+rnorm. rnorm_solve y2.
+rrnd 12 _ (y2 -> y2*(r2 + -r1)*w*log(g1)). rnorm. rnorm_solve y2.
+rlet_abstract 12 d (-log(tu2) + w*log(tu1)).
+rrnd! 13 (y -> (y/(((d=0)?1:d)))) (y -> y * ((d=0)?1:d)). rlet_unfold 14.
+rcase_ev ((d=0)=false).
+  last. rremove_ev 5. rnorm. rctxt_ev (c -> c - -log(tu2)) 5. rnorm. rctxt_ev (c -> g^c) 5. rnorm.
+  rrewrite_ev 1 <-. rsimp.
+rrewrite_ev 6.
+rcase_ev ((false?1:d) = d).
+  last. rremove_ev 1. rsimp.
+rrewrite_ev 7.
+rlet_unfold 12.
+rremove_ev 7.
+rnorm. rnorm_solve y2.
+rrnd 12 _ _. rnorm.
+rswap 12 -11. rremove_ev 1. rremove_ev 1. rremove_ev 1. rremove_ev 1. rremove_ev 1.
 rnorm_unknown.
 rlet_abstract 2 arg Kdf(g^y2).
 rlet_abstract _ res _.
