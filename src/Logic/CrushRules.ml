@@ -142,7 +142,7 @@ let psis_of_pt pt =
     let gd = pt.CR.pt_ju.ju_gdef in
     let children = pt.CR.pt_children in
     match pt.CR.pt_rule with
-    | CR.Rassm_dec(_,_,ad) ->
+    | CR.Rassm_dec(_,_,_,ad) ->
       let psi =
         { psi with psi_assms = Sstring.add ad.ad_name psi.psi_assms }
       in

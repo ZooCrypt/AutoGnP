@@ -67,7 +67,7 @@ type rule_name =
       $Rrw\_ev(i,d)$: Rewrite event using $i$-th conjunct in direction $d$. *)
 
   (*c apply assumption *)
-  | Rassm_dec  of direction * renaming  * assm_dec
+  | Rassm_dec  of (int * int) list * direction * renaming  * assm_dec
   | Rassm_comp of (int * int) list * renaming * assm_comp
 
   (*c terminal rules *)
@@ -790,7 +790,7 @@ let rassm_dec dir ren rngs assm0 ju =
   valid_ranges (L.length prefix_ju) rngs acalls_ju assm.ad_acalls;
 
   log_d (lazy (fsprintf "rassm_dec performed"));
-  Rassm_dec(dir,ren,assm0), [{ ju with ju_gdef = !gdef_new_ju }]
+  Rassm_dec(rngs,dir,ren,assm0), [{ ju with ju_gdef = !gdef_new_ju }]
 
 let t_assm_dec dir ren rngs assm = prove_by (rassm_dec dir ren rngs assm)
 

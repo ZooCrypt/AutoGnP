@@ -41,7 +41,7 @@ type rule_name =
   | Rrw_ev     of int * direction
 
   (*c apply assumption *)
-  | Rassm_dec  of direction * renaming  * assm_dec
+  | Rassm_dec  of (int * int) list * direction * renaming  * assm_dec
   | Rassm_comp of (int * int) list * renaming * assm_comp
 
   (*c terminal rules *)

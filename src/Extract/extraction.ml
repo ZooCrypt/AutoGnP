@@ -1394,7 +1394,7 @@ let rec extract_proof file pft =
   | Rrnd_indep (side, pos) ->
     extract_rnd_indep file side pos pft.pt_ju 
     
-  | Rassm_dec (dir,subst, assum) ->
+  | Rassm_dec (_ranges,dir,subst,assum) ->
     let pft' = List.hd pft.pt_children in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
     let ainfo = 

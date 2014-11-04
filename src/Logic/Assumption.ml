@@ -17,7 +17,7 @@ let _log_d ls =
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Decisional assumptions} *)
 
-(* For simplicity, we restrict assumptions to be of the form
+(* For simplicity, we restrict ourselves to assumptions to be of the form
      r1 <-$ D1; ...; rn <-$ Dn; (vs1) <- A1(e1); ...; (vsk) <- Ak(ek);
    where 'Di' might be an excepted distribution [*].
    Then the right assumption has the form
