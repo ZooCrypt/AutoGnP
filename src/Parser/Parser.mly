@@ -437,7 +437,7 @@ instr :
   { Apply(Rctxt_ev(i1,e1,0)) }
 | RFALSE_EV {Apply(Rfalse_ev)}
 | RREWRITE_ORACLE op = opos d = dir { Apply(Rrewrite_orcl(op,d)) }
-| RREWRITE_EV i = int d = dir { Apply(Rrewrite_ev(i - 1,d)) }
+| RREWRITE_EV i = int d = option(dir) { Apply(Rrewrite_ev(i - 1,opt id LeftToRight d)) }
 | EXTRACT s=STRING { Extract s }
 
 instruction:

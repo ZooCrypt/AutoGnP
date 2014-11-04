@@ -687,10 +687,16 @@ let rrw_ev i d ju =
   if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in
   let u,v =
-    if not (is_Eq b)
-      then tacerror "rrw_ev: bad event, expected equality";
-    let u,v = destr_Eq b in
-    if d = LeftToRight then (u,v) else (v,u)
+    if is_Eq b then (
+      let u,v = destr_Eq b in
+      if d = LeftToRight then (u,v) else (v,u)
+    ) else if is_Not b && is_Eq (destr_Not b) then (
+      let eq = destr_Not b in
+      if d = LeftToRight then (eq,mk_False)
+      else tacerror "rrw_ev: inequality can only be used from left to right"
+    ) else (
+      tacerror "rrw_ev: bad event, expected equality"
+    )
   in
   let subst e = e_replace u v e in
   let evs = (L.map subst l)@[b]@(L.map subst r) in
