@@ -1,17 +1,17 @@
-adversary B : (G * G * G) -> Bool.
+adversary A_ddh : (G * G * G) -> Bool.
 
 assumption_decisional ddh
-  [ x <-$ Fq; y <-$ Fq;           b <- B(g ^ x,g ^ y,g ^ (x * y)); ]
-  [ x <-$ Fq; y <-$ Fq; z <-$ Fq; b <- B(g ^ x,g ^ y,g ^ z);       ]
+  [ x <-$ Fq; y <-$ Fq;           b <- A_ddh(g ^ x,g ^ y,g ^ (x * y)); ]
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq; b <- A_ddh(g ^ x,g ^ y,g ^ z);       ]
   ([x,y]).
 
 operator H : (G * G * G) -> Fq.
 
+adversary A_tcr : (G * G * G) -> (G * G * G).
+
 assumption_computational tcr
-  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
-    let ga = g ^ a; let gb = g ^ b; let gc = g ^ c; ]
-  (x : (G * G * G) -> (H(x) = H(ga,gb,gc)) /\ not (x = (ga,gb,gc)) )
-  (a b c).
+  [ a <-$ Fq; b <-$ Fq; c <-$ Fq; (x1,x2,x3) <- A_tcr(g^a,g^b,g^c); ]
+  : (H(x1,x2,x3) = H(g^a,g^b,g^c)) /\ not ((x1,x2,x3) = (g^a,g^b,g^c)).
 
 adversary A1 : (G * G * G * G) -> (G * G).
 adversary A2 : (G * G * G * G) -> Bool.
@@ -96,7 +96,15 @@ prove
   rcase_ev (ea,ea',ec) = (g ^ u,g ^ v,g ^ z2).
     rsplit_ev 5. rsimp. rrewrite_ev 5 ->. rrewrite_ev 6 ->. rrewrite_ev 7 ->.
     rnorm. rfalse_ev.
-  assumption_computational _ _.
+  rswap 2 -1. rswap 11 -9.
+  rlet_abstract 5 arg (g^u,g^v,g^z2) 13.
+  rsubst 6 (g^u) (arg\0) 13. rsubst 6 (g^v) (arg\1) 13. rsubst 6 (g^z2) (arg\2) 13.
+  rremove_ev 1. rremove_ev 2. rremove_ev 2.
+  rlet_abstract 14 res1 ea.
+  rlet_abstract 15 res2 ea'.
+  rlet_abstract 16 res3 ec.
+  rexcept 4. rswap 4 -2. rswap 5 -1.
+  assumption_computational! tcr (4-16).
   qed.
   print_proof.
   extract "extraction/cramer_shoup.ec".
