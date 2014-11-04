@@ -1,0 +1,16 @@
+adversary A : () -> Fq.
+
+prove
+  [ r <-$ Fq;
+    s <- A(); ]
+  : (r * s = 1) /\ (s <> 0).
+
+set_unsafe.
+(* Extend WF-check to recognize that guarded expressions (e=0)?1:e
+   are non-zero.  *)
+rrnd 1 (r -> r / ((s=0)?1:s)) (r -> r * ((s=0)?1:s)).
+rnorm.
+unset_unsafe.
+rnorm.
+(* allow for contextual rewriting that rewrites e?e1:e2 to
+   e1 if e holds in the given context. *)
