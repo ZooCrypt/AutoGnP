@@ -6,16 +6,12 @@ open Game
 open Expr
 open Assumption
 open Util
-open Syms
 open Gsyms
 (*i*)
 
+val set_unsafe : bool  -> unit
+
 (* \subsection{Proofs representation} *)
-
-(** Renaming of variables *)
-type renaming = vs Vsym.M.t
-
-val id_renaming : renaming
 
 (** Low-level rules (extractable to EasyCrypt). *)
 type rule_name = 
@@ -46,7 +42,7 @@ type rule_name =
 
   (*c apply assumption *)
   | Rassm_dec  of direction * renaming  * assm_dec
-  | Rassm_comp of expr * renaming * assm_comp
+  | Rassm_comp of (int * int) list * renaming * assm_comp
 
   (*c terminal rules *)
   | Radmit of string
@@ -210,8 +206,8 @@ val t_random_indep : tactic
 val rassm_dec  : direction -> renaming -> (int * int) list -> assm_dec -> rule
 val t_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> tactic
 
-val rassm_comp  : assm_comp -> expr -> renaming -> rule
-val t_assm_comp : assm_comp -> expr -> renaming -> tactic
+val rassm_comp  : assm_comp -> (int * int) list -> renaming -> rule
+val t_assm_comp : assm_comp -> (int * int) list  -> renaming -> tactic
 
 (** [rbad p vsx ju] returns the judgment resulting from
     applying an up-to bad step with respect to a hash-query

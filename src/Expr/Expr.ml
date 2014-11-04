@@ -329,8 +329,13 @@ and pp_op_p above fmt (op, es) =
     pp_prefix FOpp  "-"     ""    a
   | FInv,   [a]   -> 
     pp_prefix FInv  ""      "^-1" a
-  | Not,    [a]   -> 
-    pp_prefix Not   "not "  ""    a
+  | Not,    [a]   ->
+    begin match a.e_node with
+    | App(Eq,[e1;e2]) ->
+      pp_bin (notsep above && above<>NInfix(Land)) Eq "<>" e1 e2
+    | _ ->
+      pp_prefix Not   "not "  ""    a
+    end
   | EMap es,[a;b] ->
     let ppe i = pp_exp_p (Infix(EMap es,i)) in
     F.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b

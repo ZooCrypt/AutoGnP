@@ -612,7 +612,7 @@ let unif_ju ju1 ju2 =
       F.printf "no unifier found!\n%!";
       raise Not_found
 
-let subst_injective sigma =
+let ren_injective sigma =
   try
     let inv = Vsym.H.create 134 in
     Vsym.M.iter
@@ -664,6 +664,15 @@ let subst_v_gdef tov = L.map (subst_v_gc tov)
 
 let subst_v_ju tov ju =
   { ju_gdef = subst_v_gdef tov ju.ju_gdef; ju_ev = subst_v_e tov ju.ju_ev }
+
+(** Renaming of variables. *)
+type renaming = vs Vsym.M.t
+
+
+let id_renaming = Vsym.M.empty
+
+let pp_ren fmt ren =
+  pp_list "," (pp_pair Vsym.pp Vsym.pp) fmt (Vsym.M.bindings ren)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Mappings from strings to variables} *) 

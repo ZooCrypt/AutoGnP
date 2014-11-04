@@ -15,27 +15,14 @@ let log_t ls =
 
 let log_d ls =
   Bolt.Logger.log "Logic.Core" Bolt.Level.DEBUG ~file:"CoreRules" (Lazy.force ls)
+
+let no_div_zero_check = ref false
+
+let set_unsafe b = no_div_zero_check := b
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Types for proofs and tactics} *)
-
-(** Renaming of variables. *)
-type renaming = vs Vsym.M.t
-
-let id_renaming = Vsym.M.empty
-
-let renaming_bij ren =
-  let rng = ref Vsym.S.empty in
-  let go _ v =
-    if Vsym.S.mem v !rng then raise Not_found;
-    rng := Vsym.S.add v !rng
-  in
-  try
-    Vsym.M.iter go ren; true
-  with
-    Not_found ->
-      false
 
 (** Low-level rules (extractable to EasyCrypt). *)
 type rule_name =
@@ -81,7 +68,7 @@ type rule_name =
 
   (*c apply assumption *)
   | Rassm_dec  of direction * renaming  * assm_dec
-  | Rassm_comp of expr * renaming * assm_comp
+  | Rassm_comp of (int * int) list * renaming * assm_comp
 
   (*c terminal rules *)
   | Radmit of string
@@ -292,8 +279,9 @@ let t_fail fs _g =
     two judgments *)
 let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   let (nf,ctype) =
+    (* FIXME FIXME FIXME FIXME FIXME : NoCheckDivZero only for testing *)
     if do_norm_terms
-    then (Norm.norm_expr,CheckDivZero)
+    then (Norm.norm_expr,if !no_div_zero_check then NoCheckDivZero else CheckDivZero)
     else (id,NoCheckDivZero)
   in
   wf_ju ctype ju;
@@ -304,7 +292,7 @@ let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
     if do_rename then
       try
         let sigma = Game.unif_ju ju' new_ju' in
-        if not (Game.subst_injective sigma) then
+        if not (Game.ren_injective sigma) then
           tacerror "rconv: computed renaming is not bijective";
         norm_ju ~norm:nf (subst_v_ju (fun vs -> Vsym.M.find vs sigma) ju')
       with
@@ -382,8 +370,11 @@ let rrnd p c1 c2 ju =
         GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
     let wfs = wf_gdef NoCheckDivZero (L.rev juc.juc_left) in
-    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
-    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    (* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME *)
+    (* NoCheckDivZero only for testing *)
+    let checkdz = if !no_div_zero_check then NoCheckDivZero else CheckDivZero in
+    wf_exp checkdz (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    wf_exp checkdz (ensure_varname_fresh wfs (fst c2)) (snd c2);
     let subst e = e_replace v (mk_V vslet) e in
     let juc =
       { juc with
@@ -721,16 +712,22 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
    to the return values of the adversary. Everything except 'ei' cannot use
    the random variables directly and must be ppt. *)
 let rassm_dec dir ren rngs assm0 ju =
-  if not (renaming_bij ren) then tacerror "assm_dec: renaming is not bijective";
+  if not (ren_injective ren) then tacerror "assm_dec: renaming is not bijective";
   let swap_dir = if dir = LeftToRight then id else Util.swap in
 
   (* check that prefix of (renamed) assumption coincides with prefix of ju *)
-  let assm = Assumption.ad_inst ren assm0 in
+  let assm = Assumption.inst_dec ren assm0 in
   let prefix_old,prefix_new = swap_dir (assm.ad_prefix1,assm.ad_prefix2) in
   let prefix_old_len = L.length prefix_old in
   let prefix_ju = Util.take prefix_old_len ju.ju_gdef in
   let acalls_ju = Util.drop prefix_old_len ju.ju_gdef in
   if not (gdef_equal prefix_old prefix_ju) then tacerror "assm_dec: prefixes not equal";
+
+  log_d (lazy (fsprintf "rassm_dec, renamed assumption:@\n@[<hov 4>  %a@]"
+                 pp_assm_dec assm));
+  log_d (lazy (fsprintf "rassm_dec, prefix of judgment:@\n@[<hov 4>  %a@]"
+                 pp_gdef prefix_ju));
+
 
   (* check that event equal to last returned value *)
   (match Util.last acalls_ju with
@@ -743,7 +740,7 @@ let rassm_dec dir ren rngs assm0 ju =
   (* check that we can instantiate adversary calls in assumption with remainder of ju *)
   let gdef_new_ju = ref prefix_new in
   let len_ju = L.length ju.ju_gdef in
-  let priv_vars = private_vars assm in
+  let priv_vars = private_vars_dec assm in
   let rec valid_ranges checked rngs acalls_ju acalls =
     match rngs, acalls with
     | (i,j)::rngs, (_,vres,(e1,e2))::acalls ->
@@ -764,6 +761,12 @@ let rassm_dec dir ren rngs assm0 ju =
           (pp_list "," pp_exp) (Se.elements (Se.inter read priv_vars))
           pp_gdef (c_body@c_res)
           pp_gdef [c_arg];
+
+      (* check that everything except adversary argument ppt *)
+      if not (is_ppt_gcmds (c_body@c_res)) then (
+        log_t (lazy (fsprintf "assm_dec: %a is not ppt" pp_gdef (c_body@c_res)));
+        tacerror "assm_dec: %a is not ppt" pp_gdef (c_body@c_res)
+      );
       
       (* check and replace argument for adversary call *)
       (match c_arg with
@@ -793,27 +796,78 @@ let t_assm_dec dir ren rngs assm = prove_by (rassm_dec dir ren rngs assm)
 
 (** Reduction to computational assumption. *)
 
-let rassm_comp assm0 ev_e ren ju =
-  if not (renaming_bij ren)
+let rassm_comp assm0 rngs ren ju =
+  if not (ren_injective ren)
     then tacerror "assm_comp: renaming is not bijective";
-  let assm = Assumption.ac_inst ren assm0 in
-  let assm_ev = e_replace (mk_V assm.ac_event_var) ev_e assm.ac_event in
-  if ju.ju_ev <> assm_ev
-    then (tacerror "assm_comp: event not equal, expected %a, got %a"
-            pp_exp assm_ev pp_exp ju.ju_ev);
-  let c = assm.ac_prefix in
-  let cju = Util.take (L.length c) ju.ju_gdef in
-  if not (gdef_equal c cju) then tacerror "assm_comp: prefix does not match";
-  let tl = Util.drop (L.length c) ju.ju_gdef in
-  let ju' = { ju with ju_gdef = tl } in
-  let read = read_ju ju' in
-  let priv = Vsym.S.fold (fun x -> Se.add (mk_V x)) assm.ac_privvars Se.empty in
-  let diff = Se.inter priv read in
-  if not (Se.is_empty diff)
-    then tacerror "assm_comp: does not respect private variables";
-  if not (is_ppt_ju ju') then tacerror "assm_comp: game or event not ppt";
+  let assm = Assumption.inst_comp ren assm0 in
+  let prefix = assm.ac_prefix in
+  let prefix_len = L.length prefix in
+  let prefix_ju = Util.take prefix_len ju.ju_gdef in
+  let acalls_ju = Util.drop prefix_len ju.ju_gdef in
+  log_t (lazy (fsprintf "rassm_comp, renamed assumption:@\n@[<hov 4>  %a@]"
+                 pp_assm_comp assm));
+  log_t (lazy (fsprintf "rassm_comp, prefix of judgment:@\n@[<hov 4>  %a@]"
+                 pp_gdef prefix_ju));
+
+  (* check that prefix and event equal *)
+  if not (gdef_equal prefix prefix_ju) then
+    tacerror "assm_comp: prefixes not equal, @\n@[<hov 2>  %a@] vs @[<hov 2>  %a@]"
+      pp_gdef prefix pp_gdef prefix_ju;
+  if not (e_equal ju.ju_ev assm.ac_event) then
+    tacerror "assm_comp: events not equal, @\n@[<hov 2>  %a vs @ %a@]"
+      pp_exp ju.ju_ev pp_exp assm.ac_event;
+
+  (* check that we can instantiate adversary calls in assumption with remainder of ju *)
+  let len_ju = L.length ju.ju_gdef in
+  let priv_vars = private_vars_comp assm in
+  let rec valid_ranges checked rngs acalls_ju acalls =
+    match rngs, acalls with
+    | [], [] ->
+      if (checked <> len_ju) then tacerror "assm_comp: ranges do no cover games"
+
+    | _::_, [] |  [], _::_ ->
+      tacerror "assm_comp: ranges and adversary calls do not match up"
+
+    | (i,j)::rngs, (_,vres,e)::acalls ->
+      let len = j - i + 1 in
+      let len_res = L.length vres in
+      let len_body = len - 1 - len_res in
+      if (i <> checked || len > L.length acalls_ju || len_body < 0) then
+        tacerror "assm_comp: ranges do no cover games";
+      let c_arg  = L.hd acalls_ju in
+      let c_body = Util.take len_body (Util.drop 1 acalls_ju) in
+      let c_res  = Util.take len_res (Util.drop (1 + len_body) acalls_ju) in
+
+      (* check that return variables match and sampled variables are not used *)
+      let read = read_gcmds (c_body@c_res) in
+      if (not (Se.is_empty (Se.inter read priv_vars))) then
+        tacerror "assm_comp: judgment uses private variables: %a in @\n%a@\narg: %a"
+          (pp_list "," pp_exp) (Se.elements (Se.inter read priv_vars))
+          pp_gdef (c_body@c_res)
+          pp_gdef [c_arg];
+
+      (* check that everything except adversary argument ppt *)
+      if not (is_ppt_gcmds (c_body@c_res)) then (
+        log_t (lazy (fsprintf "assm_dec: %a is not ppt" pp_gdef (c_body@c_res)));
+        tacerror "assm_dec: %a is not ppt" pp_gdef (c_body@c_res)
+      );
+      
+      (* check and replace argument for adversary call *)
+      (match c_arg with
+       | GLet (_, e_arg) ->
+         if (not (e_equal e_arg e)) then
+           tacerror "assm_dec: arguments not equal:@\n %a vs %a"
+             pp_exp e_arg pp_exp e;
+       | _ ->
+         tacerror "assm_dec: range must start with let");
+ 
+      (* continue with next range/adversary call *)
+      valid_ranges (j+1) rngs (Util.drop len acalls_ju) acalls
+
+  in
+  valid_ranges (L.length prefix_ju) rngs acalls_ju assm.ac_acalls;
   log_d (lazy (fsprintf "rassm_comp performed!"));
-  Rassm_comp(ev_e,ren,assm0), []
+  Rassm_comp(rngs,ren,assm0), []
 
 let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
 

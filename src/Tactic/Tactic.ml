@@ -105,10 +105,18 @@ let handle_tactic ts tac =
     let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
     apply (t_norm_unknown vs)
 
-  | PU.Rlet_abstract(i,sv,se,mupto) ->
+  | PU.Rlet_abstract(Some(i),sv,Some(se),mupto) ->
     let e = parse_e se in
     let v = mk_new_var sv e.e_ty in
     apply (t_let_abstract i v e mupto)
+
+  | PU.Rlet_abstract(None,sv,None,mupto) ->
+    let v = mk_new_var sv ju.ju_ev.e_ty in
+    let max = L.length ju.ju_gdef in
+    apply (t_let_abstract max v ju.ju_ev  mupto)
+
+  | PU.Rlet_abstract(_,_,_,_) ->
+    tacerror "No placeholders or placeholders for both position and event"
 
   | PU.Requiv(sgd,sev) ->
     let vmap2 = Hashtbl.create 134 in
@@ -154,8 +162,8 @@ let handle_tactic ts tac =
   | PU.Rsimp ->
     apply (t_simp false 20 ts)
 
-  | PU.Rassm_comp(exact,maname,mev_e) ->
-    apply (t_assm_comp ts exact maname mev_e)
+  | PU.Rassm_comp(exact,maname,mrngs) ->
+    apply (t_assm_comp ts exact maname mrngs)
 
   | PU.Rrnd(exact,mi,mctxt1,mctxt2) ->
     apply (t_rnd_maybe ts exact mi mctxt1 mctxt2)
@@ -279,19 +287,16 @@ let handle_instr ts instr =
     Ht.add ts.ts_assms_dec s (Assumption.mk_assm_dec s g0 g1 symvs);
     (ts, "Declared decisional assumption.")
 
-  | PU.AssmComp(s,g,ev_var,ev_ty,ev,privs,symvs) ->
+  | PU.AssmComp(s,g,ev,symvs) ->
     let vmap = Ht.create 137 in
     let g = PU.gdef_of_parse_gdef vmap ts g in
     let parse_var s =
       try  Ht.find vmap s
       with Not_found -> tacerror "unknown variable %s" s
     in
-    let priv = Vsym.set_of_list (L.map parse_var privs) in
     let symvs = L.map (L.map parse_var) symvs in
-    let ev_ty  = PU.ty_of_parse_ty ts ev_ty in
-    let ev_var = PU.create_var vmap ev_var ev_ty in
     let ev = PU.expr_of_parse_expr vmap ts ev in
-    let assm = Assumption.mk_assm_comp s g ev_var ev priv symvs in
+    let assm = Assumption.mk_assm_comp s g ev symvs in
     if Ht.mem ts.ts_assms_comp s then
       tacerror "assumption with the same name already exists";
     Ht.add ts.ts_assms_comp s assm;
@@ -420,6 +425,10 @@ let handle_instr ts instr =
   | PU.Extract filename ->
     Extraction.extract ts filename;
     (ts, "EasyCrypt proof script extracted into file: "^filename)
+
+  | PU.Unsafe b ->
+    CR.set_unsafe b;
+    (ts, (if b then "Enabled" else "Disabled")^" unsafe mode")
 
   | PU.Debug cmd ->
     begin match cmd with

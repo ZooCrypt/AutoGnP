@@ -125,6 +125,8 @@
 %token UNDOBACK_EXCL
 %token QED
 %token EXTRACT
+%token SETUNSAFE
+%token UNSETUNSAFE
 %token DEDUCE
 %token <string> STRING
 
@@ -344,10 +346,6 @@ opos:
 ctx :
 | LPAREN i = ID TO e = expr0 RPAREN { (i,e) }
 
-private_vars:
-| LPAREN priv=ID* RPAREN {priv}
-| priv=ID {[priv]}
-
 symmetric_class:
 | LBRACKET vs = separated_nonempty_list(COMMA,ID) RBRACKET { vs }
 
@@ -370,10 +368,9 @@ instr :
     sym=option(symmetric_vars)
     { AssmDec(i,g0,g1,opt id [] sym) }
 | ASSUMPTION_COMPUTATIONAL
-    i1 = ID LBRACKET g = gdef0
-    RBRACKET LPAREN i2 = ID COLON t = typ0 TO e = expr0 RPAREN
-    priv=private_vars  sym=option(symmetric_vars)
-    { AssmComp(i1,g,i2,t,e,priv,opt id [] sym) }
+    i1 = ID sym=option(symmetric_vars) LBRACKET g = gdef0 RBRACKET
+    COLON e = expr0
+    { AssmComp(i1,g,e,opt id [] sym) }
 | PROVE LBRACKET g = gdef0 RBRACKET e=event { Judgment(g,e) }
 | PRINTGOALS COLON i = ID { PrintGoals(i) }
 | PRINTGOAL COLON i = ID { PrintGoal(i) }
@@ -381,6 +378,8 @@ instr :
 | PRINTPROOF_EX { PrintProof(true) }
 | PRINTGOALS { PrintGoals("") }
 | PRINTDEBUG s=STRING { Debug s }
+| SETUNSAFE { Unsafe(true) }
+| UNSETUNSAFE { Unsafe(false) }
 | RNORM { Apply(Rnorm) }
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
 | RNORM_UNKNOWN is = ID* { Apply(Rnorm_unknown(is)) }
@@ -397,13 +396,15 @@ instr :
     rngs=option(ranges)
     xs=option(ID+)
     { Apply (Rassm_dec(true,s,d,rngs,xs))}
-| ASSUMPTION_COMPUTATIONAL    s=uoption(ID) e = uoption(expr0)
-  { Apply (Rassm_comp(false,s,e))}
-| ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID) e = uoption(expr0)
-  { Apply (Rassm_comp(true,s,e))}
+| ASSUMPTION_COMPUTATIONAL    s=uoption(ID) rngs=option(ranges)
+  { Apply (Rassm_comp(false,s,rngs))}
+| ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID)
+  rngs=option(ranges)
+  { Apply (Rassm_comp(true,s,rngs))}
 | RCONV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
-| RLET_ABSTRACT i = NAT i1 = ID e1 = expr0 mupto = option(NAT)
-  { Apply(Rlet_abstract(i-1,i1,e1,map_opt (fun x -> x - 1) mupto)) }
+| RLET_ABSTRACT i = uoption(NAT) i1 = ID e1 = uoption(expr0) mupto = option(NAT)
+  { Apply(Rlet_abstract(map_opt (fun x -> x -1) i
+                       ,i1,e1,map_opt (fun x -> x - 1) mupto)) }
 | RSUBST i = NAT e1 = expr0 e2 = expr0
   { Apply(Rsubst(i - 1,e1,e2)) }
 | RLET_UNFOLD i = NAT { Apply(Rlet_unfold(i-1)) }

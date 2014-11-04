@@ -201,7 +201,7 @@ let instructions file adv gdef =
   List.map (ginstr file adv) gdef 
 
 module Ass = Assumption
-let add_assumption_dec file name assum = 
+let add_assumption_dec _file _name _assum = 
   (*
   let advty = top_name file ("Adv_"^name) in
   let ngame1 = top_name file ("G_"^name^string_of_int 1) in
@@ -251,7 +251,9 @@ let add_assumption_dec file name assum =
   *)
   failwith "undefined"
 
-let add_assumption_comp file name assum = 
+let add_assumption_comp _file _name _assum =
+  failwith "undefined"
+  (*
   let advty = top_name file ("Adv_"^name) in
   let ngame = top_name file ("G_"^name) in
   let pub = assum.Ass.ac_pubvars in
@@ -298,6 +300,7 @@ let add_assumption_comp file name assum =
     ac_len   = len; 
   } in
   Ht.add file.assump_comp name info
+  *)
   
 let add_assumptions file ts = 
   Ht.iter (fun n a -> add_assumption_dec  file n a) ts.ts_assms_dec;
@@ -1094,7 +1097,9 @@ let extract_assum file dir subst ainfo pft pft' =
       (Some proof) in
   concl, pr, abs 
 
-let extract_assum_comp file subst ainfo expr pft =
+let extract_assum_comp _file _subst _ainfo _ranges _pft =
+  failwith "undefined"
+  (*
   let g  = game file pft.pt_ju.ju_gdef in
   let nvc = List.length (vc_oracles file) in
 
@@ -1159,6 +1164,7 @@ let extract_assum_comp file subst ainfo expr pft =
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
       (Some (proof_ass g pft.pt_ju.ju_ev)) in
   lemma, pr, cmp_eq, pra
+  *)
 
 let rec skip_conv pft = 
   match pft.pt_rule with
@@ -1410,11 +1416,11 @@ let rec extract_proof file pft =
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
     lemma3, pr, cmp_le, bound 
 
-  | Rassm_comp (expr,subst, assum) -> 
+  | Rassm_comp (ranges,subst, assum) -> 
     let ainfo = 
       try Ht.find file.assump_comp assum.Ass.ac_name 
       with Not_found -> assert false in
-    extract_assum_comp file subst ainfo expr pft
+    extract_assum_comp file subst ainfo ranges pft
 
   | Rexc (pos,l)   -> 
     let pft' = List.hd pft.pt_children in

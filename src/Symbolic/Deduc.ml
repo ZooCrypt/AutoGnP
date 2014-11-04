@@ -66,7 +66,7 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
       with
         Not_found -> Hty.add tytbl e.e_ty (Se.singleton e)
       end
-    | Prod _ -> ()
+    | Int | Prod _ -> ()
   in
   let add_base_expr e = add_sub e; add_base e in
   let rec register_subexprs f e = 
@@ -155,9 +155,9 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
     if is_G ty then () else
     let solver =
       match ty.ty_node with
-      | BS _ | Bool  -> DeducXor.solve_xor
-      | Fq           -> solve_Fq
-      | Prod _ | G _ -> assert false
+      | BS _ | Bool        -> DeducXor.solve_xor
+      | Fq                 -> solve_Fq
+      | Prod _ | G _ | Int -> assert false
     in
     let k,u = Se.partition is_in subexprs in
     if Se.is_empty u then Hty.remove tytbl ty

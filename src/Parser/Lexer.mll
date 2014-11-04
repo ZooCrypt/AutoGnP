@@ -57,6 +57,8 @@ rule lex = parse
   | "rnorm_unknown" { RNORM_UNKNOWN }
   | "rnorm_solve" { RNORM_SOLVE }
   | "rnorm" { RNORM }
+  | "set_unsafe" { SETUNSAFE }
+  | "unset_unsafe" { UNSETUNSAFE }
   | "radd_test" { RADD_TEST }
   | "rcase_ev" { RCASE_EV }
   | "rremove_ev" { RREMOVE_EV }
@@ -89,7 +91,7 @@ rule lex = parse
     (['A'-'Z']
      ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
     { LIST (s) }
-  | "BS_"(['a'-'z']['0'-'9']* as s) { TBS(s) }
+  | "BS_"(['a'-'z']['a'-'z' '0'-'9']* as s) { TBS(s) }
   | "0_"(['a'-'z']['0'-'9']* as s) { ZBS(s) }
   | "Bool" { TBOOL }
   | "g" { GEN("") }

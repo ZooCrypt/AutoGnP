@@ -34,15 +34,14 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
   guard (list_eq_for_all2
            (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2)
            assm_samps gdef_samps) >>= fun _ ->
-  let subst =
+  let ren =
     L.fold_left2
       (fun s (_,(vs1,_)) (_,(vs2,_)) ->Vsym.M.add vs1 vs2 s)
       subst
       assm_samps
       gdef_samps
   in
-  log_t (lazy (fsprintf "subst %a"
-                 (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
+  log_t (lazy (fsprintf "ren %a" pp_ren ren));
 
   (* perform let abstractions *)
   let n_let = L.length assm_lets in
@@ -67,7 +66,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
 
   (* try conversion between gdef = gprefix;grest and inst(assm);grest *)
   let conv_common_prefix ju =
-    let a_rn = ad_inst subst assm in
+    let a_rn = inst_dec subst assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
     let grest = Util.drop (L.length c) ju.ju_gdef in
     (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
@@ -175,7 +174,7 @@ let t_assm_dec_non_exact
   >>= fun dir ->
   (* generate substitution for all required new variable names
      generating new variable names if not enough are provided *)
-  let needed = needed_vars dir assm in
+  let needed = needed_vars_dec dir assm in
   let given_vnames = from_opt [] mvnames in
   let required = max 0 (L.length needed - L.length given_vnames) in
   (* FIXME: prevent variable clashes here *)
@@ -205,7 +204,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
     | Some rngs -> rngs
     | None      -> tacerror "exact requires ranges"
   in
-  let vneeded = needed_vars dir assm in
+  let vneeded = needed_vars_dec dir assm in
   let acalls  = assm.ad_acalls in
   let vnames = match mvnames with
     | Some names                      -> names
@@ -223,6 +222,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   in
   let c = if dir = LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
   let c_ju = Util.take (List.length c) ju.ju_gdef in
+  if L.length c_ju <> L.length c then tacerror "Bad prefix";
   (* extend renaming with mappings for random samplings in prefix *)
   let ren =
     List.fold_left2
@@ -240,13 +240,15 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
         let nvres = L.length vres in
         let vres_ju =
           Util.take nvres (Util.drop (j + 1 - nvres) ju.ju_gdef)
+          |> (fun gd -> log_t (lazy (fsprintf "%a" pp_gdef gd)); gd)
           |> L.map (function GLet (x,_) -> x | _ -> assert false)
         in
+        if L.length vres <> L.length vres_ju then tacerror "return type does not match";
         L.fold_left2 (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn) rn vres vres_ju)
       ren rngs assm.ad_acalls
   in
   let conv_common_prefix ju =
-    let a_rn = ad_inst ren assm in
+    let a_rn = inst_dec ren assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
     let grest = Util.drop (L.length c) ju.ju_gdef in
     (   CR.t_ensure_progress (CoreRules.t_conv true { ju with ju_gdef=c@grest })
@@ -264,7 +266,7 @@ let t_assm_dec
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Derived tactics for dealing with computational assumptions} *)
 
-let e_eqs e =
+let _e_eqs e =
   let comm_eq e =
     guard (is_Eq e) >>= fun _ ->
     ret e
@@ -276,7 +278,7 @@ let e_eqs e =
     comm_eq e
   )
 
-let match_expr (var : vs) pat e =
+let _match_expr (var : vs) pat e =
   let binding_v = ref None in
   let ensure c =
     if not c then raise Not_found
@@ -313,7 +315,9 @@ let match_expr (var : vs) pat e =
     Not_found ->
       mempty
 
-let match_exprs_assm ju assm =
+let _match_exprs_assm _ju _assm =
+  failwith "undefined"
+  (*
   let jev = ju.ju_ev in
   let aev = assm.ac_event in
   let av = assm.ac_event_var in
@@ -323,6 +327,7 @@ let match_exprs_assm ju assm =
   guard (Se.mem eav (e_vars aeq)) >>= fun _ ->
   e_eqs jev >>= fun jeq ->
   ret (aeq,jeq)
+  *)
 
 let tries = ref 0
 
@@ -342,7 +347,8 @@ let conj_type e =
     None
   )
 
-let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e ju =
+let t_assm_comp_match ?icases:(_icases=Se.empty) _before_t_assm _assm _subst _mev_e _ju =
+  failwith "undefined" (*
   let assm = ac_inst subst assm in
   (match mev_e with
   | Some e -> ret e
@@ -373,6 +379,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) before_t_assm assm subst mev_e j
        e_equal (Norm.abbrev_ggen e) snineq) (destr_Land ju.ju_ev)
   then CR.t_assm_comp assm ev_e subst ju >>= fun ps -> ret (None,ps)
   else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
+  *)
 
 let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
   let assm_cmds = assm.ac_prefix in
@@ -408,12 +415,11 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
   with
     Invalid_rule s -> log_d (lazy s); mempty
 
-let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm mev_e ju =
+let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   tries := 0;
   log_t (lazy (fsprintf "###############################"));
   log_t (lazy (fsprintf "t_assm_comp assm=%s" assm.ac_name));
-  let vmap = vmap_of_globals ju.ju_gdef in
-  let mev_e = map_opt (PU.expr_of_parse_expr vmap ts) mev_e in
+  let mev_e = None in
   let assm_cmds = assm.ac_prefix in
   let samp_assm = samplings assm_cmds in
   let lets_assm = lets assm_cmds in
@@ -470,7 +476,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm mev_e ju =
   | None   -> ret ps
   
 
-let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mev_e ju =
+let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mrngs ju =
   (match maname with
   | Some aname ->
     begin try ret (Ht.find ts.ts_assms_comp aname)
@@ -480,43 +486,64 @@ let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mev_e ju =
     mconcat (Ht.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_comp [])
   ) >>= fun assm ->
   (* try all assumptions *)
-  t_assm_comp_auto ~icases ts assm mev_e ju
+  t_assm_comp_auto ~icases ts assm mrngs ju
 
-let t_assm_comp_exact ts maname mev_e ju =
+let t_assm_comp_exact ts maname mrngs ju =
   let aname =
      match maname with
-     | None ->
-      tacerror "assumption_computational: event expression required for exact"
      | Some an -> an
+     | None ->
+      tacerror "assumption_computational: assumption name required for exact"
   in
-  let ev_e =
-    match mev_e with
-    | Some se ->
-      let vmap = vmap_of_globals ju.ju_gdef in
-      PU.expr_of_parse_expr vmap ts se
+  let rngs =
+    match mrngs with 
+    | Some rngs -> rngs
     | None ->
-      tacerror "assumption_computational: event expression required for exact"
-   in
+      tacerror "assumption_computational: adversary call ranges required for exact"
+  in
   let assm =
     try Ht.find ts.ts_assms_comp aname
     with Not_found -> tacerror "error no assumption %s" aname
   in
   let c = assm.ac_prefix in
   let jc = Util.take (L.length c) ju.ju_gdef in
-  let subst =
+
+  (* initial renaming derived from samplings *)
+  let ren =
     L.fold_left2 (fun s i1 i2 ->
       match i1, i2 with
-      | GLet(x1,_), GLet(x2,_) | GSamp(x1,_), GSamp(x2,_) 
+      | GSamp(x1,_), GSamp(x2,_) 
         when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
         Vsym.M.add x1 x2 s
       | _ ->
         tacerror "assumption_computational : can not infer substitution")
       Vsym.M.empty c jc
   in
-  (CR.t_assm_comp assm ev_e subst) ju
 
-let t_assm_comp ?icases:(icases=Se.empty) ts exact maname mev_e ju =
+  (* extend renaming with mappings for variables binding return values *)
+  let ren =
+    List.fold_left2
+      (fun rn  (_,j) (_asym,vres,_) ->
+        let nvres = L.length vres in
+        let vres_ju =
+          Util.take nvres (Util.drop (j + 1 - nvres) ju.ju_gdef)
+          |> L.map (function GLet (x,_) -> x | _ -> assert false)
+        in
+        L.fold_left2 (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn) rn vres vres_ju)
+      ren rngs assm.ac_acalls
+  in
+
+  let conv_event ju =
+    let a_rn = inst_comp ren assm in
+    (   CoreRules.t_conv true { ju with ju_ev=a_rn.ac_event }
+     @> CR.t_assm_comp assm rngs ren) ju
+  in
+
+  log_t (lazy (fsprintf "t_assm_comp_exact ren: %a" pp_ren ren));
+  (CR.t_assm_comp assm rngs ren @|| conv_event) ju
+
+let t_assm_comp ?icases:(icases=Se.empty) ts exact maname mrngs ju =
   if exact then
-    t_assm_comp_exact ts maname mev_e ju
+    t_assm_comp_exact ts maname mrngs ju
   else
-    t_assm_comp_no_exact ~icases ts maname mev_e ju
+    t_assm_comp_no_exact ~icases ts maname mrngs ju

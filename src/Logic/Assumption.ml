@@ -3,10 +3,15 @@
 (*i*)
 open Game
 open Expr
-open Wf
 open Util
 open Syms
 open Gsyms
+
+let log_t ls =
+  Bolt.Logger.log "Logic.Core" Bolt.Level.TRACE ~file:"Assumption" (Lazy.force ls)
+
+let _log_d ls =
+  Bolt.Logger.log "Logic.Core" Bolt.Level.DEBUG ~file:"Assumption" (Lazy.force ls)
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -68,7 +73,7 @@ type assm_dec = {
   ad_symvars    : vs list list; (*r symmetric in given variables *)
 }
 
-let pp_acall fmt (asym,vs1,(args1,args2)) =
+let pp_acall_dec fmt (asym,vs1,(args1,args2)) =
   F.fprintf fmt "(%a) <- %a(%a | %a)@\n"
     (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_exp args1 pp_exp args2
 
@@ -76,7 +81,7 @@ let pp_assm_dec fmt ad =
   F.fprintf fmt "assumption %s:@\n" ad.ad_name;
   F.fprintf fmt "prefix left:@\n%a@\n"  pp_gdef ad.ad_prefix1;
   F.fprintf fmt "prefix right:@\n%a@\n" pp_gdef ad.ad_prefix2;
-  F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall) ad.ad_acalls;
+  F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_dec) ad.ad_acalls;
   F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ad.ad_symvars
 
 let mk_assm_dec name gd1 gd2 symvars =
@@ -111,7 +116,7 @@ let mk_assm_dec name gd1 gd2 symvars =
   in
   assm
   
-let needed_vars dir assm =
+let needed_vars_dec dir assm =
   let toSym se =
     Se.fold (fun e s -> Vsym.S.add (destr_V e) s) se Vsym.S.empty
   in
@@ -120,14 +125,14 @@ let needed_vars dir assm =
   let diff = if dir = LeftToRight then Vsym.S.diff w2 w1 else Vsym.S.diff w1 w2 in
   Vsym.S.elements diff
 
-let private_vars assm =
+let private_vars_dec assm =
   L.fold_left
     (fun vset cmd ->
       match cmd with GSamp(v,_) -> Se.add (mk_V v) vset | _ -> assert false)
     Se.empty
     (assm.ad_prefix1@assm.ad_prefix2)
     
-let ad_inst ren assm =
+let inst_dec ren assm =
   let ren_v vs = try Vsym.M.find vs ren with Not_found -> vs in
   let ren_acall (asym,vres,(e1,e2)) =
     (asym,L.map ren_v vres,(Game.subst_v_e ren_v e1,Game.subst_v_e ren_v e2))
@@ -146,38 +151,62 @@ let ad_inst ren assm =
 type assm_comp = {
   ac_name       : string;       (*r name of assumption *)
   ac_prefix     : gdef;         (*r prefix of assumption *)
-  ac_event_var  : Vsym.t;       (*r variable in event *)
   ac_event      : Expr.expr;    (*r event expression *)
-  ac_pubvars    : Vsym.S.t;     (*r public variables *)
-  ac_privvars   : Vsym.S.t;     (*r private variables *)
+  ac_acalls     : (Asym.t * Vsym.t list * expr) list;
+   (*r adversary calls (same asym) and arguments/returned variables *)
   ac_symvars    : vs list list; (*r symmetric in given variables *)
 }
 
-let mk_assm_comp name pref ev_var ev priv_vars sym_vars =
-  (* check_nocall pref; *)
-  ignore (wf_gdef NoCheckDivZero pref);
-  let pub_vars = Vsym.S.diff (gdef_all_vars pref) priv_vars in
-  (* check that all variables in event defined in $gdef + ev_var$ *)
-  { ac_name       = name;
+let pp_acall_comp fmt (asym,vs1,args1) =
+  F.fprintf fmt "(%a) <- %a(%a)@\n"
+    (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_exp args1
+
+let pp_assm_comp fmt ac =
+  F.fprintf fmt "assumption %s:@\n" ac.ac_name;
+  F.fprintf fmt "prefix left:@\n%a@\n"  pp_gdef ac.ac_prefix;
+  F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_comp) ac.ac_acalls;
+  F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ac.ac_symvars
+
+let mk_assm_comp name gd ev sym_vars =
+  ignore (Wf.wf_ju Wf.NoCheckDivZero { ju_gdef = gd; ju_ev = ev});
+  let (pref,suff) = L.partition (function GCall _ -> false | _ -> true) gd in
+  let rec go acc acalls =
+    match acalls with
+    | [] ->
+      L.rev acc
+    | GCall(vres,asym,arg,od)::acalls ->
+      if not (od = []) then
+        tacerror "computational assumption with oracles not supported yet";
+      go ((asym,vres,arg)::acc) acalls
+    | _ ->
+      tacerror "invalid computational assumption"
+  in
+  let ac = {
+    ac_name       = name;
     ac_prefix     = pref;
-    ac_event_var  = ev_var;
     ac_event      = ev;
-    ac_pubvars    = pub_vars;
-    ac_privvars   = priv_vars;
+    ac_acalls     = go [] suff;
     ac_symvars    = sym_vars;
   }
-
-let ac_inst ren assm =
-  let ren_v (x:Vsym.t) = try Vsym.M.find x ren with Not_found -> x in
-  let ren_s s =
-    Vsym.S.fold (fun x -> Vsym.S.add (ren_v x)) s Vsym.S.empty
   in
+  log_t (lazy (fsprintf "comp. assm. defined:@\n@[<hov 4>  %a@]" pp_assm_comp ac));
+  ac
+
+let private_vars_comp assm =
+  L.fold_left
+    (fun vset cmd ->
+      match cmd with GSamp(v,_) -> Se.add (mk_V v) vset | _ -> assert false)
+    Se.empty
+    assm.ac_prefix
+
+let inst_comp ren assm =
+  let ren_v (x:Vsym.t) = try Vsym.M.find x ren with Not_found -> x in
+  let ren_acall (asym,vres,e) = (asym, L.map ren_v vres, subst_v_e ren_v e) in
   let subst_g = Game.subst_v_gdef ren_v in
   { ac_name       = assm.ac_name;
     ac_prefix     = subst_g assm.ac_prefix;
-    ac_event_var  = assm.ac_event_var;
     ac_event      = subst_v_e ren_v assm.ac_event;
-    ac_pubvars    = ren_s assm.ac_pubvars;
-    ac_privvars   = ren_s assm.ac_privvars;
+    ac_acalls     = L.map ren_acall assm.ac_acalls;
     ac_symvars    = L.map (L.map ren_v) assm.ac_symvars;
   }
+

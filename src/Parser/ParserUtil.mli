@@ -100,8 +100,8 @@ type tactic =
   | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option * (string * parse_expr) option
   | Requiv         of gdef * parse_expr
   | Rassm_dec      of bool * string option * Util.direction option * ((int * int) list) option * (string list) option
-  | Rassm_comp     of bool * string option * (parse_expr) option
-  | Rlet_abstract  of int * string * parse_expr * int option
+  | Rassm_comp     of bool * string option * ((int * int) list) option
+  | Rlet_abstract  of int option * string * parse_expr option * int option
   | Rsubst         of int * parse_expr * parse_expr
   | Rlet_unfold    of int
   | Rindep         of bool
@@ -123,13 +123,13 @@ type instr =
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
   | AssmDec    of string * gdef * gdef * (string list) list
-  | AssmComp   of string * gdef * string * parse_ty * parse_expr * string list *
-                  string list list
+  | AssmComp   of string * gdef * parse_expr * string list list
   | Judgment   of gdef * parse_expr
   | PrintGoal  of string
   | PrintGoals of string
   | PrintProof of bool
   | Apply      of tactic
+  | Unsafe     of bool
   | Admit
   | Last
   | Back

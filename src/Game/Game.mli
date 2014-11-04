@@ -235,9 +235,15 @@ val subst_v_gdef : (vs -> vs) -> gdef -> gdef
 
 val subst_v_ju : (vs -> vs) -> judgment -> judgment
 
-val unif_ju : judgment -> judgment -> vs Vsym.M.t
+type renaming = vs Vsym.M.t
 
-val subst_injective : vs Vsym.M.t -> bool
+val id_renaming : renaming
+
+val unif_ju : judgment -> judgment -> renaming
+
+val ren_injective : renaming -> bool
+
+val pp_ren : F.formatter -> Vsym.t Vsym.M.t -> unit
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Mappings from strings to variables} *) 

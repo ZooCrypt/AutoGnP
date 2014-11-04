@@ -219,7 +219,7 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "rrw_ev %i" i
   | Rassm_dec(_dir,_ren,assm) ->
     F.fprintf fmt "rassm_dec(%s)" assm.ad_name
-  | Rassm_comp(_e,_ren,assm) ->
+  | Rassm_comp(_,_ren,assm) ->
     F.fprintf fmt "rassm_comp(%s)" assm.ac_name
   | Radmit _ ->
     if not hide_admit then F.fprintf fmt "radmit"

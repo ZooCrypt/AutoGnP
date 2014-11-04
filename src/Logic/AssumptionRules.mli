@@ -17,5 +17,5 @@ val t_assm_comp :
   theory_state ->
   bool ->
   string option ->
-  ParserUtil.parse_expr option ->
+  ((int * int) list) option ->
   tactic
