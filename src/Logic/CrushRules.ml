@@ -220,7 +220,7 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
   let t_progress = 
        (t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None None
         @> t_log "\nassm_dec")
-    @| (t_rnd_maybe ~i_rvars:irvs ts false None None None @> t_log "\nrnd")
+    @| (t_rnd_maybe ~i_rvars:irvs ts false None None None None @> t_log "\nrnd")
     @| (t_rexcept_maybe None None @> t_log "\nrexcept")
     @| (t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None @> t_log "\nrnd_oracle")
     @| (t_add_test_maybe @> t_log "\nadd_test")

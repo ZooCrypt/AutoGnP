@@ -75,7 +75,7 @@ let compute_case gdef mhidden _fbuf ctx e =
     (fun v ->
       L.iter (fun e ->
         let ve = mk_V v in
-        let (num,_denom) = NormField.polys_of_field_expr (Norm.norm_expr e) in
+        let (num,_denom) = NormField.polys_of_field_expr (Norm.norm_expr_weak e) in
         if Se.mem ve (e_vars e) then
           match NormField.div_factors num (EP.var ve) with
           | Some fs ->
@@ -111,7 +111,7 @@ let compute_case gdef mhidden _fbuf ctx e =
           let (coeff,rem) = NormField.div_reduce num (EP.var ve) in
           let uvs = e_vars rem in
           if is_invertible coeff && used_vars_defined uvs j then (
-            let exce = Norm.norm_expr (mk_FDiv rem (mk_FOpp coeff)) in
+            let exce = Norm.norm_expr_weak (mk_FDiv rem (mk_FOpp coeff)) in
             if not (is_Zero exce) then cases := AppExcept(j,exce) :: !cases
             (* F.fprintf fbuf "@[  for %a, except %a@\n@]%!"
                 pp_exp ve
@@ -226,7 +226,7 @@ let simp_eq e =
     | _ ->
       mk_Eq e mk_FZ
   in
-  norm_expr_def res
+  Norm.norm_expr_nice res
 
 let t_case_ev_maybe ju =
   let buf  = Buffer.create 127 in
@@ -264,7 +264,7 @@ let simp_eq_group e =
     | _ ->
       mk_Eq e mk_FZ
   in
-  norm_expr_def res
+  Norm.norm_expr_strong res
 
 let case_vars = ref []
 

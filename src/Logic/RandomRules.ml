@@ -53,7 +53,7 @@ let subst_ineq ju rv e =
                  pp_exp iv pp_exp ie pp_exp e));
   let erv = mk_V rv in
   let erv' = mk_V (Vsym.mk (CR.mk_name ()) erv.e_ty) in
-  let eq = Game.norm_expr_def (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
+  let eq = Norm.norm_expr_nice (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
   guard (is_FPlus eq) >>= fun _ ->
   log_t (lazy (fsprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv'));
   let es = destr_FPlus eq in
@@ -67,32 +67,50 @@ let subst_ineq ju rv e =
   ) >>= fun e ->
   ret (e_replace erv' erv e)
 
-let transform_expr ju rv rvs e =
+let transform_expr ju rv rvs mgen e =
   let erv = mk_V rv in
   let gvars = Game.write_gcmds ju.ju_gdef in
   let rves = L.map mk_V rvs in
   let evs = e_vars e in
-  let factor_out_vars = rves @ (Se.elements (Se.diff evs gvars)) in
-  mconcat (sorted_nub e_compare factor_out_vars) >>= fun v ->
-  guard (ty_equal e.e_ty mk_Fq) >>= fun _ ->
-  match polys_of_field_expr (CAS.norm id e) with
-  | (nom, None) ->
-    (*i v = v' * g + h => v' = (v - h) / g i*)
-    let (g,_h) = factor_out v nom in
-    let e' = exp_of_poly g in
-    guard (not (e_equal erv e')) >>= fun _ ->
-    guard (Se.mem erv (e_vars e')) >>= fun _ ->
-    log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'));
-    ret e'
-  | _ -> mempty
+  let factor_out_exprs =
+    rves @ (Se.elements (Se.diff evs gvars))
+    |> L.map (fun e -> if is_G e.e_ty then mk_GLog e else e)
+    |> L.filter (fun fe -> ty_equal fe.e_ty mk_Fq)
+    |> sorted_nub e_compare
+    |> (fun xs -> let (us,vs) = L.partition is_GLog xs in us @ vs)
+    
+  in
+  let aux fe =
+    log_t (lazy (fsprintf "trying factor_out=%a" pp_exp fe));
+    match polys_of_field_expr (CAS.norm id e) with
+    | (nom, None) ->
+      (*i v = v' * g + h => v' = (v - h) / g i*)
+      let (g,_h) = factor_out fe nom in
+      let e' = exp_of_poly g in
+      guard (not (e_equal erv e')) >>= fun _ ->
+      guard (Se.mem erv (e_vars e')) >>= fun _ ->
+      log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'));
+      ret e'
+    | _ -> mempty
+  in
+  match mgen with
+   | None ->
+     mplus (ret e) (msum (L.map aux factor_out_exprs))
+   | Some ge ->
+     let lge = mk_GLog ge in
+     mplus
+       (aux lge)
+       (mplus
+          (ret e)
+          (msum (L.map aux (L.filter (fun fe -> not (e_equal fe lge)) factor_out_exprs))))
 
-let contexts ju rv rvs =
+let contexts ju rv rvs mgen =
   (* find field expressions containing the sampled variable *)
   let es = ref [] in
   let add_subterms e =
     L.iter
       (fun fe ->
-        if Se.mem (mk_V rv) (e_vars fe) && not (List.mem fe !es)
+        if Se.mem (mk_V rv) (e_vars fe) && not (List.mem fe !es) && not (is_V fe)
         then es := !es @ [fe])
       (e_ty_outermost mk_Fq e)
   in
@@ -100,31 +118,35 @@ let contexts ju rv rvs =
   add_subterms ju.ju_ev;
   mconcat !es >>= fun e ->
   log_t (lazy (fsprintf "possible expr=%a@\n%!" pp_exp e));
-  guard (not (e_equal e (mk_V rv))) >>= fun _ ->
-  mplus (ret e) (transform_expr ju rv rvs e) >>= fun e ->
+  transform_expr ju rv rvs mgen e >>= fun e ->
   mplus (ret e) (subst_ineq ju rv e) >>= fun e ->
   ret e
 
-let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i ju = 
+let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs  mgen i ju = 
+  log_t (lazy (fsprintf "t_rnd_pos: mgen = %a" (pp_opt pp_exp) mgen));
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt ts ju ty (sv2,se2))
   | None           ->
-    let e2s = run (-1) (contexts ju rv rvs) in
-    mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
+    let e2s =
+      run (-1) (contexts ju rv rvs mgen)
+      |> L.map Norm.norm_expr_nice
+      |> nub e_equal
+    in
+    mconcat e2s >>= fun e2 ->
     guard (not (e_equal (mk_FOpp (mk_V rv)) e2)) >>= fun () ->
     ret (rv,e2)
-  ) >>= fun ((v2,e2)) ->
-  log_t (lazy (fsprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2));
+  ) >>= fun (v2,e2) ->
+  log_t (lazy (fsprintf "t_rnd_pos: trying %a -> %a" Vsym.pp v2 pp_exp e2));
   (match mctxt1 with
   | Some(sv1,e1) -> ret (parse_ctxt ts ju ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->
     ret (v2, DeducField.solve_fq_vars_known e2 v2)
   | None -> mempty
   ) >>= fun (v1,e1) ->
-  log_t (lazy (fsprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju));
+  (* log_t (lazy (fsprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju)); *)
   CR.t_rnd i (v1,e1) (v2,e2) ju
 
-let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 ju =
+let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
   let samps = samplings ju.ju_gdef in
   let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
   (match mi with
@@ -138,7 +160,7 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 ju =
   log_t (lazy "###############################");
   log_t (lazy (fsprintf "t_rnd_maybe %i\n%!" i));
   log_t (lazy (fsprintf "sampling: %i, %a@\n%!" i Vsym.pp rv));
-  let rnd i = t_rnd_pos ts mctxt1 mctxt2 ty rv rvs i in
+  let rnd i = t_rnd_pos ts mctxt1 mctxt2 ty rv rvs mgen i in
   if exact then rnd i ju
   else
     ( t_swap_max ToEnd i vs @>= (fun i ->
@@ -171,8 +193,8 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt_oracle ts op ju ty (sv2,se2))
   | None           ->
-    let e2s = run (-1) (contexts ju rv rvs) in
-    mconcat (sorted_nub e_compare (L.map Game.norm_expr_def e2s)) >>= fun e2 ->
+    let e2s = run (-1) (contexts ju rv rvs None) in
+    mconcat (sorted_nub e_compare (L.map Norm.norm_expr_nice e2s)) >>= fun e2 ->
     ret (rv,e2)
   ) >>= fun ((v2,e2)) ->
   log_t (lazy (fsprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2));

@@ -54,7 +54,7 @@ let init_inverter test =
   in
   let (x1,c), z = sub e2.e_ty in
   let c = (x1, inst_ctxt c e2) in
-  let e = norm_expr (inst_ctxt c e1) in
+  let e = norm_expr_strong (inst_ctxt c e1) in
   (bd, e, c, z)
 
 let init_inverters test =

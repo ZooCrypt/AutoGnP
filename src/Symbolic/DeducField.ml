@@ -24,7 +24,7 @@ let solve_fq_vars_known e v =
     | None ->
       (*i v = v' * g + h => v' = (v - h) / g i*)
       let e' = mk_FDiv (mk_FMinus ev (exp_of_poly h)) (exp_of_poly g) in
-      Game.norm_expr_def e'
+      Norm.norm_expr_strong e'
     | Some(denom) when not (v_occurs denom) ->
       (*i v = (v' * g + h) / denom => v' = (v * denom - h) / g i*)
       let (g,h) = factor_out ev num in
@@ -34,7 +34,7 @@ let solve_fq_vars_known e v =
                     (exp_of_poly h))
                  (exp_of_poly g)
       in
-      Game.norm_expr_def e'
+      Norm.norm_expr_strong e'
     | Some(_denom) ->
       raise Not_found
   ) else (
@@ -56,7 +56,7 @@ let solve_fq_var (ecs : (expr * inverter) list) e =
         f
     in
     let c = solve_fq_vars_known f v in
-    let c = norm_expr (e_replace e (expr_of_inverter w_f) c) in
+    let c = norm_expr_strong (e_replace e (expr_of_inverter w_f) c) in
     (* eprintf "poly is %a, solution %a\n%!" pp_exp f pp_exp c; *)
     c
   | _ -> raise Not_found

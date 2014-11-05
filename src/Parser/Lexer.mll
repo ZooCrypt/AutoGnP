@@ -41,6 +41,7 @@ rule lex = parse
   | "back" { BACK }
   | "oracle" { ORACLE }
   | "operator" { OPERATOR }
+  | "assumption" { ASSUMPTION }
   | "assumption_decisional" { ASSUMPTION_DECISIONAL }
   | "assumption_computational" { ASSUMPTION_COMPUTATIONAL }
   | "assumption_decisional!" { ASSUMPTION_DECISIONAL_EX }
@@ -64,6 +65,7 @@ rule lex = parse
   | "rremove_ev" { RREMOVE_EV }
   | "rnorm_nounfold" { RNORM_NOUNFOLD }  
   | "rlet_abstract"  { RLET_ABSTRACT }
+  | "rlet_abstract!"  { RLET_ABSTRACT_EX }
   | "rlet_unfold"  { RLET_UNFOLD }
   | "rsubst" { RSUBST }
   | "rrewrite_oracle"  { RREWRITE_ORACLE }  

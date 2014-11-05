@@ -11,7 +11,7 @@ exception Found of expr
 let solve_Fq k u = DeducField.solve_fq k u
 
 let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
-  let to_ = Norm.norm_expr to_ in
+  let to_ = Norm.norm_expr_strong to_ in
   let known = He.create 17 in
   let progress = ref false in
   let is_in e = is_some_Cnst e || He.mem known e in
@@ -178,7 +178,7 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
   try
     (** initialize for all known expressions *)
     let init_known (e,I i) =
-      let e = Norm.norm_expr e in
+      let e = Norm.norm_expr_strong e in
       register_subexprs false e;
       add_known e i
     in

@@ -308,9 +308,9 @@ let destr_eq e =
   | App(Eq,[e1;e2]) ->
     begin match e1.e_ty.ty_node with
     | G(_gid) ->
-      Some (norm_expr (mk_FMinus (mk_GLog e1) (mk_GLog e2)))
+      Some (norm_expr_strong (mk_FMinus (mk_GLog e1) (mk_GLog e2)))
     | Fq ->
-      Some (norm_expr (mk_FMinus e1 e2))
+      Some (norm_expr_strong (mk_FMinus e1 e2))
     | _ ->
       None
     end
@@ -736,12 +736,10 @@ let vmap_in_orcl ju op =
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Normal forms} *) 
 
-let norm_expr_def e = Norm.abbrev_ggen (Norm.norm_expr e)
-
-let norm_distr ?norm:(nf=Norm.norm_expr) s (ty,es) = 
+let norm_distr ?norm:(nf=(Norm.norm_expr_nice)) s (ty,es) = 
   (ty, L.map (fun e -> nf (e_subst s e)) es)
 
-let norm_odef ?norm:(nf=Norm.norm_expr) s (o,vs,lc,e) =
+let norm_odef ?norm:(nf=Norm.norm_expr_nice) s (o,vs,lc,e) =
   let rec aux s rc lc = 
     match lc with
     | [] -> (o,vs,L.rev rc, nf (e_subst s e))
@@ -761,7 +759,7 @@ let norm_odef ?norm:(nf=Norm.norm_expr) s (o,vs,lc,e) =
       aux s (LGuard (nf (e_subst s e)) :: rc) lc' in
   aux s [] lc
 
-let norm_gdef ?norm:(nf=Norm.norm_expr) g =
+let norm_gdef ?norm:(nf=Norm.norm_expr_nice) g =
   let rec aux s rc lc = 
     match lc with
     | [] -> L.rev rc, s
@@ -782,7 +780,7 @@ let norm_gdef ?norm:(nf=Norm.norm_expr) g =
   in
   aux Me.empty [] g
 
-let norm_ju ?norm:(nf=Norm.norm_expr) ju =
+let norm_ju ?norm:(nf=Norm.norm_expr_nice) ju =
   let g,s = norm_gdef ~norm:nf ju.ju_gdef in
   { ju_gdef = g;
     ju_ev = nf (e_subst s ju.ju_ev) }

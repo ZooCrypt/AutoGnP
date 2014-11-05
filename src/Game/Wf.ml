@@ -97,19 +97,19 @@ let rec add_ineq ctype wfs e1 e2 =
       wf_exp CheckDivZero wfs e1;
       wf_exp CheckDivZero wfs e2;
     );
-    let e1 = norm_expr e1 in
-    let e2 = norm_expr e2 in
+    let e1 = norm_expr_weak e1 in
+    let e2 = norm_expr_weak e2 in
     let mk_nzero a b =
       let h =
         match a.e_node, b.e_node with
         | App(FDiv,[a1;a2]), App(FDiv,[b1;b2]) ->
-          norm_expr (mk_FMinus (mk_FMult [a1;b2]) (mk_FMult [b1;a2]))
+          norm_expr_weak (mk_FMinus (mk_FMult [a1;b2]) (mk_FMult [b1;a2]))
         | App(FDiv,[a1;a2]), _ ->
-          norm_expr (mk_FMinus a1 (mk_FMult [b;a2]))
+          norm_expr_weak (mk_FMinus a1 (mk_FMult [b;a2]))
         | _, App(FDiv,[b1;b2]) ->
-          norm_expr (mk_FMinus b1 (mk_FMult [b2;a]))
+          norm_expr_weak (mk_FMinus b1 (mk_FMult [b2;a]))
         | _ ->
-          norm_expr (mk_FMinus a b)
+          norm_expr_weak (mk_FMinus a b)
       in
       match wfs.wf_nzero with
       | None    -> Some h
@@ -135,7 +135,7 @@ and check_nonzero ctype wfs e =
       | Some nz -> CAS.mod_reduce nz e
       | None    -> false
     in
-    let e = norm_expr e in
+    let e = norm_expr_weak e in
     match e.e_node with
     | App(Ifte, [c; a; b])
       when

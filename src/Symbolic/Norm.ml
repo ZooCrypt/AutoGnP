@@ -31,7 +31,7 @@ let mk_proj_simpl i e =
     (try List.nth es i with Invalid_argument _ -> assert false)
   | _ -> mk_Proj i e
 
-let rec mk_simpl_op op l =
+let rec mk_simpl_op _strong op l =
   match op, l with
   | GExp gv, [g1;p1] ->
     (*i g1 is necessary of the form g ^ a i*)
@@ -68,7 +68,7 @@ let rec mk_simpl_op op l =
     | FOpp | FMinus | FInv   | FDiv 
     | Eq   | Ifte   | Not)           , _ -> assert false
 
-and mk_simpl_nop op l =
+and mk_simpl_nop strong op l =
   (*i TODO flattening, for xor and land i*)
   match op with
   | FPlus  | FMult  ->
@@ -97,7 +97,7 @@ and mk_simpl_nop op l =
     (* FIXME: is this really usefull?
        we should handle conjunctions manually. *)
     let l = List.flatten (List.map destruct_Land l) in
-    let l = List.sort e_compare l in
+    let l = if strong then List.sort e_compare l else l in
     let rec aux l = 
       match l with
       | [] -> []
@@ -115,26 +115,26 @@ and mk_simpl_nop op l =
       else mk_Land l 
     with Not_found -> mk_False
     
-and norm_expr e = 
+and norm_expr ?strong:(strong=false) e = 
   match e.e_node with
   | V _ -> norm_ggt e 
   | Cnst GGen ->  mk_gexp (destr_G e.e_ty) mk_FOne
   | Cnst _ -> e
-  | H(h,e) -> norm_ggt (mk_H h (norm_expr e))
-  | Tuple l -> mk_Tuple (List.map norm_expr l)
-  | Proj(i,e) -> mk_proj_simpl i (norm_expr e)
+  | H(h,e) -> norm_ggt (mk_H h (norm_expr ~strong e))
+  | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
+  | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)
   | Exists(e1,e2,h) ->
-    mk_Exists (norm_expr e1) (norm_expr e2) h
+    mk_Exists (norm_expr ~strong e1) (norm_expr ~strong e2) h
   | App (op, l) ->
     if is_field_op op then norm_field_expr e
     else
-      let l = List.map norm_expr l in
-      mk_simpl_op op l
+      let l = List.map (norm_expr ~strong) l in
+      mk_simpl_op strong op l
   | Nary(nop, l) ->
     if is_field_nop nop then norm_field_expr e
     else
-      let l = List.map norm_expr l in
-      mk_simpl_nop nop l 
+      let l = List.map (norm_expr ~strong) l in
+      mk_simpl_nop strong nop l 
  
 and norm_field_expr e = 
   let before e = 
@@ -160,8 +160,12 @@ let rec abbrev_ggen e =
     else e
   | _ -> e
 
+let norm_expr_weak e = norm_expr ~strong:false e
+
+let norm_expr_strong e = norm_expr ~strong:true e
+
 (*i use norm_expr to check equality modulo equational theory i*)
-let e_equalmod e e' = e_equal (norm_expr e) (norm_expr e')
+let e_equalmod e e' = e_equal (norm_expr_strong e) (norm_expr_strong e')
 
 let rm_tuple_proj e es =
   match es with
@@ -186,6 +190,10 @@ let rec remove_tuple_proj e =
   | Tuple es -> rm_tuple_proj e es
   | _ -> e
 
+let norm_expr_abbrev_weak e = abbrev_ggen (norm_expr_weak e)
 
+let norm_expr_abbrev_strong e = abbrev_ggen (norm_expr_strong e)
+
+let norm_expr_nice e = remove_tuple_proj (abbrev_ggen (norm_expr_weak e))
 
 

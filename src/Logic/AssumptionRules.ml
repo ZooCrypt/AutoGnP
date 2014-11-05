@@ -48,7 +48,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
     let vs'  = Vsym.mk name vs.Vsym.ty in
     let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
     ( (i_let + 1, Vsym.M.add vs vs' subst)
-    , t_let_abstract i vs' (norm_expr_def e') None
+    , t_let_abstract i vs' (Norm.norm_expr_nice e') None false
       @>
       (* We assume the last let definition differs between left and right
          and therefore enforce that it is used in the game *)
@@ -400,7 +400,7 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
     let name = CR.mk_name () in
     let vs'  = Vsym.mk name vs.Vsym.ty in
     let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
-    ( Vsym.M.add vs vs' subst, t_let_abstract i vs' (Norm.norm_expr e') None)
+    ( Vsym.M.add vs vs' subst, t_let_abstract i vs' (Norm.norm_expr_weak e') None false)
   in
   let (subst, let_abstrs) = map_accum ltac subst lets_assm in
   incr tries;

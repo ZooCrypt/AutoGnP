@@ -263,8 +263,6 @@ val vmap_in_orcl : judgment -> ocmd_pos -> vmap
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Normal forms} *)
 
-val norm_expr_def : expr -> expr
-
 val norm_distr : ?norm:(expr -> expr) -> expr Me.t -> distr -> distr
 
 val norm_odef : ?norm:(expr -> expr) -> expr Me.t -> odef -> odef

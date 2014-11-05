@@ -96,12 +96,12 @@ type tactic =
   | Rswap          of int * int
   | Rswap_oracle   of ocmd_pos * int
   | Rctxt_ev       of string * parse_expr * int
-  | Rrnd           of bool * int option * (string * parse_expr) option * (string * parse_expr) option
+  | Rrnd           of bool * int option * (string * parse_expr) option * (string * parse_expr) option * parse_expr option
   | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option * (string * parse_expr) option
   | Requiv         of gdef * parse_expr
   | Rassm_dec      of bool * string option * Util.direction option * ((int * int) list) option * (string list) option
   | Rassm_comp     of bool * string option * ((int * int) list) option
-  | Rlet_abstract  of int option * string * parse_expr option * int option
+  | Rlet_abstract  of int option * string * parse_expr option * int option * bool
   | Rsubst         of int * parse_expr * parse_expr * int option
   | Rlet_unfold    of int option
   | Rindep         of bool

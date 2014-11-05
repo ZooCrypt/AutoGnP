@@ -18,20 +18,20 @@ let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RewriteRules" ls
 
 (** Unfold all lets and norm. *)
 let t_norm ?fail_eq:(fe=false) ju =
-  let new_ju = norm_ju ~norm:norm_expr_def ju in
+  let new_ju = norm_ju ~norm:norm_expr_nice ju in
   if fe && ju_equal ju new_ju
   then t_fail "t_norm: equal judgments" ju
   else t_conv true new_ju ju
 
 (** Unfold all lets and norm, also remove tuple projection. *)
 let t_norm_tuple_proj ju = 
-  let norm e = remove_tuple_proj (norm_expr_def e) in
+  let norm e = remove_tuple_proj (norm_expr_nice e) in
   let new_ju = norm_ju ~norm ju in
   t_conv true new_ju ju
 
 (** Norm without unfolding. *)
 let t_norm_nounfold ju = 
-  let new_ju = map_ju_exp id ju in
+  let new_ju = map_ju_exp norm_expr_nice ju in
   t_conv true new_ju ju
 
 (** Unfold without norm. *)
@@ -90,17 +90,32 @@ let rewrite_exps unknown e0 =
       assert (is_GGen a);
       let gen = a in
       let (ies,ce) = simp_exp b unknown in
+      let get_gen og = match og with None -> gen | Some a -> a in
       let expio b ie moe =
-        let gen = match b with None -> gen | Some a -> a in
+        let g = get_gen b in
         match moe with
-        | Some oe -> mk_GExp (mk_GExp gen ie) oe
-        | None    -> mk_GExp gen ie
+        | Some oe -> mk_GExp (mk_GExp g ie) oe
+        | None    -> mk_GExp g ie
       in
       let a =
         match ies with
         | []         -> gen
         | [b,ie,moe] -> expio b ie moe
-        | ies        -> mk_GMult (List.map (fun (b,ie,moe) -> expio b ie moe) ies)
+        | ies        ->
+          (* merge elements with the same base *)
+          let iess =
+            group (fun (e1,_,oe1) (e2,_,oe2) ->
+              oe1 = None && oe2 = None && e_equal (get_gen e1) (get_gen e2)) ies
+          in
+          let combine_group ies =
+            match ies with
+            | (b,_,None)::_ ->
+              expio b (mk_FPlus (L.map (fun (_,ie,moe) -> assert (moe = None); ie) ies)) None
+            | [ (b,ie,moe)]  ->
+              expio b ie moe
+            | _ -> assert false
+          in 
+          mk_GMult (List.map combine_group iess)
       in
       begin match ce with
       | None    -> a
@@ -115,28 +130,8 @@ let rewrite_exps unknown e0 =
    If there is a "let z=g^i" we can replace g^i by z in the next
    step. i*)
 let t_norm_unknown unknown ju =
-  let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr e)) in
+  let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr_weak e)) in
   let new_ju = map_ju_exp norm ju in
-  (* this is too restrictive, maybe we should give the allowed contexts?
-  let unknown_se = se_of_list unknown in
-  let check_unknown e0 =
-    let rec aux ok_ctxt (e : expr) =
-      if ok_ctxt || not (Se.mem e unknown_se) then (
-        match e.e_node with
-        | V(_) | Cnst(_) -> ()
-        | H(_,e) | Proj(_,e) -> aux false e
-        | App(GExp(_),[e1;e2]) when is_GGen e1 ->
-          aux true e2
-        | Tuple(es) | App(_,es) | Nary(_,es) ->
-          L.iter (aux false) es
-        | Exists(e1,e2,_) ->
-          aux false e1; aux false e2
-      ) else (
-        tacerror "unknown value %a still occurs in forbidden contexts:@\n  %a@\n" pp_exp e pp_exp e0
-      )
-    in aux false e0
-  in
-  iter_ju_exp ~iexc:false check_unknown new_ju; *)
   t_conv true new_ju ju
 
 let rewrite_div_reduce a e =
@@ -165,13 +160,22 @@ let rewrite_div_reduce a e =
 (*i normalize field expressions (in exponents and elsewhere such that polynomials are
     expressed as a*f + g i*)
 let t_norm_solve a ju =
-  let norm e = abbrev_ggen (rewrite_div_reduce (norm_expr a) (norm_expr e)) in
+  let norm e = abbrev_ggen (rewrite_div_reduce (norm_expr_weak a) (norm_expr_weak e)) in
   let new_ju = map_ju_exp norm ju in
   t_conv true new_ju ju
 
-let t_let_abstract p vs e mupto ju =
+let t_let_abstract p vs e mupto do_norm_expr ju =
   let v = mk_V vs in
-  let subst a = e_replace e v a in
+  let e = if do_norm_expr then remove_tuple_proj (norm_expr_nice e) else e in
+  let subst a =
+    if is_Tuple e then (
+      let subst = me_of_list (L.mapi (fun i a -> (a,mk_Proj i v)) (destr_Tuple e)) in
+      e_subst subst a
+    ) else (
+      e_replace e v a
+    )
+  in
+  log_t (lazy (fsprintf "t_let_abstr: %a" pp_exp e));
   let l,r = Util.cut_n p ju.ju_gdef in
   let new_ju =
     match mupto with
@@ -187,7 +191,7 @@ let t_let_abstract p vs e mupto ju =
       { ju_gdef = List.rev_append l (GLet(vs,e)::map_gdef_exp subst r);
         ju_ev = subst ju.ju_ev }
   in
-  t_conv false new_ju ju
+  t_conv true new_ju ju
 
 let t_subst p e1 e2 mupto ju =
   let subst a = e_replace e1 e2 a in

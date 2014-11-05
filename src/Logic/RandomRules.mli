@@ -12,6 +12,7 @@ val t_rnd_maybe :
   ->  Game.gcmd_pos option
   -> (string * parse_expr) option
   -> (string * parse_expr) option
+  -> Expr.expr option
   -> goal -> proof_state nondet
 
 val t_rnd_oracle_maybe :

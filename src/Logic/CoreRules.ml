@@ -274,7 +274,7 @@ let t_fail fs _g =
 let rconv do_norm_terms ?do_rename:(do_rename=false) new_ju ju =
   let (nf,ctype) =
     if do_norm_terms
-    then (Norm.norm_expr,CheckDivZero)
+    then (Norm.norm_expr_strong,CheckDivZero)
     else (id,NoCheckDivZero)
   in
   wf_ju ctype ju;
@@ -488,8 +488,8 @@ let rcase_ev ?flip:(flip=false) e ju =
   let ju1 = {ju with ju_ev = mk_Land [ev;e] } in
   let ju2 = {ju with ju_ev = mk_Land [ev; (mk_Not e)] } in
   if is_Land ev &&
-    let evs = L.map Norm.norm_expr (destr_Land ev) in
-    (L.mem (Norm.norm_expr e) evs || L.mem (Norm.norm_expr (mk_Not e)) evs)
+    let evs = L.map Norm.norm_expr_weak (destr_Land ev) in
+    (L.mem (Norm.norm_expr_weak e) evs || L.mem (Norm.norm_expr_weak (mk_Not e)) evs)
   then tacerror "rcase_ev: event or negation already in event";
   log_d (lazy (fsprintf "!!! case_ev rule applied: %a" pp_exp e));
   Rcase_ev(flip, e), if flip then [ju2; ju1] else [ju1;ju2]
@@ -689,7 +689,7 @@ let rrw_ev i d ju =
     )
   in
   let subst e = e_replace u v e in
-  let evs = (L.map subst l)@[b]@(L.map subst r) in
+  let evs = (L.map subst l |> L.rev)@[b]@(L.map subst r) in
   let new_ju = { ju with ju_ev = mk_Land evs } in
   log_d (lazy (fsprintf "rrw_ev %i" i));
   Rrw_ev(i,d), [ new_ju ]

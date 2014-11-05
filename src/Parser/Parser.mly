@@ -76,6 +76,7 @@
 %token ADVERSARY
 %token ORACLE
 %token OPERATOR
+%token ASSUMPTION
 %token ASSUMPTION_DECISIONAL
 %token ASSUMPTION_COMPUTATIONAL
 %token ASSUMPTION_DECISIONAL_EX
@@ -110,6 +111,7 @@
 %token RSPLIT_EV
 %token RREMOVE_EV
 %token RLET_ABSTRACT
+%token RLET_ABSTRACT_EX
 %token RLET_UNFOLD
 %token RSUBST
 %token RCTXT_EV
@@ -364,10 +366,10 @@ instr :
 | RANDOM ORACLE i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,true,t1,t2) }
 | OPERATOR i = AID COLON t1 = typ0 TO t2 = typ0 { RODecl(i,false,t1,t2) }
 | BILINEAR MAP i = ID COLON g1 = TG STAR g2 = TG TO g3 = TG { EMDecl(i,g1,g2,g3) }
-| ASSUMPTION_DECISIONAL i = ID LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
-    sym=option(symmetric_vars)
+| ASSUMPTION i = ID sym=option(symmetric_vars)
+    LBRACKET g0 = gdef0 RBRACKET LBRACKET g1 = gdef0 RBRACKET
     { AssmDec(i,g0,g1,opt id [] sym) }
-| ASSUMPTION_COMPUTATIONAL
+| ASSUMPTION
     i1 = ID sym=option(symmetric_vars) LBRACKET g = gdef0 RBRACKET
     COLON e = expr0
     { AssmComp(i1,g,e,opt id [] sym) }
@@ -384,27 +386,30 @@ instr :
 | RNORM_NOUNFOLD { Apply(Rnorm_nounfold) }
 | RNORM_UNKNOWN is = ID* { Apply(Rnorm_unknown(is)) }
 | RNORM_SOLVE e = expr0 { Apply(Rnorm_solve(e)) }
-| RINDEP { Apply(Rindep(false)) }
-| RINDEP_EX { Apply(Rindep(true)) }
+| RINDEP_EX { Apply(Rindep(false)) }
+| RINDEP { Apply(Rindep(true)) }
 | RSWAP i = NAT j =int { Apply(Rswap(i-1,j)) }
 | RSWAP op = opos j =int { Apply(Rswap_oracle(op,j)) }
-| ASSUMPTION_DECISIONAL    s=uoption(ID) d=uoption(dir)
+| ASSUMPTION_DECISIONAL_EX    s=uoption(ID) d=uoption(dir)
     rngs=option(ranges)
     xs=option(ID+)
     { Apply (Rassm_dec(false,s,d,rngs,xs))}
-| ASSUMPTION_DECISIONAL_EX s=uoption(ID) d=uoption(dir)
+| ASSUMPTION_DECISIONAL s=uoption(ID) d=uoption(dir)
     rngs=option(ranges)
     xs=option(ID+)
     { Apply (Rassm_dec(true,s,d,rngs,xs))}
-| ASSUMPTION_COMPUTATIONAL    s=uoption(ID) rngs=option(ranges)
+| ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID) rngs=option(ranges)
   { Apply (Rassm_comp(false,s,rngs))}
-| ASSUMPTION_COMPUTATIONAL_EX s=uoption(ID)
+| ASSUMPTION_COMPUTATIONAL s=uoption(ID)
   rngs=option(ranges)
   { Apply (Rassm_comp(true,s,rngs))}
 | RCONV LBRACKET gd = gdef0 RBRACKET e=event { Apply(Requiv(gd,e)) }
-| RLET_ABSTRACT i = uoption(NAT) i1 = ID e1 = uoption(expr0) mupto = option(NAT)
+| RLET_ABSTRACT i = uoption(NAT) i1 = ID e1 = uoption(expr0) mupto = option(NAT) 
   { Apply(Rlet_abstract(map_opt (fun x -> x -1) i
-                       ,i1,e1,map_opt (fun x -> x - 1) mupto)) }
+                       ,i1,e1,map_opt (fun x -> x - 1) mupto,false)) }
+| RLET_ABSTRACT_EX i = uoption(NAT) i1 = ID e1 = uoption(expr0) mupto = option(NAT) 
+  { Apply(Rlet_abstract(map_opt (fun x -> x -1) i
+                       ,i1,e1,map_opt (fun x -> x - 1) mupto,true)) }
 | RSUBST i = NAT e1 = expr0 e2 = expr0 mupto = option(NAT)
   { Apply(Rsubst(i - 1,e1,e2,mupto)) }
 | RLET_UNFOLD i = option(NAT) { Apply(Rlet_unfold(map_opt (fun x -> x - 1) i)) }
@@ -414,8 +419,9 @@ instr :
 | REXCEPT i = uoption(NAT) es = uoption(expr0*)
   { Apply(Rexcept(map_opt (fun i -> i-1) i,es)) }
 | REXCEPT_ORACLE op = opos es = expr0* { Apply(Rexcept_orcl(op,es)) }
-| RRND exact=option(EXCL) mi = uoption(NAT) mc1 = uoption(ctx) mc2 = uoption(ctx)
-  { Apply(Rrnd(exact<>None,map_opt (fun i -> i -1) mi,mc1,mc2)) }
+| RRND exact=option(EXCL) mi = uoption(NAT) mc1 = uoption(ctx)
+  mc2 = uoption(ctx) mgen = option(expr0)
+  { Apply(Rrnd(exact=None,map_opt (fun i -> i -1) mi,mc1,mc2,mgen)) }
 | DEDUCE  LBRACKET es=separated_list(COMMA,expr0) RBRACKET e=expr0
   { Apply(Deduce(es,e)) }
 | RSIMP { Apply(Rsimp) }
