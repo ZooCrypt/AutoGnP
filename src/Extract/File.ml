@@ -23,6 +23,7 @@ type op =
  | Odiv (* / *)
  | Oeq
  | Oiff 
+ | Oimp
  | Ole
  | Olt
  | Ostr of string
@@ -39,7 +40,9 @@ type expr =
   | Eif    of expr * expr * expr 
 
 let e_pv pv = Epv pv
+let e_eq e1 e2 = Eapp(Oeq,[e1;e2])
 let e_add e1 e2 = Eapp(Oadd, [e1;e2])
+let e_sub e1 e2 = Eapp(Osub, [e1;e2])
 let e_int n = Ecnst (string_of_int n)
 let e_int0 = e_int 0
 let e_int1 = e_int 1
@@ -58,15 +61,24 @@ type fun_name = mod_name * string
 type instr = 
  | Iasgn of lvalue * expr
  | Irnd  of lvalue * ty * expr list
- | Icall of lvalue * fun_name * expr 
+ | Irnd_int of lvalue * expr * expr
+ | Icall of lvalue * fun_name * expr list
  | Iif   of expr * instr list * instr list
 
-type fundef = {
-  f_name  : string;
+type fun_def = {
   f_param : (pvar * ty) list;
   f_local : (pvar * ty) list;
   f_res   : (pvar * ty) option;
   f_body  : instr list
+} 
+
+type fun_def1 = 
+ | Fbody of fun_def
+ | Falias of fun_name
+  
+type fundef = {
+  f_name  : string;
+  f_def   : fun_def1
 }
 
 type mod_body = 
@@ -75,7 +87,7 @@ type mod_body =
 
 and mod_comp = 
   | MCmod of mod_def
-  | MCfun of fundef 
+  | MCfun of fundef
   | MCvar of pvar * ty
   
 and mod_def = {
@@ -96,6 +108,26 @@ type form =
 (*  | Fexists of (lvar * hvar) list * form *)
   | Fforall_mem of mem * form  
   | Fpr of fun_name * mem * form list * form
+
+let subst_mod ms = 
+  let get s = try Mstring.find s ms with Not_found -> {mn = s; ma = []} in
+  let rec aux md = 
+    let md' = get md.mn in
+    { md' with ma = md'.ma @ List.map aux md.ma } in
+  aux
+
+let subst_f ms mc f = 
+  let subst_mod = subst_mod ms in
+  let rec aux f = 
+    match f with
+    | Fpr ((md,f),m,a,ev) -> Fpr((subst_mod md, f), m, a, ev) 
+    | Fapp(op, fs)        -> Fapp(op, List.map aux fs)
+    | Fabs f              -> Fabs (aux f)
+    | Frofi f             -> Frofi (aux f)
+    | Fcnst s             -> (try Mstring.find s mc with Not_found -> f)
+    | Fforall_mem(m,f)    -> Fforall_mem(m, aux f)
+    | _                   -> f in
+  aux f
 
 type mod_ty = {
   modt_name : string;
@@ -120,6 +152,7 @@ type game_info = {
 type adv_info = {
   adv_name  : string;
   adv_ty    : string;
+  adv_oty   : string;
   mutable adv_restr : string list;
   adv_g    : game_info 
 }
@@ -129,7 +162,7 @@ type proof = F.formatter -> unit -> unit
 
 type clone_with = 
   | CWtype of string * ty 
-  | CWop   of string * expr
+  | CWop   of string * (pvar * ty * pvar list) option * expr
 
 type clone_info =
   { 
@@ -138,7 +171,7 @@ type clone_info =
     ci_from   : string;
     ci_as     : string;
     ci_with   : clone_with list;
- (*   ci_lemma  : string list *)
+    ci_proof  : (string * proof) list;
   }
       
     
@@ -154,6 +187,7 @@ type cmd =
 and section =
   {         section_name : string;
     mutable game_trans   : (gdef * mod_def) list;
+    mutable tosubst      : string list;
     mutable section_top  : cmd list;            
     mutable section_glob : cmd list;
     mutable section_loc  : local_section option;
@@ -178,12 +212,14 @@ let f_v g pv m = Fv (([g.mod_name],snd pv),Some m)
 let f_true = Fcnst "true"
 let f_not f = Fapp(Onot, [f])
 let f_iff f1 f2 = Fapp(Oiff, [f1;f2])
+let f_imp f1 f2 = Fapp(Oimp, [f1;f2])
 let f_eq f1 f2 = Fapp(Oeq,[f1;f2])
 let f_neq f1 f2 = f_not (f_eq f1 f2)
 let f_le f1 f2 = Fapp(Ole,[f1;f2])
 let f_and f1 f2 = Fapp(Oand, [f1; f2])
 let f_rsub f1 f2 = Fapp(Osub, [f1;f2])
 let f_radd f1 f2 = Fapp(Oadd, [f1;f2])
+let f_rmul f1 f2 = Fapp(Omul, [f1;f2])
 let f_rinv f = Fapp(Odiv, [Fcnst "1%r";f])
 let f_2 = Fcnst "2"
 let f_2pow f = Fapp(Opow, [f_2;f])
@@ -254,17 +290,6 @@ type file = {
   mutable open_section    : section list;
 }
 
-let empty_file = {
-  top_name     = Sstring.empty;
-  levar        = Lenvar.H.create 7;
-  grvar        = Groupvar.H.create 7;
-  hvar         = Hsym.H.create 7;
-  bvar         = Esym.H.create 7;
-  assump_dec   = Ht.create 3;
-  assump_comp  = Ht.create 3;
-  top_decl     = [];
-  open_section = [];
-}
 
 let add_top_name file s = 
   assert (not (Sstring.mem s file.top_name));
@@ -281,6 +306,21 @@ let top_name file s =
     else s in
   add_top_name file s;
   s
+
+let empty_file = 
+  let empty = {
+    top_name     = Sstring.empty;
+    levar        = Lenvar.H.create 7;
+    grvar        = Groupvar.H.create 7;
+    hvar         = Hsym.H.create 7;
+    bvar         = Esym.H.create 7;
+    assump_dec   = Ht.create 3;
+    assump_comp  = Ht.create 3;
+    top_decl     = [];
+    open_section = [];
+  } in
+  ignore (add_top_name empty "OrclTest");
+  empty
 
 let add_lvar file lv = 
   let name = top_name file ("BS_" ^ Lenvar.name lv) in
@@ -361,7 +401,10 @@ let get_lsection file =
 
 let add_top file c = 
   let s = get_section file in
-  s.section_top <- c :: s.section_top
+  s.section_top <- c :: s.section_top;
+  match c with
+  | Cmod(_,mod_def) -> s.tosubst <- mod_def.mod_name :: s.tosubst
+  | _ -> ()
 
 let add_glob file c = 
   let s = get_section file in
@@ -382,11 +425,13 @@ let start_section file name =
   let sec = {
     section_name = sec_name;
     game_trans   = [];
-    section_top = [];
+    tosubst      = [];
+    section_top  = [];
     section_glob = [];
     section_loc  = None;
   } in
-  file.open_section <- sec :: file.open_section
+  file.open_section <- sec :: file.open_section;
+  sec_name
 
 let end_section file = 
   match file.open_section with
@@ -424,6 +469,8 @@ let game_info file gdef =
     assert (not (Osym.H.mem otbl o));
     let qname = top_name file ("q" ^ oname o) in
     add_top file (Cbound qname);
+    add_top file (Clemma (false, qname^"_pos", 
+                          f_le f_r0 (Frofi (Fcnst qname)), None));
     let info = { 
       obound  = qname; 
       oparams = params; 
@@ -477,6 +524,7 @@ let init_adv_info file gdef =
   let adv_info =
     { adv_name  = a_name;
       adv_ty    = aty_name;
+      adv_oty   = oty_name;
       adv_restr = [];
       adv_g = ginfo } in
   let section_loc = {
@@ -505,4 +553,11 @@ let bind_game file local g modu =
   let s = get_section file in
   s.game_trans <- (g,modu) :: s.game_trans
 
+let is_MCvar = function
+  | MCvar _ -> true
+  | _ -> false
 
+let f_body f = 
+  match f.f_def with
+  | Fbody fd -> fd.f_body
+  | _ -> assert false

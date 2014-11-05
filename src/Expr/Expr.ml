@@ -385,6 +385,9 @@ let destr_H e =
 let destr_Tuple e = 
   match e.e_node with Tuple(es) -> (es) | _ -> raise (Destr_failure "Tuple")
 
+let destruct_Tuple e =
+  try destr_Tuple e with Destr_failure _ -> [e]
+
 let destr_Proj e = 
   match e.e_node with Proj(i,e) -> (i,e) | _ -> raise (Destr_failure "Proj")
 

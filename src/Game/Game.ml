@@ -833,3 +833,8 @@ let is_call = function
   | _       -> false
 
 let has_call c = L.exists is_call c
+
+let destr_guard lcmd =
+  match lcmd with
+  | LGuard(e) -> e
+  | _ -> assert false (* FIXME *)

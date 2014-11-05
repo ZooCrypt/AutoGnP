@@ -7,6 +7,14 @@ by [].
 lemma le_abs_add2 : forall (x x0 : real), x0 <= `|x - x0| + x
 by [].
 
+lemma mulleM (x y z1 z2 : real): 0%r <= z1 <= z2 => 0%r <= x <= y => x * z1 <= y * z2.    
+proof. 
+  move=> H1 H2.
+  apply (real_le_trans _ (x * z2)).
+  rewrite !(Real.Comm.Comm x);apply mulrMle;smt.
+  apply mulrMle;smt.
+qed.
+
 lemma iff_and (x1 x2 x1' x2' : bool) : 
   (x1 <=> x1') => (x2 <=> x2') =>
   (x1 /\ x2) <=> (x1' /\ x2').

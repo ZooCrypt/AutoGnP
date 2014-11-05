@@ -305,3 +305,5 @@ val is_ppt_ju : judgment -> bool
 val is_call : gcmd -> bool
 
 val has_call : gcmd list -> bool
+
+val destr_guard : lcmd -> expr

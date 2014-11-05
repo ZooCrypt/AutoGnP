@@ -32,16 +32,24 @@ let   mul_lvl = next_lvl opp_lvl
 let   add_lvl = next_lvl mul_lvl 
 let    eq_lvl = next_lvl add_lvl 
 let   not_lvl = next_lvl eq_lvl
-let   and_lvl = next_lvl not_lvl 
-let   iff_lvl = next_lvl and_lvl
-let    if_lvl = next_lvl iff_lvl 
+let   iff_lvl = next_lvl not_lvl
+let   and_lvl = next_lvl iff_lvl 
+let   imp_lvl = next_lvl and_lvl 
+let    if_lvl = next_lvl imp_lvl 
 let quant_lvl = next_lvl if_lvl 
 let   max_lvl = max_int 
   
-let pp_infix pp lvl op e1 e2 fmt () = 
-  F.fprintf fmt "@[%a %s@ %a@]" (pp lvl) e1 op (pp (lvl-1)) e2
-let pp_eq pp op e1 e2 fmt () = 
-  F.fprintf fmt "@[%a %s@ %a@]" (pp (eq_lvl-1)) e1 op (pp (eq_lvl-1)) e2
+let pp_infix pp lvl assoc op e1 e2 fmt () = 
+  let l1, l2 = 
+    match assoc with
+    | `LeftA  -> lvl, lvl-1
+    | `NoA    -> lvl-1, lvl-1
+    | `RightA -> lvl-1, lvl in
+  F.fprintf fmt "@[%a %s@ %a@]" (pp l1) e1 op (pp l2) e2
+
+let pp_infix_l pp lvl = pp_infix pp lvl `LeftA
+let pp_infix_n pp lvl = pp_infix pp lvl `NoA
+let pp_infix_r pp lvl = pp_infix pp lvl `RightA
 
 (* -------------------------------------------------------------------- *)
 
@@ -101,17 +109,18 @@ let rec pp_form_lvl outer fmt = function
         let pp fmt () = 
           F.fprintf fmt "@[!@ %a@]" (pp_form_lvl not_lvl) e in
         pp, not_lvl
-      | Opow, [e1;e2] -> pp_infix pp_form_lvl pow_lvl "^" e1 e2, pow_lvl
-      | Osub, [e1;e2] -> pp_infix pp_form_lvl add_lvl "-" e1 e2, add_lvl
-      | Oadd, [e1;e2] -> pp_infix pp_form_lvl add_lvl "+" e1 e2, add_lvl
-      | Omul, [e1;e2] -> pp_infix pp_form_lvl mul_lvl "*" e1 e2, mul_lvl
-      | Odiv, [e1;e2] -> pp_infix pp_form_lvl mul_lvl "/" e1 e2, mul_lvl
-      | Oeq,  [e1;e2] -> pp_eq    pp_form_lvl         "=" e1 e2, eq_lvl
-      | Ole,  [e1;e2] -> pp_eq    pp_form_lvl         "<=" e1 e2, eq_lvl
-      | Olt,  [e1;e2] -> pp_eq    pp_form_lvl         "<" e1 e2, eq_lvl
-      | Oand, [e1;e2] -> pp_infix pp_form_lvl not_lvl "/\\" e1 e2, and_lvl
-      | Oiff, [e1;e2] -> pp_infix pp_form_lvl and_lvl "<=>" e1 e2, iff_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff), _ -> 
+      | Opow, [e1;e2] -> pp_infix_l pp_form_lvl pow_lvl "^" e1 e2, pow_lvl
+      | Osub, [e1;e2] -> pp_infix_l pp_form_lvl add_lvl "-" e1 e2, add_lvl
+      | Oadd, [e1;e2] -> pp_infix_l pp_form_lvl add_lvl "+" e1 e2, add_lvl
+      | Omul, [e1;e2] -> pp_infix_l pp_form_lvl mul_lvl "*" e1 e2, mul_lvl
+      | Odiv, [e1;e2] -> pp_infix_l pp_form_lvl mul_lvl "/" e1 e2, mul_lvl
+      | Oeq,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "=" e1 e2, eq_lvl
+      | Ole,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "<=" e1 e2, eq_lvl
+      | Olt,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "<" e1 e2, eq_lvl
+      | Oiff, [e1;e2] -> pp_infix_n pp_form_lvl iff_lvl "<=>" e1 e2, iff_lvl
+      | Oand, [e1;e2] -> pp_infix_l pp_form_lvl and_lvl "/\\" e1 e2, and_lvl
+      | Oimp, [e1;e2] -> pp_infix_r pp_form_lvl imp_lvl "=>" e1 e2, imp_lvl
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff | Oimp), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -169,17 +178,18 @@ let rec pp_exp_lvl outer fmt = function
           F.fprintf fmt "@[!@ %a@]" (pp_exp_lvl not_lvl) e in
         pp, not_lvl
  
-      | Opow, [e1;e2] -> pp_infix pp_exp_lvl pow_lvl "^" e1 e2, pow_lvl
-      | Osub, [e1;e2] -> pp_infix pp_exp_lvl add_lvl "-" e1 e2, add_lvl
-      | Oadd, [e1;e2] -> pp_infix pp_exp_lvl add_lvl "+" e1 e2, add_lvl
-      | Omul, [e1;e2] -> pp_infix pp_exp_lvl mul_lvl "*" e1 e2, mul_lvl
-      | Odiv, [e1;e2] -> pp_infix pp_exp_lvl mul_lvl "/" e1 e2, mul_lvl
-      | Oeq,  [e1;e2] -> pp_eq    pp_exp_lvl         "=" e1 e2, eq_lvl
-      | Ole,  [e1;e2] -> pp_eq    pp_exp_lvl         "<=" e1 e2, eq_lvl
-      | Olt,  [e1;e2] -> pp_eq    pp_exp_lvl         "<" e1 e2, eq_lvl
-      | Oand, [e1;e2] -> pp_infix pp_exp_lvl not_lvl "/\\" e1 e2, and_lvl
-      | Oiff, [e1;e2] -> pp_infix pp_exp_lvl and_lvl "<=>" e1 e2, iff_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff), _ -> 
+      | Opow, [e1;e2] -> pp_infix_l pp_exp_lvl pow_lvl "^" e1 e2, pow_lvl
+      | Osub, [e1;e2] -> pp_infix_l pp_exp_lvl add_lvl "-" e1 e2, add_lvl
+      | Oadd, [e1;e2] -> pp_infix_l pp_exp_lvl add_lvl "+" e1 e2, add_lvl
+      | Omul, [e1;e2] -> pp_infix_l pp_exp_lvl mul_lvl "*" e1 e2, mul_lvl
+      | Odiv, [e1;e2] -> pp_infix_l pp_exp_lvl mul_lvl "/" e1 e2, mul_lvl
+      | Oeq,  [e1;e2] -> pp_infix_n pp_exp_lvl eq_lvl  "=" e1 e2, eq_lvl
+      | Ole,  [e1;e2] -> pp_infix_n pp_exp_lvl eq_lvl  "<=" e1 e2, eq_lvl
+      | Olt,  [e1;e2] -> pp_infix_n pp_exp_lvl eq_lvl  "<" e1 e2, eq_lvl
+      | Oiff, [e1;e2] -> pp_infix_n pp_exp_lvl iff_lvl "<=>" e1 e2, iff_lvl
+      | Oand, [e1;e2] -> pp_infix_l pp_exp_lvl and_lvl "/\\" e1 e2, and_lvl
+      | Oimp, [e1;e2] -> pp_infix_r pp_exp_lvl imp_lvl "/\\" e1 e2, imp_lvl
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff | Oimp), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -228,13 +238,12 @@ let rec pp_instr file fmt = function
   | Irnd(_lv,_ty,_l) -> 
     F.eprintf "multiple restriction not implemented@.";
     assert false
+  | Irnd_int(lv,e1,e2) ->
+    F.fprintf fmt "@[<hov 2>%a =@ $[%a .. %a];@]" 
+      pp_lvalue lv pp_exp e1 pp_exp e2
   | Icall(lv,f,e) ->
-    let pp_exp fmt e =
-      match e with
-      | Etuple [] -> ()
-      | _ -> pp_exp fmt e in
-    F.fprintf fmt "@[<hov 2>%a =@ %a(%a);@]" 
-      pp_lvalue lv pp_fun_name f pp_exp e
+    F.fprintf fmt "@[<hov 2>%a =@ %a(@[<hov>%a@]);@]" 
+      pp_lvalue lv pp_fun_name f (pp_list ",@ " pp_exp) e
   | Iif(e,c1,c2) ->
     let pp_b2 fmt c2 = 
       if c2 <> [] then 
@@ -250,7 +259,7 @@ let pp_pvar_decl file fmt (x,ty) =
   F.fprintf fmt "@[<hov 2>%a:@ %a@]"
     pp_pvar x (pp_type file) ty
 
-let pp_fundef file fmt fd = 
+let pp_fun_def file fmt fd = 
   let pp_params fmt p = 
     F.fprintf fmt "@[<hov 2>%a@]" 
       (pp_list ",@ " (pp_pvar_decl file)) p in 
@@ -265,13 +274,21 @@ let pp_fundef file fmt fd =
   let pp_ret fmt = function
     | None -> ()
     | Some(v,_) -> F.fprintf fmt "return %a;" pp_pvar v in
-  F.fprintf fmt "@[<v>proc %s(%a) : %a = {@   @[<v>%a%a@ %a@]@ }@]"
-    fd.f_name
+  F.fprintf fmt "(%a) : %a = {@   @[<v>%a%a@ %a@]@ }"
     pp_params fd.f_param
     pp_rettyp fd.f_res
     pp_local fd.f_local
     (pp_block file) fd.f_body
     pp_ret fd.f_res
+
+let pp_fun_def1 file fmt = function
+  | Fbody fd   -> pp_fun_def file fmt fd
+  | Falias fn  -> F.fprintf fmt " = %a" pp_fun_name fn
+
+let pp_fundef file fmt fd = 
+  F.fprintf fmt "@[<v>proc %s%a@]" fd.f_name (pp_fun_def1 file) fd.f_def
+
+  
   
 let pp_mod_param fmt (name,ty) = 
   F.fprintf fmt "%s:%s" name ty
@@ -496,24 +513,43 @@ let pp_modty file fmt modt =
 
 let pp_clone file fmt info = 
   let pp_local fmt local = 
-    if local then F.fprintf fmt "local@ " in
+    if local then F.fprintf fmt "local " in
   let pp_import fmt import = 
-    if import then F.fprintf fmt "import@ " in
+    if import then F.fprintf fmt "import " in
   let pp_with_to fmt = function
     | CWtype (s,ty) ->
       F.fprintf fmt "type %s <- %a" s (pp_type file) ty
-    | CWop(s,e) ->
-      F.fprintf fmt "op %s <- %a" s pp_exp e in
+    | CWop(s,None,e) ->
+      F.fprintf fmt "op %s <- %a" s pp_exp e 
+    | CWop(s,Some(v,ty,vs), e) ->
+      let pp_let_b fmt vs = 
+        match vs with
+        | [] -> assert false
+        | [x] -> pp_pvar fmt x
+        | _ -> F.fprintf fmt "(@[<hov>%a@])" (pp_list ",@ " pp_pvar) vs in
+      F.fprintf fmt 
+        "@[<v>op %s <-@   @[<v>fun (%a),@   let %a = %a in@   %a@]@]"
+        s (pp_pvar_decl file) (v,ty)
+        pp_let_b vs pp_pvar v
+        pp_exp e in
+
   let pp_with fmt info =
     if info.ci_with <> [] then 
-      F.fprintf fmt "with@ @[<v>%a@]" 
+      F.fprintf fmt " with@   @[<v>%a@]" 
         (pp_list ",@ " pp_with_to) info.ci_with in
 
-  F.fprintf fmt "@[<hov >%aclone %a%s as %s%a.@]"
+  let pp_proof fmt info = 
+    if info.ci_proof <> [] then
+      let pp_pr fmt (s,p) = F.fprintf fmt "%s by %a" s p () in
+      F.fprintf fmt "@   proof @[<v>%a@]"
+        (pp_list",@ " pp_pr) info.ci_proof in
+
+  F.fprintf fmt "@[<v>%aclone %a%s as %s%a%a.@]"
     pp_local info.ci_local
     pp_import info.ci_import
     info.ci_from info.ci_as
     pp_with info
+    pp_proof info
     
 let rec pp_cmd file fmt = function
   | Ccomment s -> F.fprintf fmt "(** %s *)" s
@@ -533,7 +569,8 @@ let rec pp_cmd file fmt = function
 
   | Csection s -> pp_section file fmt s
 
-and pp_cmds file fmt cmds = pp_list "@ @ " (pp_cmd file) fmt (List.rev cmds)
+and pp_cmds file fmt cmds = 
+  pp_list "@ @ " (pp_cmd file) fmt (List.rev cmds)
 
 and pp_section file fmt s =
   let pp_locals fmt = function
@@ -552,7 +589,7 @@ and pp_section file fmt s =
     s.section_name 
      (pp_cmds file) s.section_top 
      (pp_cmds file) s.section_glob 
-      pp_locals     s.section_loc 
+      pp_locals     s.section_loc
     s.section_name
     
 
@@ -579,9 +616,11 @@ let pp_main_section fmt file =
   pp_cmds file fmt file.top_decl
 
 let pp_file fmt file = 
-  F.fprintf fmt "@[<v>require import Int.@ ";
+  F.fprintf fmt "@[<v>require import Option.@ ";
+  F.fprintf fmt "require import Int.@ ";
   F.fprintf fmt "require import Real.@ ";
-  F.fprintf fmt "require import ZooUtil.@ @ ";
+  F.fprintf fmt "require import ZooUtil.@ ";
+  F.fprintf fmt "require OrclTest.@ @ ";
   pp_lvars_mod fmt file.levar;
   pp_gvars_mod fmt file.grvar;
   pp_bilinear_mod file fmt file.bvar;

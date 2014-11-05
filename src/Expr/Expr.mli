@@ -107,6 +107,7 @@ exception Destr_failure of string
 val destr_V      : expr -> Vsym.t
 val destr_H      : expr -> Hsym.t * expr
 val destr_Tuple  : expr -> expr list
+val destruct_Tuple: expr -> expr list
 val destr_Proj   : expr -> int * expr
 val destr_Cnst   : expr -> cnst
 val destr_FNat   : expr -> int

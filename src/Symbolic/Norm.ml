@@ -20,7 +20,9 @@ let destr_gexp gv g =
 let rec norm_ggt e =   
   match e.e_ty.ty_node with
   | G gv -> mk_gexp gv (mk_GLog e)   (*i g ^ (log x) i*)
-  | Int | Fq | Bool | BS _ -> e
+
+  | Fq | Bool | Int | BS _ -> e
+
   | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_ggt (mk_Proj i e)) lt)
 
 let mk_proj_simpl i e = 
