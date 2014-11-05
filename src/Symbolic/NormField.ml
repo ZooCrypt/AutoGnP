@@ -6,6 +6,10 @@ open IntPoly
 open Util
 open Factory
 
+let log_t ls = mk_logger "Norm" Bolt.Level.TRACE "NormField" ls
+let _log_d ls = mk_logger "Norm" Bolt.Level.DEBUG "NormField" ls
+let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
+
 (* \ic{We use ints as variables here.} *)
 module EP = MakePoly(
   struct
@@ -90,7 +94,7 @@ let factor_out a (p : EP.t) =
            | ([(_,1)],others) -> Left(others,c)
            | ([],others)      -> Right(others,c)
            | _ ->
-             eprintf "cannot factor out %a\n%!" pp_exp a;
+             log_i (lazy (fsprintf "cannot factor out %a\n%!" pp_exp a));
              raise Not_found)
         (EP.to_terms p))
   in

@@ -21,6 +21,8 @@ module Ht = Hashtbl
 module PU = ParserUtil
 module G = Game
 module CR = CoreRules
+
+let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 (*i*)
 
 
@@ -56,7 +58,7 @@ let handle_tactic ts tac =
       | Right(ps,pss) ->
         let ops = Some (get_proof_state ts) in
         let ts' = { ts with ts_ps = ActiveProof(ps,[],pss,ops) } in
-        (ts', diff_step ops ps)
+        (ts', lazy (diff_step ops ps))
       end
     with
     | Wf.Wf_div_zero es ->
@@ -106,17 +108,17 @@ let handle_tactic ts tac =
     let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
     apply (t_norm_unknown vs)
 
-  | PU.Rlet_abstract(Some(i),sv,Some(se),mupto) ->
+  | PU.Rlet_abstract(Some(i),sv,Some(se),mupto,do_norm_expr) ->
     let e = parse_e se in
     let v = mk_new_var sv e.e_ty in
-    apply (t_let_abstract i v e mupto)
+    apply (t_let_abstract i v e mupto do_norm_expr)
 
-  | PU.Rlet_abstract(None,sv,None,mupto) ->
+  | PU.Rlet_abstract(None,sv,None,mupto,do_norm_expr) ->
     let v = mk_new_var sv ju.ju_ev.e_ty in
     let max = L.length ju.ju_gdef in
-    apply (t_let_abstract max v ju.ju_ev  mupto)
+    apply (t_let_abstract max v ju.ju_ev mupto do_norm_expr)
 
-  | PU.Rlet_abstract(_,_,_,_) ->
+  | PU.Rlet_abstract(_,_,_,_,_) ->
     tacerror "No placeholders or placeholders for both position and event"
 
   | PU.Requiv(sgd,sev) ->
@@ -166,8 +168,9 @@ let handle_tactic ts tac =
   | PU.Rassm_comp(exact,maname,mrngs) ->
     apply (t_assm_comp ts exact maname mrngs)
 
-  | PU.Rrnd(exact,mi,mctxt1,mctxt2) ->
-    apply (t_rnd_maybe ts exact mi mctxt1 mctxt2)
+  | PU.Rrnd(exact,mi,mctxt1,mctxt2,mgen) ->
+    let mgen = map_opt parse_e mgen in
+    apply (t_rnd_maybe ts exact mi mctxt1 mctxt2 mgen)
 
   | PU.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
     apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
@@ -215,7 +218,7 @@ let handle_tactic ts tac =
   | PU.Deduce(pes,pe) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
     let e = PU.expr_of_parse_expr vmap_g ts  pe in
-    eprintf "deduce %a |- %a@\n" (pp_list "," pp_exp) es pp_exp e;
+    log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_exp) es pp_exp e));
     (try
        let frame =
          L.mapi
@@ -223,11 +226,11 @@ let handle_tactic ts tac =
            es
        in
        let recipe = Deduc.invert frame e in
-       eprintf "Found %a@\n" pp_exp recipe
+       log_i (lazy (fsprintf "Found %a@\n" pp_exp recipe))
      with
        Not_found ->
          tacerror "Not found@\n");
-    (ts,"")
+    (ts,lazy "")
 
 let pp_jus i fmt jus =  
   match jus with
@@ -240,7 +243,7 @@ let pp_jus i fmt jus =
     in
     L.iteri pp_goal (Util.take i jus)
 
-let handle_instr ts instr =
+let handle_instr verbose ts instr =
   match instr with
   | PU.RODecl(s,ro,t1,t2) ->
     let oname = if ro then "random oracle" else "operator" in
@@ -312,7 +315,7 @@ let handle_instr ts instr =
 
   | PU.Apply(tac) ->
     let (ts,s) = handle_tactic ts tac in
-    (ts, "Applied tactic: "^s)
+    (ts, "Applied tactic"^(if verbose then ": "^Lazy.force s else "."))
 
   | PU.Back ->
     begin match ts.ts_ps with
@@ -452,7 +455,7 @@ let eval_theory s =
   let empty_ts = mk_ts () in
   L.fold_left
     (fun ps i ->
-      let (ps', s) = handle_instr ps i in
+      let (ps', s) = handle_instr false ps i in
       print_endline s;
       ps')
     empty_ts

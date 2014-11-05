@@ -133,13 +133,16 @@ let process_eval fname proofscript =
   in
   let res =
     let error =
+      let n_rem_cmds = ref (L.length rem_cmds) in
       let last_cmd = ref "" in
       try
         List.iter
           (fun cmd ->
-             last_cmd := cmd;
-             let (ts, msg) = handle_instr !rts (Parse.instruction (cmd ^ ".")) in
+             last_cmd := cmd; decr n_rem_cmds;
+             let verb = !n_rem_cmds = 0 in
+             let (ts, msg) = handle_instr verb !rts (Parse.instruction (cmd ^ ".")) in
              rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
+
              insert_ts_cache fname !rhandled (ts,!rmsgs))
           rem_cmds;
           `Null
@@ -164,7 +167,7 @@ let process_eval fname proofscript =
         fsprintf "@[%a@.%s@]"
           (pp_jus 1)
           gs.subgoals
-          (let rem = 
+          (let rem =
              List.length gs.CoreRules.subgoals - 1 in if rem = 0 then "" else
           string_of_int rem^" other goals")
     in `Assoc [ ("cmd", `String "setGoal");

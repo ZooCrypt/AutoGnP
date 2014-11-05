@@ -192,6 +192,8 @@ let is_FDiv e = is_App FDiv e
 
 let is_FOpp e = is_App FOpp e
 
+let is_GExp e = match e.e_node with App(GExp _,_) -> true | _ -> false
+
 let is_some_Nary e = match e.e_node with Nary _ -> true | _ -> false
 
 let is_Nary o e = match e.e_node with Nary(o',_) -> o' = o | _ -> false
@@ -284,11 +286,10 @@ let rec pp_exp_p above fmt e =
   | H(h,e)     -> 
     F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p PrefixApp) e
   | Tuple(es)  -> 
-    let pp fmt = 
-      F.fprintf fmt "@[<hov>%a@]" (pp_list ",@," (pp_exp_p Tup)) in
+    let pp fmt = F.fprintf fmt "@[<hov>%a@]" (pp_list ",@," (pp_exp_p Tup)) in
     pp_maybe_paren false (above <> PrefixApp) pp fmt es
   | Proj(i,e)  -> 
-    F.fprintf fmt "%a%s%i" (pp_exp_p PrefixApp) e "\\" i
+    F.fprintf fmt "%a%s%i" (pp_exp_p Tup) e "\\" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op_p above fmt (o,es) 
   | Nary(o,es) -> pp_nop_p above fmt (o,es)
@@ -305,8 +306,8 @@ let rec pp_exp_p above fmt e =
 and pp_op_p above fmt (op, es) =
   let pp_bin p op ops a b =
     let pp fmt () = 
-      F.fprintf fmt "@[<hv>%a@ %s %a@]"
-        (pp_exp_p (Infix(op,0))) a ops
+      F.fprintf fmt ("@[<hv>%a"^^ops^^"%a@]")
+        (pp_exp_p (Infix(op,0))) a
         (pp_exp_p (Infix(op,1))) b in
     pp_maybe_paren true p pp fmt ()
   in
@@ -318,11 +319,11 @@ and pp_op_p above fmt (op, es) =
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult))
       op "^" a b
   | FDiv,   [a;b] -> 
-    pp_bin (notsep above) FDiv "/" a b
+    pp_bin (notsep above) FDiv "@ / " a b
   | FMinus, [a;b] -> 
-    pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "-" a b
+    pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "@ - " a b
   | Eq,     [a;b] -> 
-    pp_bin (notsep above && above<>NInfix(Land)) Eq "=" a b
+    pp_bin (notsep above && above<>NInfix(Land)) Eq "@ = " a b
   | GLog _, [a]   ->
     F.fprintf fmt "@[<hov>log(%a)@]" (pp_exp_p PrefixApp) a
   | FOpp,   [a]   ->
@@ -332,7 +333,7 @@ and pp_op_p above fmt (op, es) =
   | Not,    [a]   ->
     begin match a.e_node with
     | App(Eq,[e1;e2]) ->
-      pp_bin (notsep above && above<>NInfix(Land)) Eq "<>" e1 e2
+      pp_bin (notsep above && above<>NInfix(Land)) Eq "@ <> " e1 e2
     | _ ->
       pp_prefix Not   "not "  ""    a
     end
@@ -699,13 +700,14 @@ let e_vars = e_find_all is_V
 
 let e_ty_outermost ty e =
   let res = ref [] in
-  let rec go e =
-    if Type.ty_equal e.e_ty ty && not (L.mem e !res) then
+  let rec go not_inside_type e =
+    let right_type = Type.ty_equal e.e_ty ty in
+    if not_inside_type && right_type  && not (L.mem e !res) then
       res := e::!res
     else
-      e_sub_iter go e
+      e_sub_iter (go (not right_type)) e
   in
-  go e;
+  go true e;
   L.rev !res
 
 let has_log e = e_exists (fun e -> is_GLog e) e
@@ -803,6 +805,8 @@ let e_replace e1 e2 =
 let e_subst s = e_map_top (fun e -> Me.find e s)
 
 let se_of_list = L.fold_left (fun s e -> Se.add e s) Se.empty
+
+let me_of_list es = L.fold_left (fun s (k,v) -> Me.add k v s) Me.empty es
 
 type ctxt = Vsym.t * expr
 

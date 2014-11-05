@@ -86,6 +86,7 @@ val is_some_App : expr -> bool
 val is_App : op -> expr -> bool
 val is_FDiv : expr -> bool
 val is_FOpp : expr -> bool
+val is_GExp : expr -> bool
 val is_some_Nary : expr -> bool
 val is_Nary : nop -> expr -> bool
 val is_FPlus : expr -> bool
@@ -246,6 +247,8 @@ val e_vars : expr -> Se.t
 (* \subsection{Useful functions on [expr]} *)
 
 val se_of_list : expr list -> Se.t
+
+val me_of_list : (Me.key * 'a) list -> 'a Me.t
 
 val has_log : expr -> bool
 

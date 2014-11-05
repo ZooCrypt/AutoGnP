@@ -139,6 +139,8 @@ val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
 
 val sorted_nub :('a -> 'a -> int) -> 'a list -> 'a list
 
+val nub :('a -> 'a -> bool) -> 'a list -> 'a list
+
 val list_compare : ('a -> 'b -> int) -> 'a list -> 'b list -> int
 
 val list_equal : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
@@ -183,6 +185,8 @@ val pp_string : F.formatter -> string -> unit
 
 val pp_int : F.formatter -> int -> unit
 
+val pp_opt : (F.formatter -> 'a -> unit) -> F.formatter -> 'a option -> unit
+
 val pp_if : bool -> ('a -> 'b -> 'c) -> ('a -> 'b -> 'c) -> 'a -> 'b -> 'c
 
 val pp_around :
@@ -194,18 +198,11 @@ val pp_pair : (F.formatter -> 'a -> unit) -> (F.formatter -> 'b -> unit) -> F.fo
     string formatter. *)
 val fsprintf : ('a, F.formatter, unit, string) format4 -> 'a
 
-
 (* \subsection{Exception required by Logic modules} *)
 
 exception Invalid_rule of string 
 
 (** [tacerror s] raises a rule application error with information [s]. *)
 val tacerror : ('a, F.formatter, unit, 'b) format4 -> 'a
-
-(* \subsection{Debug printing} *)
-
-val eprintf : ('a, F.formatter, unit) format -> 'a
-
-val set_debug_buffer : unit -> Buffer.t
 
 val mk_logger : string -> Bolt.Level.t -> string -> string Lazy.t -> unit

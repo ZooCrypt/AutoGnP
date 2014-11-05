@@ -235,6 +235,20 @@ let group rel xs =
 let sorted_nub cmp xs =
   xs |> L.sort cmp |> group (fun a b -> cmp a b = 0) |> L.map L.hd
 
+(** [sorted_nub xs] sorts the elements in [xs] and
+    removes duplicate occurences in [xs]. *)
+let nub eq xs =
+  let rec go left right =
+    match right with
+    | []    -> L.rev left
+    | r::rs ->
+      if L.exists (fun x -> eq r x) left then
+        go left rs
+      else
+        go (r::left) rs
+  in
+  go [] xs
+
 (* \ic{[list_equal e_equal l1 l2] returns true if the two lists are
        equal with respect to [e_equal].} *)
 let list_equal eq xs0 ys0 =
@@ -376,6 +390,11 @@ let rec pp_list sep pp_elt f l =
 let pp_list_c pe = (pp_list "," pe)
 let pp_list_s = pp_list_c (fun fmt -> F.fprintf fmt "%s")
 
+let pp_opt pp fmt o =
+  match o with
+  | Some x -> pp fmt x
+  | None    -> F.fprintf fmt "--"
+
 let pp_around before after pp fmt x =
   F.fprintf fmt "%s%a%s" before pp x after
 
@@ -399,22 +418,15 @@ let fsprintf fmt =
     fbuf fmt
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Debug printing} *)
-
-let debug_fmt = ref F.err_formatter
-
-let eprintf fs =
-  F.fprintf !debug_fmt (fs^^"%!")
-
-let set_debug_buffer () =
-  let buf  = Buffer.create 127 in
-  let fbuf = F.formatter_of_buffer buf in
-  F.pp_set_margin fbuf 240;
-  debug_fmt := fbuf;
-  buf
-
-(*i ----------------------------------------------------------------------- i*)
 (* \subsection{Exception required by Logic modules} *)
+
+let no_log = ref false
+
+let mk_logger tag level file ls =
+  if not !no_log then
+    Bolt.Logger.log tag level ~file (Lazy.force ls)
+
+let log = mk_logger "Tacerror" Bolt.Level.INFO "Tacerror"
 
 exception Invalid_rule of string 
 
@@ -425,9 +437,6 @@ let tacerror fmt =
     (fun _ ->
       F.pp_print_flush fbuf ();
       let s = Buffer.contents buf in
-      eprintf "%s\n" s;
+      log (lazy s);
       raise (Invalid_rule s))
     fbuf fmt
-
-let mk_logger tag level file ls =
-  Bolt.Logger.log tag level ~file (Lazy.force ls)

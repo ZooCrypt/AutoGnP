@@ -3,6 +3,7 @@ open Util
 (* open Syms *)
 (* open Expr *)
 
+let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 
 (* Nondeterminism Monad *)
 
@@ -34,7 +35,8 @@ let sforce x =
     eprintf  "Wf: Var %a undefined in %a\n%!" Vsym.pp v pp_exp e; Nil None
   *)
   | e ->
-    eprintf "sforce: exception %s\n%!" (Printexc.to_string e); Nil None
+    log_i (lazy (Format.sprintf "sforce: exception %s\n%!" (Printexc.to_string e)));
+    Nil None
 
 (* Combine results returned by [a] with results
    returned by [b]. Results from [a] and [b] are

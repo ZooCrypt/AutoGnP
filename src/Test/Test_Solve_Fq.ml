@@ -34,7 +34,7 @@ let p7 = mk_V (Vsym.mk "p7" mk_Fq)
 let p8 = mk_V (Vsym.mk "p8" mk_Fq)
 
 let eval_ctx known ctx =
-  let m = List.fold_left (fun m (k,e) -> Me.add k e m) Me.empty known in
+  let m = me_of_list known in
   norm_expr (e_subst m ctx)
 
 let test1 _ =
