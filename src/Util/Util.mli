@@ -2,7 +2,10 @@
     applications for maps, sets, hashtables, and some convenience functions
     for lists and pretty printing. *)
 
-(* \subsection{Convenience Functors} *)
+open Abbrevs
+
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Convenience Functors} *)
 
 (** [tag] converts [t] into an [int]. The function must be injective. *)
 module type Tagged = sig type t val tag : t -> int end
@@ -36,10 +39,6 @@ module StructMake : functor (X:Tagged) ->
     module H : Hashtbl.S with type key = T.t
   end
 
-module L : module type of List
-module F : module type of Format
-module BL : module type of Bolt.Logger
-
 module Mint : Map.S with type key = int
 module Sint : Set.S with type elt = int
 module Hint : Hashtbl.S with type key = int
@@ -47,10 +46,38 @@ module Hint : Hashtbl.S with type key = int
 module Sstring : Set.S with type elt = string
 module Mstring : Map.S with type key = string
 
-(* \subsection{Misc functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Misc functions} *)
 
 (** Returns a unique (in a program execution) [int]. *)
 val unique_int : unit -> int
+
+val swap : 'a * 'b -> 'b * 'a
+
+(** [compare_on f x y] yields the comparison [compare (f x) (f y)] *)
+val compare_on : ('a -> 'b) -> 'a -> 'a -> int
+
+val assert_msg : bool -> string -> unit
+
+type ('a,'b) either = Left of 'a | Right of 'b
+
+type direction = LeftToRight | RightToLeft
+
+val string_of_dir : direction -> string
+
+val id : 'a -> 'a
+
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{File I/O} *)
+
+val input_file : string -> string
+
+val output_file : string -> string -> unit
+
+val append_file : string -> string -> unit
+
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Options} *)
 
 (** [exc_to_opt f] returns [None] if [f ()] raises an
     exception and [Some (f ())] otherwise. *)
@@ -64,30 +91,9 @@ val from_opt : 'a -> 'a option -> 'a
 
 val opt : ('a -> 'b) -> 'b -> 'a option -> 'b
 
-val swap : 'a * 'b -> 'b * 'a
 
-val map_accum : ('b -> 'a -> 'b * 'c) -> 'b -> 'a list -> 'b * 'c list
-
-(** [compare_on f x y] yields the comparison [compare (f x) (f y)] *)
-val compare_on : ('a -> 'b) -> 'a -> 'a -> int
-
-val input_file : string -> string
-
-val output_file : string -> string -> unit
-
-val append_file : string -> string -> unit
-
-val assert_msg : bool -> string -> unit
-
-type ('a,'b) either = Left of 'a | Right of 'b
-
-type direction = LeftToRight | RightToLeft
-
-val string_of_dir : direction -> string
-
-val id : 'a -> 'a
-
-(* \subsection{List functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{List functions} *)
 
 (** Same as [List.list_for_all2], but returns [false] if lists have different lengths. *)
 val list_eq_for_all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
@@ -105,16 +111,17 @@ val drop : int -> 'a list -> 'a list
     is shorter than [k], then fewer elements are returned.  *)
 val take : int -> 'a list -> 'a list
 
-(** [split_n k l] return [rhd], [a], [tl] such that 
-    [l = List.rev\_append rhd (a::tl)] and [List.length rhd = k] *)
+(** [split_n k l] returns [(rhd,a,tl)] such that 
+    [l = rev_append rhd (a::tl)] and [k = length rhd] *)
 val split_n : int -> 'a list -> 'a list * 'a * 'a list
 
-(** [cut_n k l] returns rhd, tl such that 
-    [l = List.rev_append rhd tl] and [List.length rhd = k] *)
+(** [cut_n k l] returns [(rhd,tl)] such that 
+    [l = List.rev_append rhd tl] and [k = List.length rhd] *)
 val cut_n : int -> 'a list -> 'a list * 'a list
 
-(** [filter_map f l] returns the list corresponding to apply [f] to each 
-   elements of [l] and keep the one returning [Some] *)
+(** [filter_map f l] returns the list resulting from applying
+    [f] to each element of [l] and dropping the results equal
+    to [None] *)
 val filter_map : ('a -> 'b option) -> 'a list -> 'b list
 
 (** [list_from_to i j] returns the list with all natural
@@ -135,27 +142,50 @@ val cat_Some : 'a option list -> 'a list
 
 val conc_map : ('a -> 'b list) -> 'a list -> 'b list
 
+(** [group rel xs] creates a list of lists where successive
+    elements of [xs] that are related with respect to [rel]
+    are grouped together. This function is commonly used
+    together with [L.sort] to compute the equivalence
+    classes of elements in [xs] with respect to [rel]. *)
 val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
 
+(** [sorted_nub cmp xs] sorts the elements in [xs] and
+    removes duplicate occurences (wrt. [cmp]) in [xs]. *)
 val sorted_nub :('a -> 'a -> int) -> 'a list -> 'a list
 
+(** [nub eq xs] removes duplicate occurences wrt. [eq] in [xs]. *)
 val nub :('a -> 'a -> bool) -> 'a list -> 'a list
 
-val list_compare : ('a -> 'b -> int) -> 'a list -> 'b list -> int
+val move_front : ('a -> bool) -> 'a list -> 'a list
 
+(**[list_equal e_equal l1 l2] returns true if the two lists are
+   equal with respect to [e_equal]. *)
 val list_equal : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
 
+(** [list_compare e_compare l1 l2] compares the two lists
+    with respect to length and [e_compare]. *)
+val list_compare : ('a -> 'b -> int) -> 'a list -> 'b list -> int
+
+(**[pair_equal e_equal l1 l2] returns true if the two pairs are
+   equal with respect to [e_equal]. *)
 val pair_equal : ('a -> 'b -> bool) -> ('c -> 'd -> bool) -> 'a * 'c -> 'b * 'd -> bool
 
+(** [list_compare e_compare l1 l2] compares the two pairs
+    with respect to [pair_compare]. *)
 val pair_compare :('a -> 'b -> int) -> ('c -> 'd -> int) -> 'a * 'c -> 'b * 'd -> int
 
+val num_list : 'a list -> (int * 'a) list
+
 val sum : int list -> int
+
+val map_accum : ('b -> 'a -> 'b * 'c) -> 'b -> 'a list -> 'b * 'c list
 
 val catSome : ('a option) list -> 'a list
 
 val last : 'a list -> 'a
 
-(* \subsection{String functions} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{String functions} *)
 
 val splitn : string -> char -> string list
 
@@ -167,7 +197,8 @@ val string_rfind_from : string -> string -> int -> int option
 
 val split : string -> char -> (string * string) option
 
-(* \subsection{Pretty printing} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Pretty printing} *)
 
 (** [pplist sep pp_elt f l] takes a formatter [f], a separator
     [sep], and a pretty printer for ['e] and returns a
@@ -198,7 +229,8 @@ val pp_pair : (F.formatter -> 'a -> unit) -> (F.formatter -> 'b -> unit) -> F.fo
     string formatter. *)
 val fsprintf : ('a, F.formatter, unit, string) format4 -> 'a
 
-(* \subsection{Exception required by Logic modules} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Logging and exceptions for Logic module} *)
 
 exception Invalid_rule of string 
 

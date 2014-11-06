@@ -2,7 +2,7 @@
 
 (*i*)
 open Type
-open Util
+open Abbrevs
 (*i*)
 
 module Asym : sig

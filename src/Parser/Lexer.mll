@@ -68,6 +68,7 @@ rule lex = parse
   | "rewrite_ev" { RREWRITE_EV }
   | "crush" { RCRUSH }
   | "deduce" { DEDUCE }
+  | "field_exprs" { LISTFE }
   | "bycrush" { BYCRUSH }
   | "simp" { RSIMP }
   | "split_ev" { RSPLIT_EV }

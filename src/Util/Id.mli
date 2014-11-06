@@ -1,3 +1,3 @@
-(*s Implementation of the interface {! IdType.ID}. *)
+(*s Unique identifiers. *)
 
 include IdType.ID

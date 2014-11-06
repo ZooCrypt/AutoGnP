@@ -1,4 +1,4 @@
-(*s Derived higher-level tactics. *)
+(*s Core rules and tactics. *)
 
 (*i*)
 open Nondet
@@ -6,46 +6,13 @@ open Game
 open Expr
 open Assumption
 open Util
+open Abbrevs
 open Gsyms
+open CoreTypes
 (*i*)
 
-(* \subsection{Proofs representation} *)
-
-(** Low-level rules (extractable to EasyCrypt). *)
-type rule_name = 
-
-  (*c equivalence/small statistical distance: main *)
-  | Rconv
-  | Rswap of gcmd_pos * int
-  | Rrnd  of gcmd_pos * vs * ctxt * ctxt
-  | Rexc  of gcmd_pos * expr list
-
-  (*c equivalence/small statistical distance: oracle *)
-  | Rrw_orcl   of ocmd_pos * direction
-  | Rswap_orcl of ocmd_pos * int 
-  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt
-  | Rexc_orcl  of ocmd_pos * expr list 
-
-  (*c case distinctions, up-to *)
-  | Rcase_ev   of bool * expr
-  | Radd_test  of ocmd_pos * expr * ads * vs list 
-  | Rbad       of gcmd_pos * vs
-
-  (*c logical rules event *)
-  | Rctxt_ev   of gcmd_pos * ctxt 
-  | Rremove_ev of int list
-  | Rmerge_ev  of int * int
-  | Rsplit_ev  of int
-  | Rrw_ev     of int * direction
-
-  (*c apply assumption *)
-  | Rassm_dec  of (int * int) list * direction * renaming  * assm_dec
-  | Rassm_comp of (int * int) list * renaming * assm_comp
-
-  (*c terminal rules *)
-  | Radmit of string
-  | Rfalse_ev
-  | Rrnd_indep of bool * int
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Proof representation} *)
 
 type proof_tree = private {
   pt_children : proof_tree list;
@@ -74,7 +41,9 @@ val mk_name : unit -> string
 
 exception NoOpenGoal 
 
-(* \subsection{Basic manipulation tactics}  *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Basic manipulation tactics}  *)
+
 val get_proof : proof_state -> proof_tree
 val move_first_last : proof_state -> proof_state
 val apply_on_n : int -> tactic -> proof_state -> proof_state nondet
@@ -90,15 +59,14 @@ val t_seq_list : tactic -> tactic list -> tactic
 val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
 val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 val t_cut : tactic -> tactic
-(* val t_subgoal : tactic list -> proof_state -> proof_state *)
-
 
 val t_try : tactic -> tactic
 val t_or  : tactic -> tactic -> tactic
-val t_fail : ('a, Util.F.formatter, unit, 'b nondet) format4 -> 'c -> 'a
+val t_fail : ('a, F.formatter, unit, 'b nondet) format4 -> 'c -> 'a
 val t_ensure_progress : tactic -> tactic
 
-(* \subsection{Core rules of the logic} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Core rules of the logic} *)
 
 val radmit : string -> rule
 val t_admit : string -> tactic

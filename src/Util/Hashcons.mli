@@ -1,5 +1,5 @@
 (*s Hash-consing registers all values of a given type in a hashtable.
-    If all values of the type are obtained using {!S.hashcons} then this
+    If all values of the type are obtained using [S.hashcons] then this
     guarantees that structural equality implies physical equality.
     Additionally, the hash table maintains unique integer [tag]s
     for each value of the type that can be used for [Map]s, [Set]s,
@@ -9,7 +9,7 @@ module type HashedType = HashconsTypes.HashedType
 
 module type S = HashconsTypes.S
 
-(** Make hashcons module for {!HashedType}. *)
+(** Make hashcons module for [HashedType]. *)
 module Make : functor (H : HashedType) -> S with type t = H.t
 
 (** Combine two integers for hash. *)

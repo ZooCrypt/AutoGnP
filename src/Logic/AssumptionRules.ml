@@ -1,6 +1,7 @@
 (*s Derived tactics for dealing with assumptions. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Nondet
 open Type
@@ -8,7 +9,7 @@ open Assumption
 open Syms
 open Expr
 open Game
-open TheoryState
+open TheoryTypes
 open Rules
 open RewriteRules
 
@@ -147,9 +148,8 @@ let t_assm_dec_auto assm dir subst ju =
                  (pp_list ", " (pp_pair pp_int pp_int)) old_new_pos));
   let swaps =
        parallel_swaps old_new_pos
-    |> L.map (fun (old_pos,delta) ->
-                if delta = 0 then None else Some (CR.t_swap old_pos delta))
-    |> cat_Some
+    |> filter_map (fun (old_pos,delta) ->
+                    if delta = 0 then None else Some (CR.t_swap old_pos delta))
   in
   (t_seq_list swaps @> t_assm_dec_aux assm dir subst assm_samps assm_lets) ju
 
@@ -437,16 +437,14 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   let old_new_pos = L.mapi (fun i x -> (fst x,i)) match_samps in
   let swaps =
        parallel_swaps old_new_pos
-    |> L.map (fun (old_pos,delta) ->
-                if delta = 0 then None else Some (CR.t_swap old_pos delta))
-    |> cat_Some
+    |> filter_map
+        (fun (old_p,delta) -> if delta = 0 then None else Some (CR.t_swap old_p delta))
   in
   let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) match_samps in
   let excepts =
-    L.map
+    filter_map
       (fun (i,(_,(_,es))) -> if es<>[] then Some (CR.t_except i []) else None)
       match_samps
-    |> cat_Some
   in
   (* FIXME: use case_ev and rfalse to handle case with missing events *)
   let remove_events =

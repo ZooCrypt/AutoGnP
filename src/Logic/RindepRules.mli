@@ -1,3 +1,7 @@
-(*s fixme *)
+(*s Derived rules for dealing with random independence. *)
 
-val t_random_indep : bool -> CoreRules.tactic
+(*i*)
+open CoreRules
+(*i*)
+
+val t_random_indep : bool -> tactic

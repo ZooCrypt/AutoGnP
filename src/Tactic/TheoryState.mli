@@ -2,34 +2,10 @@
 
 (*i*)
 open Type
-open Syms
-open Gsyms
 open Nondet
-open Assumption
 open CoreRules
+open TheoryTypes
 (*i*)
-
-(** There are three possible positions in a theory:
-   Before the proof.
-   Inside the proof (we have a sequence of proof states for the back command).
-   After the proof, the theory is closed (the proof is completed). *)
-type theory_proof_state =
-  | BeforeProof
-  | ActiveProof
-    of proof_state * proof_state list * proof_state nondet * proof_state option
-  | ClosedTheory of proof_tree
-
-type theory_state = {
-  ts_lvars      : (string, Lenvar.id)   Hashtbl.t;
-  ts_gvars      : (string, Groupvar.id) Hashtbl.t;
-  ts_rodecls    : (string, Hsym.t)      Hashtbl.t;
-  ts_odecls     : (string, Osym.t)      Hashtbl.t;
-  ts_adecls     : (string, Asym.t)      Hashtbl.t;
-  ts_emdecls    : (string, Esym.t)      Hashtbl.t;
-  ts_assms_dec  : (string, assm_dec)    Hashtbl.t;
-  ts_assms_comp : (string, assm_comp)   Hashtbl.t;
-  ts_ps         : theory_proof_state;
-}
 
 val mk_ts : unit -> theory_state
 

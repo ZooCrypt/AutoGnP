@@ -1,6 +1,7 @@
 (*s Use [Var] and [Ring] types to define [MakePoly] functor.
     Also define [IntRing]. *)
 (*i*)
+open Abbrevs
 open Util
 open PolyInterfaces
 open Big_int
@@ -29,25 +30,24 @@ module IntRing = struct
   let use_parens = false
 end
 
-(*********************************************************************)
+(*i ----------------------------------------------------------------------- i*)
 (* \hd{Functor for Polynomials} *)
 
 module MakePoly (V : Var) (C : Ring) = struct
   type coeff = C.t
   type var   = V.t
 
-  (* \ic{%
-     We represent polynomials as assoc lists from
-     monomials to coefficents. See [norm] for invariants
-     that we maintain.} *)
+  (** We represent polynomials as assoc lists from
+      monomials to coefficents. See [norm] for invariants
+      that we maintain. *)
   type monom = (V.t * int) list
 
   type term = monom * C.t
 
   type t = term list
 
-  (*********************************************************************)
-  (* \ic{\bf Equality and comparison} *)
+  (*i ----------------------------------------------------------------------- i*)
+  (** \bf Equality and comparison. *)
 
   let vexp_equal = pair_equal V.equal (=)
 
@@ -67,8 +67,8 @@ module MakePoly (V : Var) (C : Ring) = struct
   let compare = list_compare term_compare
 
   (*i*)
-  (*********************************************************************)
-  (* \ic{\bf Pretty printing} *)
+  (* ----------------------------------------------------------------------- *)
+  (** \bf Pretty printing *)
 
   let pp_vpow fmt (v,e) =
     if e = 1 then V.pp fmt v
@@ -106,8 +106,8 @@ module MakePoly (V : Var) (C : Ring) = struct
   let pp_coeff = C.pp
   (*i*)
 
-  (*********************************************************************)
-  (* \ic{\bf Internal functions} *)
+  (*i ----------------------------------------------------------------------- i*)
+  (** \bf Internal functions *)
 
   let norm_monom (ves : (V.t * int) list) =
     let cmp_var (v1,_) (v2,_) = V.compare v1 v2 in
@@ -118,13 +118,13 @@ module MakePoly (V : Var) (C : Ring) = struct
     |> L.filter (fun (_,e) -> e <> 0)
     |> L.sort vexp_compare
 
-  (* \ic{The [norm] function ensures that:
-     \begin{itemize}
-     \item Vexp entries 
-     \item Each monomial is sorted.
-     \item Each monomial with non-zero coefficient has exactly one entry.
-     \item The list is sorted by the monomials (keys).
-     \end{itemize} }*)
+  (** The [norm] function ensures that:
+      \begin{itemize}
+      \item Vexp entries 
+      \item Each monomial is sorted.
+      \item Each monomial with non-zero coefficient has exactly one entry.
+      \item The list is sorted by the monomials (keys).
+      \end{itemize} *)
   let norm (f : t) =
     f |> L.map (fun (m,c) -> (norm_monom m,c))
       |> L.sort (fun (m1,_) (m2,_) -> mon_compare m1 m2)
@@ -135,14 +135,14 @@ module MakePoly (V : Var) (C : Ring) = struct
   let mult_term_poly_int (m,c) f =
     L.map (fun (m',c') -> (m @ m', C.mult c c')) f
 
-  (*********************************************************************)
-  (* \ic{\bf Ring operations on polynomials} *)
+  (*i ----------------------------------------------------------------------- i*)
+  (** \bf Ring operations on polynomials *)
 
   let one  = [([], C.one)]
 
   let add f g = norm (f @ g)
 
-  (* \ic{No [norm] required since the keys (monomials) are unchanged.} *)
+  (** No [norm] required since the keys (monomials) are unchanged. *)
   let opp f = L.map (fun (m,c) -> (m,C.opp c)) f 
 
   let mult f g =

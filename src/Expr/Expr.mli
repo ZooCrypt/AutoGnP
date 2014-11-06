@@ -1,14 +1,13 @@
-(*s Typed algebraic expression: We distinguish
-    internal/hashconsed and exported expressions. *)
+(*s Typed algebraic expression. *)
 
 (*i*)
 open Type
-open Util
+open Abbrevs
 open Syms
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Expressions} *)
+(* \hd{Expressions} *)
 
 type proj_type = Type.ty * Type.ty * Type.ty
 
@@ -43,7 +42,7 @@ type nop =
 
 val nop_hash : nop -> int
 
-type expr = { e_node : expr_node; e_ty : Type.ty; e_tag : int; }
+type expr = private { e_node : expr_node; e_ty : Type.ty; e_tag : int; }
 and expr_node =
     V of Vsym.t
   | H of Hsym.t * expr
@@ -67,7 +66,7 @@ module He : Hashtbl.S with type key = expr
 module Me : Map.S with type key = expr
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Indicator functions} *)
+(* \hd{Indicator functions} *)
 
 val is_V : expr -> bool
 val is_H : expr -> bool
@@ -101,7 +100,7 @@ val is_field_exp : expr -> bool
 val is_Land : expr -> bool
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Destructor functions} *)
+(* \hd{Destructor functions} *)
 
 exception Destr_failure of string
 
@@ -128,12 +127,12 @@ val destr_FPlus  : expr -> expr list
 val destr_FMult  : expr -> expr list
 val destr_Xor    : expr -> expr list
 val destr_Land   : expr -> expr list
-val destruct_Lxor : expr -> expr list
-val destruct_Land : expr -> expr list
 val destr_Exists  : expr -> expr * expr * (Vsym.t * Hsym.t) list
+val destr_Xor_nofail : expr -> expr list
+val destr_Land_nofail : expr -> expr list
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Constructor functions} *)
+(* \hd{Constructor functions} *)
 
 exception TypeError of (ty *  ty * expr * expr option * string)
 
@@ -167,7 +166,7 @@ val mk_Xor    : expr list -> expr
 val mk_Land   : expr list -> expr
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Pretty printing} *)
+(* \hd{Pretty printing} *)
 
 val pp_cnst : F.formatter -> cnst -> Type.ty -> unit
 val pp_exp  : F.formatter -> expr -> unit
@@ -177,7 +176,7 @@ val pp_nop  : F.formatter -> nop * expr list -> unit
 val pp_exp_tnp  : F.formatter -> expr -> unit
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Generic functions on [expr]} *)
+(* \hd{Generic functions on [expr]} *)
 
 (** [e_sub_map f e] non-recursively applies [f] to all direct sub-expressions of [e], e.g.,
     if [e=Xor(a,b)] then a new term [Xor(f a, f b)] is returned.
@@ -244,7 +243,7 @@ val e_subst : expr Me.t -> expr -> expr
 val e_vars : expr -> Se.t
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Useful functions on [expr]} *)
+(* \hd{Useful functions on [expr]} *)
 
 val se_of_list : expr list -> Se.t
 
@@ -265,6 +264,7 @@ val inst_ctxt : ctxt -> expr -> expr
 val sub : ty -> (Vsym.t * ctxt) * expr
 
 val is_Zero : expr -> bool
+
 val mk_Zero   : ty -> expr
 
 val typeError_to_string : ty * ty * expr * expr option * string -> string

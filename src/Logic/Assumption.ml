@@ -1,9 +1,10 @@
 (*s Decisional and computational assumptions *)
 
 (*i*)
+open Abbrevs
+open Util
 open Game
 open Expr
-open Util
 open Syms
 open Gsyms
 
@@ -12,13 +13,13 @@ let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Decisional assumptions} *)
+(* \hd{Decisional assumptions} *)
 
-(* For simplicity, we restrict ourselves to assumptions to be of the form
-     r1 <-$ D1; ...; rn <-$ Dn; (vs1) <- A1(e1); ...; (vsk) <- Ak(ek);
+(*i For simplicity, we restrict ourselves to assumptions to be of the form
+     \verb!r1 <-$ D1; ...; rn <-$ Dn; (vs1) <- A1(e1); ...; (vsk) <- Ak(ek);!
    where 'Di' might be an excepted distribution [*].
    Then the right assumption has the form
-     r1' <-$ D1'; ...; rm' <-$ Dm'; (vs1) <- A1(b1); ...; (vsk) <- Ak(bk);
+     \verb!r1' <-$ D1'; ...; rm' <-$ Dm'; (vs1) <- A1(b1); ...; (vsk) <- Ak(bk);!
 
    Given a judgment 'G : ev', renaming 'ren' (bij. mapping from variables
    ri, vsi_j to variables), we rename the assumption using 'ren' and check
@@ -26,7 +27,7 @@ let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
    resulting assumption.
 
    The remainder of 'G' must have the following form:
-
+   \begin{verbatim}
    ---
    let a1 = e1;
    C1;                          |
@@ -42,15 +43,16 @@ let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
    ...;                         /
    let vsk_|vsk| = ak_|vsk|;    |
    --
-
+   
    where for all i in [k],
      vars(Di\sigma_i) \cap {r1,..,rn} = emptyset.
 
+  \end{verbatim}
   To obtain the new game, we just replace the prefix and replace
      ei by bi.
 
   To obtain such a game, it is important that for all i, it holds that
-    vars(e_i) <= {r1,..,rn} u vs_earlier.
+    $vars(e_i) \subseteq \{r1,..,rn\} \cup vs_{earlier}$.
   To achieve this, we must perform let_abstract for args last, front to
   back, and ensure that we do not use other variables.
 
@@ -58,15 +60,16 @@ let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
       very simple while allowing samplings in between the adversary calls
       might be more complicated. This would allow for adaptive sampling,
       i.e., using vsj in the excepted expressions.
-*)
+i*)
 
 type assm_dec = {
   ad_name       : string;       (*r name of assumption *)
   ad_prefix1    : gdef;         (*r prefix for left *)
   ad_prefix2    : gdef;         (*r prefix for right *)
   ad_acalls     : (Asym.t * Vsym.t list * (expr * expr)) list;
-                                (*r adversary calls (same asym) and
-                                    arguments/returned variables on left and right *)
+                                (*r adversary calls (same asym and
+                                    returned variables and argument
+                                    expression on left and right *)
   ad_symvars    : vs list list; (*r symmetric in given variables *)
 }
 
@@ -143,14 +146,14 @@ let inst_dec ren assm =
   }
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Computational assumptions} *)
+(* \hd{Computational assumptions} *)
 
 type assm_comp = {
   ac_name       : string;       (*r name of assumption *)
   ac_prefix     : gdef;         (*r prefix of assumption *)
   ac_event      : Expr.expr;    (*r event expression *)
   ac_acalls     : (Asym.t * Vsym.t list * expr) list;
-   (*r adversary calls (same asym) and arguments/returned variables *)
+   (*r adversary calls: asym, returned variables, and argument *)
   ac_symvars    : vs list list; (*r symmetric in given variables *)
 }
 

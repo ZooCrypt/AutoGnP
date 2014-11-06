@@ -1,6 +1,7 @@
 (*s Decisional and computational assumptions. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Syms
 open Expr
@@ -8,7 +9,7 @@ open Game
 open Gsyms
 (*i*)
 
-(** Decisional assumptions. *)
+(* \hd{Decisional assumptions.} *)
 type assm_dec = private {
   ad_name       : string;       (*r name of assumption *)
   ad_prefix1    : gdef;         (*r prefix for left *)
@@ -19,7 +20,7 @@ type assm_dec = private {
   ad_symvars    : vs list list; (*r symmetric in given variables *)
 }
 
-val pp_assm_dec :  Util.F.formatter -> assm_dec -> unit
+val pp_assm_dec :  F.formatter -> assm_dec -> unit
 
 val mk_assm_dec : string -> gdef -> gdef -> (Vsym.t list) list -> assm_dec
 
@@ -29,7 +30,7 @@ val private_vars_dec : assm_dec -> Se.t
 
 val inst_dec : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
 
-(** Computational assumptions. *)
+(* \hd{Computational assumptions.} *)
 type assm_comp = private {
   ac_name       : string;       (*r name of assumption *)
   ac_prefix     : gdef;         (*r prefix of assumption *)
@@ -39,7 +40,7 @@ type assm_comp = private {
   ac_symvars    : vs list list; (*r symmetric in given variables *)
 }
 
-val pp_assm_comp :  Util.F.formatter -> assm_comp -> unit
+val pp_assm_comp :  F.formatter -> assm_comp -> unit
 
 val mk_assm_comp : string -> gdef -> expr -> vs list list -> assm_comp
 

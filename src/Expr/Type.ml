@@ -1,6 +1,7 @@
 (*s This module implements hashconsed and non-hashconsed types. *)
 
 (*i*)
+open Abbrevs
 open Util
 (*i*)
 

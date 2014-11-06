@@ -1,10 +1,12 @@
+(*s Types for parser *)
+
 (*i*)
 open Game
 open Util
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Types for parsed types, expressions, and games} *)
+(* \hd{Types for parsed types, expressions, and games} *)
 
 type parse_ty =
   | BS of string
@@ -38,6 +40,8 @@ type parse_expr =
   | Xor of parse_expr * parse_expr
   | Exists of parse_expr * parse_expr * (string * string) list
 
+type parse_ctx = string * parse_expr
+
 type lcmd =
     LLet of string * parse_expr
   | LBind of string list * string
@@ -56,7 +60,7 @@ type gcmd =
 type gdef = gcmd list
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Types for parsed proof scripts and tactics} *)
+(* \hd{Types for parsed proof scripts and tactics} *)
 
 type assgn_pos =
   | Pos of int
@@ -72,20 +76,20 @@ type tactic =
   | Rswap          of int * int
   | Rswap_oracle   of ocmd_pos * int
   | Rctxt_ev       of string * parse_expr * int
-  | Rrnd           of bool * int option * (string * parse_expr) option *
+  | Rrnd           of bool * assgn_pos option * (string * parse_expr) option *
                       (string * parse_expr) option * parse_expr option
   | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option * (string * parse_expr) option
   | Requiv         of gdef * parse_expr
   | Rassm_dec      of bool * string option * direction option * ((int * int) list) option *
                       (string list) option
   | Rassm_comp     of bool * string option * ((int * int) list) option
-  | Rlet_abstract  of assgn_pos option * string * parse_expr option * int option * bool
+  | Rlet_abstract  of int option * string * parse_expr option * int option * bool
   | Rsubst         of int * parse_expr * parse_expr * int option
   | Rlet_unfold    of assgn_pos option
   | Rindep         of bool
   | Rcrush         of bool * int option
   | Rbad           of int * string
-  | Rexcept        of int option * (parse_expr list) option
+  | Rexcept        of assgn_pos option * (parse_expr list) option
   | Rexcept_orcl   of ocmd_pos * parse_expr list
   | Radd_test      of ocmd_pos option * parse_expr option * string option * (string list) option
   | Rrewrite_orcl  of ocmd_pos * direction
@@ -94,6 +98,7 @@ type tactic =
   | Rrewrite_ev    of int * direction
   | Rsplit_ev      of int
   | Deduce         of parse_expr list * parse_expr
+  | FieldExprs     of parse_expr list
 
 type instr =
   | RODecl     of string * bool * parse_ty * parse_ty

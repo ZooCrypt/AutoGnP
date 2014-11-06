@@ -1,6 +1,7 @@
 (*s Derived rules for dealing with random independence. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Nondet
 open Syms
@@ -16,9 +17,6 @@ module CR = CoreRules
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RindepRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RindepRules" ls
 (*i*)
-
-(*i ----------------------------------------------------------------------- i*)
-(* \subsection{Rules for random independence} *)
     
 (** Merging equalities in conjuncts of event. *)
 let t_merge_ev tomerge ju = 
@@ -58,7 +56,7 @@ let init_inverter test =
   (bd, e, c, z)
 
 let init_inverters test =
-  let ts = destruct_Land test in
+  let ts = destr_Land_nofail test in
   let bds = ref [] in
   let rec aux i ts =
     match ts with

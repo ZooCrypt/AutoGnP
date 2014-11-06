@@ -1,15 +1,19 @@
+(*s Bindings to factory C++ library for polynomial arithmetic (used in Singular) *)
+
+(*i*)
 open Ctypes
 open Foreign
-open IntPoly
-open Util
+open PolyInsts
+open Abbrevs
+(*i*)
 
 module US = Unsigned.Size_t
 module UL = Unsigned.ULong
 module L  = List
 
 
-(* ------------------------------------------------------------------------ *)
-(* Type definitions *)
+(*i ------------------------------------------------------------------------ i*)
+(* \hd{Type definitions} *)
 
 let cexpvecs = ptr (ptr long)
 let ccoeffs  = ptr long
@@ -30,8 +34,8 @@ let dpl_tail     = field dpoly_list "tail" (ptr_opt dpoly_list)
 let () = seal dpoly_list
 
 
-(* ------------------------------------------------------------------------ *)
-(* Function bindings *)
+(*i ------------------------------------------------------------------------ i*)
+(* \hd{Function bindings} *)
 
 let c_print_cpoly =
   foreign "wrap_print" (int @-> int @-> cexpvecs @-> ccoeffs @-> returning void)
@@ -78,17 +82,17 @@ let c_factor = foreign "wrap_factor"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
    returning  (ptr dpoly_list))
 
-(* ------------------------------------------------------------------------ *)
-(* Conversions *)
+(*i ------------------------------------------------------------------------ i*)
+(* \hd{Conversions} *)
 
 let print_cpoly (maxvar,nterms,cexpvecs,ccoeffs) =
   c_print_cpoly maxvar nterms cexpvecs ccoeffs
 
-(* The order of coefficients / exponent vectors does not matter,
-   but has to be consistent in both.
-   The order in the exponent vector e is
-   e[0]: exponent of v_1
-   ...
+(** The order of coefficients / exponent vectors does not matter,
+    but has to be consistent in both.
+    The order in the exponent vector e is
+    e[0]: exponent of $v_1$
+    ... 
 *)
 let ipoly_to_cpoly ip =
   if IP.equal ip IP.zero then
@@ -231,8 +235,9 @@ let factor p =
   else
     facs
 
+(*i*)
 (* ------------------------------------------------------------------------ *)
-(* Testing *)
+(* \hd{Testing} *)
 
 let test_gcd_1 () =
   let open IP in
@@ -255,7 +260,6 @@ let test_gcd_div_1 () =
   let (p3',p4,p5) = gcd_div p1 p2 in
   assert (equal p3 p3' && equal (div p1 p3) p4 && equal (div p2 p3) p5)
 
-
 let test_gcd_2 () =
   let open IP in
   let p1 = (from_int 4) in
@@ -274,17 +278,12 @@ let test_conversion () =
   let p4 = p1 *@ p1 +@ p3 in
   let p5 = IP.from_int 0 in
   let p6 = from_int 1 in
-  (* F.printf "u = %a\nv= %a\nq = %a%!\n" pp u pp v pp q; *)
   let cp1 = ipoly_to_cpoly p1 in
   let cp2 = ipoly_to_cpoly p2 in
   let cp3 = ipoly_to_cpoly p3 in
   let cp4 = ipoly_to_cpoly p4 in
   let cp5 = ipoly_to_cpoly p5 in
   let cp6 = ipoly_to_cpoly p6 in
-  (* print_newline (); print_cpoly cu; *)
-  (* print_newline (); print_cpoly cv; *)
-  (* print_newline (); print_cpoly cq; *)
-  (* print_newline (); print_cpoly cw; *)
   let p1' = cpoly_to_ipoly cp1 in
   let p2' = cpoly_to_ipoly cp2 in
   let p3' = cpoly_to_ipoly cp3 in
@@ -303,12 +302,9 @@ let test_reduce_div () =
   let v = v3 +@ (from_int 7) in
   let q = v3 *@ v2 *@ v1 +@ (from_int 99) in
   let w = u *@ v +@ q in
-  (* F.printf "u = %a\nv = %a\nq = %a\n%!" pp u pp v pp q; *)
   let r = reduce w u in
   let d = div w u in
-  (* F.printf "r = %a\nd = %a\n%!" pp r pp d; *)
   let w' = d *@ u +@ r in
-  (* F.printf "w = %a\nw'= %a\nlc: %a %!" pp w pp w' pp (IP.const (lc w')); *)
   assert (equal w' w)
 
 let test_factor () =
@@ -323,8 +319,6 @@ let test_factor () =
   let ps = factor w in
   let res = L.fold_right (fun (f,e) g -> ring_exp f e *@ g) ps one in
   assert (equal res w)
-  (* L.iter (fun (f,e) -> F.printf "fact: (%a)^%i\n%!" IP.pp f e) ps *)
-
 
 let test () =
   test_conversion ();
@@ -334,3 +328,4 @@ let test () =
   test_reduce_div ();
   test_factor ()
 
+(*i*)

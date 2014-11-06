@@ -1,5 +1,9 @@
+(*s Simple batch proof processor. *)
+
+(*i*)
 open Tactic
 open Expr
+(*i*)
 
 let main =
   if Array.length Sys.argv <> 2 then

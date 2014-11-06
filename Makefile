@@ -1,25 +1,5 @@
 -include Makefile.local
 
-OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind
-
-.PHONY : clean all doc test\
-  Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
-
-UTIL_MODULES= Util/HashconsTypes.ml Util/Hashcons.ml Util/Hashcons.mli \
-  Util/Util.ml Util/Util.mli Util/IdType.mli Util/Id.ml Util/Id.mli
-EXPR_MODULES=Expr/Type.ml Expr/Type.mli Expr/Syms.ml Expr/Syms.mli Expr/Expr.ml Expr/Expr.mli
-CAS_MODULES=CAS/LinAlg.ml CAS/LinAlg.mli CAS/Poly.ml CAS/Poly.mli CAS/CAS.ml CAS/CAS.mli
-SYMBOLIC_MODULES=Symbolic/Norm.ml Symbolic/Norm.mli Symbolic/DeducField.ml Symbolic/DeducField.mli \
-  Symbolic/DeducXor.ml Symbolic/DeducXor.mli Symbolic/Deduc.ml  Symbolic/Deduc.mli
-GAME_MODULES=Game/Gsyms.ml Game/GSyms.mli Game/Game.ml Game/Game.mli Game/Wf.ml Game/Wf.mli
-LOGIC_MODULES=Logic/Assumption.ml Logic/Assumption.mli Logic/CoreRules.ml Logic/CoreRules.mli \
-  Logic/Rules.ml Logic/Rules.mli
-PARSER_MODULES=Parser/ParserUtil.ml Parser/ParserUtil.mli Parser/Parse.ml Parser/Parse.mli
-TACTIC_MODULES=Tactic/TheoryState.ml Tactic/TheoryState.mli Tactic/Tactic.ml Tactic/Tactic.mli
-
-UTIL_FILES=$(addprefix src/,$(UTIL_MODULES))
-EXPR_FILES=$(addprefix src/,$(EXPR_MODULES))
-
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
   LIBFLAGS=-lflags -cclib,-Xlinker,-cclib,--no-as-needed,-cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
@@ -28,14 +8,10 @@ ifeq ($(UNAME_S),Darwin)
   LIBFLAGS=-lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
 endif
 
-CAS_FILES=$(addprefix src/,$(CAS_MODULES))
-SYMBOLIC_FILES=$(addprefix src/,$(SYMBOLIC_MODULES))
-GAME_FILES=$(addprefix src/,$(GAME_MODULES))
-LOGIC_FILES=$(addprefix src/,$(LOGIC_MODULES))
-PARSER_FILES=$(addprefix src/,$(PARSER_MODULES))
-TACTIC_FILES=$(addprefix src/,$(TACTIC_MODULES))
+OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind
 
-cur-dir := $(shell pwd)
+.PHONY : clean all doc test\
+  Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
 all: wszoocrypt
 
@@ -51,22 +27,6 @@ stubtest:
 
 doc:
 	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
-
-ldoc:
-	ocamlweb doc/prelude.tex \
-	  doc/chap-util.tex $(UTIL_FILES) \
-	  doc/chap-expr.tex $(EXPR_FILES) \
-	  doc/chap-cas.tex $(CAS_FILES) \
-	  doc/chap-symbolic.tex $(SYMBOLIC_FILES) \
-	  doc/chap-game.tex $(GAME_FILES) \
-	  doc/chap-logic.tex $(LOGIC_FILES) \
-	  doc/chap-parser.tex $(PARSER_FILES) \
-	  doc/chap-tactic.tex $(TACTIC_FILES) \
-	  doc/close.tex --no-preamble --header > doc/tool.tex.tmp
-	echo "\end{document}" >> doc/tool.tex.tmp
-	mv doc/tool.tex.tmp doc/tool.tex
-	cd doc && latexmk -pdf tool.tex
-
 
 toolchain:
 	./scripts/build-toolchain
@@ -91,7 +51,115 @@ factory : stubs
 wszoocrypt : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wszoocrypt.native
 	-killall wszoocrypt.native
-	# ./wszoocrypt.native $(wildcard examples/*.zc)
+
+##########################################################################
+# Build PDF from literate program using ocamlweb and pdflatex
+
+UTIL_MODULES= Util/HashconsTypes.ml Util/Hashcons.ml Util/Hashcons.mli \
+  Util/Util.ml Util/Util.mli Util/IdType.mli Util/Id.ml Util/Id.mli \
+  Util/nondet.ml Util/nondet.mli
+POLY_MODULES= Poly/PolyInterfaces.mli Poly/Poly.ml Poly/Poly.mli Poly/PolyInsts.ml 
+EXPR_MODULES= Expr/Type.ml Expr/Type.mli Expr/Syms.ml Expr/Syms.mli Expr/Expr.ml Expr/Expr.mli
+CAS_MODULES= CAS/LinAlg.ml CAS/LinAlg.mli CAS/CAS.ml CAS/CAS.mli CAS/Factory.ml
+SYMBOLIC_MODULES= Symbolic/Norm.ml Symbolic/Norm.mli \
+  Symbolic/DeducField.ml Symbolic/DeducField.mli \
+  Symbolic/DeducXor.ml Symbolic/DeducXor.mli \
+  Symbolic/Deduc.ml  Symbolic/Deduc.mli
+GAME_MODULES= Game/Gsyms.ml Game/Gsyms.mli Game/Game.ml Game/Game.mli Game/Wf.ml Game/Wf.mli
+LOGIC_MODULES= Logic/Assumption.ml Logic/Assumption.mli Logic/CoreRules.ml Logic/CoreRules.mli \
+  Logic/Rules.ml Logic/Rules.mli Logic/CaseRules.ml Logic/CaseRules.mli \
+  Logic/RewriteRules.ml Logic/RewriteRules.mli \
+  Logic/RandomRules.ml Logic/RandomRules.mli \
+  Logic/RindepRules.ml Logic/RindepRules.mli \
+  Logic/CrushRules.ml Logic/CrushRules.mli
+PARSER_MODULES= Parser/ParserTypes.ml Parser/ParserUtil.ml Parser/ParserUtil.mli Parser/Parse.ml Parser/Parse.mli
+TACTIC_MODULES= Tactic/TheoryTypes.ml Tactic/TheoryState.ml Tactic/TheoryState.mli Tactic/Tactic.ml Tactic/Tactic.mli
+TOOL_MODULES= Main/zoocrypt.ml Main/wszoocrypt.ml
+
+UTIL_FILES=$(addprefix src/,$(UTIL_MODULES))
+POLY_FILES=$(addprefix src/,$(POLY_MODULES))
+EXPR_FILES=$(addprefix src/,$(EXPR_MODULES))
+CAS_FILES=$(addprefix src/,$(CAS_MODULES))
+SYMBOLIC_FILES=$(addprefix src/,$(SYMBOLIC_MODULES))
+GAME_FILES=$(addprefix src/,$(GAME_MODULES))
+LOGIC_FILES=$(addprefix src/,$(LOGIC_MODULES))
+PARSER_FILES=$(addprefix src/,$(PARSER_MODULES))
+TACTIC_FILES=$(addprefix src/,$(TACTIC_MODULES))
+TOOL_FILES=$(addprefix src/,$(TOOL_MODULES))
+
+ldoc:
+	ocamlweb doc/prelude.tex \
+	  doc/chap-util.tex $(UTIL_FILES) \
+	  doc/chap-poly.tex $(POLY_FILES) \
+	  doc/chap-expr.tex $(EXPR_FILES) \
+	  doc/chap-cas.tex $(CAS_FILES) \
+	  doc/chap-symbolic.tex $(SYMBOLIC_FILES) \
+	  doc/chap-game.tex $(GAME_FILES) \
+	  doc/chap-logic.tex $(LOGIC_FILES) \
+	  doc/chap-parser.tex $(PARSER_FILES) \
+	  doc/chap-tactic.tex $(TACTIC_FILES) \
+	  doc/chap-tool.tex $(TOOL_FILES) \
+	  doc/close.tex --no-preamble --header > doc/tool.tex.tmp
+
+	echo "\end{document}" >> doc/tool.tex.tmp
+	mv doc/tool.tex.tmp doc/tool.tex
+	cd doc && latexmk -pdf tool.tex
+
+UTIL_IFILES=src/Util/HashconsTypes.ml $(filter %.mli,$(UTIL_FILES)) 
+POLY_IFILES=$(filter %.mli,$(POLY_FILES))
+EXPR_IFILES=$(filter %.mli,$(EXPR_FILES))
+CAS_IFILES=$(filter %.mli,$(CAS_FILES))
+SYMBOLIC_IFILES=$(filter %.mli,$(SYMBOLIC_FILES))
+GAME_IFILES=$(filter %.mli,$(GAME_FILES))
+LOGIC_IFILES=src/Logic/CoreTypes.ml $(filter %.mli,$(LOGIC_FILES))
+PARSER_IFILES=$(filter %.mli,$(PARSER_FILES))
+TACTIC_IFILES=Tactic/TheoryTypes.ml $(filter %.mli,$(TACTIC_FILES))
+
+ldoci:
+	ocamlweb doc/prelude.tex \
+	  doc/chap-util.tex $(UTIL_IFILES) \
+	  doc/chap-poly.tex $(POLY_IFILES) \
+	  doc/chap-expr.tex $(EXPR_IFILES) \
+	  doc/chap-cas.tex $(CAS_IFILES) \
+	  doc/chap-symbolic.tex $(SYMBOLIC_IFILES) \
+	  doc/chap-game.tex $(GAME_IFILES) \
+	  doc/chap-logic.tex $(LOGIC_IFILES) \
+	  doc/chap-parser.tex $(PARSER_IFILES) \
+	  doc/chap-tactic.tex $(TACTIC_IFILES) \
+	  doc/close.tex --no-preamble --header > doc/tooli.tex.tmp
+
+	echo "\end{document}" >> doc/tooli.tex.tmp
+	mv doc/tooli.tex.tmp doc/tooli.tex
+	cd doc && latexmk -pdf tooli.tex
+
+UTIL_LFILES=$(filter-out %.mli,$(UTIL_FILES)) 
+POLY_LFILES=$(filter-out %.mli,$(POLY_FILES))
+EXPR_LFILES=$(filter-out %.mli,$(EXPR_FILES))
+CAS_LFILES=$(filter-out %.mli,$(CAS_FILES))
+SYMBOLIC_LFILES=$(filter-out %.mli,$(SYMBOLIC_FILES))
+GAME_LFILES=$(filter-out %.mli,$(GAME_FILES))
+LOGIC_LFILES=$(filter-out %.mli,$(LOGIC_FILES))
+PARSER_LFILES=$(filter-out %.mli,$(PARSER_FILES))
+TACTIC_LFILES=$(filter-out %.mli,$(TACTIC_FILES))
+TOOL_LFILES=$(filter-out %.mli,$(TOOL_FILES))
+
+ldocl:
+	ocamlweb doc/prelude.tex \
+	  doc/chap-util.tex $(UTIL_LFILES) \
+	  doc/chap-poly.tex $(POLY_LFILES) \
+	  doc/chap-expr.tex $(EXPR_LFILES) \
+	  doc/chap-cas.tex $(CAS_LFILES) \
+	  doc/chap-symbolic.tex $(SYMBOLIC_LFILES) \
+	  doc/chap-game.tex $(GAME_LFILES) \
+	  doc/chap-logic.tex $(LOGIC_LFILES) \
+	  doc/chap-parser.tex $(PARSER_LFILES) \
+	  doc/chap-tactic.tex $(TACTIC_LFILES) \
+	  doc/chap-tool.tex $(TOOL_FILES) \
+	  doc/close.tex --no-preamble --header > doc/tooll.tex.tmp
+
+	echo "\end{document}" >> doc/tooll.tex.tmp
+	mv doc/tooll.tex.tmp doc/tooll.tex
+	cd doc && latexmk -pdf tooll.tex
 
 ##########################################################################
 # Used for development and testing

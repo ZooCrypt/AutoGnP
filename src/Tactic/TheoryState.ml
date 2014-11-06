@@ -7,43 +7,24 @@ open Util
 open Assumption
 open CoreRules
 open Nondet
+open TheoryTypes
 
 module Ht = Hashtbl
 module T = Type
 module G = Game
 (*i*)
 
-type theory_proof_state =
-  | BeforeProof
-  | ActiveProof
-    of proof_state * proof_state list * proof_state nondet * proof_state option
-  | ClosedTheory of proof_tree
-
-type theory_state =
-  { (* theory definitions:
-       we might have to make these local to a goal to support, e.g. ,reduction steps. *)
-    ts_lvars      : (string, T.Lenvar.id) Ht.t;    (*r length vars used in theory *)
-    ts_gvars      : (string, T.Groupvar.id) Ht.t;  (*r group vars used in theory *)
-    ts_rodecls    : (string, Hsym.t) Ht.t;         (*r declared hash functions *)
-    ts_odecls     : (string, Osym.t) Ht.t;         (*r declared oracles *)
-    ts_adecls     : (string, Asym.t) Ht.t;         (*r declared adversaries *)
-    ts_emdecls    : (string, Esym.t) Ht.t;         (*r declared bilinear maps *)
-    ts_assms_dec  : (string, assm_dec) Ht.t;       (*r defined decisional assumptions *)
-    ts_assms_comp : (string, assm_comp) Ht.t;      (*r defined computational assumptions *)
-    ts_ps         : theory_proof_state             (*r proof state *)
-  }
-
-let mk_ts () =
-  { ts_lvars      = Ht.create 20;
-    ts_gvars      = Ht.create 20;
-    ts_rodecls    = Ht.create 20;
-    ts_odecls     = Ht.create 20; 
-    ts_adecls     = Ht.create 20;
-    ts_emdecls    = Ht.create 20;
-    ts_assms_dec  = Ht.create 5;
-    ts_assms_comp = Ht.create 5;
-    ts_ps         = BeforeProof
-  }
+let mk_ts () = {
+  ts_lvars      = Ht.create 20;
+  ts_gvars      = Ht.create 20;
+  ts_rodecls    = Ht.create 20;
+  ts_odecls     = Ht.create 20; 
+  ts_adecls     = Ht.create 20;
+  ts_emdecls    = Ht.create 20;
+  ts_assms_dec  = Ht.create 5;
+  ts_assms_comp = Ht.create 5;
+  ts_ps         = BeforeProof
+}
 
 let get_proof_state ts = 
   match ts.ts_ps with

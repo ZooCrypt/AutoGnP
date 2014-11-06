@@ -2,19 +2,21 @@
 
 (*i*)
 open Nondet
+open Abbrevs
 open Util
 open Syms
 open Type
 open Expr
 open Game
 open Assumption
+open CoreTypes
 open CoreRules
 
 module Ht = Hashtbl
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Operators for tacticals} *)
+(* \hd{Operators for tacticals} *)
 
 let ( @> ) = t_seq
 
@@ -24,13 +26,44 @@ let ( @>>= ) = t_bind
 
 let ( @>= ) = t_bind_ignore
 
-(* let ( @+) t ts g = t_subgoal ts (t g) *)
-
 let ( @| ) = t_or
 
 let (@||) t1 t2 ju =
   let mps = t1 ju in
   if is_nil mps then t2 ju else mps
+
+let rec t_seq_list = function
+  | []    -> t_id
+  | t::ts -> t @> t_seq_list ts
+
+let rec t_or_list = function
+  | []    -> t_id
+  | t::ts -> t @| t_or_list ts
+
+let t_print log s ju =
+  log (lazy (fsprintf "%s:@\n%a" s pp_ju ju));
+  t_id ju
+
+let t_debug log s g =
+  log (lazy s);
+  t_id g
+
+let t_guard f ju =
+  if f ju then t_id ju else mempty
+
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Extracting samplings, lets, and guards from game} *)
+
+(*i*)
+let pp_samp fmt (i,(vs,d)) =
+  F.fprintf fmt "%i: %a from %a" i Vsym.pp vs pp_distr d
+
+let pp_osamp fmt ((i,j,k),(vs,d)) =
+  F.fprintf fmt "(%i,%i,%i): %a from %a" i j k Vsym.pp vs pp_distr d
+
+let pp_let fmt (i,(vs,e)) =
+  F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_exp e
+(*i*)
 
 let samplings gd =
   let samp i = function
@@ -38,9 +71,6 @@ let samplings gd =
     | _               -> None
   in
   cat_Some (L.mapi samp gd)
-
-let pp_samp fmt (i,(vs,d)) =
-  F.fprintf fmt "%i: %a from %a" i Vsym.pp vs pp_distr d
 
 let osamplings gd =
   let lcmds_samplings gpos opos lcmds =
@@ -56,9 +86,6 @@ let osamplings gd =
     | _ -> []
   in
   L.concat (L.mapi samp gd)
-
-let pp_osamp fmt ((i,j,k),(vs,d)) =
-  F.fprintf fmt "(%i,%i,%i): %a from %a" i j k Vsym.pp vs pp_distr d
 
 let oguards gd =
   let lcmds_guards gpos opos lcmds =
@@ -82,30 +109,8 @@ let lets gd =
   in
   cat_Some (L.mapi get_let gd)
 
-let pp_let fmt (i,(vs,e)) =
-  F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_exp e
-
-let rec t_seq_list = function
-  | []    -> t_id
-  | t::ts -> t @> t_seq_list ts
-
-let rec t_or_list = function
-  | []    -> t_id
-  | t::ts -> t @| t_or_list ts
-
-let t_print log s ju =
-  log (lazy (fsprintf "%s:@\n%a" s pp_ju ju));
-  t_id ju
-
-let t_debug log s g =
-  log (lazy s);
-  t_id g
-
-let t_guard f ju =
-  if f ju then t_id ju else mempty
-
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Swap maximum amount forward and backward} *)
+(* \hd{Swap maximum amount forward and backward} *)
 
 let rec parallel_swaps old_new_pos =
   let upd_pos op np p =
@@ -149,12 +154,11 @@ let t_swap_max dir i vs ju =
 let t_swap_others_max dir i ju =
   let samps = samplings ju.ju_gdef in
   let samp_others =
-    L.map
+    filter_map
       (fun (j,(rv,(ty,es))) ->
         if ((j > i && dir=ToFront) || (j < i && dir=ToEnd)) && ty_equal ty mk_Fq
         then Some (j,(rv,vars_dexc rv es)) else None)
       samps
-    |> cat_Some
   in
   let samp_others =
     (* when pushing forwards, we start with the last sampling to keep indices valid *)
@@ -181,8 +185,9 @@ let t_swap_others_max dir i ju =
   aux i samp_others ju
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Simplification and pretty printing} *)
+(* \hd{Simplification and pretty printing} *)
 
+(*i*)
 let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   match ru with
   | Rconv ->
@@ -248,6 +253,7 @@ let pp_proof_tree_non_verbose ?hide_admit:(hide_admit=false) fmt pt =
 let pp_proof_tree ?hide_admit:(hide_admit=false) verbose =
   if verbose then pp_proof_tree_verbose ~hide_admit
   else pp_proof_tree_non_verbose ~hide_admit
+(*i*)
   
 let rec simplify_proof_tree pt =
   let children = L.map simplify_proof_tree pt.pt_children in

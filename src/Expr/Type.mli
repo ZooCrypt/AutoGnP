@@ -1,7 +1,7 @@
 (*s Hashconsed types *)
 
 (*i*)
-open Util
+open Abbrevs
 (*i*)
 
 (** length variables for bitstrings *)

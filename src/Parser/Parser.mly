@@ -124,6 +124,7 @@
 %token QED
 %token EXTRACT
 %token DEDUCE
+%token LISTFE
 %token <string> STRING
 
 /************************************************************************/
@@ -360,8 +361,8 @@ sym_vars:
 ;
 
 assgn_pos:
-| n=NAT { Pos(n - 1) }
-| i=ID  { Var(i) } 
+| n=gpos { Pos(n) }
+| i=ID   { Var(i) } 
 ;
 
 /************************************************************************/
@@ -426,8 +427,8 @@ tactic :
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?
   { Apply(Rrnd(excl=None,mi,mc1,mc2,mgen)) }
-| REXCEPT i=uopt(gpos) es=uopt(expr0*) { Apply(Rexcept(i,es)) }
-| REXCEPT_ORACLE op=opos es=expr0*     { Apply(Rexcept_orcl(op,es)) }
+| REXCEPT i=uopt(assgn_pos) es=uopt(expr0*) { Apply(Rexcept(i,es)) }
+| REXCEPT_ORACLE op=opos es=expr0*          { Apply(Rexcept_orcl(op,es)) }
 
 /* assumptions */
 | ASSUMPTION_DECISIONAL excl=EXCL?
@@ -456,7 +457,7 @@ tactic :
 | RSPLIT_EV i=gpos            { Apply(Rsplit_ev(i - 1)) }
 | RCASE_EV e=uopt(expr0)      { Apply(Rcase_ev(e)) }
 | RREWRITE_EV i=gpos d=dir? { Apply(Rrewrite_ev(i,opt id LeftToRight d)) }
-| RCTXT_EV LPAREN i1=ID TO e1=expr0 RPAREN j=NAT? { Apply(Rctxt_ev(i1,e1,opt id 0 j)) }
+| RCTXT_EV LPAREN i1=ID TO e1=expr0 RPAREN j=gpos? { Apply(Rctxt_ev(i1,e1,opt id 0 j)) }
 
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Apply(Rindep(excl=None)) }
@@ -464,6 +465,7 @@ tactic :
 
 /* debugging */
 | DEDUCE  LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Apply(Deduce(es,e)) }
+| LISTFE  es=expr0*                                            { Apply(FieldExprs(es)) }
 
 
 /************************************************************************/

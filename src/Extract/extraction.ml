@@ -1,8 +1,11 @@
+open Abbrevs
 open Util
 open Type
 open Expr 
 open Game 
-open TheoryState 
+open TheoryTypes
+open TheoryState
+open CoreTypes
 open CoreRules
 open File
 open Syms
@@ -1259,7 +1262,7 @@ let bound_rnd_indep file pos ju =
     | _     -> assert false (* FIXME *) in
   let isize = f_rinv (Frofi size) in
   assert (l = []);
-  let evs = destruct_Land ju.ju_ev in
+  let evs = destr_Land_nofail ju.ju_ev in
   let ev = List.nth evs pos in
   if is_Eq ev then isize, ev, lemma 
   else assert false (* FIXME exists *)
@@ -1868,7 +1871,7 @@ let rec extract_proof file pft =
   | Rctxt_ev (i,_) ->
     let pft' = List.hd pft.pt_children in
     let ev = pft.pt_ju.ju_ev in
-    let evs = destruct_Land ev in
+    let evs = destr_Land_nofail ev in
     let hs = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
     let proof _file fmt () = 
      
@@ -2161,7 +2164,7 @@ let rec extract_proof file pft =
     let pft' = List.hd pft.pt_children in
     let proof _file fmt () = 
       let ev = pft.pt_ju.ju_ev in
-      let evs = destruct_Land ev in
+      let evs = destr_Land_nofail ev in
       let his = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
       let hi = Format.sprintf "H%i" i in
       let his' = List.filter (fun s -> s <> hi) his in

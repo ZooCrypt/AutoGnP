@@ -1,3 +1,5 @@
+true: bin_annot
+
 <src/**/*>: package(bolt)
 
 <src/Util> or <src/Expr> or <src/Test> or <src/Poly>: include

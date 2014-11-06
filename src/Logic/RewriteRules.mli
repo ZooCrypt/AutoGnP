@@ -1,8 +1,10 @@
-(*s fixme *)
+(*s Derived tactics for rewriting. *)
 
+(*i*)
 open Expr
 open CoreRules
 open Syms
+(*i*)
 
 val t_norm : ?fail_eq:bool -> tactic
 

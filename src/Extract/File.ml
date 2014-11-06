@@ -1,9 +1,10 @@
+open Abbrevs
 open Util
 open Type
 open Game
 open Syms
 open Gsyms
-open TheoryState 
+open TheoryTypes
 
 module Ht = Hashtbl
 

@@ -62,6 +62,7 @@ let solve_xor (ecs : (expr * inverter) list) e =
   in
   I ctxt
 
+(*i*)
 let _test_solve_xor_1 () =
   let l = Lenvar.mk "l" in
   let t = mk_BS l in
@@ -107,4 +108,4 @@ let _test_solve_xor_3 () =
   let p3 = mk_V (Vsym.mk "p3" t) in    
   let I s = solve_xor [(p1,I a); (p2,I b); (p3,I c)] d in
   failwith (fsprintf "3. Deduced context %a\n%!" pp_exp s)
-
+(*i*)

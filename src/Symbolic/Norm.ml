@@ -1,10 +1,10 @@
 (*s Normal form computation for expressions. *)
 
 (*i*)
+open Abbrevs
 open Type
 open Expr
 open Syms
-open Util
 (*i*)
 
 let mk_gexp gv p = mk_GExp (mk_GGen gv) p
@@ -79,7 +79,7 @@ and mk_simpl_nop strong op l =
     let p = norm_field_expr (mk_FPlus l) in
     mk_gexp gv p
   | Xor -> 
-    let l = List.flatten (List.map destruct_Lxor l) in
+    let l = List.flatten (List.map destr_Xor_nofail l) in
     let l = List.sort e_compare l in
     let e = List.hd l in
     let rec aux l = 
@@ -96,7 +96,7 @@ and mk_simpl_nop strong op l =
   | Land ->
     (* FIXME: is this really usefull?
        we should handle conjunctions manually. *)
-    let l = List.flatten (List.map destruct_Land l) in
+    let l = List.flatten (List.map destr_Land_nofail l) in
     let l = if strong then List.sort e_compare l else l in
     let rec aux l = 
       match l with
@@ -196,4 +196,18 @@ let norm_expr_abbrev_strong e = abbrev_ggen (norm_expr_strong e)
 
 let norm_expr_nice e = remove_tuple_proj (abbrev_ggen (norm_expr_weak e))
 
+let destr_Eq_norm e =
+  match e.e_node with
+  | App(Eq,[e1;e2]) ->
+    begin match e1.e_ty.ty_node with
+    | G(_gid) -> Some (norm_expr_strong (mk_FMinus (mk_GLog e1) (mk_GLog e2)))
+    | Fq      -> Some (norm_expr_strong (mk_FMinus e1 e2))
+    | _       -> None
+    end
+  | _ ->
+    None
 
+let destr_Neq_norm e =
+  match e.e_node with
+  | App(Not,[e1]) -> destr_Eq_norm e1
+  | _             -> None

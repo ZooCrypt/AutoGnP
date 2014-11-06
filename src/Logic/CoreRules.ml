@@ -1,6 +1,7 @@
 (*s Core rules of the logic. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Nondet
 open Type
@@ -9,65 +10,14 @@ open Game
 open Wf
 open Assumption
 open Syms
+open CoreTypes
 
 let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "CoreRules" ls
-
 let log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "CoreRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Types for proofs and tactics} *)
-
-(** Low-level rules (extractable to EasyCrypt). *)
-type rule_name =
-
-  (*c equivalence/small statistical distance: main *)
-  | Rconv                                  (*r rename, unfold let, normalize *)
-  | Rswap   of gcmd_pos * int              (*r
-      $Rswap(p,i)$: swap statement at $p$ forward by $i$ *)
-  | Rrnd    of gcmd_pos * vs  * ctxt * ctxt (*r
-      $Rnd(p,c_1,c_2,v)$: rnd with bij. $c_1=c_2^{-1}$ for $v$ at $p$*)
-  | Rexc of gcmd_pos * expr list (*r
-      $Rexc(p,\vec{e})$: change sampling at $p$ to exclude $\vec{e}$ *)
-
-  (*c equivalence/small statistical distance: oracle *)
-  | Rrw_orcl   of ocmd_pos * direction (*r
-      $Rrw\_orcl(p,dir)$: rewrite oracle with equality test at $p$ in $dir$ *)
-  | Rswap_orcl of ocmd_pos * int (*r
-      $Rswap\_orcl(op,i)$: swap statement at $p$ forward by $i$ *)
-  | Rrnd_orcl  of ocmd_pos * ctxt * ctxt (*r
-      $Rnd\_orcl(p,c_1,c_2,v)$: rnd with $c_1=c_2^{-1}$ for $v$ at $p$*)
-  | Rexc_orcl  of ocmd_pos * expr list (*r
-      $Rexc\_orcl(p,\vec{e})$: change sampling at $p$ to exclude $\vec{e}$ *)
-
-  (*c case distinctions, up-to *)
-  | Rcase_ev  of bool * expr (*r
-      $Rcase(e)$: refine event by performing case distinction on $e$ *)
-  | Radd_test of ocmd_pos * expr * ads * vs list (*r
-      $Radd\_test(p,e,a,\vec{v})$: add test to oracle. *)
-      (*c Test $e$ at position $p$, adversary $a$ and $\vec{v}$ used for bounding bad. *)
-  | Rbad      of gcmd_pos * vs (*r
-      $Rbad(p,v)$: Replace hash call at position $p$ by random variable $v$. *)
-
-  (*c implication rules for event *)
-  | Rctxt_ev   of int * ctxt (*r
-      $Rctxt\_ev(i,c)$: apply context $c$ to $i$ conjunct in event *)
-  | Rremove_ev of int list (*r $Rremove_ev(\vec{i})$: Remove given conjuncts *)
-  | Rmerge_ev  of int * int (*r
-      $Rmerge\_ev(i,j)$: Merge given conjuncts as equality on tuples. *)
-  | Rsplit_ev  of int (*r
-      $Rsplit\_ev(i)$: Split $i$-th event into separate equalities. *)
-  | Rrw_ev     of int * direction (*r
-      $Rrw\_ev(i,d)$: Rewrite event using $i$-th conjunct in direction $d$. *)
-
-  (*c apply assumption *)
-  | Rassm_dec  of (int * int) list * direction * renaming  * assm_dec
-  | Rassm_comp of (int * int) list * renaming * assm_comp
-
-  (*c terminal rules *)
-  | Radmit of string
-  | Rfalse_ev
-  | Rrnd_indep of bool * int
+(* \hd{Types for proofs and tactics} *)
 
 (** Proof tree. *)
 type proof_tree = {
@@ -105,7 +55,7 @@ let counter = ref 0
 let mk_name () = "xxxx"^string_of_int (incr counter; !counter)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{General purpose functions} *)
+(* \hd{General purpose functions} *)
 
 (** Raised if there is no open goal. *)
 exception NoOpenGoal
@@ -154,7 +104,7 @@ let merge_proof_states pss validation =
     validation = validation' [] pss }
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Tacticals and goal management} *)
+(* \hd{Tacticals and goal management} *)
 
 (** Tactic that moves the first subgoal to the last position. *)
 let move_first_last ps =
@@ -262,7 +212,7 @@ let t_fail fs _g =
     fbuf fs
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Rules for main (equivalence/small statistical distance)} *)
+(* \hd{Rules for main (equivalence/small statistical distance)} *)
 
 (** Conversion. *)
 
@@ -392,7 +342,7 @@ let rexcept p es ju =
 let t_except p es = prove_by (rexcept p es)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Rules for oracle (equivalence/small statistical distance)} *)
+(* \hd{Rules for oracle (equivalence/small statistical distance)} *)
 
 (** Rewrite oracle using test. *)
 
@@ -479,7 +429,7 @@ let rexcept_oracle p es ju =
 let t_except_oracle p es = prove_by (rexcept_oracle p es)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Rules for case distinctions and up-to} *)
+(* \hd{Rules for case distinctions and up-to} *)
 
 (** Perform case distinction on event. *)
 
@@ -568,13 +518,13 @@ let rbad p vsx ju =
 let t_bad p vsx = prove_by (rbad p vsx)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Rules for implications between events} *)
+(* \hd{Rules for implications between events} *)
 
 (** Apply context to event. *)
 
 let rctxt_ev i c ju =
   let ev = ju.ju_ev in
-  let evs = destruct_Land ev in
+  let evs = destr_Land_nofail ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in
   let b =
@@ -607,7 +557,7 @@ let rremove_ev (rm:int list) ju =
       let evs = aux (i+1) evs in
       if L.mem i rm then evs else ev::evs in
   let ev = ju.ju_ev in
-  let evs = aux 0 (destruct_Land ev) in
+  let evs = aux 0 (destr_Land_nofail ev) in
   let new_ju = {ju with ju_ev = if evs = [] then mk_True else mk_Land evs} in
   (*i TODO : should we check DivZero i*)
   Rremove_ev rm, [new_ju]
@@ -631,7 +581,7 @@ let merge_base_event ev1 ev2 =
 
 let rmerge_ev i j ju =
   let i,j = if i <= j then i, j else j, i in
-  let evs = destruct_Land ju.ju_ev in
+  let evs = destr_Land_nofail ju.ju_ev in
   let l,b1,r = Util.split_n i evs in
   let l',b2,r =
     if i = j then [], b1, r
@@ -648,7 +598,7 @@ let t_merge_ev i j = prove_by (rmerge_ev i j)
 
 let rsplit_ev i ju =
   let ev = ju.ju_ev in
-  let evs = destruct_Land ev in
+  let evs = destr_Land_nofail ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in
   let b =
@@ -673,7 +623,7 @@ let t_split_ev i = prove_by (rsplit_ev i)
 
 let rrw_ev i d ju =
   let ev = ju.ju_ev in
-  let evs = destruct_Land ev in
+  let evs = destr_Land_nofail ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in
   let u,v =
@@ -697,7 +647,7 @@ let rrw_ev i d ju =
 let t_rw_ev i d = prove_by (rrw_ev i d)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Rules for decisional and computational assumptions} *)
+(* \hd{Rules for decisional and computational assumptions} *)
 
 (** Reduction to decisional assumptions. *)
 
@@ -868,7 +818,7 @@ let rassm_comp assm0 rngs ren ju =
 let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Terminal rules for finishing a proof} *)
+(* \hd{Terminal rules for finishing a proof} *)
 
 (** Admit rule and tactic. *)
 
@@ -917,7 +867,7 @@ let check_event r ev =
         else aux (i+1) evs
       with Not_found -> aux (i+1) evs
   in
-  aux 0 (destruct_Land ev)
+  aux 0 (destr_Land_nofail ev)
 
 let rrandom_indep ju =
   match L.rev ju.ju_gdef with

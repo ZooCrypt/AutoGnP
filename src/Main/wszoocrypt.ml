@@ -1,11 +1,17 @@
+(*s Websocket server for web interface *)
+
+(*i*)
 open Websocket
 open Util
+open Abbrevs
 open Tactic
 open CoreRules
+open TheoryTypes
 open TheoryState
 
 module YS = Yojson.Safe
 module PU = ParserUtil
+(*i*)
 
 let (>>=) = Lwt.bind
 
@@ -14,17 +20,17 @@ let ps_files = ref []
 let disallow_save = ref false
 let server_name = ref "localhost"
 
-(* ----------------------------------------------------------------------- *)
-(** {Proofstate cache} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Proofstate cache} *)
 
-(* We use the reversed list of commands (without '.')
-   as the key for the corresponding theory state. *)
+(** We use the reversed list of commands (without '.')
+    as the key for the corresponding theory state. *)
 let ts_cache = Hashtbl.create 10
 
-(* 'lookup_ps_cache cmds' searches for the longest suffix of
-   cmds for which there is a proofstate. The proofstate
-   is returned together with the list of unhandled
-   commands. *)
+(** [lookup_ps_cache cmds] searches for the longest suffix of
+    cmds for which there is a proofstate. The proofstate
+    is returned together with the list of unhandled
+    commands. *)
 let lookup_ts_cache filename cmds =
   let rec go handled_cmds rem_cmds =
     try
@@ -47,8 +53,8 @@ let insert_ts_cache filename cmds (ts,msgs) =
   in
   Hashtbl.add fcache (List.rev cmds) (ts,msgs)
 
-(* ----------------------------------------------------------------------- *)
-(** {Handlers for different commands} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Handlers for different commands} *)
 
 let process_unknown s =
   F.printf "unknown command: %s\n%!" s;
@@ -116,11 +122,11 @@ let split_proof_script s =
   go 0 []
 
 let process_eval fname proofscript =
-  (* let buf = Util.set_debug_buffer () in *)
+  (*i let buf = Util.set_debug_buffer () in i*)
   let l = split_proof_script proofscript in
-  (* F.printf "Eval: ``%a''\n%!" (pp_list ";" pp_string) l; *)
+  (*i F.printf "Eval: ``%a''\n%!" (pp_list ";" pp_string) l; i*)
   let ((ts0, msgs0), handled_cmds, rem_cmds) = lookup_ts_cache fname l in
-  (* F.printf "Eval: ``%s''\n%!" proofscript; *)
+  (*i F.printf "Eval: ``%s''\n%!" proofscript; i*)
   F.printf "executing %i remaining commands\n%!" (List.length rem_cmds);
   let rhandled = ref handled_cmds in
   let rts = ref ts0 in
@@ -172,15 +178,15 @@ let process_eval fname proofscript =
           string_of_int rem^" other goals")
     in `Assoc [ ("cmd", `String "setGoal");
                 ("ok_upto", `Int (ok_upto ()));
-                ("debug", `String "" (* (Buffer.contents buf) *));
+                ("debug", `String "" (*i (Buffer.contents buf) i*));
                 ("err", error);
                 ("msgs", `List (List.map (fun s -> `String s) !rmsgs));
                 ("arg", `String g) ]
   in
   Lwt.return (Frame.of_string (YS.to_string res))
 
-(* ----------------------------------------------------------------------- *)
-(** {Frame processing and server setup} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Frame processing and server setup} *)
 
 let process_frame frame =
   let inp = Frame.content frame in
@@ -219,8 +225,8 @@ let run_server node service =
 let rec wait_forever () =
   Lwt_unix.sleep 1000.0 >>= wait_forever
 
-(* ----------------------------------------------------------------------- *)
-(** {Argument handling} *)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Argument handling} *)
 
 let main =
   Printexc.record_backtrace true;

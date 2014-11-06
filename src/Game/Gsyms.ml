@@ -1,8 +1,9 @@
 (*s Symbols in game definitions *)
 
 (*i*)
-open Type
+open Abbrevs
 open Util
+open Type
 (*i*)
 
 module Asym = struct

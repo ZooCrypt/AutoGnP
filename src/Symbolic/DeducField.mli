@@ -11,5 +11,4 @@ open Expr
     for these known terms. *)
 val solve_fq : (expr * inverter) list -> expr -> inverter
 
-
 val solve_fq_vars_known : expr -> Vsym.t  -> expr

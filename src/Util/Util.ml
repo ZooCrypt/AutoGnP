@@ -2,8 +2,12 @@
     applications for maps, sets, hashtables, and some convenience functions
     for lists and pretty printing. *)
 
+(*i*)
+open Abbrevs
+(*i*)
+
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Convenience Functors} *)
+(* \hd{Convenience Functors} *)
 
 module type Tagged = sig
   type t
@@ -38,10 +42,6 @@ module Ints = StructMake (struct
   let tag x = x
 end)
 
-module L = List
-module F = Format
-module BL = Bolt.Logger
-
 module Mint = Ints.M
 module Sint = Ints.S
 module Hint = Ints.H
@@ -51,7 +51,7 @@ module Sstring = Set.Make(String)
 
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Misc functions} *)
+(* \hd{Misc functions} *)
 
 let unique_int () = Oo.id (object end)
 
@@ -109,7 +109,7 @@ let string_of_dir = function
 let id x = x
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{List functions} *)
+(* \hd{List functions} *)
 
 let list_eq_for_all2 f l1 l2 =
   try List.for_all2 f l1 l2 with _ -> false
@@ -162,7 +162,6 @@ let rec filter_map f l =
     | None -> filter_map f l
     | Some z -> z::filter_map f l
 
-(** For interval $[i,j)$, i.e., excluding $j$. *)
 let list_from_to i j =
   let rec go aux i = if i >= j then aux else go (i::aux) (i+1)
   in List.rev (go [] i)
@@ -214,11 +213,6 @@ let map_accum f init xs =
   in
   go init xs []
 
-(** [group rel xs] creates a list of lists where successive
-    elements of [xs] that are related with respect to [rel]
-    are grouped together. This function is commonly used
-    together with [L.sort] to compute the equivalence
-    classes of elements in [xs] with respect to [rel]. *)
 let group rel xs =
   let rec go xs y acc = match xs with
     | []                 -> [ L.rev acc ]
@@ -229,14 +223,9 @@ let group rel xs =
   | []    -> []
   | x::xs -> go xs x [x]
 
-
-(** [sorted_nub xs] sorts the elements in [xs] and
-    removes duplicate occurences in [xs]. *)
 let sorted_nub cmp xs =
   xs |> L.sort cmp |> group (fun a b -> cmp a b = 0) |> L.map L.hd
 
-(** [sorted_nub xs] sorts the elements in [xs] and
-    removes duplicate occurences in [xs]. *)
 let nub eq xs =
   let rec go left right =
     match right with
@@ -249,8 +238,8 @@ let nub eq xs =
   in
   go [] xs
 
-(* \ic{[list_equal e_equal l1 l2] returns true if the two lists are
-       equal with respect to [e_equal].} *)
+let move_front p xs = let (u,v) = L.partition p xs in u @ v
+
 let list_equal eq xs0 ys0 =
   let rec go xs ys = 
     match xs,ys with
@@ -260,8 +249,6 @@ let list_equal eq xs0 ys0 =
   in
   (L.length xs0 = L.length ys0) && go xs0 ys0
 
-(* \ic{[list_compare e_compare l1 l2] compares the two lists
-        with respect to length and [e_compare].} *)
 let list_compare cmp xs0 ys0 =
   let rec go xs ys =
     match xs, ys with
@@ -290,6 +277,8 @@ let sum xs =
   | []    -> 0
   | x::xs -> L.fold_left (+) x xs
 
+let num_list l = L.mapi (fun i a -> i+1,a) l 
+
 let catSome xs0 =
   let rec go xs acc =
     match xs with
@@ -309,7 +298,7 @@ let last xs =
   go xs
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{String functions} *)
+(* \hd{String functions} *)
 
 let splitn s sep =
   if s = "" then []
@@ -379,7 +368,7 @@ let split s sep =
   | None   -> None
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Pretty printing} *)
+(* \hd{Pretty printing} *)
 
 let rec pp_list sep pp_elt f l =
   match l with
@@ -418,7 +407,7 @@ let fsprintf fmt =
     fbuf fmt
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Exception required by Logic modules} *)
+(* \hd{Logging and exceptions for Logic module} *)
 
 let no_log = ref false
 

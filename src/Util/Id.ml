@@ -2,10 +2,10 @@
 
 (*i*)
 open Util
-open IdType
+open Abbrevs
 (*i*)
 
-type 'a gid = {
+type id = {
   name_ : string;
   tag_ : int;
 }
@@ -19,10 +19,6 @@ let pp fmt i =
     F.fprintf fmt "%s" i.name_
   else
     F.fprintf fmt "%s.%i" i.name_ i.tag_
-
-(*i ----------------------------------------------------------------------- i*)
-
-type id = internal gid
 
 let equal : id -> id -> bool = (==)
 let hash i = i.tag_
@@ -38,11 +34,3 @@ end)
 module M = SM.M
 module S = SM.S
 module H = SM.H
-
-(*i ----------------------------------------------------------------------- i*)
-
-type eid = exported gid
-
-let mke s t = { name_ = s; tag_ = t }
-
-let export id = (id :> eid)

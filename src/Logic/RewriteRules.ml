@@ -1,12 +1,13 @@
 (*s Derived tactics for rewriting. *)
 
 (*i*)
+open Abbrevs
+open Util
 open Game
 open CoreRules
 open Expr
 open Norm
 open NormField
-open Util
 
 module Ht = Hashtbl
 
@@ -14,7 +15,7 @@ let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RewriteRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Derived rewriting tactics} *)
+(* \hd{Derived rewriting tactics} *)
 
 (** Unfold all lets and norm. *)
 let t_norm ?fail_eq:(fe=false) ju =
@@ -130,7 +131,7 @@ let rewrite_exps unknown e0 =
    If there is a "let z=g^i" we can replace g^i by z in the next
    step. i*)
 let t_norm_unknown unknown ju =
-  let norm e = abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr_weak e)) in
+  let norm e = remove_tuple_proj (abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr_weak e))) in
   let new_ju = map_ju_exp norm ju in
   t_conv true new_ju ju
 

@@ -1,18 +1,16 @@
-(*s Deducibility for fields *)
+(*s Deducibility for field expressions. *)
 
 (*i*)
+open Abbrevs
 open Util
-(* open Syms *)
 open Expr
 open NormField
-(* open CAS *)
 open Norm
 (*i*)
 
 (** Special purpose routine to deduce a variable [v] from an expression [e]
     assuming all other variables are known. *)
 let solve_fq_vars_known e v =
-  (* eprintf "solve_fq_vars e=%a v=%a\n%!" pp_exp e Vsym.pp v; *)
   let ev = mk_V v in
   let v_occurs p =
     L.exists (fun (m,_) -> L.exists (fun (e,_) -> Se.mem ev (e_vars e)) m) (EP.to_terms p)
@@ -57,7 +55,6 @@ let solve_fq_var (ecs : (expr * inverter) list) e =
     in
     let c = solve_fq_vars_known f v in
     let c = norm_expr_strong (e_replace e (expr_of_inverter w_f) c) in
-    (* eprintf "poly is %a, solution %a\n%!" pp_exp f pp_exp c; *)
     c
   | _ -> raise Not_found
 

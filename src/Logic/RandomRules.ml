@@ -1,6 +1,7 @@
 (*s Derived rules for dealing with random samplings. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Nondet
 open Type
@@ -19,7 +20,7 @@ let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RandomRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Derived rule for random sampling} *)
+(* \hd{Derived rule for random sampling} *)
 
 let parse_ctxt ts ju ty (sv,se) =
   let vmap = vmap_of_globals ju.ju_gdef in
@@ -143,7 +144,6 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs  mgen i ju =
     ret (v2, DeducField.solve_fq_vars_known e2 v2)
   | None -> mempty
   ) >>= fun (v1,e1) ->
-  (* log_t (lazy (fsprintf "calling rrnd %i on @\n%a@\n%!" i pp_ju ju)); *)
   CR.t_rnd i (v1,e1) (v2,e2) ju
 
 let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
@@ -169,7 +169,7 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
     ju
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Random rule in oracle} *)
+(* \hd{Random rule in oracle} *)
 
 let parse_ctxt_oracle ts opos ju ty (sv,se) =
   let vmap = vmap_in_orcl ju opos in

@@ -1,12 +1,12 @@
 (*s Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
 
 (*i*)
-open TheoryState
 open Expr
 open Type
 open Game
 open Syms
 open Gsyms
+open TheoryTypes
 open ParserTypes
 (*i*)
 

@@ -1,6 +1,7 @@
 (*s Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
 
 (*i*)
+open TheoryTypes
 open TheoryState
 open Syms
 open Gsyms
@@ -16,7 +17,7 @@ module S = String
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Utility functions} *)
+(* \hd{Utility functions} *)
 
 
 (** Parser error with explanation. *)
@@ -33,7 +34,7 @@ let create_var vmap s ty =
     v
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Conversion functions for parser-types} *)
+(* \hd{Conversion functions for parser-types} *)
 
 let rec ty_of_parse_ty ts pty =
   match pty with

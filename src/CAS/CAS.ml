@@ -3,14 +3,14 @@
 (*i*)
 open Expr
 open NormField
-open IntPoly
+open PolyInsts
 
 module Ht = Hashtbl
 module YS = Yojson.Safe
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Using CAS to perform polynomial computations} *)
+(* \hd{Using CAS to perform polynomial computations} *)
 
 let cache_norm_factory = Ht.create 17
 
@@ -27,7 +27,6 @@ let norm_factory se hv =
     Not_found ->
       let (p1,p2) = NormField.norm_fe se in
       Ht.add cache_norm_factory se (p1,p2);
-      (* F.printf ">>> %s\n -> (%a)/(%a)\n%!" (string_of_fexp se) IP.pp p1 IP.pp p2; *)
       convert_polys (p1,p2)
 
 let ht_mod_reduce_factory = Ht.create 17
@@ -50,7 +49,7 @@ let mod_reduce_factory a b =
       res
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Computing the normal form and reducing modulo a polynomial} *)
+(* \hd{Computing the normal form and reducing modulo a polynomial} *)
 
 let mod_reduce = mod_reduce_factory
 

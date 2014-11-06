@@ -1,6 +1,6 @@
 open Util
 open CoreRules
-open TheoryState
+open TheoryTypes
 
 val t_assm_dec :
   ?i_assms:Util.Sstring.t ->

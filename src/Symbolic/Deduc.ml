@@ -20,7 +20,6 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
   (** add an expression with the given inverter and also immediately
       add extractable subterms (e.g., components of tuple). *)
   let rec add_known e inv =
-    (* eprintf "adding %a@\n%!" pp_exp e; *)
     if e_equal e to_ then raise (Found inv);
     if not (He.mem known e) && not (is_some_Cnst e) then (
       He.add known e inv;
@@ -116,11 +115,11 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
     if do_div && is_in e && not (is_in e1) && is_in e2 then (
       add_known e1 (mk_FMult [get e; get e2]); rm_sub e
     )
-    (*
+    (*i
     if do_div && is_in e && not (is_in e2) && is_in e1 then (
       add_known e2 (mk_FMult [mk_FInv (get e); get e1]); rm_sub e
     )
-    *)
+    i*)
   in
   let construct_app e op es =
     match op, es with
@@ -166,8 +165,6 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
       let k = ref (List.map (fun e -> (e, I (get e))) k) in
       Se.iter (fun u ->
         try 
-            (* eprintf "trying: solve_xor %a |- %a@\n%!"
-              (pp_list "," pp_exp) (L.map fst !k) pp_exp u; *)
           let inv =  solver !k u in
           add_known u (expr_of_inverter inv);
           k := (u,inv) :: !k
@@ -198,8 +195,4 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
     with Found inv -> inv
     
 let invert ?ppt_inverter:(ppt=false) known_es to_ =
-  (* first try to find a recipe without invert *)
-  (* try *)
   invert' ~ppt_inverter:ppt true known_es to_
-  (* with
-    Not_found -> invert' ~ppt_inverter:ppt true known_es to_ *)

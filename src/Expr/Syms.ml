@@ -1,9 +1,10 @@
 (*s Symbols for variables and other objects. *)
 
 (*i*)
-open Type
+open Abbrevs
 open Util
 open Id
+open Type
 (*i*)
 
 module Vsym = struct

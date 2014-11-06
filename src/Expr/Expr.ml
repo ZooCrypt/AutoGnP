@@ -1,24 +1,25 @@
 (*s This module implements hashconsed and non-hashconsed expressions. *)
 
 (*i*)
-open Type
+open Abbrevs
 open Util
+open Type
 open Syms
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Expression data types} *)
+(* \hd{Expression data types} *)
 
 type proj_type = ty * ty * ty
 
-(* \ic{Constants.} *)
+(** Constants. *)
 type cnst =
     GGen        (*r generator of $\group$ (type defines group) *)
   | FNat of int (*r Natural number in field, always $\geq 0$ *)
   | Z           (*r $0$ bitstring (typ defines length) *)
   | B of bool   (*r boolean value *)
 
-(* \ic{Hash constants.} *)
+(** Hash constants. *)
 let cnst_hash = (*c ... *) (*i*)
   function
   | GGen   -> 1
@@ -28,7 +29,7 @@ let cnst_hash = (*c ... *) (*i*)
 (*i*)
 
 
-(* \ic{Operators with fixed arity.} *)
+(** Operators with fixed arity. *)
 type op =
     GExp of Groupvar.id  (*r exponentiation in $\group_i$ *)
   | GLog of Groupvar.id  (*r discrete logarithm in $\group_i$ *)
@@ -42,7 +43,7 @@ type op =
   | EMap of Esym.t       (*r bilinear map *)
 
 
-(* \ic{Hash operators.} *)
+(** Hash operators. *)
 let op_hash = (*c ... *) (*i*)
   function
   | GExp gv  -> Hashcons.combine 1 (Groupvar.hash gv)
@@ -58,7 +59,7 @@ let op_hash = (*c ... *) (*i*)
   (*i*)
 
 
-(* \ic{N-ary/associative operators with variable arity.} *)
+(** N-ary/associative operators with variable arity. *)
 type nop =
     FPlus  (*r plus in Fq *)
   | FMult  (*r multiplication in Fq *)
@@ -66,7 +67,7 @@ type nop =
   | Land   (*r logical and *)
   | GMult  (*r multiplication in G (type defines group) *)
 
-(* \ic{Hash n-ary operators.} *)
+(** Hash n-ary operators. *)
 let nop_hash = (*c ... *) (*i*)
   function
   | FPlus  -> 1
@@ -77,7 +78,7 @@ let nop_hash = (*c ... *) (*i*)
 (*i*)
 
 
-(* \ic{Expressions and expression nodes.} *)
+(** Expressions and expression nodes. *)
 type expr = {
   e_node : expr_node;
   e_ty   : ty;
@@ -95,12 +96,12 @@ and expr_node =
     (*r $Exists(e_1,e_2,[(x_1,L_{H_{h1}}),\ldots]$: $\exists x_1 \in L_{H_{h1}}.\, e_1 = e_2$ *)
 
 
-(* \ic{Equality hashing, and comparison for expressions.} *)
+(** Equality hashing, and comparison for expressions. *)
 let e_equal : expr -> expr -> bool = (==) 
 let e_hash e = e.e_tag
 let e_compare e1 e2 = e1.e_tag - e2.e_tag 
 
-(* \ic{Hashcons expressions.} *)
+(** Hashcons expressions. *)
 module Hse = Hashcons.Make (struct
   type t = expr
 
@@ -141,14 +142,14 @@ module Hse = Hashcons.Make (struct
   let tag n e = { e with e_tag = n }
 end)
 
-(* \ic{Create internal expression.} *)
+(** Create internal expression. *)
 let mk_e n ty = Hse.hashcons {
   e_node = n;
   e_ty   = ty;
   e_tag  = (-1)
 }
 
-(* \ic{Create Map, Set, and HashTable modules.} *)
+(** Create Map, Set, and HashTable modules. *)
 module E = StructMake (struct
   type t = expr
   let tag = e_hash
@@ -158,7 +159,7 @@ module Se = E.S
 module He = E.H
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Indicator functions} *)
+(* \hd{Indicator functions} *)
 
 let is_V e = match e.e_node with V _ -> true | _ -> false
 
@@ -230,16 +231,16 @@ let is_field_exp e = match e.e_node with
   | _            -> false
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Pretty printing} *)
+(* \hd{Pretty printing} *)
 
-(* \ic{The term $*(+(a,b),c)$ can be printed as $(a + b) * c$
+(** The term $*(+(a,b),c)$ can be printed as $(a + b) * c$
     or $a + b * c$.
     We pass enough information to the function call
     printing $a + b$ to decide if parentheses are
-    required around this expression or not.}
+    required around this expression or not.
 *)
 
-(* \ic{Pretty print constant.} *)
+(** Pretty print constant. *)
 let pp_cnst fmt c ty =
   match c with
   | GGen   -> if Groupvar.name (destr_G ty) <> ""
@@ -249,7 +250,7 @@ let pp_cnst fmt c ty =
   | Z      -> F.fprintf fmt "0%%%a" pp_ty ty
   | B b    -> F.fprintf fmt "%b" b
 
-(* \ic{Constructor above the current expression.} *)
+(** Constructor above the current expression. *)
 type 'a above =
     PrefixApp          (*r prefix function application: $f(\ldots)$ *)
   | Top                (*r topmost, nothing above *)
@@ -257,27 +258,27 @@ type 'a above =
   | NInfix of nop      (*r n-ary infix operator *)
   | Tup                (*r tuple constructor *)
 
-(* \ic{Above does not have separators that allow to leave out parentheses.} *)
+(** Above does not have separators that allow to leave out parentheses. *)
 let notsep above = above <> Top && above <> PrefixApp && above <> Tup
 
-(* \ic{Surround with an [hv] or [hov] box.} *)
+(** Surround with an [hv] or [hov] box. *)
 let pp_box hv pp fmt =
   if hv
   then F.fprintf fmt "@[<hv>%a@]" pp
   else F.fprintf fmt "@[<hov>%a@]" pp
 
-(* \ic{Enclose with given format strings.} *)
+(** Enclose with given format strings. *)
 let pp_enclose hv ~pre ~post pp fmt x =
   F.fprintf fmt "%(%)%a%(%)" pre (pp_box hv pp) x post
 
-(* \ic{Enclose with parens.} *)
+(** Enclose with parens. *)
 let pp_paren hv = pp_enclose hv ~pre:"(" ~post:")"
 
-(* \ic{Enclose with parens depending on boolean argument.} *)
+(** Enclose with parens depending on boolean argument. *)
 let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 
-(* \ic{Pretty-prints expression assuming that
-       the expression above is of given type.} *)
+(** Pretty-prints expression assuming that
+    the expression above is of given type. *)
 let rec pp_exp_p above fmt e =
   match e.e_node with
   | V(v)       -> 
@@ -301,8 +302,8 @@ let rec pp_exp_p above fmt e =
         (pp_exp_p Top) e1 (pp_exp_p Top) e2 in
     pp_maybe_paren true (notsep above && above<>NInfix(Land)) pp fmt ()
 
-(* \ic{Pretty-prints operator assuming that
-       the expression above is of given type.} *)
+(** Pretty-prints operator assuming that
+    the expression above is of given type. *)
 and pp_op_p above fmt (op, es) =
   let pp_bin p op ops a b =
     let pp fmt () = 
@@ -316,7 +317,8 @@ and pp_op_p above fmt (op, es) =
   in
   match op, es with
   | GExp _,   [a;b] -> 
-    pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult))
+    pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult)
+            && above<>Infix(Eq,0) && above<>Infix(Eq,1))
       op "^" a b
   | FDiv,   [a;b] -> 
     pp_bin (notsep above) FDiv "@ / " a b
@@ -342,17 +344,18 @@ and pp_op_p above fmt (op, es) =
     F.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
   | Ifte, [a;b;d] ->
     let ppe i = pp_exp_p (Infix(Ifte,i)) in
-    let pp fmt () = 
+    let pp fmt () =
       F.fprintf fmt "@[<hv>%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d
     in
     pp_maybe_paren true (notsep above) pp fmt ()
   | _             -> failwith "pp_op: invalid expression"
 
-(* \ic{Pretty-prints n-ary operator assuming that
-       the expression above is of given type.} *)
+(** Pretty-prints n-ary operator assuming that
+    the expression above is of given type. *)
 and pp_nop_p above fmt (op,es) =
   let pp_nary hv op ops p =
-    pp_maybe_paren hv p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es in
+    pp_maybe_paren hv p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es
+  in
   match op with
   | GMult  -> pp_nary true GMult  "@ * "   (notsep above)
   | FPlus  -> pp_nary true FPlus  "@ + "   (notsep above)
@@ -365,16 +368,16 @@ and pp_nop_p above fmt (op,es) =
       | _ -> notsep above in
     pp_nary false FMult "@,*" p
 
-(* \ic{Pretty-print expressions/operators assuming they are topmost.} *)
+(** Pretty-print expressions/operators assuming they are topmost. *)
 let pp_exp fmt e = pp_exp_p Top fmt e
 let pp_op  fmt x = pp_op_p  Top fmt x
 let pp_nop fmt x = pp_nop_p Top fmt x
 
-(* \ic{Pretty-printing without parens around tuples.} *)
+(** Pretty-printing without parens around tuples. *)
 let pp_exp_tnp fmt e = pp_exp_p PrefixApp fmt e
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Destructor functions} *)
+(* \hd{Destructor functions} *)
 
 exception Destr_failure of string
 
@@ -447,27 +450,28 @@ let destr_Not    e = destr_App_uop "Not"  Not e
 let destr_Xor    e = destr_Nary   "Xor"  Xor e 
 let destr_Land   e = destr_Nary   "Land" Land e
 
-let destruct_Lxor e = 
-  match e.e_node with
-  | Nary(Xor,es) -> es 
-  | _ -> [e] 
-
-let destruct_Land e =
-  match e.e_node with
-  | Nary(Land,es) -> es 
-  | _ -> [e] 
-
 let destr_Ifte   e = 
   match e.e_node with 
   | App(Eq,[a;b;c]) -> (a,b,c) 
   | _ -> raise (Destr_failure "Ifte")
+
 let destr_Exists  e = 
   match e.e_node with
   | Exists(e1,e2,vh) -> e1,e2,vh
   | _ -> raise (Destr_failure "Exists")
 
+let destr_Xor_nofail e = 
+  match e.e_node with
+  | Nary(Xor,es) -> es 
+  | _ -> [e] 
+
+let destr_Land_nofail e =
+  match e.e_node with
+  | Nary(Land,es) -> es 
+  | _ -> [e] 
+
 (*i ----------------------------------------------------------------------- i*)
-(*  \subsection{Constructor functions} *)
+(*  \hd{Constructor functions} *)
 
 exception TypeError of (ty * ty * expr * expr option * string)
 
@@ -616,7 +620,7 @@ let mk_GMult es =
   | _ -> assert false
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Generic functions on expressions} *)
+(* \hd{Generic functions on expressions} *)
 
 let sub_map g e = 
   match e.e_node with
@@ -712,10 +716,9 @@ let e_ty_outermost ty e =
 
 let has_log e = e_exists (fun e -> is_GLog e) e
 
-(*i FIXME: is this sufficient? i*)
 let is_ppt e = not (has_log e)
 
-let e_map f = 
+let e_map f =
   let tbl = He.create 103 in
   let rec aux e = 
     try He.find tbl e 
@@ -762,28 +765,15 @@ let e_iter_ty_maximal ty g e0 =
     let me = not ie && ty_equal e0.e_ty ty in
     (* ie = immediate subterms of e inside a larger expression of the desired type *)
     let ie = me || (ie && ty_equal e0.e_ty ty) in
-    (* F.printf "### %a ie=%b me=%b\n\n" pp_exp e0 ie me; *)
     let run = if me then g else fun _ -> () in
     match e0.e_node with
-    | V(_) | Cnst(_) -> ()
-    | H(_,e) ->
-      go ie e;
-      run e0
-    | Tuple(es) ->
-      L.iter (go ie) es;
-      run e0
-    | Proj(_,e) ->
-      go ie e;
-      run e0
-    | App(_,es) ->
-      L.iter (go ie) es;
-      run e0
-    | Nary(_,es) -> 
-      L.iter (go ie) es;
-      run e0
+    | V(_) | Cnst(_)  -> ()
+    | H(_,e) | Proj(_,e) -> 
+      go ie e; run e0
+    | Tuple(es) | App(_,es) | Nary(_,es) ->
+      L.iter (go ie) es;  run e0
     | Exists(e1,e2,_) ->
-      go ie e1; go ie e2;
-      run e0
+      go ie e1; go ie e2; run e0
   in
   go false e0
 

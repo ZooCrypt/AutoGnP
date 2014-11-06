@@ -1,6 +1,7 @@
 (** Cryptographic game definitions. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Type
 open Expr
@@ -10,7 +11,7 @@ open Norm
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Types} *)
+(* \hd{Types} *)
 
 (** Variable, adversary, oracle, and hash symbol. *)
 type vs  = Vsym.t
@@ -51,7 +52,7 @@ type judgment = { ju_gdef : gdef; ju_ev : ev }
 
 (*i*)
 (* ----------------------------------------------------------------------- *)
-(** {2 Pretty printing} *)
+(* \hd{Pretty printing} *)
 
 let pp_distr fmt (ty,es) = 
   match es with
@@ -59,7 +60,7 @@ let pp_distr fmt (ty,es) =
   | _  -> F.fprintf fmt "@[<hov 2>%a \\ {@[<hov 0>%a}@]@]" pp_ty ty
             (pp_list "," pp_exp) es
 
-(*let pp_v fmt v = F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
+(* let pp_v fmt v = F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
 let pp_v fmt v = Vsym.pp fmt v 
 
 let pp_binder fmt vs = match vs with
@@ -78,8 +79,6 @@ let pp_lcmd fmt lc =
 
 let pp_ilcmd fmt (i,lc) =
   F.fprintf fmt "%i: %a" i pp_lcmd lc
-
-let num_list l = L.mapi (fun i a -> i+1,a) l 
 
 let pp_lcomp fmt (e,m) =
   match m with
@@ -124,11 +123,11 @@ let pp_ps fmt ps =
 
 (*i*)
 
+
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Generic functions: $map\_*\_expr$, $iter\_*\_expr$} *)
+(* \hd{Generic functions: [map_*_expr] and [iter_*_expr]} *)
 
 (** map *)
-
 let map_distr_exp f (t,es) = (t, L.map f es)
 
 let map_lcmd_exp f lcmd = match lcmd with
@@ -186,7 +185,7 @@ let iter_ju_exp ?iexc:(iexc=false) f ju =
   iter_gdef_exp ~iexc f ju.ju_gdef; f ju.ju_ev
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Positions and replacement functions} *)
+(* \hd{Positions and replacement functions} *)
 
 type gcmd_pos = int
 
@@ -268,7 +267,7 @@ let set_ju_lcmd ju p cmds =
   set_ju_octxt cmds ctxt
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Iterate with context} *)
+(* \hd{Iterate with context} *)
 
 type iter_pos =
   | InEv
@@ -302,28 +301,6 @@ let pp_iter_ctx fmt ic =
     (pp_list " /\\ " (pp_around "" " = 0" pp_exp)) ic.ic_isZero
     (pp_list " /\\ " (pp_around "" " <> 0" pp_exp)) ic.ic_nonZero
 
-let destr_eq e =
-  (* F.printf ">>> destr_eq: %a\n%!" pp_exp e; *)
-  match e.e_node with
-  | App(Eq,[e1;e2]) ->
-    begin match e1.e_ty.ty_node with
-    | G(_gid) ->
-      Some (norm_expr_strong (mk_FMinus (mk_GLog e1) (mk_GLog e2)))
-    | Fq ->
-      Some (norm_expr_strong (mk_FMinus e1 e2))
-    | _ ->
-      None
-    end
-  | _ ->
-    None
-
-let destr_neq e =
-  match e.e_node with
-  | App(Not,[e1]) ->
-    destr_eq e1
-  | _ ->
-    None
-
 let iter_ctx_odef_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (o,_vs,ms,e) =
   let tests = ref 0 in
   let nonZero = ref nz in
@@ -340,13 +317,13 @@ let iter_ctx_odef_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (o,_vs,ms,e) =
     | LSamp(v,(_,es)) ->
       if iexc then L.iter (f ctx) es;
       let ve = mk_V v in
-      let neqs = L.map (fun e -> destr_eq (mk_Eq ve e)) es in
+      let neqs = L.map (fun e -> destr_Eq_norm (mk_Eq ve e)) es in
       nonZero := catSome neqs @ !nonZero
     | LGuard(e)  ->
       incr tests;
       f ctx e;
-      isZero := (catSome (L.map destr_eq [e])) @ !isZero;
-      nonZero := (catSome (L.map destr_neq [e])) @ !nonZero
+      isZero := (catSome (L.map destr_Eq_norm [e])) @ !isZero;
+      nonZero := (catSome (L.map destr_Eq_norm [e])) @ !nonZero
   in
   L.iteri go ms;
   let ctx = { ic_pos = InOrclReturn((gpos,o_idx,!tests),argtype,o.Osym.dom);
@@ -369,7 +346,7 @@ let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
     | GSamp(v,(_,es)) ->
       if iexc then L.iter (f ctx) es;
       let ve = mk_V v in
-      let neqs = L.map (fun e -> destr_eq (mk_Eq ve e)) es in
+      let neqs = L.map (fun e -> destr_Eq_norm (mk_Eq ve e)) es in
       nonZero := catSome neqs @ !nonZero
   in
   L.iteri go gdef;
@@ -384,7 +361,7 @@ let iter_ctx_ju_exp ?iexc:(iexc=false) f ju =
     let _ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
     let iter_ineq ineq =
       (* f ctx ineq; *) (* FIXME: useless for the case we are interested in *)
-      match destr_neq ineq with
+      match destr_Neq_norm ineq with
       | Some e ->
         nonZero := e :: !nonZero
       | None -> ()
@@ -398,7 +375,7 @@ let iter_ctx_ju_exp ?iexc:(iexc=false) f ju =
   )
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Equality} *) 
+(* \hd{Equality} *) 
 
 let distr_equal (ty1,es1) (ty2,es2) =
   ty_equal ty1 ty2 && list_eq_for_all2 e_equal es1 es2
@@ -447,7 +424,7 @@ let ju_equal ju1 ju2 =
     e_equal ju1.ju_ev ju2.ju_ev
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Read and write variables } *)
+(* \hd{Read and write variables } *)
 
 (** General purpose functions. *)
 
@@ -512,7 +489,7 @@ let asym_gcmds gcmds =
 let read_ju ju = Se.union (read_gcmds ju.ju_gdef) (e_vars ju.ju_ev)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Variable occurences} *) 
+(* \hd{Variable occurences} *) 
 
 let fold_union_vs f xs =
   L.fold_right Vsym.S.union (L.map f xs) Vsym.S.empty
@@ -548,7 +525,7 @@ let gdef_all_vars gdef = fold_union_vs gcmd_all_vars gdef
 let gdef_global_vars gdef = Se.union (read_gcmds gdef) (write_gcmds gdef)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Unification} *) 
+(* \hd{Unification} *) 
 
 let ensure_same_length l1 l2 =
   if L.length l1 <> L.length l2 then raise Not_found
@@ -627,7 +604,7 @@ let ren_injective sigma =
       false
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Variable renaming} *)
+(* \hd{Variable renaming} *)
 
 let subst_v_e tov =
   let rec aux e =
@@ -675,7 +652,7 @@ let pp_ren fmt ren =
   pp_list "," (pp_pair Vsym.pp Vsym.pp) fmt (Vsym.M.bindings ren)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Mappings from strings to variables} *) 
+(* \hd{Mappings from strings to variables} *) 
 
 type vmap = (string,Vsym.t) Hashtbl.t
 
@@ -734,7 +711,7 @@ let vmap_in_orcl ju op =
        (set_of_list juoc.juoc_oargs))
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Normal forms} *) 
+(* \hd{Normal forms} *) 
 
 let norm_distr ?norm:(nf=(Norm.norm_expr_nice)) s (ty,es) = 
   (ty, L.map (fun e -> nf (e_subst s e)) es)
@@ -786,7 +763,7 @@ let norm_ju ?norm:(nf=Norm.norm_expr_nice) ju =
     ju_ev = nf (e_subst s ju.ju_ev) }
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Probabilistic polynomial time} *)
+(* \hd{Probabilistic polynomial time} *)
 
 let has_log_distr (_,es) = L.exists has_log es
   

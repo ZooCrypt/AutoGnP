@@ -1,4 +1,7 @@
+(*s Automated derived rules *)
+
 (*i*)
+open Abbrevs
 open Util
 open Nondet
 open Syms
@@ -13,15 +16,16 @@ open RindepRules
 open CaseRules
 
 module CR = CoreRules
+module CT = CoreTypes
 module Ht = Hashtbl
 
-let log_t ls = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
-let log_d ls = mk_logger "Logic.Crush" Bolt.Level.DEBUG "CrushRules" ls
-let log_i ls = mk_logger "Logic.Crush" Bolt.Level.INFO "CrushRules" ls
+let log_t ls  = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
+let _log_d ls = mk_logger "Logic.Crush" Bolt.Level.DEBUG "CrushRules" ls
+let log_i ls  = mk_logger "Logic.Crush" Bolt.Level.INFO  "CrushRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Simplification} *)
+(* \hd{Simplification} *)
 
 let t_split_ev_maybe mi ju =
   let ev = ju.ju_ev in
@@ -55,10 +59,10 @@ let t_rewrite_ev_maybe mi mdir ju =
     guard (is_Eq e) >>= fun _ ->
     let (a,b) = destr_Eq e in
     msum
-      [ if (is_V a) || (is_H a && is_H b && occ_others a && e_compare a b > 0)
-        then (ret LeftToRight) else mempty
-      ; if (is_V b) || (is_H a && is_H b && occ_others b && e_compare b a > 0)
-        then (ret RightToLeft) else mempty ] >>= fun dir ->
+      [ if is_V a || (is_H a && is_H b && occ_others a && e_compare a b > 0)
+        then ret LeftToRight else mempty
+      ; if is_V b || (is_H a && is_H b && occ_others b && e_compare b a > 0)
+        then ret RightToLeft else mempty ] >>= fun dir ->
     ret (i,dir)
   ) >>= fun (i,dir) ->
   (CR.t_ensure_progress (CR.t_rw_ev i dir)) ju
@@ -112,7 +116,7 @@ let t_simp i must_finish _ts ju =
   t_fix i must_finish step ju
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Automated crush tactic} *)
+(* \hd{Automated crush tactic} *)
 
 type proof_search_info = {
   psi_assms  : Sstring.t;
@@ -128,8 +132,6 @@ let psi_empty = {
   psi_cases  = Se.empty
 }
 
-exception Disallowed
-
 (* compute proof search information on path of each admit for given proof tree *)
 let psis_of_pt pt =
   let admit_psis = ref [] in
@@ -137,31 +139,31 @@ let psis_of_pt pt =
     let gd = pt.CR.pt_ju.ju_gdef in
     let children = pt.CR.pt_children in
     match pt.CR.pt_rule with
-    | CR.Rassm_dec(_,_,_,ad) ->
+    | CT.Rassm_dec(_,_,_,ad) ->
       let psi =
         { psi with psi_assms = Sstring.add ad.ad_name psi.psi_assms }
       in
       L.iter (aux psi) children
-    | CR.Rcase_ev(_,e) ->
+    | CT.Rcase_ev(_,e) ->
       let psi =
         { psi with psi_cases = Se.add e psi.psi_cases }
       in
       L.iter (aux psi) children    
-    | CR.Rrnd(pos,_,_,_) ->
+    | CT.Rrnd(pos,_,_,_) ->
       let rands = samplings gd in
       let (rv,_) = L.assoc pos rands in
       let psi =
         { psi with psi_rvars = Vsym.S.add rv psi.psi_rvars }
       in
       L.iter (aux psi) children
-    | CR.Rrnd_orcl(opos,_,_) ->
+    | CT.Rrnd_orcl(opos,_,_) ->
       let orands = osamplings gd in
       let (orv,_) = L.assoc opos orands in
       let psi =
         { psi with psi_orvars = Vsym.S.add orv psi.psi_orvars }
       in
       L.iter (aux psi) children
-    | CR.Radmit "current" ->
+    | CT.Radmit "current" ->
       (* we ignore admits with label other from other branches of the proof *)
       admit_psis := psi::!admit_psis
     | _ ->
@@ -184,7 +186,7 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
   let irvs = psi.psi_rvars in
   let iorvs = psi.psi_rvars in
   let icases = psi.psi_cases in
-  (* let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in *)
+  (*i let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in i*)
   let t_after_simp ju =
     let (jus,unqstates,is_old) =
       let ju = { ju with ju_gdef = L.sort compare ju.ju_gdef } in

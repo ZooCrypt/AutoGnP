@@ -130,25 +130,18 @@ and check_nonzero ctype wfs e =
   if ctype = NoCheckDivZero then true
   else
     let check e =
+      log_t (lazy (fsprintf "check_nonzero-check @[<hov 2> %a@]" pp_exp e));
       (* we know e itself is division-safe *)
       match wfs.wf_nzero with
-      | Some nz -> CAS.mod_reduce nz e
-      | None    -> false
+      | Some nz -> log_t (lazy (fsprintf "some_nz: %a" pp_exp nz)); CAS.mod_reduce nz e
+      | None    -> log_t (lazy "no_nz"); false
     in
     let e = norm_expr_weak e in
     match e.e_node with
-    | App(Ifte, [c; a; b])
-      when
+    | App(Ifte, [c; _a; b]) when is_False c -> check b
+    | App(Ifte, [c; a; b]) when
         is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in is_Zero v && e_equal u b) ->
       true
-    (*
-    | App(Ifte, [c; a; b])
-      when
-        log_t (lazy (fsprintf "%a, %a, %a" pp_exp c pp_exp a pp_exp b));
-        is_FOne b && is_Not c &&
-        (let e = destr_Not c in is_Eq e && (let (u,v) = destr_Eq e in is_Zero v && e_equal u a)) ->
-      true
-    *)
     | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
     | _                 -> check e (* e is polynomial *)
 
@@ -187,10 +180,7 @@ and wf_exp ctype wfs e0 =
         mk_Prod tys
       | V v ->
         assert_exc (Vsym.S.mem v wfs.wf_bvars)
-          (fun () -> raise (Wf_var_undef (v,e0)))
-          (* 
-          (fsprintf "wf_exp: Variable %a undefined in %a"
-             Vsym.pp v pp_exp e0) *);
+          (fun () -> raise (Wf_var_undef (v,e0)));
         assert (ty_equal v.Vsym.ty e.e_ty);
         v.Vsym.ty
       | Nary(Land,es) ->
@@ -200,10 +190,20 @@ and wf_exp ctype wfs e0 =
         let destr_InEq e = destr_Eq (destr_Not e) in
         assert (ty_equal mk_Bool e.e_ty);
         let (ineqs,others) = List.partition is_InEq es in
-        assert (List.for_all (fun (e :expr) -> ty_equal mk_Bool (go e)) ineqs);
-        let wfs = List.fold_left (fun wfs e ->
-                                    let e1,e2 = destr_InEq e in
-                                    add_ineq ctype wfs e1 e2) wfs ineqs
+        let ineqs =
+          Util.move_front
+            (fun ie -> let e1,_ = destr_InEq ie in ty_equal mk_Fq e1.e_ty)
+            ineqs
+        in
+        log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_exp) ineqs));
+        (* FIXME: add support for Ineqs that make other ineqs well-formed *)
+
+        let wfs = List.fold_left
+                    (fun wfs e ->
+                      log_t (lazy (fsprintf ">>> ineqs %a" pp_exp e));
+                      wf_exp ctype wfs e;
+                      let e1,e2 = destr_InEq e in
+                      add_ineq ctype wfs e1 e2) wfs ineqs
         in
         assert (List.for_all (fun (e :expr) ->
                                 wf_exp ctype wfs e;
@@ -221,7 +221,6 @@ and wf_exp ctype wfs e0 =
           (List.for_all
             (fun i -> check_nonzero ctype wfs (List.nth es i)) nz)
           (fun () -> raise (Wf_div_zero (List.map (fun i -> List.nth es i) nz)));
-          (* (fsprintf "Cannot prove that %a nonzero" (pp_list "," pp_exp) ) *)
         assert (ty_equal rty e.e_ty);
         rty
     in ty

@@ -1,12 +1,14 @@
 (*s Tactic engine: transformations of theory and proof states. *)
 
 (*i*)
+open Abbrevs
 open Expr
 open Type
 open Util
 open Nondet
 open Syms
 open Gsyms
+open TheoryTypes
 open TheoryState
 open Rules
 open RewriteRules
@@ -27,6 +29,9 @@ let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 (*i*)
 
 
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Utility functions} *)
+
 let fail_unless c s =
   if not (c ()) then tacerror s
 
@@ -39,6 +44,46 @@ let diff_step ops nps =
       (diff_proof_tree (get_pt ops,get_pt nps))
   | None -> ""
 
+let pp_jus i fmt jus =
+  match jus with
+  | [] -> F.printf "No remaining goals, proof completed.@\n"
+  | jus ->
+    let n = L.length jus in
+    let goal_num = if n = 1 then "" else F.sprintf " (of %i)" n in
+    let pp_goal i ju =
+      F.fprintf fmt "goal %i%s:@\n%a@\n@\n" (i + 1) goal_num pp_ju ju
+    in
+    L.iteri pp_goal (Util.take i jus)
+
+let gpos_of_offset ju i =
+  if i < 1 then L.length ju.ju_gdef + i + 1 else i
+
+let epos_of_offset ju i =
+  if i < 1 && is_Land ju.ju_ev
+  then L.length (destr_Land ju.ju_ev) + i + 1
+  else i
+
+let gpos_of_apos ju ap =
+  let module E = struct exception Found of int end in
+  let find s i cmd =
+    match cmd with
+    | GLet(vs,_) | GSamp(vs,_)
+      when s = Id.name vs.Vsym.id -> raise (E.Found i)
+    | _ -> ()
+  in
+  match ap with
+  | PT.Var s ->
+    begin try
+      L.iteri (find s) ju.ju_gdef;
+      tacerror "variable not found in game"
+    with
+      E.Found i -> i
+    end
+  | PT.Pos i -> gpos_of_offset ju i
+
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Tactic handling} *)
+
 let handle_tactic ts tac =
   let ps = get_proof_state ts in
   let ju = match ps.CR.subgoals with
@@ -47,11 +92,7 @@ let handle_tactic ts tac =
   in
   let apply ?adecls r =
     try
-      let ts =
-        match adecls with
-        | None   -> ts
-        | Some ad -> { ts with ts_adecls = ad }
-      in
+      let ts = opt (fun ad -> { ts with ts_adecls = ad }) ts adecls in
       let pss = CR.apply_first r ps in
       begin match pull pss with
       | Left None     -> tacerror "mempty"
@@ -68,32 +109,11 @@ let handle_tactic ts tac =
       tacerror "Wf: Var %a undefined in %a" Vsym.pp v pp_exp e
   in
   let vmap_g = vmap_of_globals ju.ju_gdef in
+  let e_pos = epos_of_offset ju in
+  let t_pos = gpos_of_offset ju in
+  let get_pos = gpos_of_apos ju in
   let parse_e se = PU.expr_of_parse_expr vmap_g ts se in
-  let mk_new_var sv ty =
-    assert (not (Ht.mem vmap_g sv));
-    Vsym.mk sv ty
-  in
-  let get_pos ap =
-    let module E = struct exception Found of int end in
-    let find s i cmd =
-      match cmd with
-      | GLet(vs,_) | GSamp(vs,_)
-        when s = Id.name vs.Vsym.id -> raise (E.Found i)
-      | _ -> ()
-    in
-    match ap with
-    | PT.Var s ->
-      begin try
-        L.iteri (find s) ju.ju_gdef;
-        tacerror "variable not found in game"
-      with
-        E.Found i -> i
-      end
-    | PT.Pos i -> i
-  in
-  let t_pos i =
-    if i < 1 then L.length ju.ju_gdef + i + 1 else i
-  in
+  let mk_new_var sv ty = assert (not (Ht.mem vmap_g sv)); Vsym.mk sv ty in
   match tac with
   (* Rules with primitive arguments *)
   | PT.Rnorm                 -> apply t_norm
@@ -102,8 +122,8 @@ let handle_tactic ts tac =
   | PT.Rlet_unfold(None)     -> apply (t_unfold_only)
   | PT.Rswap(i,j)            -> apply (CR.t_swap (t_pos i) j)
   | PT.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
-  | PT.Rsplit_ev(i)          -> apply (CR.t_split_ev (t_pos i))
-  | PT.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev (t_pos i) d)
+  | PT.Rsplit_ev(i)          -> apply (CR.t_split_ev (e_pos i))
+  | PT.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev (e_pos i) d)
   | PT.Rcrush(finish,mi)     -> apply (t_crush finish mi ts ps)
 
   | PT.Rcase_ev(Some(se)) ->
@@ -116,9 +136,9 @@ let handle_tactic ts tac =
     apply t_case_ev_maybe
 
   | PT.Rexcept(Some(i),Some(ses)) ->
-    apply (CR.t_except (t_pos i) (L.map (parse_e) ses))
+    apply (CR.t_except (get_pos i) (L.map (parse_e) ses))
   | PT.Rexcept(i,ses) ->
-    apply (t_rexcept_maybe (map_opt t_pos i) ses)
+    apply (t_rexcept_maybe (map_opt get_pos i) ses)
 
   | PT.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
   | PT.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
@@ -130,15 +150,15 @@ let handle_tactic ts tac =
     let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
     apply (t_norm_unknown vs)
 
-  | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,do_norm_expr) ->
+  | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
     let e = parse_e se in
     let v = mk_new_var sv e.e_ty in
-    apply (t_let_abstract (t_pos i) v e (map_opt t_pos mupto) do_norm_expr)
+    apply (t_let_abstract (t_pos i) v e (map_opt t_pos mupto) (not no_norm))
 
-  | PT.Rlet_abstract(None,sv,None,mupto,do_norm_expr) ->
+  | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
     let v = mk_new_var sv ju.ju_ev.e_ty in
     let max = L.length ju.ju_gdef in
-    apply (t_let_abstract max v ju.ju_ev (map_opt t_pos mupto) do_norm_expr)
+    apply (t_let_abstract max v ju.ju_ev (map_opt t_pos mupto) (not no_norm))
 
   | PT.Rlet_abstract(_,_,_,_,_) ->
     tacerror "No placeholders or placeholders for both position and event"
@@ -172,10 +192,10 @@ let handle_tactic ts tac =
       | _ when j = 0 -> ev
       | _ -> tacerror "rctxt_ev: bad index"
     in
-    let ty = 
+    let ty =
       if is_Eq b then (fst (destr_Eq b)).e_ty
       else if is_Exists b then
-        let (e1,_,_) = destr_Exists b in e1.e_ty 
+        let (e1,_,_) = destr_Exists b in e1.e_ty
       else tacerror "rctxt_ev: bad event"
     in
     let vmap = vmap_of_globals ju.ju_gdef in
@@ -196,7 +216,7 @@ let handle_tactic ts tac =
 
   | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
     apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
-   
+
   | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
     (* create symbol for new adversary *)
     let _, juoc = get_ju_octxt ju opos in
@@ -253,17 +273,20 @@ let handle_tactic ts tac =
        Not_found ->
          tacerror "Not found@\n");
     (ts,lazy "")
+  | PT.FieldExprs(pes) ->
+    let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
+    let ses = ref Se.empty in
+    Game.iter_ju_exp ~iexc:true
+      (fun e' -> e_iter_ty_maximal mk_Fq
+        (fun fe -> if L.exists (fun e -> e_exists (e_equal e) fe) es then ses := Se.add fe !ses) e')
+      ju;
+    let res = (lazy (fsprintf "field expressions with %a: @\n@[<hov 2>  %a@]"
+                       (pp_list ", " pp_exp) es (pp_list ",@\n" pp_exp) (Se.elements !ses))) in
+    log_i res;
+    (ts,res)
 
-let pp_jus i fmt jus =  
-  match jus with
-  | [] -> F.printf "No remaining goals, proof completed.@\n"
-  | jus ->
-    let n = L.length jus in
-    let goal_num = if n = 1 then "" else F.sprintf " (of %i)" n in
-    let pp_goal i ju =
-      F.fprintf fmt "goal %i%s:@\n%a@\n@\n" (i + 1) goal_num pp_ju ju
-    in
-    L.iteri pp_goal (Util.take i jus)
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Instruction handling} *)
 
 let handle_instr verbose ts instr =
   match instr with
@@ -283,16 +306,16 @@ let handle_instr verbose ts instr =
     (ts, "Declared bilinear map.")
 
   | PT.ODecl(s,t1,t2) ->
-      if Ht.mem ts.ts_odecls s then 
+      if Ht.mem ts.ts_odecls s then
         tacerror "Oracle with same name already declared.";
-    Ht.add ts.ts_odecls s 
+    Ht.add ts.ts_odecls s
       (Osym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared oracle.")
 
   | PT.ADecl(s,t1,t2) ->
-    if Ht.mem ts.ts_adecls s then 
+    if Ht.mem ts.ts_adecls s then
       tacerror "adversary with same name already declared.";
-    Ht.add ts.ts_adecls s 
+    Ht.add ts.ts_adecls s
       (Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared adversary.")
 
@@ -327,7 +350,7 @@ let handle_instr verbose ts instr =
       tacerror "assumption with the same name already exists";
     Ht.add ts.ts_assms_comp s assm;
     (ts, "Declared computational assumption.")
-    
+
   | PT.Judgment(gd,e) ->
     let vmap = Ht.create 137 in
     let ju = PU.ju_of_parse_ju vmap ts gd e in
@@ -341,7 +364,7 @@ let handle_instr verbose ts instr =
 
   | PT.Back ->
     begin match ts.ts_ps with
-    | ActiveProof(_,uback,back,ops) -> 
+    | ActiveProof(_,uback,back,ops) ->
       begin match pull back with
       | Left _ -> tacerror "Cannot backtrack"
       | Right(ps',pss) ->
@@ -355,7 +378,7 @@ let handle_instr verbose ts instr =
 
   | PT.UndoBack(false) ->
     begin match ts.ts_ps with
-    | ActiveProof(_,uback,back,ops) -> 
+    | ActiveProof(_,uback,back,ops) ->
       begin match uback with
       | [] -> tacerror "Cannot undo backtrack"
       | ps'::pss ->
@@ -368,7 +391,7 @@ let handle_instr verbose ts instr =
 
   | PT.UndoBack(true) ->
     begin match ts.ts_ps with
-    | ActiveProof(_,uback,back,ops) -> 
+    | ActiveProof(_,uback,back,ops) ->
       begin match L.rev uback with
       | [] -> tacerror "Cannot undo backtrack"
       | ps'::pss ->
@@ -382,7 +405,7 @@ let handle_instr verbose ts instr =
 
   | PT.Last ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,uback,back,ops) -> 
+    | ActiveProof(ps,uback,back,ops) ->
       ({ ts with ts_ps = ActiveProof(CR.move_first_last ps,uback,back,ops) }
       , "Delayed current goal")
     | _ -> tacerror "last: no goals"
@@ -390,7 +413,7 @@ let handle_instr verbose ts instr =
 
   | PT.Admit ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,_,_,_) -> 
+    | ActiveProof(ps,_,_,_) ->
       ({ts with ts_ps =
           ActiveProof(first (CR.apply_first (CR.t_admit "") ps),[],mempty,Some(ps))}
       , "Admit goal.")
@@ -399,7 +422,7 @@ let handle_instr verbose ts instr =
 
   | PT.PrintGoals(s) ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,_uback,_back,_) -> 
+    | ActiveProof(ps,_uback,_back,_) ->
       let msg = fsprintf "@[<v>Proof state %s:@\n%a@]" s (pp_jus 100) ps.CR.subgoals in
       (ts, msg)
     | BeforeProof    -> (ts, "No proof started yet.")
@@ -426,7 +449,7 @@ let handle_instr verbose ts instr =
 
   | PT.PrintGoal(s) ->
     begin match ts.ts_ps with
-    | ActiveProof(ps,_uback,_back,_) -> 
+    | ActiveProof(ps,_uback,_back,_) ->
       let msg = fsprintf "Current goal in state %s:%a@."
         s
         (pp_jus 100)
@@ -464,7 +487,6 @@ let handle_instr verbose ts instr =
       | ClosedTheory _ -> (ts, "Proof finished.")
       end
 
-
     | _ ->
       tacerror "Unknown debug command."
     end
@@ -479,4 +501,3 @@ let eval_theory s =
       ps')
     empty_ts
     pt
-

@@ -3,12 +3,12 @@
 (*i*)
 open Syms
 open Expr
-open Util
+open Abbrevs
 open Gsyms
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Types} *)
+(* \hd{Types} *)
 
 (** Variable, adversary, oracle, and hash symbol. *)
 type vs  = Vsym.t
@@ -38,7 +38,7 @@ type ev = expr
 type judgment = { ju_gdef : gdef; ju_ev : ev; }
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Pretty printing} *)
+(* \hd{Pretty printing} *)
 
 val pp_distr : F.formatter -> Type.ty * expr list -> unit
 
@@ -49,8 +49,6 @@ val pp_binder : F.formatter -> Vsym.t list -> unit
 val pp_lcmd : F.formatter -> lcmd -> unit
 
 val pp_ilcmd : F.formatter -> int * lcmd -> unit
-
-val num_list : 'a list -> (int * 'a) list
 
 val pp_lcomp : F.formatter -> expr * lcmd list -> unit
 
@@ -67,7 +65,7 @@ val pp_ju : F.formatter -> judgment -> unit
 val pp_ps : F.formatter -> judgment list -> unit
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Generic functions} *)
+(* \hd{Generic functions} *)
 
 val map_distr_exp : ('a -> 'b) -> 'c * 'a list -> 'c * 'b list
 
@@ -96,7 +94,7 @@ val iter_ju_exp :  ?iexc:bool -> (expr -> unit) -> judgment -> unit
 val fold_union :  ('a -> Se.t) -> 'a list -> Se.t
 
 (*i ----------------------------------------------------------------------- i*)
-(*  \subsection{Positions and replacement functions} *)
+(*  \hd{Positions and replacement functions} *)
 
 type gcmd_pos = int
 
@@ -136,7 +134,7 @@ val set_ju_octxt : lcmd list -> ju_octxt -> judgment
 
 val set_ju_lcmd : judgment -> ocmd_pos -> lcmd list -> judgment
 
-(* \subsection{Iterate with context} *) 
+(* \hd{Iterate with context} *) 
 
 type iter_pos =
   | InEv
@@ -145,7 +143,7 @@ type iter_pos =
   | InOrcl       of ocmd_pos * Type.ty * Type.ty
     (* position, adversary argument type, oracle type *)
 
-val pp_iter_pos : Util.F.formatter -> iter_pos -> unit
+val pp_iter_pos : F.formatter -> iter_pos -> unit
 
 type iter_ctx = {
   ic_pos     : iter_pos;
@@ -153,7 +151,7 @@ type iter_ctx = {
   ic_nonZero : expr list
 }
 
-val pp_iter_ctx : Util.F.formatter -> iter_ctx -> unit
+val pp_iter_ctx : F.formatter -> iter_ctx -> unit
 
 val iter_ctx_odef_exp :
   Type.ty -> int -> int -> expr list ->
@@ -166,7 +164,7 @@ val iter_ctx_ju_exp :
   ?iexc:bool -> (iter_ctx -> expr -> unit) -> judgment -> unit
 
 (*i ----------------------------------------------------------------------- i*)
-(*  \subsection{Equality} *)
+(*  \hd{Equality} *)
 
 val distr_equal : distr -> distr -> bool
 
@@ -183,7 +181,7 @@ val gdef_equal : gdef -> gdef -> bool
 val ju_equal : judgment -> judgment -> bool
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Read and write variables} *)
+(* \hd{Read and write variables} *)
 
 val read_distr : distr -> Se.t
 
@@ -212,7 +210,7 @@ val asym_gcmds : gcmd list -> ads list
 val read_ju : judgment -> Se.t
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Variable occurences} *)
+(* \hd{Variable occurences} *)
 
 val gcmd_all_vars : gcmd -> Vsym.S.t
 
@@ -221,7 +219,7 @@ val gdef_all_vars : gdef -> Vsym.S.t
 val gdef_global_vars : gdef -> Se.t
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Variable renaming} *)
+(* \hd{Variable renaming} *)
 
 val subst_v_e : (vs -> vs) -> expr -> expr
 
@@ -246,7 +244,7 @@ val ren_injective : renaming -> bool
 val pp_ren : F.formatter -> Vsym.t Vsym.M.t -> unit
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Mappings from strings to variables} *) 
+(* \hd{Mappings from strings to variables} *) 
 
 type vmap = (string,Vsym.t) Hashtbl.t
 
@@ -261,7 +259,7 @@ val vmap_of_all : gdef -> vmap
 val vmap_in_orcl : judgment -> ocmd_pos -> vmap
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Normal forms} *)
+(* \hd{Normal forms} *)
 
 val norm_distr : ?norm:(expr -> expr) -> expr Me.t -> distr -> distr
 
@@ -272,7 +270,7 @@ val norm_gdef : ?norm:(expr -> expr) -> gdef -> gdef * expr Me.t
 val norm_ju : ?norm:(expr -> expr) -> judgment -> judgment
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Probabilistic polynomial time } *)
+(* \hd{Probabilistic polynomial time } *)
 
 val has_log_distr : distr -> bool
 

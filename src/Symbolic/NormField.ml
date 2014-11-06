@@ -1,16 +1,19 @@
 (*s Compute normal form of field expressions *)
 
+(*i*)
+open Abbrevs
+open Util
 open Expr
 open Poly
-open IntPoly
-open Util
+open PolyInsts
 open Factory
 
 let log_t ls = mk_logger "Norm" Bolt.Level.TRACE "NormField" ls
 let _log_d ls = mk_logger "Norm" Bolt.Level.DEBUG "NormField" ls
 let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
+(*i*)
 
-(* \ic{We use ints as variables here.} *)
+(** We use ints as variables here. *)
 module EP = MakePoly(
   struct
     type t = expr
@@ -23,7 +26,7 @@ module EP = MakePoly(
 module Ht = Hashtbl
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Convert expr into polynomials over expr} *)
+(* \hd{Convert expr into polynomials over expr} *)
 
 (** Takes a term in normal form and returns the corresponding polynomial 
     fails if given term is not in normal-form. *)
@@ -83,7 +86,7 @@ let ep_to_ip eps =
   (L.map IP.from_terms ps, hr)  
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Factoring out polynomials} *)
+(* \hd{Factoring out polynomials} *)
 
 let factor_out a (p : EP.t) =
   let xs, zs = 
@@ -101,7 +104,7 @@ let factor_out a (p : EP.t) =
   (EP.from_terms xs, EP.from_terms zs)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Pure field expressions without other operators} *)
+(* \hd{Pure field expressions without other operators} *)
 
 (** Field expression. *)
 type fexp =

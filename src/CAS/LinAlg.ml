@@ -1,12 +1,13 @@
 (*s Simple linear algebra (equation solving) over $F_2$. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Array
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Types and utility functions} *)
+(* \hd{Types and utility functions} *)
 
 type col = int
 
@@ -53,13 +54,13 @@ let iter_cols_with_sol m f =
   done
 
 (*i ----------------------------------------------------------------------- i*)
-(* \subsection{Equation solving} *)
+(* \hd{Equation solving} *)
 
 (** Find all-zero columns and columns that only have one non-zero entry. *)
 let classify_cols m =
-  let col_is_z    = make (cols m + 1) false in (* i-th column is zero vector, also track for solution *)
-  let col_is_std  = make (cols m + 1) false     in (* i-th column is standard basis vector *)
-  let std_has_col = make (rows m) None      in (* i-th standard basis vector is equal to given column of m *)
+  let col_is_z    = make (cols m + 1) false in (*r i-th column is zero vector, also track for solution *)
+  let col_is_std  = make (cols m + 1) false in (*r i-th column is standard basis vector *)
+  let std_has_col = make (rows m) None      in (*r i-th standard basis vector is equal to given column of m *)
   iter_cols_with_sol m (fun c ->
     let one_rowidx = ref None in
     (try
@@ -67,7 +68,7 @@ let classify_cols m =
          if m.(r).(c) = true then (
            if !one_rowidx = None
            then one_rowidx := Some(r)
-           else raise Not_found (* two non-zero entries *)));
+           else raise Not_found (*i two non-zero entries i*)));
        match !one_rowidx with
        | None ->
          col_is_z.(c) <- true

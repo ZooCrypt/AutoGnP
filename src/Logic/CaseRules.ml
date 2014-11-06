@@ -1,6 +1,7 @@
-(*s Derived rules for dealing with raddtest, rcase_ev, and rexcept. *)
+(*s Derived rules for dealing with [add_test], [case_ev], and [except]. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Type
 open Expr
@@ -17,7 +18,7 @@ module Ht = Hashtbl
 module CR = CoreRules
 
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
-let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
+let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
 (*i*)
 
 (* Useful (in)equalities that can be obtained by applying one of the three rules *)
@@ -68,8 +69,6 @@ let compute_case gdef mhidden _fbuf ctx e =
   let cases = ref [] in
   let fes = ref Se.empty in
   e_iter_ty_maximal mk_Fq (fun e -> fes := Se.add e !fes) e;
-  (* F.fprintf fbuf "@[  max_field:    %a@\n@]%!"
-       (pp_list "@\n " pp_exp) (Se.elements !fes); *)
   let facs = ref Se.empty in
   L.iter
     (fun v ->
@@ -113,9 +112,6 @@ let compute_case gdef mhidden _fbuf ctx e =
           if is_invertible coeff && used_vars_defined uvs j then (
             let exce = Norm.norm_expr_weak (mk_FDiv rem (mk_FOpp coeff)) in
             if not (is_Zero exce) then cases := AppExcept(j,exce) :: !cases
-            (* F.fprintf fbuf "@[  for %a, except %a@\n@]%!"
-                pp_exp ve
-                pp_exp exce *)
           )
         )
         samps
@@ -135,11 +131,6 @@ let compute_case gdef mhidden _fbuf ctx e =
   in
   if not (Se.is_empty facs) then (
     L.iter add_case (Se.elements facs)
-   (* 
-    F.fprintf fbuf "@[%a;@\n@\n@]" pp_iter_ctx ctx;
-    F.fprintf fbuf "@[  facs:    %a@\n@]%!"
-      (pp_list ", " pp_exp) (Se.elements facs);
-   *)                        
   );
   !cases
 
@@ -171,10 +162,10 @@ let get_cases fbuf ju =
   let maybe_hidden = maybe_hidden_rvars ju.ju_gdef in
   let cases = ref [] in
   F.fprintf fbuf "@[maybe hidden: %a@\n@\n@]" (pp_list ", " Vsym.pp) maybe_hidden;
-  (* write function that computes non-hidden variables (given out in exponent)
-     and potentially hidden variables *)
-  (* write function that traverses all maximal expression of type F_p together
-     with position and determines useful case rule applications *)
+  (*i write function that computes non-hidden variables (given out in exponent)
+      and potentially hidden variables i*)
+  (*i write function that traverses all maximal expression of type F_p together
+      with position and determines useful case rule applications i*)
   iter_ctx_ju_exp
     (fun ctx e ->
       let cs = compute_case ju.ju_gdef maybe_hidden fbuf ctx e in
