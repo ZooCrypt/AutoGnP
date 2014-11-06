@@ -1,15 +1,14 @@
 adversary A_ddh : (G * G * G) -> Bool.
 
-assumption_decisional ddh
+assumption ddh ([x,y])
   [ x <-$ Fq; y <-$ Fq;           b <- A_ddh(g ^ x,g ^ y,g ^ (x * y)); ]
-  [ x <-$ Fq; y <-$ Fq; z <-$ Fq; b <- A_ddh(g ^ x,g ^ y,g ^ z);       ]
-  ([x,y]).
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq; b <- A_ddh(g ^ x,g ^ y,g ^ z);       ].
 
 operator H : (G * G * G) -> Fq.
 
 adversary A_tcr : (G * G * G) -> (G * G * G).
 
-assumption_computational tcr
+assumption tcr
   [ a <-$ Fq; b <-$ Fq; c <-$ Fq; (x1,x2,x3) <- A_tcr(g^a,g^b,g^c); ]
   : (H(x1,x2,x3) = H(g^a,g^b,g^c)) /\ not ((x1,x2,x3) = (g^a,g^b,g^c)).
 
@@ -41,8 +40,6 @@ prove
     let mb = (b?m0:m1);
     (* randomness for encryption is u *)
     u <-$ Fq;
-    (* we break the connection between sa' and the rest using DDH *)
-    (* sc and sa are required for decryption *)
     let sa  = g^u;
     let sa' = p4^u;
     let sc  = mb * p3^u;
@@ -57,54 +54,47 @@ prove
   ] : b = b'.
   
   (* decisional assumption *)
-  rnorm.
-  rnorm_unknown u w.
-  rswap 10 -8.
-  rlet_abstract 3 arg (g^w, g^u, g^(w*u)).
-  rsubst 4 (g^w) (arg\0).
-  rsubst 4 (g^u) (arg\1).
-  rsubst 4 (g^(w*u)) (arg\2).
-  rlet_abstract 13 res (b=b').
-  assumption_decisional! ddh -> (3-13) v.
-  rnorm.
+  let_unfold. norm_unknown u w. swap 10 -8.
+  let_abstract 3 arg (g^w,g^u,g^(w*u)).
+  let_abstract _ res _.
+  assumption_decisional ddh -> (3-13) v.
+  norm.
   
   (* rnd rule for x1, y1, z1 *)
-  rexcept 3 u*w.
-  rswap 4 5. rrnd! 9 _ (x1 -> w*x2 + x1).
-  rswap 5 4. rrnd! 9 _ (y1 -> w*y2 + y1).
-  rswap 6 3. rrnd! 9 _ (z1 -> w*z2 + z1).
-  rnorm.
+  except 3 u*w.
+  rnd! x1 _ (x1 -> x1 + w*x2).
+  rnd! y1 _ (y1 -> y1 + w*y2).
+  rnd! z1 _ (z1 -> z1 + w*z2).
+  norm.
   
   (* add test to Dec1 *)
-  radd_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
-    rsimp. rnorm. rindep.
+  add_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
+    bycrush.
     
   (* rnd to x2 and y2 *)
-  rsimp. rnorm.
-  rswap 4 7. rrnd 11 _ _. rnorm.
-  rrnd 5 _ _. rnorm. 
+  simp. norm. swap 4 7.
+  rnd x2 _ _. norm.
+  rnd! z2 _ _. norm.
   
   (* add test to Dec2 *)
-  radd_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
-    last. rsimp. rnorm. rindep.
+  add_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
+    last. bycrush.
 
   (* exclude hash collision *)
-  rsimp. rnorm.  
-  rcase_ev H(ea,ea',ec) = H(g ^ u,g ^ v,g ^ z2).
-    last. rsimp. rnorm. rindep.
-  rsimp. rnorm.
-  rcase_ev (ea,ea',ec) = (g ^ u,g ^ v,g ^ z2).
-    rsplit_ev 5. rsimp. rrewrite_ev 5 ->. rrewrite_ev 6 ->. rrewrite_ev 7 ->.
-    rnorm. rfalse_ev.
-  rswap 2 -1. rswap 11 -9.
-  rlet_abstract 5 arg (g^u,g^v,g^z2) 13.
-  rsubst 6 (g^u) (arg\0) 13. rsubst 6 (g^v) (arg\1) 13. rsubst 6 (g^z2) (arg\2) 13.
-  rremove_ev 1. rremove_ev 2. rremove_ev 2.
-  rlet_abstract 14 res1 ea.
-  rlet_abstract 15 res2 ea'.
-  rlet_abstract 16 res3 ec.
-  rexcept 4. rswap 4 -2. rswap 5 -1.
-  assumption_computational! tcr (4-16).
+  simp. norm.
+  case_ev H(ea,ea',ec) = H(g^u,g^v,g^z2).
+    last. bycrush.
+  simp. norm.
+  case_ev (ea,ea',ec) = (g^u,g^v,g^z2).
+    bycrush.
+  swap 2 -1. swap 11 -9.
+  except 4. swap 4 -2.
+  remove_ev 1 2 3.
+  let_abstract 4 arg (g^u,g^v,g^z2) 0.
+  let_abstract 0 res1 ea.
+  let_abstract 0 res2 ea'.
+  let_abstract 0 res3 ec.
+  assumption_computational tcr (4-16).
   qed.
-  print_proof.
+  print_proof!.
   extract "extraction/cramer_shoup.ec".

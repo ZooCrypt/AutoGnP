@@ -180,9 +180,10 @@ let t_let_abstract p vs e mupto do_norm_expr ju =
   let new_ju =
     match mupto with
     | Some j ->
-      if (j < p) then tacerror "t_let_abstract: invalid upto";
+      log_t (lazy (fsprintf "<< %i" j));
+      if (j < p) then tacerror "t_let_abstract: invalid upto %i" j;
       let cl = j - p in
-      if (cl > L.length r) then tacerror "t_let_abstract: invalid upto";
+      if (cl > L.length r) then tacerror "t_let_abstract: invalid upto %i" j;
       let r1,r2 = Util.cut_n cl r in
       let r = List.rev_append (map_gdef_exp subst r1) r2 in
       { ju_gdef = List.rev_append l (GLet(vs,e)::r);
@@ -199,9 +200,9 @@ let t_subst p e1 e2 mupto ju =
   let new_ju = 
     match mupto with
     | Some j ->
-      if (j < p) then tacerror "t_let_abstract: invalid upto";
+      if (j < p) then tacerror "t_let_abstract: invalid upto %i" j;
       let cl = j - p in
-      if (cl > L.length r) then tacerror "t_let_abstract: invalid upto";
+      if (cl > L.length r) then tacerror "t_let_abstract: invalid upto %i" j;
       let r1,r2 = Util.cut_n cl r in
       let r = List.rev_append (map_gdef_exp subst r1) r2 in
       { ju_gdef = List.rev_append l r;

@@ -3,7 +3,7 @@
 open Nondet
 open CoreRules
 open TheoryState
-open ParserUtil
+open ParserTypes
 
 val t_rnd_maybe :
   ?i_rvars:Syms.Vsym.S.t

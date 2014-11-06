@@ -23,7 +23,7 @@ rule lex = parse
   | ")"     { RPAREN }
   | "+"     { PLUS }
   | "++"    { XOR }
-  | "-"     { MINUS }  
+  | "-"     { MINUS }
   | "*"     { STAR }
   | "!"     { EXCL }
   | "Fq"    { TFQ }
@@ -44,8 +44,6 @@ rule lex = parse
   | "assumption" { ASSUMPTION }
   | "assumption_decisional" { ASSUMPTION_DECISIONAL }
   | "assumption_computational" { ASSUMPTION_COMPUTATIONAL }
-  | "assumption_decisional!" { ASSUMPTION_DECISIONAL_EX }
-  | "assumption_computational!" { ASSUMPTION_COMPUTATIONAL_EX }
   | "random" { RANDOM }
   | "bilinear" { BILINEAR }
   | "map" { MAP }
@@ -55,38 +53,35 @@ rule lex = parse
   | "print_proof" { PRINTPROOF }
   | "print_proof!" { PRINTPROOF_EX }
   | "print_debug" { PRINTDEBUG }
-  | "rnorm_unknown" { RNORM_UNKNOWN }
-  | "rnorm_solve" { RNORM_SOLVE }
-  | "rnorm" { RNORM }
-  | "set_unsafe" { SETUNSAFE }
-  | "unset_unsafe" { UNSETUNSAFE }
-  | "radd_test" { RADD_TEST }
-  | "rcase_ev" { RCASE_EV }
-  | "rremove_ev" { RREMOVE_EV }
-  | "rnorm_nounfold" { RNORM_NOUNFOLD }  
-  | "rlet_abstract"  { RLET_ABSTRACT }
-  | "rlet_abstract!"  { RLET_ABSTRACT_EX }
-  | "rlet_unfold"  { RLET_UNFOLD }
-  | "rsubst" { RSUBST }
-  | "rrewrite_oracle"  { RREWRITE_ORACLE }  
-  | "rrewrite_ev" { RREWRITE_EV }
+
+  | "norm_unknown" { RNORM_UNKNOWN }
+  | "norm_solve" { RNORM_SOLVE }
+  | "norm" { RNORM }
+  | "add_test" { RADD_TEST }
+  | "case_ev" { RCASE_EV }
+  | "remove_ev" { RREMOVE_EV }
+  | "norm_nounfold" { RNORM_NOUNFOLD }
+  | "let_abstract"  { RLET_ABSTRACT }
+  | "let_unfold"  { RLET_UNFOLD }
+  | "subst" { RSUBST }
+  | "rewrite_oracle"  { RREWRITE_ORACLE }
+  | "rewrite_ev" { RREWRITE_EV }
   | "crush" { RCRUSH }
   | "deduce" { DEDUCE }
   | "bycrush" { BYCRUSH }
-  | "rsimp" { RSIMP }
-  | "rsplit_ev" { RSPLIT_EV }
-  | "rfalse_ev" { RFALSE_EV }
+  | "simp" { RSIMP }
+  | "split_ev" { RSPLIT_EV }
+  | "false_ev" { RFALSE_EV }
   | "with"  { WITH }
-  | "rexcept" { REXCEPT }
-  | "rexcept_oracle" { REXCEPT_ORACLE }  
-  | "rrnd" { RRND }
-  | "rswap" { RSWAP }
-  | "rconv" { RCONV }
-  | "rindep" { RINDEP }
-  | "rindep!" { RINDEP_EX }
-  | "rrnd_oracle" { RRND_ORACLE }
-  | "rbad"           { RBAD }
-  | "rctxt_ev"       { RCTXT_EV }
+  | "except" { REXCEPT }
+  | "except_oracle" { REXCEPT_ORACLE }
+  | "rnd" { RRND }
+  | "swap" { RSWAP }
+  | "conv" { RCONV }
+  | "indep" { RINDEP }
+  | "rnd_oracle" { RRND_ORACLE }
+  | "bad"           { RBAD }
+  | "ctxt_ev"       { RCTXT_EV }
   | "exists"    { EXISTS }
   | "extract"   { EXTRACT }
   | "L_"
@@ -99,7 +94,7 @@ rule lex = parse
   | "g" { GEN("") }
   | "g_"(['a'-'z''0'-'9']* as s) { GEN(s) }
   | "G" { TG("") }
-  | "G_"(['a'-'z''0'-'9']* as s) { TG(s) } 
+  | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
@@ -119,8 +114,8 @@ rule lex = parse
   | "<>"    { NEQ }
   | "<-$"   { SAMP }
   | "\\"    { BACKSLASH }
-  | "["     { LBRACKET }
-  | "]"     { RBRACKET }
+  | "["     { LBRACK }
+  | "]"     { RBRACK }
   | "="     { EQUAL }
   | "|"     { MID }
   | "->"    { TO }
@@ -133,7 +128,7 @@ rule lex = parse
 (*  | ":"     { COLON } *)
 
 (*  | "."     { DOT }   *)
-(*  | ['0'-'9']+ as s {INT (int_of_string s)} *)    
+(*  | ['0'-'9']+ as s {INT (int_of_string s)} *)
 
 and comment = parse
   | "*)"        { () }

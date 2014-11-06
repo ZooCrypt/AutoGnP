@@ -1,13 +1,15 @@
+open ParserTypes
+
 (*s Wrapper functions for parser with error handling. *)
 
-val ty : string -> ParserUtil.parse_ty
+val ty : string -> parse_ty
 
-val expr : string -> ParserUtil.parse_expr
+val expr : string -> parse_expr
 
-val odef : string -> ParserUtil.odef
+val odef : string -> odef
 
-val gdef : string -> ParserUtil.gdef
+val gdef : string -> gdef
 
-val instruction : string -> ParserUtil.instr
+val instruction : string -> instr
 
-val theory : string -> ParserUtil.theory
+val theory : string -> theory

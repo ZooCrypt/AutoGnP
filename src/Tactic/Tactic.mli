@@ -3,7 +3,7 @@
 open TheoryState
 open Game
 open Util
-open ParserUtil
+open ParserTypes
 
 (*i val pp_goals : formatter -> CoreRules.goals option -> unit i*)
 val pp_jus   : int -> F.formatter -> judgment list -> unit

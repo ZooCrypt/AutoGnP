@@ -18,6 +18,7 @@ open CaseRules
 open Game
 
 module Ht = Hashtbl
+module PT = ParserTypes
 module PU = ParserUtil
 module G = Game
 module CR = CoreRules
@@ -72,76 +73,97 @@ let handle_tactic ts tac =
     assert (not (Ht.mem vmap_g sv));
     Vsym.mk sv ty
   in
+  let get_pos ap =
+    let module E = struct exception Found of int end in
+    let find s i cmd =
+      match cmd with
+      | GLet(vs,_) | GSamp(vs,_)
+        when s = Id.name vs.Vsym.id -> raise (E.Found i)
+      | _ -> ()
+    in
+    match ap with
+    | PT.Var s ->
+      begin try
+        L.iteri (find s) ju.ju_gdef;
+        tacerror "variable not found in game"
+      with
+        E.Found i -> i
+      end
+    | PT.Pos i -> i
+  in
+  let t_pos i =
+    if i < 1 then L.length ju.ju_gdef + i + 1 else i
+  in
   match tac with
   (* Rules with primitive arguments *)
-  | PU.Rnorm                 -> apply t_norm
-  | PU.Rnorm_nounfold        -> apply t_norm_nounfold
-  | PU.Rlet_unfold(Some(i))  -> apply (t_let_unfold i)
-  | PU.Rlet_unfold(None)     -> apply (t_unfold_only)
-  | PU.Rswap(i,j)            -> apply (CR.t_swap i j)
-  | PU.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
-  | PU.Rsplit_ev(i)          -> apply (CR.t_split_ev i)
-  | PU.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev i d)
-  | PU.Rcrush(finish,mi)     -> apply (t_crush finish mi ts ps)
+  | PT.Rnorm                 -> apply t_norm
+  | PT.Rnorm_nounfold        -> apply t_norm_nounfold
+  | PT.Rlet_unfold(Some(i))  -> apply (t_let_unfold (get_pos i))
+  | PT.Rlet_unfold(None)     -> apply (t_unfold_only)
+  | PT.Rswap(i,j)            -> apply (CR.t_swap (t_pos i) j)
+  | PT.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
+  | PT.Rsplit_ev(i)          -> apply (CR.t_split_ev (t_pos i))
+  | PT.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev (t_pos i) d)
+  | PT.Rcrush(finish,mi)     -> apply (t_crush finish mi ts ps)
 
-  | PU.Rcase_ev(Some(se)) ->
+  | PT.Rcase_ev(Some(se)) ->
     apply (CR.t_case_ev (parse_e se))
 
-  | PU.Rsubst(pos,e1,e2,mupto) ->
-    apply (t_subst pos (parse_e e1) (parse_e e2) mupto)
+  | PT.Rsubst(i,e1,e2,mupto) ->
+    apply (t_subst (t_pos i) (parse_e e1) (parse_e e2) mupto)
 
-  | PU.Rcase_ev(None) ->
+  | PT.Rcase_ev(None) ->
     apply t_case_ev_maybe
 
-  | PU.Rexcept(Some(i),Some(ses)) ->
-    apply (CR.t_except i (L.map (parse_e) ses))
-  | PU.Rexcept(i,ses) ->
-    apply (t_rexcept_maybe i ses)
+  | PT.Rexcept(Some(i),Some(ses)) ->
+    apply (CR.t_except (t_pos i) (L.map (parse_e) ses))
+  | PT.Rexcept(i,ses) ->
+    apply (t_rexcept_maybe (map_opt t_pos i) ses)
 
-  | PU.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
-  | PU.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
+  | PT.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
+  | PT.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
 
-  | PU.Rfalse_ev             -> apply CR.t_false_ev
-  | PU.Rindep(exact)         -> apply (t_random_indep exact)
+  | PT.Rfalse_ev             -> apply CR.t_false_ev
+  | PT.Rindep(exact)         -> apply (t_random_indep exact)
 
-  | PU.Rnorm_unknown(is) ->
+  | PT.Rnorm_unknown(is) ->
     let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
     apply (t_norm_unknown vs)
 
-  | PU.Rlet_abstract(Some(i),sv,Some(se),mupto,do_norm_expr) ->
+  | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,do_norm_expr) ->
     let e = parse_e se in
     let v = mk_new_var sv e.e_ty in
-    apply (t_let_abstract i v e mupto do_norm_expr)
+    apply (t_let_abstract (t_pos i) v e (map_opt t_pos mupto) do_norm_expr)
 
-  | PU.Rlet_abstract(None,sv,None,mupto,do_norm_expr) ->
+  | PT.Rlet_abstract(None,sv,None,mupto,do_norm_expr) ->
     let v = mk_new_var sv ju.ju_ev.e_ty in
     let max = L.length ju.ju_gdef in
-    apply (t_let_abstract max v ju.ju_ev mupto do_norm_expr)
+    apply (t_let_abstract max v ju.ju_ev (map_opt t_pos mupto) do_norm_expr)
 
-  | PU.Rlet_abstract(_,_,_,_,_) ->
+  | PT.Rlet_abstract(_,_,_,_,_) ->
     tacerror "No placeholders or placeholders for both position and event"
 
-  | PU.Requiv(sgd,sev) ->
+  | PT.Requiv(sgd,sev) ->
     let vmap2 = Hashtbl.create 134 in
     let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
     apply (CR.t_conv true ~do_rename:true { ju_gdef = gd2; ju_ev = ev2 })
 
-  | PU.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
+  | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
     apply (t_assm_dec ts exact maname mdir mrngs msvs)
 
-  | PU.Rnorm_solve(se) ->
+  | PT.Rnorm_solve(se) ->
     let e = parse_e se in
     apply (RewriteRules.t_norm_solve e)
 
-  | PU.Rexcept_orcl(_op,_es) ->
+  | PT.Rexcept_orcl(_op,_es) ->
     failwith "undefined"
     (*i
     let es = L.map (PU.expr_of_parse_expr ts) es in
     apply_rule (t_except_oracle op es) ts
     i*)
 
-  | PU.Rctxt_ev (sv,e,j) ->
+  | PT.Rctxt_ev (sv,e,j) ->
     let ev = ju.ju_ev in
     let b =
       match ev.e_node with
@@ -162,20 +184,20 @@ let handle_tactic ts tac =
     let c = v1, e1 in
     apply (CR.t_ctxt_ev j c)
 
-  | PU.Rsimp ->
+  | PT.Rsimp ->
     apply (t_simp false 20 ts)
 
-  | PU.Rassm_comp(exact,maname,mrngs) ->
+  | PT.Rassm_comp(exact,maname,mrngs) ->
     apply (t_assm_comp ts exact maname mrngs)
 
-  | PU.Rrnd(exact,mi,mctxt1,mctxt2,mgen) ->
+  | PT.Rrnd(exact,mi,mctxt1,mctxt2,mgen) ->
     let mgen = map_opt parse_e mgen in
-    apply (t_rnd_maybe ts exact mi mctxt1 mctxt2 mgen)
+    apply (t_rnd_maybe ts exact (map_opt get_pos mi) mctxt1 mctxt2 mgen)
 
-  | PU.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
+  | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
     apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
    
-  | PU.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
+  | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
     (* create symbol for new adversary *)
     let _, juoc = get_ju_octxt ju opos in
     let vmap = vmap_in_orcl ju opos in
@@ -198,13 +220,13 @@ let handle_tactic ts tac =
     let fvs = L.map2 (fun v ty -> PU.create_var vmap v ty) fvs tys in
     apply ~adecls (CR.t_add_test opos t asym fvs)
 
-  | PU.Radd_test(None,None,None,None) ->
+  | PT.Radd_test(None,None,None,None) ->
     apply t_add_test_maybe
 
-  | PU.Radd_test(_,_,_,_) ->
+  | PT.Radd_test(_,_,_,_) ->
     tacerror "radd_test expects either all values or only placeholders"
 
-  | PU.Rbad(i,sx) ->
+  | PT.Rbad(i,sx) ->
     let ty =
       match get_ju_gcmd ju i with
       | G.GLet(_,e') when is_H e' ->
@@ -213,9 +235,9 @@ let handle_tactic ts tac =
       | _ -> tacerror "Line %is not hash assignment." i
     in
     let vx = PU.create_var (vmap_of_globals ju.ju_gdef) sx ty in
-    apply (CR.t_bad i vx)
+    apply (CR.t_bad (t_pos i) vx)
 
-  | PU.Deduce(pes,pe) ->
+  | PT.Deduce(pes,pe) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
     let e = PU.expr_of_parse_expr vmap_g ts  pe in
     log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_exp) es pp_exp e));
@@ -245,7 +267,7 @@ let pp_jus i fmt jus =
 
 let handle_instr verbose ts instr =
   match instr with
-  | PU.RODecl(s,ro,t1,t2) ->
+  | PT.RODecl(s,ro,t1,t2) ->
     let oname = if ro then "random oracle" else "operator" in
     if Ht.mem ts.ts_rodecls s then
       tacerror "%s with same name already declared." oname;
@@ -253,28 +275,28 @@ let handle_instr verbose ts instr =
       (Hsym.mk s ro (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, fsprintf "Declared %s" oname)
 
-  | PU.EMDecl(s,g1,g2,g3) ->
+  | PT.EMDecl(s,g1,g2,g3) ->
     if Ht.mem ts.ts_emdecls s then
       tacerror "Bilinear map with same name already declared.";
     Ht.add ts.ts_emdecls s
       (Esym.mk s (create_groupvar ts g1) (create_groupvar ts g2) (create_groupvar ts g3));
     (ts, "Declared bilinear map.")
 
-  | PU.ODecl(s,t1,t2) ->
+  | PT.ODecl(s,t1,t2) ->
       if Ht.mem ts.ts_odecls s then 
         tacerror "Oracle with same name already declared.";
     Ht.add ts.ts_odecls s 
       (Osym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared oracle.")
 
-  | PU.ADecl(s,t1,t2) ->
+  | PT.ADecl(s,t1,t2) ->
     if Ht.mem ts.ts_adecls s then 
       tacerror "adversary with same name already declared.";
     Ht.add ts.ts_adecls s 
       (Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
     (ts, "Declared adversary.")
 
-  | PU.AssmDec(s,g0,g1,symvs) ->
+  | PT.AssmDec(s,g0,g1,symvs) ->
     let vmap1 = Ht.create 137 in
     let vmap2 = Ht.create 137 in
     let g0 = PU.gdef_of_parse_gdef vmap1 ts g0 in
@@ -291,7 +313,7 @@ let handle_instr verbose ts instr =
     Ht.add ts.ts_assms_dec s (Assumption.mk_assm_dec s g0 g1 symvs);
     (ts, "Declared decisional assumption.")
 
-  | PU.AssmComp(s,g,ev,symvs) ->
+  | PT.AssmComp(s,g,ev,symvs) ->
     let vmap = Ht.create 137 in
     let g = PU.gdef_of_parse_gdef vmap ts g in
     let parse_var s =
@@ -306,18 +328,18 @@ let handle_instr verbose ts instr =
     Ht.add ts.ts_assms_comp s assm;
     (ts, "Declared computational assumption.")
     
-  | PU.Judgment(gd,e) ->
+  | PT.Judgment(gd,e) ->
     let vmap = Ht.create 137 in
     let ju = PU.ju_of_parse_ju vmap ts gd e in
     let ps = first (CR.t_id ju) in
     ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }
     , "Started proof of judgment.")
 
-  | PU.Apply(tac) ->
+  | PT.Apply(tac) ->
     let (ts,s) = handle_tactic ts tac in
     (ts, "Applied tactic"^(if verbose then ": "^Lazy.force s else "."))
 
-  | PU.Back ->
+  | PT.Back ->
     begin match ts.ts_ps with
     | ActiveProof(_,uback,back,ops) -> 
       begin match pull back with
@@ -331,7 +353,7 @@ let handle_instr verbose ts instr =
     | _ -> tacerror "last: no goals"
     end
 
-  | PU.UndoBack(false) ->
+  | PT.UndoBack(false) ->
     begin match ts.ts_ps with
     | ActiveProof(_,uback,back,ops) -> 
       begin match uback with
@@ -344,7 +366,7 @@ let handle_instr verbose ts instr =
     | _ -> tacerror "last: no goals"
     end
 
-  | PU.UndoBack(true) ->
+  | PT.UndoBack(true) ->
     begin match ts.ts_ps with
     | ActiveProof(_,uback,back,ops) -> 
       begin match L.rev uback with
@@ -358,7 +380,7 @@ let handle_instr verbose ts instr =
     | _ -> tacerror "last: no goals"
     end
 
-  | PU.Last ->
+  | PT.Last ->
     begin match ts.ts_ps with
     | ActiveProof(ps,uback,back,ops) -> 
       ({ ts with ts_ps = ActiveProof(CR.move_first_last ps,uback,back,ops) }
@@ -366,7 +388,7 @@ let handle_instr verbose ts instr =
     | _ -> tacerror "last: no goals"
     end
 
-  | PU.Admit ->
+  | PT.Admit ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_,_,_) -> 
       ({ts with ts_ps =
@@ -375,7 +397,7 @@ let handle_instr verbose ts instr =
     | _ -> tacerror "admit: no goals"
     end
 
-  | PU.PrintGoals(s) ->
+  | PT.PrintGoals(s) ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_uback,_back,_) -> 
       let msg = fsprintf "@[<v>Proof state %s:@\n%a@]" s (pp_jus 100) ps.CR.subgoals in
@@ -384,7 +406,7 @@ let handle_instr verbose ts instr =
     | ClosedTheory _ -> (ts, "Theory closed.")
     end
 
-  | PU.PrintProof(verbose) ->
+  | PT.PrintProof(verbose) ->
     begin match ts.ts_ps with
     | BeforeProof -> (ts, "No proof started yet.")
     | ActiveProof _ | ClosedTheory _ ->
@@ -402,7 +424,7 @@ let handle_instr verbose ts instr =
       (ts, Buffer.contents buf)
     end
 
-  | PU.PrintGoal(s) ->
+  | PT.PrintGoal(s) ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_uback,_back,_) -> 
       let msg = fsprintf "Current goal in state %s:%a@."
@@ -415,7 +437,7 @@ let handle_instr verbose ts instr =
     | ClosedTheory _ -> (ts, "Proof finished.")
     end
 
-  | PU.Qed ->
+  | PT.Qed ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_uback,_back,_) ->
       if ps.CR.subgoals = [] then
@@ -426,14 +448,11 @@ let handle_instr verbose ts instr =
     | ClosedTheory _ -> (ts, "Proof finished.")
     end
 
-  | PU.Extract filename ->
+  | PT.Extract filename ->
     Extraction.extract ts filename;
     (ts, "EasyCrypt proof script extracted into file: "^filename)
 
-  | PU.Unsafe b ->
-    (ts, (if b then "Enabled" else "Disabled")^" unsafe mode")
-
-  | PU.Debug cmd ->
+  | PT.Debug cmd ->
     begin match cmd with
     | "cases" ->
       CaseRules.print_cases ts
