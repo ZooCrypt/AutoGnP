@@ -6,7 +6,7 @@
 (* DDH assumption *)
 adversary A_ddh : (G * G * G * G) -> Bool.
 
-assumption_decisional ddh
+assumption ddh
   [ g1 <-$ G\g^0; g2 <-$ G\g^0; y <-$ Fq;
     b <- A_ddh(g1,g2,g1^y,g2^y); ]
   [ g1 <-$ G\g^0; g2 <-$ G\g^0; y <-$ Fq; z <-$ Fq;
@@ -21,7 +21,7 @@ operator H : (BS_i * G * G) -> Fq.
 
 adversary A_tcr : (BS_i * G * G) ->  (G * G).
 
-assumption_computational tcr
+assumption tcr
   [ i <-$ BS_i; a <-$ Fq; b <-$ Fq; (gu,gv) <- A_tcr(i,g^a,g^b); ]
   : (H(i,gu,gv) = H(i,g^a,g^b)) /\ ((gu,gv) <> (g^a,g^b)).
 
@@ -30,7 +30,7 @@ assumption_computational tcr
    discrete logarithms of the chosen inputs. *)
 adversary A_tcr_dlog : (BS_i * Fq * Fq) ->  (G * G).
 
-assumption_computational tcr_dlog
+assumption tcr_dlog
   [ i <-$ BS_i; a <-$ Fq; b <-$ Fq; (gu,gv) <- A_tcr_dlog(i,a,b); ]
   : (H(i,gu,gv) = H(i,g^a,g^b)) /\ ((gu,gv) <> (g^a,g^b)).
 
@@ -41,7 +41,7 @@ operator Kdf : G  -> (BS_km * BS_ks).
 
 adversary A_kdf :  (BS_km * BS_ks) -> Bool.
 
-assumption_decisional kdf
+assumption kdf
   [ x <-$ Fq; res <- A_kdf(Kdf(g^x)); ]
   [ km <-$ BS_km; ks <-$ BS_ks; res <- A_kdf(km,ks); ].
 
@@ -54,7 +54,7 @@ operator Dec : (BS_ks * BS_enc) -> BS_msg.
 adversary A1_cpa1 : () -> (BS_msg * BS_msg).
 adversary A2_cpa1 : BS_enc -> Bool.
 
-assumption_computational cpa1
+assumption cpa1
   [ ks      <-$ BS_ks;
     b       <-$ Bool;
     (m0,m1) <-  A1_cpa1();
@@ -69,7 +69,7 @@ operator Mac : (BS_km * BS_enc) -> BS_tag.
 adversary A1_cma1 : () -> BS_enc.
 adversary A2_cma1 : BS_tag -> (BS_enc * BS_tag).
 
-assumption_computational cma1
+assumption cma1
   [ km    <-$ BS_km;
     ec    <-  A1_cma1();
     (e,t) <-  A2_cma1(Mac(km,ec));
@@ -77,7 +77,7 @@ assumption_computational cma1
 
 adversary A2_cma0 : () -> (BS_enc * BS_tag).
 
-assumption_computational cma0
+assumption cma0
   [ km    <-$ BS_km;
     (e,t) <-  A2_cma0();
   ] : (Mac(km,e) = t).
@@ -87,13 +87,13 @@ assumption_computational cma0
 
 adversary A_samp_exp : G -> Bool.
 
-assumption_decisional samp_exp
+assumption samp_exp
   [ ga <-$ G;  res <- A_samp_exp(ga);  ]
   [ a  <-$ Fq; res <- A_samp_exp(g^a); ].
 
 adversary A_samp_gen : G -> Bool.
 
-assumption_decisional samp_gen
+assumption samp_gen
   [ ga <-$ G\g^0; res <- A_samp_gen(ga);  ]
   [ a  <-$ Fq\0;  res <- A_samp_gen(g^a); ].
   
@@ -158,165 +158,178 @@ prove
   ] : b = b'.
 
 (* apply DDH to g1,g2,r1 *)
-rnorm. rnorm_unknown r1.
-rswap 2 -1. rswap 3 - 1. rswap 10 - 7.
-rlet_abstract 4 arg (g1,g2,g1^r1,g2^r1).
-rlet_abstract 13 res (b = b').
-rsubst 5 g1^r1 arg\2. rsubst 5 g2^r1 arg\3.
-rsubst 5 g1 arg\0. rsubst 5 g2 arg\1.
-assumption_decisional! ddh -> (4-13) r2.
-rlet_unfold. rnorm_unknown.
+let_unfold. norm_unknown r1.
+swap 2 -1. swap 3 - 1. swap 10 - 7.
+let_abstract 4 arg (g1,g2,g1^r1,g2^r1). let_abstract _ res _.
+assumption_decisional ddh -> (4-13) r2.
+let_unfold. norm_unknown.
 
 (* sample exponent of g2 directly *)
-rswap 2 -1. rlet_abstract 2 arg g2. rlet_abstract 14 res (b = b').
-assumption_decisional! samp_gen -> (2-14) w. rnorm.
+swap 2 -1. let_abstract 2 arg g2. let_abstract _ res _.
+assumption_decisional samp_gen -> (2-14) w. norm.
 
 (* define g2 using the generator g1 instead of g2 *)
-rswap 2 -1. rexcept 2. rrnd! 2 (w -> w*log(g1)) (w -> w/log(g1)).
-rlet_unfold. rnorm_unknown.
+swap 2 -1. except 2. rnd 2 _ (w -> w/log(g1)). norm.
 
-rnorm.
-rrnd 6 _ (x1 -> x1 + x2*w). rnorm.
-rrnd 7 _ (y1 -> y1 + y2*w). rnorm.
+rnd! 6 _ _ g1. norm.
+rnd! 7 _ _ g1. norm.
 
-rnorm_solve x2.
-radd_test (10,1,1) (u1^w = u2) CC tu1 tu2 te tt.
-  rsimp. rlet_unfold.
-  rnorm_solve x2.
-  rswap 6 4.
-  rlet_abstract 10 d (log(tu2) - w*log(tu1)).
-  rlet_abstract 11 e (x1*log(tu1) + y1*log(tu1)*H(i,tu1,tu2) + y2*log(tu2)*H(i,tu1,tu2) + -(y2*w*log(tu1)*H(i,tu1,tu2))).
-  rrnd! 12 (x2 -> (x2 - e) / ((d=0)?1:d)) (x2 -> x2 * ((d=0)?1:d) + e).
-  rnorm.
-  rcase_ev (((log(tu2) + -(w*log(tu1))) = 0) = false).
-    last. rnorm. rctxt_ev (c -> c + w*log(tu1)) 2. rnorm.
-    rctxt_ev (c -> g^c) 3. rnorm. rrewrite_ev 3. rsimp. last.
-  rrewrite_ev 3 ->. rnorm.
-  rremove_ev 2.
-  rswap 10 -9.
-  rnorm_unknown.
-  rlet_abstract 2 arg Kdf(g^x2).
-  rlet_abstract _ res _.
-  assumption_decisional! kdf -> (2-12) km ks.
-  rnorm.
-  rnorm_unknown.
-  rlet_abstract 2 arg ().
-  rlet_abstract 13 res1 te.
-  rlet_abstract 14 res2 tt.
-  rremove_ev 1.
-  assumption_computational! cma0 (2-14).
+norm_solve x2.
+(* add test to first oracle *)
+add_test (10,1,1) (u1^w = u2) CC tu1 tu2 te tt.
+  simp. let_unfold. norm_solve x2.
+  (* make Kdf input random *)
+  swap 6 4.
+  let_abstract [-1] d (log(tu2) - w*log(tu1)).
+  let_abstract [-1] e (x1*log(tu1) + y1*log(tu1)*H(i,tu1,tu2) + y2*log(tu2)*H(i,tu1,tu2) + -(y2*w*log(tu1)*H(i,tu1,tu2))).
+  rnd 12 (x2 -> (x2 - e) / ((d=0)?1:d)) (x2 -> x2 * ((d=0)?1:d) + e).
+  norm.
+  case_ev (((log(tu2) + -(w*log(tu1))) = 0) = false).
+    last. (* implement more powerful false rule *)
+    simp. norm. ctxt_ev (c -> g^(c + w*log(tu1))) 3. norm. simp. last.
+  rewrite_ev 3 ->. norm. remove_ev 3.
+  (* apply decisional Kdf assumption *)
+  swap 10 -9. norm_unknown.
+  let_abstract 2 arg Kdf(g^x2).
+  let_abstract _ res _.
+  assumption_decisional kdf -> (2-12) km ks.
+  (* apply CMA0 assumption *)
+  let_unfold. norm_unknown.
+  let_abstract 2 arg ().
+  let_abstract 0 res1 te.
+  let_abstract 0 res2 tt.
+  remove_ev 2.
+  assumption_computational cma0 (2-14).
 
-radd_test (12,1,2) (u1^w = u2) CCC tu1 tu2 te tt.
+(* add test to second oracle *)
+add_test (12,1,2) (u1^w = u2) CCC tu1 tu2 te tt.
   (* handle b = b' case first *)
-  last.
-  rsimp.
-  rexcept 2 0.
-  rexcept 4 r1.
-  rnorm_unknown.
-  rlet_abstract 11 cH H(i,g1 ^ r1,g1 ^ (r2*w)).
-  rrnd 6 _ 
-    (x2 ->
-      log(g1)*
-        (x1*r1 + x2*r2*w + y1*r1*cH + y2*r2*w*cH + -(x2*r1*w) + -(y2*r1*w*cH))).
-  rnorm.
-  rnorm_unknown.
-  rswap 11 -10.
-  rlet_abstract 2 arg Kdf(g^x2).
-  rlet_abstract 14 res (b=b').
-  assumption_decisional! kdf -> (2-14) km ks.
-  rnorm.
-  rswap 1 1. rswap 12 -10.
-  rnorm_unknown.
-  rlet_abstract 3 arg1 ().
-  rlet_abstract 14 res1_1 m0.
-  rlet_abstract 15 res1_2 m1.
-  rlet_abstract 16 arg2 Enc(ks,b?res1_1:res1_2).
-  rlet_abstract 18 res2 b'.
-  assumption_computational! cpa1 (3-15,16-18).
+  last. simp.
+  (* make Kdf input random *)
+  except 2 0.
+  except 4 r1.
+  norm_solve x2.
+  rnd! 6 _ _. let_unfold. norm_unknown.
+  swap 11 -10.
+  let_abstract 2 arg Kdf(g^x2).
+  let_abstract 14 res (b=b').
+  assumption_decisional kdf -> (2-14) km ks.
+  let_unfold.
+  (* apply computational CPA1 assumption *)
+  swap 2 -1. swap 12 -10.
+  norm_unknown.
+  let_abstract 3 arg1 ().
+  let_abstract 14 res1_1 m0.
+  let_abstract 15 res1_2 m1.
+  let_abstract 16 arg2 Enc(ks,b?res1_1:res1_2).
+  let_abstract 0 res2 b'.
+  assumption_computational cpa1 (3-15,16-18).
 
-rcase_ev (tu1,tu2) = (g ^ (r1*log(g1)),g ^ (log(g1)*r2*w)).
-  rnorm. rsimp. rrewrite_ev 2 ->. rrewrite_ev 3 ->. rnorm.
-  rnorm_solve x2.
-  rexcept 2 0.
-  rexcept 4 r1.
-  rrnd 6 _ _. back. rnorm.
-  rrewrite_ev 4 <-.
-  rcase_ev (te = Enc(Kdf(g ^ x2)\1,b?m0:m1)).
-    rrewrite_ev 6 ->. rnorm. rfalse_ev.
-  rswap 11 -10.
-  rnorm_unknown.
-  rlet_abstract 2 arg Kdf(g^x2).
-  rlet_abstract _ res _.
-  assumption_decisional! kdf -> (2-14) km ks.
-  rnorm.
-  rnorm_unknown.
-  rremove_ev 1. rremove_ev 1. rremove_ev 1. rremove_ev 2.
-  rlet_abstract 2 arg1 ().
-  rlet_abstract 14 res1 Enc(ks,b?m0:m1).
-  rlet_abstract 15 arg2 Mac(km,res1).
-  rlet_abstract 17 res1_1 te.
-  rlet_abstract 18 res1_2 tt.
-  assumption_computational! cma1 (2-14,15-18).
-rsimp. rnorm.
-rcase_ev (H(i,tu1,tu2) = H(i,g ^ (r1*log(g1)),g ^ (log(g1)*r2*w))).
-  rremove_ev 1. rremove_ev  1. rremove_ev 2.
-  rnorm_unknown r1 r2.
-  rrnd 3 _ (r1 -> r1*log(g1)). rnorm.
-  rexcept 2 0.
-  rrnd 3 _ (r2 -> r2*log(g1)*w). rnorm.
-  rnorm_unknown r1 r2.
-  rswap 3 -2.
-  rswap 10 -8.
-  rswap 11 -8.
-  rlet_abstract 4 arg (i,g^r1,g^r2).
-  rsubst 5 i    arg\0.  
-  rsubst 5 g^r1 arg\1.
-  rsubst 5 g^r2 arg\2.
-  rlet_abstract 14 res1 tu1.
-  rlet_abstract 15 res2 tu2.
-  assumption_computational! tcr (4-15).
-rremove_ev 4.
-rnorm_solve y2.
-rexcept 2 0.
-rexcept 4 r1.
-rrnd 6 _ _. back. back. back. back. 
-rnorm.
-rnorm_solve y2.
-rlet_abstract 13 d (H(i,tu1,tu2) + -H(i,g ^ (r1*log(g1)),g ^ (log(g1)*r2*w))).
-rswap 6 7.
-rrnd! 13 (y -> (y/(((d=0)?1:d)))) (y -> y * ((d=0)?1:d)). rlet_unfold 14.
-rcase_ev ((d=0)=false).
-  last. rremove_ev 4. rnorm. rctxt_ev (c -> c + H(i,g ^ (r1*log(g1)),g ^ (log(g1)*r2*w))) 4. rnorm. rrewrite_ev 3. rsimp.
+(* equality on u1,u2, but not on ciphertext and Mac implies Mac forgery *)
+case_ev (tu1,tu2) = (g ^ (r1*log(g1)),g ^ (log(g1)*r2*w)).
+  (* make Kdf input random *)
+  simp. norm.
+  rewrite_ev 4 ->. rewrite_ev 5 ->. let_unfold.
+  norm_solve x2.
+  except 2 0. except 4 r1.
+  rnd! 6 _ _. norm.
+  case_ev (te = Enc(Kdf(g ^ x2)\1,b?m0:m1)).
+    simp.
+  (* apply Kdf security *)
+  swap 11 -10. norm_unknown.
+  let_abstract 2 arg Kdf(g^x2).
+  let_abstract _ res _.
+  assumption_decisional kdf -> (2-14) km ks.
+  (* reduce to CMA1 *)
+  let_unfold. norm_unknown.
+  remove_ev 1 3 4 5.
+  let_abstract 2 arg1 ().
+  let_abstract 14 res1 Enc(ks,b?m0:m1).
+  let_abstract 15 arg2 Mac(km,res1).
+  let_abstract 0 res1_1 te.
+  let_abstract 0 res1_2 tt.
+  assumption_computational cma1 (2-14,15-18).
+
+simp. norm.
+(* Reduce hash collision case to TCR *)
+case_ev (H(i,tu1,tu2) = H(i,g1^r1,g1^(r2*w))).
+  (* apply TCR *)
+  norm. remove_ev 1 2 3.
+  rnd! 3 _ _. norm.
+  except 2 0.
+  rnd! 3 _ _. norm.
+  norm_unknown r1 r2.
+  swap 3 -2. swap 10 -8. swap 11 -8.
+  let_abstract 4 arg (i,g^r1,g^r2).
+  let_abstract 0 res1 tu1.
+  let_abstract 0 res2 tu2.
+  assumption_computational tcr (4-15).
+
+(* finish proof exploiting that hashes are not equal *)
+norm.
+(* check in which contexts x2 and y2 occur *)
+except w 0. except r2 r1.
+norm. field_exprs x2 y2.
+norm_solve x2. field_exprs x2.
+rnd! x2 _ _. norm. norm_solve y2.
+(* simplify expression, divide coefficient of y2 by values that are
+   known to be nonzero *)
+rnd! y2 _ (y2 -> y2*log(g1)*w*(r1 - r2)). norm. norm_solve y2. field_exprs y2.
+let_abstract! 10 h1 H(i,g1^r1,g1^(r2*w)).
+let_abstract! 0  h2 H(i,tu1,tu2). norm_solve y2.
+let_abstract 0 d -((-log(tu2) + w*log(tu1))*(-h1 + h2)).
+rnd! y2 _ (y2 -> y2*((d=0)?1:d)).
+let_unfold [-1].
+(* AC-match (y2 * ?d) + ?e *)
+(* show that te <> Enc(k'\1,b?m0:m1) for CMA1 *)
+case_ev (te = Enc(k'\1,b?m0:m1)).
+  norm_unknown.
+  norm. rsimp.
+norm_unknown.
+remove_ev 4.
+norm_solve y2.
+except 2 0.
+except 4 r1.
+rnd! 6 _ _. back. back. back. back. 
+norm.
+norm_solve y2.
+let_abstract 13 d (H(i,tu1,tu2) + -H(i,g ^ (r1*log(g1)),g ^ (log(g1)*r2*w))).
+swap 6 7.
+rnd! 13 (y -> (y/(((d=0)?1:d)))) (y -> y * ((d=0)?1:d)). rlet_unfold 14.
+case_ev ((d=0)=false).
+  last. remove_ev 1 2. norm. ctxt_ev (c -> c + H(i,g ^ (r1*log(g1)),g ^ (log(g1)*r2*w))) 3. norm. rewrite_ev 3. simp.
   last. last.
-rrewrite_ev 5.
-rcase_ev ((false?1:d) = d).
-  last. rremove_ev 1. rsimp.
-rrewrite_ev 6.
-rlet_unfold 12.
-rremove_ev 6.
-rnorm. rnorm_solve y2.
-rrnd 12 _ (y2 -> y2*(r2 + -r1)*w*log(g1)). rnorm. rnorm_solve y2.
-rlet_abstract 12 d (-log(tu2) + w*log(tu1)).
-rrnd! 13 (y -> (y/(((d=0)?1:d)))) (y -> y * ((d=0)?1:d)). rlet_unfold 14.
-rcase_ev ((d=0)=false).
-  last. rremove_ev 5. rnorm. rctxt_ev (c -> c - -log(tu2)) 5. rnorm. rctxt_ev (c -> g^c) 5. rnorm.
-  rrewrite_ev 1 <-. rsimp.
-rrewrite_ev 6.
-rcase_ev ((false?1:d) = d).
-  last. rremove_ev 1. rsimp.
-rrewrite_ev 7.
-rlet_unfold 12.
-rremove_ev 7.
-rnorm. rnorm_solve y2.
-rrnd 12 _ _. rnorm.
-rswap 12 -11. rremove_ev 1 2 3 4 5.
-rnorm_unknown.
-rlet_abstract 2 arg Kdf(g^y2).
-rlet_abstract _ res _.
+rewrite_ev 5.
+case_ev ((false?1:d) = d).
+  last. remove_ev 1. rsimp.
+rewrite_ev 6.
+let_unfold 12.
+remove_ev 6.
+norm. norm_solve y2.
+rnd 12 _ (y2 -> y2*(r2 + -r1)*w*log(g1)). norm. norm_solve y2.
+let_abstract 12 d (-log(tu2) + w*log(tu1)).
+rnd! 13 (y -> (y/(((d=0)?1:d)))) (y -> y * ((d=0)?1:d)). let_unfold 14.
+case_ev ((d=0)=false).
+  last. remove_ev 5. norm. ctxt_ev (c -> c - -log(tu2)) 5. norm. ctxt_ev (c -> g^c) 5. norm.
+  rewrite_ev 1 <-. simp.
+rewrite_ev 6.
+case_ev ((false?1:d) = d).
+  last. remove_ev 1. simp.
+rewrite_ev 7.
+let_unfold 12.
+remove_ev 7.
+(* apply decisional KDF assumption *)
+norm. norm_solve y2.
+rnd 12 _ _. norm.
+swap 12 -11. remove_ev 1 2 3 4 5.
+norm_unknown.
+let_abstract 2 arg Kdf(g^y2).
+let_abstract _ res _.
 assumption_decisional! kdf -> (2-14) km ks.
-rlet_unfold. rnorm_unknown.
-rlet_abstract 2 arg ().
-rlet_abstract 15 res1 te.
-rlet_abstract 16 res2 tt.
+(* reduce to CMA1 *)
+let_unfold. norm_unknown.
+let_abstract 2 arg ().
+let_abstract 0 res1 te.
+let_abstract 0 res2 tt.
 assumption_computational! cma0 (2-16).
 qed.
