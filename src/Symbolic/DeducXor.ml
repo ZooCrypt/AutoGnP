@@ -2,6 +2,7 @@
 
 (*i*)
 open Expr
+open ExprUtils
 open Util
 open Type
 open Syms

@@ -131,9 +131,9 @@ let process_eval fname proofscript =
   let rhandled = ref handled_cmds in
   let rts = ref ts0 in
   let rmsgs = ref msgs0 in
-  (* handle the remaining commands, return the last message if ok
-     and the error and the position up to where processing was
-     successfull otherwise *)
+  (*c handle the remaining commands, return the last message if ok
+      and the error and the position up to where processing was
+      successful otherwise *)
   let ok_upto () =
     List.fold_left (fun acc l -> acc + 1 + String.length l) 0 !rhandled
   in
@@ -158,7 +158,7 @@ let process_eval fname proofscript =
         | Invalid_rule s ->
           `String (F.sprintf "invalid rule application: %s" s)
         | Expr.TypeError  e ->
-          `String (F.sprintf "type error: %s" (Expr.typeError_to_string e))
+          `String (F.sprintf "type error: %s" (ExprUtils.typeError_to_string e))
         | e ->
           `String (F.sprintf "unknown error: %s,\n%s"
                      (Printexc.to_string e)

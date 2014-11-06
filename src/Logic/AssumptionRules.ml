@@ -8,6 +8,7 @@ open Type
 open Assumption
 open Syms
 open Expr
+open ExprUtils
 open Game
 open TheoryTypes
 open Rules

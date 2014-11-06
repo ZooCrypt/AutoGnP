@@ -6,6 +6,7 @@ open Util
 open Nondet
 open Syms
 open Expr
+open ExprUtils
 open Norm
 open Game
 open Rules

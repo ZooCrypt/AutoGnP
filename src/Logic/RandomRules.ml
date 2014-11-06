@@ -7,6 +7,7 @@ open Nondet
 open Type
 open Syms
 open Expr
+open ExprUtils
 open Game
 open Rules
 open NormField

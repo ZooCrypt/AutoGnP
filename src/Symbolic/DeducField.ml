@@ -4,6 +4,7 @@
 open Abbrevs
 open Util
 open Expr
+open ExprUtils
 open NormField
 open Norm
 (*i*)

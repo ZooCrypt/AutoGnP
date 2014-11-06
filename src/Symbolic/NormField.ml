@@ -4,6 +4,7 @@
 open Abbrevs
 open Util
 open Expr
+open ExprUtils
 open Poly
 open PolyInsts
 open Factory
@@ -280,7 +281,7 @@ let div_factor pe1 pe2 =
     | [] -> mk_FNat 0
     | [(a,1)] -> a
     | _ ->
-      let is_minus_one (e,exp) = e_equal (mk_FOpp (mk_e (Cnst(FNat(1))) Type.mk_Fq)) e && exp = 1 in
+      let is_minus_one (e,exp) = e_equal (mk_FOpp mk_FOne) e && exp = 1 in
       let mopp =
         if L.exists is_minus_one es then (fun x -> mk_FOpp x) else id
       in

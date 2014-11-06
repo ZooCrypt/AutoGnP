@@ -3,6 +3,7 @@
 (*i*)
 open Util
 open Expr
+open ExprUtils
 open Type
 open Game
 open Syms

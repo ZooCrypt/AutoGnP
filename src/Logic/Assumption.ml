@@ -5,6 +5,7 @@ open Abbrevs
 open Util
 open Game
 open Expr
+open ExprUtils
 open Syms
 open Gsyms
 

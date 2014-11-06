@@ -6,6 +6,7 @@ open Util
 open Nondet
 open Type
 open Expr
+open ExprUtils
 open Game
 open Wf
 open Assumption

@@ -4,6 +4,7 @@
 open Abbrevs
 open Type
 open Expr
+open ExprUtils
 open Syms
 (*i*)
 

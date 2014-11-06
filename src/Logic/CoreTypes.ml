@@ -4,6 +4,7 @@ open Util
 open Game
 open Assumption
 open Expr
+open ExprUtils
 (*i*)
 
 (* \hd{Low-level rules (extractable to EasyCrypt).} *)

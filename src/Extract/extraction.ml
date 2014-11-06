@@ -1,7 +1,8 @@
 open Abbrevs
 open Util
 open Type
-open Expr 
+open Expr
+open ExprUtils
 open Game 
 open TheoryTypes
 open TheoryState
@@ -224,7 +225,7 @@ let ginstr file adv = function
   | GSamp(v,(ty,r)) -> 
     Irnd ([pvar [] v], ty, List.map (expression file) r)
   | GCall(vs,a,e,_) -> 
-    let es = destruct_Tuple e in
+    let es = destr_Tuple_nofail e in
     Icall(List.map (pvar []) vs, (adv, "a"^Asym.to_string a),
           List.map (expression file) es)
 
@@ -1364,7 +1365,7 @@ let extract_except file pos _l pft pft' =
     match Se.elements fv with
     | [] -> f_true
     | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
-  let fv = Expr.e_vars ju.ju_ev in
+  let fv = e_vars ju.ju_ev in
   let nA = adv_name file in
   let eqvc = mk_eq_vcs g2 adv vcs in
   let proof fmt () = 
@@ -1739,7 +1740,7 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
       Vsym.M.empty args in
   let inv = 
     let ftuple = 
-      let es = destruct_Tuple etuple in
+      let es = destr_Tuple_nofail etuple in
       let fs = 
         List.map (fun e ->
           let v = destr_V e in
@@ -1764,7 +1765,7 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
       f_and f (f_eq (Fv(pvar [] v, Some "1")) (Fv(pvar [] v, Some "2"))) in
     List.fold_left add_eq invcall juoc.juoc_oargs in
   let pp_eqt fmt () =
-    let xs = List.map destr_V (destruct_Tuple etuple) in
+    let xs = List.map destr_V (destr_Tuple_nofail etuple) in
     let pp_v fmt x = 
       try 
         ignore (Vsym.M.find x find_args);
@@ -1990,7 +1991,7 @@ let rec extract_proof file pft =
     let t2 = tnew in
     let ctests = List.map destr_guard juoc.juoc_cleft in
     let allt = mk_Land (t1::t2::ctests) in
-    let evars = Se.elements (Expr.e_vars allt) in
+    let evars = Se.elements (ExprUtils.e_vars allt) in
     let etuple = Expr.mk_Tuple evars in
     let _tytuple = etuple.e_ty in
 
@@ -2074,7 +2075,7 @@ let rec extract_proof file pft =
       let sadvOT = advOT.mod_name in
       let pp_E fmt () = 
         let ev = pft.pt_ju.ju_ev in
-        let fv = Se.elements (Expr.e_vars ev) in
+        let fv = Se.elements (ExprUtils.e_vars ev) in
         let f = formula file [] None ev in
         let pp_let fmt v = 
           let v = Vsym.to_string (destr_V v) in

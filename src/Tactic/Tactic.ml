@@ -3,6 +3,7 @@
 (*i*)
 open Abbrevs
 open Expr
+open ExprUtils
 open Type
 open Util
 open Nondet

@@ -2,6 +2,7 @@
 
 (*i*)
 open Expr
+open ExprUtils
 (*i*)
 
 (** [solve_xor ecs e] tries to compute an xor context that

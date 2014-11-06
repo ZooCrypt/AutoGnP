@@ -28,10 +28,11 @@ type theory_proof_state =
     of proof_state * proof_state list * proof_state nondet * proof_state option
   | ClosedTheory of proof_tree
 
-(*r We implicitly define length and group variables and
+(** We implicitly define length and group variables and
     sharing is required when the same string occurs in
     different states. *)
 type theory_state = {
+
   (* implicitly defined and shared *)
   ts_lvars      : (string,Lenvar.id)   Hashtbl.t;
   ts_gvars      : (string,Groupvar.id) Hashtbl.t;
@@ -45,7 +46,8 @@ type theory_state = {
   ts_assms_comp : assm_comp   Mstring.t;
 
   ts_ps         : theory_proof_state;
-  (* FIXME: Add some state to increase sharing during
-            proof search. We want rules to commute. *)
+
+  (*c FIXME: Add some state to increase sharing during
+      proof search. We want rules to commute. *)
 
 }

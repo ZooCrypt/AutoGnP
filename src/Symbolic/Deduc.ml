@@ -4,6 +4,7 @@
 (* open Util *)
 open Type
 open Expr
+open ExprUtils
 (*i*)
 
 exception Found of expr

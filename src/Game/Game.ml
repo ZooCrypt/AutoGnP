@@ -5,6 +5,7 @@ open Abbrevs
 open Util
 open Type
 open Expr
+open ExprUtils
 open Syms
 open Gsyms
 open Norm

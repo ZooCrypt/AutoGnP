@@ -6,6 +6,7 @@ open Util
 open Game
 open CoreRules
 open Expr
+open ExprUtils
 open Norm
 open NormField
 

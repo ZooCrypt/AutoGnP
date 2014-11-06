@@ -1,12 +1,7 @@
 (*s Goals and mappings from strings to variables/symbols. *)
 
 (*i*)
-open Syms
-open Gsyms
 open Util
-open Assumption
-open CoreRules
-open Nondet
 open TheoryTypes
 
 module Ht = Hashtbl

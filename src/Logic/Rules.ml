@@ -7,6 +7,7 @@ open Util
 open Syms
 open Type
 open Expr
+open ExprUtils
 open Game
 open Assumption
 open CoreTypes

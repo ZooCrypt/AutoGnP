@@ -4,6 +4,7 @@
 open Nondet
 open Game
 open Expr
+open ExprUtils
 open Assumption
 open Util
 open Abbrevs
