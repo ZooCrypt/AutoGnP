@@ -1,7 +1,11 @@
+(*s Functions on expressions that do not require access to internals *)
+
+(*i*)
 open Abbrevs
 open Syms
 open Expr
 open Type
+(*i*)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Indicator functions} *)
