@@ -146,7 +146,7 @@ and check_nonzero ctype wfs e =
     | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
     | _                 -> check e (* e is polynomial *)
 
-(* TODO Remark: I think the type checking is not necessary, it is ensured by the
+(* FIXME Remark: I think the type checking is not necessary, it is ensured by the
    smart constructor ... *)
 and wf_exp ctype wfs e0 =
   let rec go e =

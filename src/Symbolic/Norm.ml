@@ -70,7 +70,7 @@ let rec mk_simpl_op _strong op l =
     | Eq   | Ifte   | Not)           , _ -> assert false
 
 and mk_simpl_nop strong op l =
-  (*i TODO flattening, for xor and land i*)
+  (*i FIXME flattening, for xor and land i*)
   match op with
   | FPlus  | FMult  ->
     assert false (*i norm_expr_field should be called instead i*)
@@ -95,8 +95,8 @@ and mk_simpl_nop strong op l =
     else mk_Xor (aux l)
       
   | Land ->
-    (* FIXME: is this really usefull?
-       we should handle conjunctions manually. *)
+    (* FIXME: is this really useful?
+       We should handle conjunctions manually. *)
     let l = List.flatten (List.map destr_Land_nofail l) in
     let l = if strong then List.sort e_compare l else l in
     let rec aux l = 

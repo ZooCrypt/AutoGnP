@@ -380,7 +380,7 @@ let game ?(local=`Local) file g =
     let cdecls = List.map (fun v -> MCvar (v, Type.mk_Int)) vcs in
     let globs = globals g in 
     let m_orcl = oracles file oinfo in
-    let alias = (mod_name nA [mod_name "O" []]) in (* TODO add the H oracle *)
+    let alias = (mod_name nA [mod_name "O" []]) in (* FIXME add the H oracle *)
     let m_adv = {
       mod_name = nA;
       mod_param = [];

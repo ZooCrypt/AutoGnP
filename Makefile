@@ -59,7 +59,8 @@ UTIL_MODULES= Util/HashconsTypes.ml Util/Hashcons.ml Util/Hashcons.mli \
   Util/Util.ml Util/Util.mli Util/IdType.mli Util/Id.ml Util/Id.mli \
   Util/nondet.ml Util/nondet.mli
 POLY_MODULES= Poly/PolyInterfaces.mli Poly/Poly.ml Poly/Poly.mli Poly/PolyInsts.ml 
-EXPR_MODULES= Expr/Type.ml Expr/Type.mli Expr/Syms.ml Expr/Syms.mli Expr/Expr.ml Expr/Expr.mli
+EXPR_MODULES= Expr/Type.ml Expr/Type.mli Expr/Syms.ml Expr/Syms.mli Expr/Expr.ml Expr/Expr.mli \
+  Expr/ExprUtils.ml Expr/ExprUtils.mli
 CAS_MODULES= CAS/LinAlg.ml CAS/LinAlg.mli CAS/CAS.ml CAS/CAS.mli CAS/Factory.ml
 SYMBOLIC_MODULES= Symbolic/Norm.ml Symbolic/Norm.mli \
   Symbolic/DeducField.ml Symbolic/DeducField.mli \

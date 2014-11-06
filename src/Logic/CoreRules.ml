@@ -560,7 +560,6 @@ let rremove_ev (rm:int list) ju =
   let ev = ju.ju_ev in
   let evs = aux 0 (destr_Land_nofail ev) in
   let new_ju = {ju with ju_ev = if evs = [] then mk_True else mk_Land evs} in
-  (*i TODO : should we check DivZero i*)
   Rremove_ev rm, [new_ju]
 
 let t_remove_ev rm = prove_by (rremove_ev rm)
@@ -576,7 +575,7 @@ let merge_base_event ev1 ev2 =
   | Exists(e11,e12, l), App (Eq,[e21;e22]) ->
     mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) l
   | Exists(e11,e12, l1), Exists(e21,e22, l2) ->
-    (*i TODO we should be sure that bound variables in l1 and l2 are disjoint i*)
+    (*i FIXME we should be sure that bound variables in l1 and l2 are disjoint i*)
     mk_Exists (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22]) (l1 @ l2)
   | _, _ -> failwith "do not knwon how to merge the event"
 
@@ -590,7 +589,6 @@ let rmerge_ev i j ju =
   let ev = merge_base_event b1 b2 in
   let evs = L.rev_append l (L.rev_append l' (ev::r)) in
   let new_ju = {ju with ju_ev = mk_Land evs} in
-  (*i TODO : should we check DivZero, I think not i*)
   Rmerge_ev(i,j), [new_ju]
 
 let t_merge_ev i j = prove_by (rmerge_ev i j)
