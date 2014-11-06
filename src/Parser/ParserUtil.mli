@@ -16,6 +16,9 @@ val fail_parse : string -> 'a
 
 val create_var : vmap -> string -> ty -> Vsym.t
 
+(*c functions that take a [theory_state] extend the state
+    with lenvars and groupvars *)
+
 val ty_of_parse_ty : theory_state -> parse_ty -> ty
 
 val mk_Tuple : expr list -> expr
@@ -30,7 +33,7 @@ val lcmd_of_parse_lcmd : vmap -> theory_state -> lcmd -> Game.lcmd
 val odef_of_parse_odef :
   vmap -> theory_state ->
   string * string list * (lcmd list * parse_expr) ->
-  Osym.t * Vsym.t list * Game.lcmd list * expr
+  (Osym.t * Vsym.t list * Game.lcmd list * expr)
 
 val gcmd_of_parse_gcmd : vmap -> theory_state -> gcmd -> Game.gcmd
 

@@ -113,7 +113,7 @@ SYMBOLIC_IFILES=$(filter %.mli,$(SYMBOLIC_FILES))
 GAME_IFILES=$(filter %.mli,$(GAME_FILES))
 LOGIC_IFILES=src/Logic/CoreTypes.ml $(filter %.mli,$(LOGIC_FILES))
 PARSER_IFILES=$(filter %.mli,$(PARSER_FILES))
-TACTIC_IFILES=Tactic/TheoryTypes.ml $(filter %.mli,$(TACTIC_FILES))
+TACTIC_IFILES=src/Tactic/TheoryTypes.ml $(filter %.mli,$(TACTIC_FILES))
 
 ldoci:
 	ocamlweb doc/prelude.tex \

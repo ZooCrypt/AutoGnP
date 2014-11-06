@@ -159,11 +159,11 @@ let t_assm_dec_non_exact
   (* use assumption with given name or try all decisional assumptions *)
   (match massm_name with
    | Some aname ->
-     begin try ret (Ht.find ts.ts_assms_dec aname)
+     begin try ret (Mstring.find aname ts.ts_assms_dec)
      with Not_found -> tacerror "error no assumption %s" aname
      end
    | None ->
-     mconcat (Ht.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_dec [])
+     mconcat (Mstring.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_dec [])
   ) >>= fun assm ->
   guard (not (Sstring.mem assm.ad_name iassms)) >>= fun _ ->
   (* use given direction or try both directions *)
@@ -194,7 +194,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
     | None   -> tacerror "exact requires sname"
   in
   let assm =
-    try Ht.find ts.ts_assms_dec assm_name
+    try Mstring.find assm_name ts.ts_assms_dec
     with Not_found -> tacerror "error no assumption %s" assm_name
   in
   let rngs = match mrngs with
@@ -474,11 +474,11 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
 let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mrngs ju =
   (match maname with
   | Some aname ->
-    begin try ret (Ht.find ts.ts_assms_comp aname)
+    begin try ret (Mstring.find aname ts.ts_assms_comp)
     with Not_found -> tacerror "error no assumption %s" aname
     end
   | None ->
-    mconcat (Ht.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_comp [])
+    mconcat (Mstring.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_comp [])
   ) >>= fun assm ->
   (* try all assumptions *)
   t_assm_comp_auto ~icases ts assm mrngs ju
@@ -497,7 +497,7 @@ let t_assm_comp_exact ts maname mrngs ju =
       tacerror "assumption_computational: adversary call ranges required for exact"
   in
   let assm =
-    try Ht.find ts.ts_assms_comp aname
+    try Mstring.find aname ts.ts_assms_comp
     with Not_found -> tacerror "error no assumption %s" aname
   in
   let c = assm.ac_prefix in

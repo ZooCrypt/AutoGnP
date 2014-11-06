@@ -228,11 +228,10 @@ let handle_tactic ts tac =
       | Prod(tys) -> tys
       | _ -> [ty]
     in
-    fail_unless (fun () -> not (Ht.mem ts.ts_adecls aname))
+    fail_unless (fun () -> not (Mstring.mem aname ts.ts_adecls))
       "radd_test: adversary with same name already declared";
     let asym = Asym.mk aname oasym.Asym.dom oty in
-    let adecls = Ht.copy ts.ts_adecls in
-    Ht.add adecls aname asym;
+    let adecls = Mstring.add aname asym ts.ts_adecls in
     let tys = destr_prod oty in
     (* create variables for returned values *)
     fail_unless (fun () -> L.length fvs = L.length tys)
@@ -292,31 +291,31 @@ let handle_instr verbose ts instr =
   match instr with
   | PT.RODecl(s,ro,t1,t2) ->
     let oname = if ro then "random oracle" else "operator" in
-    if Ht.mem ts.ts_rodecls s then
+    if Mstring.mem s ts.ts_rodecls then
       tacerror "%s with same name already declared." oname;
-    Ht.add ts.ts_rodecls s
-      (Hsym.mk s ro (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
+    let hs = Hsym.mk s ro (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
+    let ts = { ts with ts_rodecls = Mstring.add s hs ts.ts_rodecls } in
     (ts, fsprintf "Declared %s" oname)
 
   | PT.EMDecl(s,g1,g2,g3) ->
-    if Ht.mem ts.ts_emdecls s then
+    if Mstring.mem s ts.ts_emdecls then
       tacerror "Bilinear map with same name already declared.";
-    Ht.add ts.ts_emdecls s
-      (Esym.mk s (create_groupvar ts g1) (create_groupvar ts g2) (create_groupvar ts g3));
+    let es = Esym.mk s (create_groupvar ts g1) (create_groupvar ts g2) (create_groupvar ts g3) in
+    let ts = { ts with ts_emdecls = Mstring.add s es ts.ts_emdecls } in
     (ts, "Declared bilinear map.")
 
   | PT.ODecl(s,t1,t2) ->
-      if Ht.mem ts.ts_odecls s then
-        tacerror "Oracle with same name already declared.";
-    Ht.add ts.ts_odecls s
-      (Osym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
+    if Mstring.mem s ts.ts_odecls then
+      tacerror "Oracle with same name already declared.";
+    let os = Osym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
+    let ts = { ts with ts_odecls = Mstring.add s os ts.ts_odecls } in
     (ts, "Declared oracle.")
 
   | PT.ADecl(s,t1,t2) ->
-    if Ht.mem ts.ts_adecls s then
+    if Mstring.mem s ts.ts_adecls then
       tacerror "adversary with same name already declared.";
-    Ht.add ts.ts_adecls s
-      (Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2));
+    let asym = Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
+    let ts = { ts with ts_adecls = Mstring.add s asym ts.ts_adecls } in
     (ts, "Declared adversary.")
 
   | PT.AssmDec(s,g0,g1,symvs) ->
@@ -331,9 +330,14 @@ let handle_instr verbose ts instr =
       with Not_found -> tacerror "unknown variable %s" s
     in
     let symvs = L.map (L.map parse_var) symvs in
-    if Ht.mem ts.ts_assms_dec s then
+    if Mstring.mem s ts.ts_assms_dec then
       tacerror "assumption with the same name already exists";
-    Ht.add ts.ts_assms_dec s (Assumption.mk_assm_dec s g0 g1 symvs);
+    let ts = {
+      ts with
+        ts_assms_dec =
+        Mstring.add s (Assumption.mk_assm_dec s g0 g1 symvs) ts.ts_assms_dec
+    }
+    in
     (ts, "Declared decisional assumption.")
 
   | PT.AssmComp(s,g,ev,symvs) ->
@@ -346,9 +350,9 @@ let handle_instr verbose ts instr =
     let symvs = L.map (L.map parse_var) symvs in
     let ev = PU.expr_of_parse_expr vmap ts ev in
     let assm = Assumption.mk_assm_comp s g ev symvs in
-    if Ht.mem ts.ts_assms_comp s then
+    if Mstring.mem s ts.ts_assms_comp then
       tacerror "assumption with the same name already exists";
-    Ht.add ts.ts_assms_comp s assm;
+    let ts = { ts with ts_assms_comp = Mstring.add s assm ts.ts_assms_comp } in
     (ts, "Declared computational assumption.")
 
   | PT.Judgment(gd,e) ->

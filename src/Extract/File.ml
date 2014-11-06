@@ -360,7 +360,7 @@ let add_bilinear file bv =
   Esym.H.add file.bvar bv name
  
 let add_bilinears file ts = 
-  Ht.iter (fun _ bv -> add_bilinear file bv) ts.ts_emdecls
+  Mstring.iter (fun _ bv -> add_bilinear file bv) ts.ts_emdecls
  
 let bvar_mod file bv =
   try Esym.H.find file.bvar bv with Not_found -> assert false
@@ -378,7 +378,7 @@ let add_hash file h =
     Hsym.H.add file.hvar h info
  
 let add_hashs file ts = 
-  Ht.iter (fun _ h -> add_hash file h) ts.ts_rodecls
+  Mstring.iter (fun _ h -> add_hash file h) ts.ts_rodecls
 
 let gvar_mod file gv = 
   (Groupvar.H.find file.grvar gv).tvar_mod

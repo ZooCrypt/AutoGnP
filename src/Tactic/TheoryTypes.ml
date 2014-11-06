@@ -1,4 +1,5 @@
 (*i*)
+open Util
 open Nondet
 open Syms
 open Gsyms
@@ -27,14 +28,24 @@ type theory_proof_state =
     of proof_state * proof_state list * proof_state nondet * proof_state option
   | ClosedTheory of proof_tree
 
+(*r We implicitly define length and group variables and
+    sharing is required when the same string occurs in
+    different states. *)
 type theory_state = {
-  ts_lvars      : (string, Lenvar.id)   Hashtbl.t;
-  ts_gvars      : (string, Groupvar.id) Hashtbl.t;
-  ts_rodecls    : (string, Hsym.t)      Hashtbl.t;
-  ts_odecls     : (string, Osym.t)      Hashtbl.t;
-  ts_adecls     : (string, Asym.t)      Hashtbl.t;
-  ts_emdecls    : (string, Esym.t)      Hashtbl.t;
-  ts_assms_dec  : (string, assm_dec)    Hashtbl.t;
-  ts_assms_comp : (string, assm_comp)   Hashtbl.t;
+  (* implicitly defined and shared *)
+  ts_lvars      : (string,Lenvar.id)   Hashtbl.t;
+  ts_gvars      : (string,Groupvar.id) Hashtbl.t;
+
+  (* explicitly defined *)
+  ts_rodecls    : Hsym.t      Mstring.t;
+  ts_odecls     : Osym.t      Mstring.t;
+  ts_adecls     : Asym.t      Mstring.t;
+  ts_emdecls    : Esym.t      Mstring.t;
+  ts_assms_dec  : assm_dec    Mstring.t;
+  ts_assms_comp : assm_comp   Mstring.t;
+
   ts_ps         : theory_proof_state;
+  (* FIXME: Add some state to increase sharing during
+            proof search. We want rules to commute. *)
+
 }

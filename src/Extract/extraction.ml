@@ -336,8 +336,8 @@ let add_assumption_comp _file _name _assum =
   *)
   
 let add_assumptions file ts = 
-  Ht.iter (fun n a -> add_assumption_dec  file n a) ts.ts_assms_dec;
-  Ht.iter (fun n a -> add_assumption_comp file n a) ts.ts_assms_comp
+  Mstring.iter (fun n a -> add_assumption_dec  file n a) ts.ts_assms_dec;
+  Mstring.iter (fun n a -> add_assumption_comp file n a) ts.ts_assms_comp
 
 let init_file ts = 
   let file = empty_file in
