@@ -37,4 +37,4 @@ val wf_odef :
 
 val wf_gdef : wf_check_type -> Game.gcmd list -> wf_state
 
-val wf_ju : wf_check_type -> Game.judgment -> unit
+val wf_se : wf_check_type -> Game.sec_exp -> unit

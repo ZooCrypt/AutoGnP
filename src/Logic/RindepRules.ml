@@ -10,6 +10,7 @@ open ExprUtils
 open Norm
 open Game
 open Rules
+open CoreTypes
 open RewriteRules
 
 module Ht = Hashtbl
@@ -73,9 +74,10 @@ let init_inverters test =
   !bds, l
 
 let t_last_random_indep ju = 
-  match List.rev ju.ju_gdef with
+  let se = ju.ju_se in
+  match List.rev se.se_gdef with
   | Game.GSamp (r,_) :: _ ->
-    let ev = ju.ju_ev in
+    let ev = se.se_ev in
     let fv = e_vars ev in
     let er = mk_V r in
     let bds, ms = init_inverters ev in
@@ -125,9 +127,10 @@ let t_random_indep_exact ju =
   CoreRules.t_random_indep ju
 
 let t_random_indep_no_exact ju =
+  let se = ju.ju_se in
   log_t (lazy "###############################");
   log_t (lazy "t_random_indep\n%!");
-  let ev_vars = e_vars ju.ju_ev in
+  let ev_vars = e_vars se.se_ev in
   let rec aux i rc =
     match rc with
     | Game.GSamp(v,_) :: rc ->
@@ -142,7 +145,7 @@ let t_random_indep_no_exact ju =
     | [] ->
       fun _ -> mfail "rindep auto: can not find an independent random variable"
   in
-  (CR.t_random_indep @|| aux 0 (L.rev ju.ju_gdef)) ju
+  (CR.t_random_indep @|| aux 0 (L.rev se.se_gdef)) ju
 
 let t_random_indep exact ju =
   if exact

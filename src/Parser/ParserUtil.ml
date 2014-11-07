@@ -201,9 +201,9 @@ let gcmd_of_parse_gcmd vmap ts gc =
 let gdef_of_parse_gdef vmap ts gd =
   L.map (fun gc -> gcmd_of_parse_gcmd vmap ts gc) gd
 
-let ju_of_parse_ju vmap ts gd e =
+let se_of_parse_se vmap ts gd e =
   let gd = gdef_of_parse_gdef vmap ts gd in
   let e  = expr_of_parse_expr vmap ts e in
-  let ju = { G.ju_gdef = gd; G.ju_ev = e } in
-  Wf.wf_ju Wf.NoCheckDivZero ju;
-  ju
+  let se = { G.se_gdef = gd; G.se_ev = e } in
+  Wf.wf_se Wf.NoCheckDivZero se;
+  se

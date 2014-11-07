@@ -38,7 +38,7 @@ type tactic = goal -> proof_state nondet
 
 type 'a rtactic = goal -> ('a * proof_state) nondet
 
-val mk_name : unit -> string
+val mk_name : sec_exp -> string
 
 exception NoOpenGoal 
 
@@ -75,8 +75,8 @@ val t_admit : string -> tactic
 (** [rconv b j' j] returns [j'] if [j] and [j'] are equal
     after expanding all lets and rewriting with respect
     to the equational theory. *)
-val rconv  : bool -> ?do_rename:bool -> judgment -> rule
-val t_conv : bool -> ?do_rename:bool -> judgment -> tactic
+val rconv  : bool -> ?do_rename:bool -> sec_exp -> rule
+val t_conv : bool -> ?do_rename:bool -> sec_exp -> tactic
 
 (** [rctxt_ev ctx i ju] returns the judgment resulting from
     replacing the [i]-th conjunct in the event of [ju]

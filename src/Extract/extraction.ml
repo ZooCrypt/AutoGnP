@@ -412,15 +412,15 @@ let game ?(local=`Local) file g =
 
 let init_section file name pft =
   let name = start_section file name in
-  let g = pft.pt_ju.ju_gdef in
+  let g = pft.pt_ju.ju_se.se_gdef in
   init_adv_info file g;
   ignore (game ~local:`Global file g);
   name 
   
 let extract_pr ?(local=`Local) file mem ju =
-  let modm = game ~local file ju.ju_gdef in
+  let modm = game ~local file ju.ju_se.se_gdef in
   let modma = {mn = modm.mod_name; ma = [adv_mod file]} in
-  let ev   = formula file [modm.mod_name] None ju.ju_ev in
+  let ev   = formula file [modm.mod_name] None ju.ju_se.se_ev in
   Fpr((modma,"main"), mem, [], ev)
 
 let mem = "m"
@@ -465,8 +465,8 @@ let init_same_ev file ev tac =
   open_pp,close_pp
 
 let init_same file ju1 ju2 = 
-  let g1 = get_game file ju1.ju_gdef in
-  let g2 = get_game file ju2.ju_gdef in
+  let g1 = get_game file ju1.ju_se.se_gdef in
+  let g2 = get_game file ju2.ju_se.se_gdef in
 (*  let ev1 = formula file [g1.mod_name] (Some "1") ju1.ju_ev in  
   let ev2 = formula file [g2.mod_name] (Some "2") ju2.ju_ev in
   let ev  = 
@@ -817,12 +817,12 @@ let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 =
     tacs = info.tacs @ [Tac (TSeq (Auto::Progress []::t_end))] }
 
 let pr_conv sw1 ju1 ju ju' ju2 sw2 file = 
-  let g1 = get_game file ju1.ju_gdef in
-  let g2 = get_game file ju2.ju_gdef in
+  let g1 = get_game file ju1.ju_se.se_gdef in
+  let g2 = get_game file ju2.ju_se.se_gdef in
   let vcs = vc_oracles file in
   let eqvc = mk_eq_vcs g1 g2 vcs in
   let nvc = List.length vcs in
-  let info = build_conv_proof nvc eqvc file g1 g2 ju.ju_gdef ju'.ju_gdef in 
+  let info = build_conv_proof nvc eqvc file g1 g2 ju.ju_se.se_gdef ju'.ju_se.se_gdef in 
   let open_pp, close_pp = 
     init_same_ev file (Some info.invs) "progress;algebra*" in
   fun fmt () -> 
@@ -839,8 +839,8 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
   let nvc = List.length vcs in
   let eqvc = mk_eq_vcs g1 g2 vcs in
   let npos = pos + nvc in
-  let lc1 = Util.take pos ju1.ju_gdef in
-  let lc2 = Util.take pos ju2.ju_gdef in
+  let lc1 = Util.take pos ju1.ju_se.se_gdef in
+  let lc2 = Util.take pos ju2.ju_se.se_gdef in
 
   let info = build_conv_proof nvc eqvc file g1 g2 lc1 lc2 in 
   let nA = adv_name file in
@@ -866,18 +866,20 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
   let vcs = vc_oracles file in
   let eqvc = mk_eq_vcs g1 g2 vcs in
   let nvc = List.length vcs in
+  let se1 = ju1.ju_se in
+  let se2 = ju2.ju_se in
 
-  let _i, ctxt = Game.get_ju_octxt ju1 pos in
-  let _i, ctxt2 = Game.get_ju_octxt ju2 pos in
-  let jctxt = ctxt.juoc_juc in
-  let write1 = write_gcmds jctxt.juc_left in
-  let writec = add_binding ctxt.juoc_avars in
+  let _i, ctxt = Game.get_se_octxt se1 pos in
+  let _i, ctxt2 = Game.get_se_octxt se2 pos in
+  let jctxt = ctxt.seoc_sec in
+  let write1 = write_gcmds jctxt.sec_left in
+  let writec = add_binding ctxt.seoc_avars in
   let write1c = Se.union write1 writec in
-  let write2 = write_gcmds jctxt.juc_right in
+  let write2 = write_gcmds jctxt.sec_right in
   let write = Se.union write1c write2 in
   (* The proof of the oracle *)
   let ginv = f_and (mk_eq_exprs file g1 g2 write1) eqvc in
-  let p1 = ctxt.juoc_oargs and p2 = ctxt2.juoc_oargs in
+  let p1 = ctxt.seoc_oargs and p2 = ctxt2.seoc_oargs in
   let iinv = init_inv_oracle p1 p2 ginv in
   let add_info1 v1 e1 loc info = 
     add_let_info file g1 v1 e1 true loc info in
@@ -912,19 +914,19 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
       pos1 = 0; pos2 = 0;
       tacs = [];
       invs  = iinv } in
-  let info = aux ctxt.juoc_cleft ctxt2.juoc_cleft info in
+  let info = aux ctxt.seoc_cleft ctxt2.seoc_cleft info in
   let nA = adv_name file in
   fun fmt () ->
     (* FIXME use init_same_ev as in pr_rw_oracle *)
     open_pp fmt ();
     F.fprintf fmt "conseq (_: _ ==> @[%a@]) => //.@ "
       Printer.pp_form (mk_eq_exprs file g1 g2 write);
-    let len = nvc + List.length jctxt.juc_left in
+    let len = nvc + List.length jctxt.sec_left in
 
     F.fprintf fmt "seq %i %i : (@[={glob A} /\\ %a@]);@ " len len
       Printer.pp_form ginv;
     F.fprintf fmt "  [ by sim | ].@ ";
-    if jctxt.juc_right <> [] then begin
+    if jctxt.sec_right <> [] then begin
       F.fprintf fmt "seq %i %i : (@[={glob %s} /\\ %a@]);@ " 
         1 1 nA
         Printer.pp_form  (f_and (mk_eq_exprs file g1 g2 write1c) eqvc);
@@ -933,7 +935,7 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
 
     F.fprintf fmt "call (_: @[%a@]).@ "
       Printer.pp_form ginv;
-    List.iter (fun _ -> F.fprintf fmt "  by sim.@ ") ctxt.juoc_oleft;
+    List.iter (fun _ -> F.fprintf fmt "  by sim.@ ") ctxt.seoc_oleft;
     (* Start proof of the oracle *)
     F.fprintf fmt "  proc;sp 1 1;if;[by done | | by done].@ ";
     F.fprintf fmt "  seq 1 1 : (@[%a@]);[by sim | ].@ "
@@ -955,7 +957,7 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
     F.fprintf fmt "    auto.@ ";
     
     (* End proof of the oracle *)
-    List.iter (fun _ -> F.fprintf fmt "  by sim.@ ") ctxt.juoc_oright;
+    List.iter (fun _ -> F.fprintf fmt "  by sim.@ ") ctxt.seoc_oright;
     F.fprintf fmt "auto.";
     close_pp fmt ()
   
@@ -966,11 +968,12 @@ let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file =
   let eqvc = mk_eq_vcs g1 g2 vcs in
   let nvc = List.length vcs in
 
-  let lg, ju_o = Game.get_ju_octxt ju1 op in
-  let n1 = nvc + List.length ju_o.juoc_juc.juc_left in
-  let w1 = Game.write_gcmds (List.rev ju_o.juoc_juc.juc_left) in
+  let se1 = ju1.ju_se in
+  let lg, se_o = Game.get_se_octxt se1 op in
+  let n1 = nvc + List.length se_o.seoc_sec.sec_left in
+  let w1 = Game.write_gcmds (List.rev se_o.seoc_sec.sec_left) in
   let ev1 = f_and eqvc (mk_eq_exprs file g1 g2 w1) in
-  let gc, _ = Game.get_ju_ctxt ju1 i in
+  let gc, _ = Game.get_se_ctxt se1 i in
   let w2 = Se.union w1 (Game.write_gcmd gc) in
   let ev2 = f_and eqvc (mk_eq_exprs file g1 g2 w2) in
   let nA = adv_name file in
@@ -1012,14 +1015,14 @@ let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file =
             info'.tacs in
       { info with tacs = tacs } in
   
-  let p1 = ju_o.juoc_oargs in
+  let p1 = se_o.seoc_oargs in
   let iinv = init_inv_oracle p1 p1 ev1 in
   let loc = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p1 in
   let info0 = 
     { loc1 = loc; loc2 = loc;
       pos1 = 0; pos2 = 0;
       tacs = []; invs  = iinv } in
-  let info1 = aux ju_o.juoc_cleft info0 in
+  let info1 = aux se_o.seoc_cleft info0 in
 
   let t_end n = 
     let rec pp_intro n =
@@ -1056,25 +1059,25 @@ let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file =
 
   let cond = match lg with LGuard t -> t | _ -> assert false in
   let info2 = add_guard file g1 g2 cond cond info1 [] in
-  let tac_end = aux2 0 0 ju_o.juoc_cright info2 in 
+  let tac_end = aux2 0 0 se_o.seoc_cright info2 in 
   fun fmt () ->
     open_pp fmt ();
     F.fprintf fmt "(* Rewrite oracle *)@ ";
     F.fprintf fmt "seq %i %i : (%a); first by sim.@ " n1 n1 pp_invA ev1;
-    if ju_o.juoc_juc.juc_right <> [] then
+    if se_o.seoc_sec.sec_right <> [] then
       F.fprintf fmt "seq 1 1 : (%a); last by sim.@ " pp_invA ev2;
     F.fprintf fmt "call (_: %a);last by done.@ " Printer.pp_form ev1;
     (* Proof of oracles *)
     let pp_other fmt os =
       pp_list "" (fun fmt _ -> F.fprintf fmt "  by sim.@ ") fmt os in
-    pp_other fmt ju_o.juoc_oleft;
+    pp_other fmt se_o.seoc_oleft;
     F.fprintf fmt "  proc;sp 1 1;if;[ by done | | by done].@ ";
     F.fprintf fmt "  %a" pp_cmds 
       [Tac (TSeqSub (Seq(1, 1, iinv), [Auto; t_id]))];
     F.fprintf fmt "  %a@ " pp_cmds info1.tacs;
     F.fprintf fmt "  if;[by done | | by done].@ ";
     F.fprintf fmt "  @[<v>%a@]" pp_cmds tac_end;
-    pp_other fmt ju_o.juoc_oright;
+    pp_other fmt se_o.seoc_oright;
     close_pp fmt ()
 
 
@@ -1086,11 +1089,11 @@ let pr_intr_rw1_app lemma1 lemma2 fmt () =
     lemma1 lemma2 
 
 let extract_assum file dir subst ainfo pft pft' =
-  let g  = game file pft.pt_ju.ju_gdef in
-  let g'  = game file pft'.pt_ju.ju_gdef in
+  let g  = game file pft.pt_ju.ju_se.se_gdef in
+  let g'  = game file pft'.pt_ju.ju_se.se_gdef in
   let nvc = List.length (vc_oracles file) in
 
-  let ev = pft.pt_ju.ju_ev in
+  let ev = pft.pt_ju.ju_se.se_ev in
   let len = if dir = LeftToRight then ainfo.ad_len1 else ainfo.ad_len2 in
   let fadv =
     let comp = match g.mod_body with 
@@ -1156,10 +1159,10 @@ let extract_assum file dir subst ainfo pft pft' =
       Printer.pp_fun_name (fa,"main") in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) 
-      (Some (proof_ass g pft.pt_ju.ju_ev)) in
+      (Some (proof_ass g pft.pt_ju.ju_se.se_ev)) in
   let lemma' = 
     add_pr_lemma file (mk_cmp pr' cmp_eq pra') 
-      (Some (proof_ass g' pft'.pt_ju.ju_ev)) in
+      (Some (proof_ass g' pft'.pt_ju.ju_se.se_ev)) in
   let abs = Fabs (f_rsub pra1 pra2) in
   let proof fmt () = 
     F.fprintf fmt 
@@ -1174,7 +1177,7 @@ let extract_assum file dir subst ainfo pft pft' =
 let extract_assum_comp _file _subst _ainfo _ranges _pft =
   failwith "undefined"
   (*
-  let g  = game file pft.pt_ju.ju_gdef in
+  let g  = game file pft.pt_ju.ju_se.se_gdef in
   let nvc = List.length (vc_oracles file) in
 
   let len = ainfo.ac_len in
@@ -1253,7 +1256,7 @@ let skip_swap pft =
 
 let bound_rnd_indep file pos ju = 
   let ty,l = 
-    match List.rev ju.ju_gdef with GSamp(_,d) :: _ -> d | _ -> assert false in
+    match List.rev ju.ju_se.se_gdef with GSamp(_,d) :: _ -> d | _ -> assert false in
   let size, lemma =
     match ty.ty_node with
     | BS lv -> f_2pow (bs_length file lv), lvar_mod file lv ^".Dword.mu_x_def"
@@ -1263,13 +1266,13 @@ let bound_rnd_indep file pos ju =
     | _     -> assert false (* FIXME *) in
   let isize = f_rinv (Frofi size) in
   assert (l = []);
-  let evs = destr_Land_nofail ju.ju_ev in
+  let evs = destr_Land_nofail ju.ju_se.se_ev in
   let ev = List.nth evs pos in
   if is_Eq ev then isize, ev, lemma 
   else assert false (* FIXME exists *)
 
 let extract_rnd_indep file side pos ju = 
-  let g = game file ju.ju_gdef in
+  let g = game file ju.ju_se.se_gdef in
   let pr = extract_pr file mem ju in
   let bound, ev, lemma = bound_rnd_indep file pos ju in
   let proof fmt () =
@@ -1294,8 +1297,8 @@ let extract_except file pos _l pft pft' =
   let ju' = pft'.pt_ju in
   let pr = extract_pr file mem ju in
   let pr' = extract_pr file mem ju' in
-  let g = game file pft.pt_ju.ju_gdef in 
-  let g' = game file pft'.pt_ju.ju_gdef in
+  let g = game file pft.pt_ju.ju_se.se_gdef in 
+  let g' = game file pft'.pt_ju.ju_se.se_gdef in
   let vcs = vc_oracles file in
   let nvc = List.length vcs in
   let npos = pos + nvc in
@@ -1309,7 +1312,7 @@ let extract_except file pos _l pft pft' =
       | _ -> assert false in
    
     let side, x, ex =
-      match List.nth ju.ju_gdef pos, List.nth ju'.ju_gdef pos with 
+      match List.nth ju.ju_se.se_gdef pos, List.nth ju'.ju_se.se_gdef pos with 
       | GSamp(x,(_ty,[])), GSamp(x',(_ty',[e])) -> 
         assert (Vsym.equal x x'); (* FIXME: check ty *)
         `LeftToRight, x, e
@@ -1357,7 +1360,7 @@ let extract_except file pos _l pft pft' =
   let pr1, pr2 = if side = `LeftToRight then pr, pr' else pr', pr in
   let g2 = if side = `LeftToRight then g' else g in
 
-  let ev = formula file [adv.mod_name] None ju.ju_ev in 
+  let ev = formula file [adv.mod_name] None ju.ju_se.se_ev in 
   let mk_eqs g fv = 
     let mk_eq e = 
       f_eq (formula file [g] (Some "1") e) 
@@ -1365,7 +1368,7 @@ let extract_except file pos _l pft pft' =
     match Se.elements fv with
     | [] -> f_true
     | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
-  let fv = e_vars ju.ju_ev in
+  let fv = e_vars ju.ju_se.se_ev in
   let nA = adv_name file in
   let eqvc = mk_eq_vcs g2 adv vcs in
   let proof fmt () = 
@@ -1387,7 +1390,7 @@ let extract_except file pos _l pft pft' =
     F.fprintf fmt "  conseq (_ : _ ==> ={glob %s} /\\ %a) => //;sim.@ " nA
       Printer.pp_form 
         (f_and eqvc (mk_eqs g2.mod_name 
-                       (write_gcmds (Util.take pos ju.ju_gdef))));
+                       (write_gcmds (Util.take pos ju.ju_se.se_gdef))));
 
     F.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
     List.iter (fun e -> 
@@ -1395,7 +1398,7 @@ let extract_except file pos _l pft pft' =
       F.fprintf fmt "  let %a = g.`%s.%a in@ "
         Vsym.pp v adv.mod_name Vsym.pp v) (Se.elements fv);
     F.fprintf fmt "  @[%a@].@ "
-      Printer.pp_form (formula file [] None ju.ju_ev);
+      Printer.pp_form (formula file [] None ju.ju_se.se_ev);
     F.fprintf fmt "apply (%s.%s %s &m EV)." 
       clone_info.ci_as
       (if side = `LeftToRight then "SD1_conseq_add" else "SD1_conseq_add_E")
@@ -1408,7 +1411,7 @@ let extract_except file pos _l pft pft' =
 
 (* Add test *)
 
-let add_adv_add_test_bad file juoc auxname asym infob info gb = 
+let add_adv_add_test_bad file seoc auxname asym infob info gb = 
   let clone = {
     ci_local  = false;
     ci_import = false;
@@ -1432,13 +1435,13 @@ let add_adv_add_test_bad file juoc auxname asym infob info gb =
     let nO,oT = "O", infob.adv_oty in
     let ni = ([],"__i__") in
     let nx = ([],"__x__") in
-    let esave = mk_Tuple (List.map mk_V juoc.juoc_oargs) in
-    let nc = vc_oracle [] juoc.juoc_osym in
+    let esave = mk_Tuple (List.map mk_V seoc.seoc_oargs) in
+    let nc = vc_oracle [] seoc.seoc_osym in
     let odef = 
       Osym.H.fold (fun o oi l ->
         let name = "o" ^ Osym.to_string o in
         let def = 
-          if Osym.equal o juoc.juoc_osym then
+          if Osym.equal o seoc.seoc_osym then
             let oinfo = oracle_info infob o in
             let res = "_res" in
             let vres = [],res in
@@ -1483,15 +1486,15 @@ let add_adv_add_test_bad file juoc auxname asym infob info gb =
       List.rev (
         Asym.H.fold (fun an _ l ->
           let aname = "a"^Asym.to_string an in 
-          let aname' = "a" ^ Asym.to_string juoc.juoc_asym in
+          let aname' = "a" ^ Asym.to_string seoc.seoc_asym in
           let body = 
             if Asym.equal an asym then
               let varg = ([],"arg") in
               let vaux = ([],"aux") in
-              let q  = Ecnst (q_oracle file juoc.juoc_osym) in 
+              let q  = Ecnst (q_oracle file seoc.seoc_osym) in 
               Fbody {
                 f_param = [varg, asym.Asym.dom];
-                f_local = [vaux, juoc.juoc_asym.Asym.codom];
+                f_local = [vaux, seoc.seoc_asym.Asym.codom];
                 f_res   = Some (nx,esave.e_ty);
                 f_body  = 
                   [ Irnd_int ([ni], e_int0, e_sub q e_int1);
@@ -1519,7 +1522,7 @@ let add_adv_add_test_bad file juoc auxname asym infob info gb =
   info.adv_restr <- restr @ info.adv_restr;
   gadv_test
 
-let add_adv_orcl_test file g evars etuple ctests t1 t2 juoc = 
+let add_adv_orcl_test file g evars etuple ctests t1 t2 seoc = 
   let tOrclTest = top_name file "OrclTest" in
   let doproj e = pvar [] (destr_V e) in
   let et1 = 
@@ -1537,7 +1540,7 @@ let add_adv_orcl_test file g evars etuple ctests t1 t2 juoc =
              et1);
        CWop ("t2", Some (([],"x"),etuple.e_ty, List.map doproj evars),
              et2);
-       CWop ("q", None, Ecnst (q_oracle file juoc.juoc_osym))
+       CWop ("q", None, Ecnst (q_oracle file seoc.seoc_osym))
       ];
     ci_proof   = [];
   } in
@@ -1546,7 +1549,7 @@ let add_adv_orcl_test file g evars etuple ctests t1 t2 juoc =
   let gcomp = 
     match g.mod_body with Mod_def c -> c | _ -> assert false in
 
-  let cv = vc_oracle [] juoc.juoc_osym in
+  let cv = vc_oracle [] seoc.seoc_osym in
   let gvar = 
     List.filter (function MCvar (x,_) -> x <> cv | _ -> false) gcomp in
   let find_mod name = 
@@ -1554,7 +1557,7 @@ let add_adv_orcl_test file g evars etuple ctests t1 t2 juoc =
   let o = 
     match find_mod "O" with
     | MCmod ({mod_body = Mod_def ocomp} as mo) ->
-      let oname = "o" ^ Osym.to_string juoc.juoc_osym in 
+      let oname = "o" ^ Osym.to_string seoc.seoc_osym in 
       let ocomp = 
         List.map 
           (function MCfun f when f.f_name = oname -> 
@@ -1592,7 +1595,7 @@ let add_adv_orcl_test file g evars etuple ctests t1 t2 juoc =
       | MCfun {f_def = Fbody body} -> body 
       | _ -> assert false in
     let c1, c2 = 
-      let fadv =  (mod_name nA [],"a" ^ Asym.to_string juoc.juoc_asym) in
+      let fadv =  (mod_name nA [],"a" ^ Asym.to_string seoc.seoc_asym) in
       let test i = 
         match i with
         | Icall(_,f,_) -> f = fadv
@@ -1605,7 +1608,7 @@ let add_adv_orcl_test file g evars etuple ctests t1 t2 juoc =
           else aux (i::r) c in
       aux [] body.f_body in
     let c1 = 
-      let vc = vc_oracle [] juoc.juoc_osym in
+      let vc = vc_oracle [] seoc.seoc_osym in
       List.filter (function Iasgn([v], _) -> v <> vc | _ -> true) c1 in
     let body1 = {f_param = []; f_local = []; f_res   = None; f_body  = c1 } in
     let body2 = {f_param = []; f_local = []; f_res   = None; f_body  = c2 } in
@@ -1623,7 +1626,7 @@ let add_adv_orcl_test file g evars etuple ctests t1 t2 juoc =
 
 
 let proof_OrclTestM file osym ju gadv tOT tests =
-  let g = get_game file ju.ju_gdef in
+  let g = get_game file ju.ju_se.se_gdef in
   let open_pp, close_pp = init_same_ev file None "[]" in
   let add_asgn v info =
     let e1 = formula file [g.mod_name] (Some "1")  (Expr.mk_V v) in
@@ -1704,7 +1707,7 @@ let proof_OrclTestM file osym ju gadv tOT tests =
     { loc1 = Vsym.S.empty; loc2 = Vsym.S.empty;
       pos1 = nvc; pos2 = nvc;
       tacs = [Tac Auto]; invs = eqvc } in
-  let info = gaux ju.ju_gdef info in
+  let info = gaux ju.ju_se.se_gdef info in
 
   fun fmt () ->
     open_pp fmt ();
@@ -1713,18 +1716,18 @@ let proof_OrclTestM file osym ju gadv tOT tests =
     pp_cmds fmt info.tacs;
     close_pp fmt ()
   
-let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 = 
+let proof_OrclB file infob tOT advOT mb aAUX jucb seoc etuple et2 = 
 
   let open_pp, close_pp = init_same_ev file None "[]" in
   let cs = 
-    match List.rev jucb.ju_gdef with
+    match List.rev jucb.ju_se.se_gdef with
     | _::cs -> List.rev cs 
     | [] -> assert false in
   let write = write_gcmds cs in
   let eqw = mk_eq_exprs_p file advOT mb write in
   let vcs = vc_oracles_i infob in
   let nvc = List.length vcs in
-  let vco = vc_oracle [mb] juoc.juoc_osym in
+  let vco = vc_oracle [mb] seoc.seoc_osym in
   let eqvcw0 =
     let mk_eq v = f_eq (Fv(([advOT],v),Some "1")) (Fv(([mb],v),Some "2")) in
     List.fold_left (fun inv (_,v) ->
@@ -1734,7 +1737,7 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
   let eqvcw = f_and eqvcw0 eqc in
   let gu = Fv(([tOT;"B"],"gu"),Some "1") in
   let find_args =
-    let args = List.mapi (fun i v -> (i+1,v)) juoc.juoc_oargs in
+    let args = List.mapi (fun i v -> (i+1,v)) seoc.seoc_oargs in
     List.fold_left (fun m (i,v) ->
       Vsym.M.add v (Fproj(i, Fv(([aAUX],"__x__"), Some "2"))) m)
       Vsym.M.empty args in
@@ -1751,7 +1754,7 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
     f_imp (f_not (f_eq gu (Fcnst "None")))
       (f_eq gu (Fapp (Ostr "Some", [ftuple]))) in
   let eqi = 
-    let c = snd (vc_oracle [] juoc.juoc_osym) in
+    let c = snd (vc_oracle [] seoc.seoc_osym) in
     f_and 
       (f_eq (Fv(([tOT;"B"],"i"), Some "1")) (Fv(([aAUX],"__i__"),Some "2")))
       (f_eq (Fv(([mb],c), Some "2")) (Fv(([aAUX],c),Some "2"))) in
@@ -1763,7 +1766,7 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
   let invargs = 
     let add_eq f v = 
       f_and f (f_eq (Fv(pvar [] v, Some "1")) (Fv(pvar [] v, Some "2"))) in
-    List.fold_left add_eq invcall juoc.juoc_oargs in
+    List.fold_left add_eq invcall seoc.seoc_oargs in
   let pp_eqt fmt () =
     let xs = List.map destr_V (destr_Tuple_nofail etuple) in
     let pp_v fmt x = 
@@ -1780,8 +1783,8 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
   in 
   
   let pr_oracle fmt o = 
-    if Osym.equal o juoc.juoc_osym then 
-      let nargs = List.length juoc.juoc_oargs in
+    if Osym.equal o seoc.seoc_osym then 
+      let nargs = List.length seoc.seoc_oargs in
       F.fprintf fmt "proc;inline *;if{2}.@ ";
       F.fprintf fmt "  rcondt{1} 4; first by auto.@ ";
       F.fprintf fmt "  rcondt{2} %i; first by auto.@ " (nargs + 4);
@@ -1791,7 +1794,7 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
         pp_eqt () Printer.pp_form invargs;         
       F.fprintf fmt "    by auto;progress [-split];smt.@ ";
       F.fprintf fmt "  sp 2 %i.@ "(nargs + 1);
-      for _i = 1 to List.length juoc.juoc_cleft + 2 do
+      for _i = 1 to List.length seoc.seoc_cleft + 2 do
         F.fprintf fmt 
           "  if{2};last by rcondf{1} 1;auto;progress [-split];smt.@ ";
       done;
@@ -1811,10 +1814,10 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb juoc etuple et2 =
     F.fprintf fmt "   rewrite (Hi Hn) oget_some;progress [-split];smt.@ ";
     F.fprintf fmt "call (_: @[<hov>%a@]).@ "
       Printer.pp_form invcall;
-    let ol  = List.map (fun (o,_,_,_) -> o) juoc.juoc_oleft in
-    let or_ = List.map (fun (o,_,_,_) -> o) juoc.juoc_oright in
+    let ol  = List.map (fun (o,_,_,_) -> o) seoc.seoc_oleft in
+    let or_ = List.map (fun (o,_,_,_) -> o) seoc.seoc_oright in
     F.fprintf fmt "  @[<v>%a@]@ "
-      (pp_list "@ " pr_oracle) (List.rev_append ol (juoc.juoc_osym :: or_));
+      (pp_list "@ " pr_oracle) (List.rev_append ol (seoc.seoc_osym :: or_));
     F.fprintf fmt "swap{1} [1..3] %i;swap{2} 1 %i.@ " len1 len2;
     F.fprintf fmt "seq %i %i: (@[={glob %s} /\\ %a@]);[by sim | by auto]."
       len1 len2 nA Printer.pp_form eqvcw0;
@@ -1871,7 +1874,7 @@ let rec extract_proof file pft =
 
   | Rctxt_ev (i,_) ->
     let pft' = List.hd pft.pt_children in
-    let ev = pft.pt_ju.ju_ev in
+    let ev = pft.pt_ju.ju_se.se_ev in
     let evs = destr_Land_nofail ev in
     let hs = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
     let proof _file fmt () = 
@@ -1968,7 +1971,7 @@ let rec extract_proof file pft =
     let auxname = init_section file "AUXILIARY" pftb in
     let lemmab, prb, cmpb, boundb = extract_proof file pftb in
     let conclusion = top_name file "conclusion" in
-    let gb = get_game file pftb.pt_ju.ju_gdef in
+    let gb = get_game file pftb.pt_ju.ju_se.se_gdef in
     let body = forall_mem (mk_cmp prb cmpb boundb) in
     let proof fmt () = 
       F.fprintf fmt "apply %s." lemmab in
@@ -1986,10 +1989,10 @@ let rec extract_proof file pft =
     end_section file;
     (* End theory bad event *)
     let info = adv_info file in
-    let t1, juoc = get_ju_octxt pft.pt_ju opos in 
+    let t1, seoc = get_se_octxt pft.pt_ju.ju_se opos in 
     let t1 = destr_guard t1 in
     let t2 = tnew in
-    let ctests = List.map destr_guard juoc.juoc_cleft in
+    let ctests = List.map destr_guard seoc.seoc_cleft in
     let allt = mk_Land (t1::t2::ctests) in
     let evars = Se.elements (ExprUtils.e_vars allt) in
     let etuple = Expr.mk_Tuple evars in
@@ -1997,16 +2000,16 @@ let rec extract_proof file pft =
 
     (* Clone the theory for bad event + build the adversary for bad *)
     let aAT = 
-      add_adv_add_test_bad file juoc auxname asym infob info gb in
+      add_adv_add_test_bad file seoc auxname asym infob info gb in
    
     (* Build sub proof with the new test *)
     let pft' = List.hd (List.tl pft.pt_children) in
     let (lemma', pr',cmp',bound') = extract_proof file pft' in 
    
     (* Clone AddTest + build the corresponding adversary *)
-    let g = game file pft.pt_ju.ju_gdef in 
+    let g = game file pft.pt_ju.ju_se.se_gdef in 
     let tOT, advOT, et2 = 
-      add_adv_orcl_test file g evars etuple ctests t1 t2 juoc in
+      add_adv_orcl_test file g evars etuple ctests t1 t2 seoc in
    
     (* localy clone the section for bad *)
     let auxname_Loc = auxname^"_Loc" in
@@ -2021,7 +2024,7 @@ let rec extract_proof file pft =
     add_local file (Cclone lclone); 
     (* Perform all the lemma *)
     let pr = extract_pr file mem pft.pt_ju in
-    let ev = formula file [advOT.mod_name] None pft.pt_ju.ju_ev in
+    let ev = formula file [advOT.mod_name] None pft.pt_ju.ju_se.se_ev in
     let mOT s = Format.sprintf "%s.%s" tOT s in
     let tOTM = mOT "M" in
     let mOt1 = mod_name (mOT "Ot1") []  in
@@ -2031,16 +2034,16 @@ let rec extract_proof file pft =
     let m2   = mod_name tOTM [mOt2; mA] in
     let praOT1 = Fpr((m1,"main"), mem, [], ev) in
     let praOT2 = Fpr((m2,"main"), mem, [], ev) in
-    let tests = List.map destr_guard juoc.juoc_cleft in
+    let tests = List.map destr_guard seoc.seoc_cleft in
     let lemma1 = 
       let tests = List.rev_append tests [t1] in
       let proof = 
-        proof_OrclTestM file juoc.juoc_osym pft.pt_ju advOT tOT tests in
+        proof_OrclTestM file seoc.seoc_osym pft.pt_ju advOT tOT tests in
       add_pr_lemma file (mk_cmp pr cmp_eq praOT1) (Some proof) in
     let lemma2 = 
       let tests = List.rev_append tests [t1;t2] in
       let proof = 
-        proof_OrclTestM file juoc.juoc_osym pft'.pt_ju advOT tOT tests in
+        proof_OrclTestM file seoc.seoc_osym pft'.pt_ju advOT tOT tests in
       add_pr_lemma file (mk_cmp pr' cmp_eq praOT2) (Some proof) in
     (* build the subtitution *)
     let ms = 
@@ -2064,17 +2067,17 @@ let rec extract_proof file pft =
       let proof = 
         proof_OrclB file infob tOT 
           advOT.mod_name gb.mod_name aAT.mod_name
-          pftb.pt_ju juoc etuple et2 in
+          pftb.pt_ju seoc etuple et2 in
       add_pr_lemma file (mk_cmp prMb cmp_le prb) (Some proof) in
     let boundb = subst_f ms mc boundb in
 
-    let qo = q_oracle_i info juoc.juoc_osym in
+    let qo = q_oracle_i info seoc.seoc_osym in
     let bound = f_radd bound' (f_rmul (Frofi (Fcnst qo)) boundb) in
     let nA = adv_name file in
     let proof fmt () = 
       let sadvOT = advOT.mod_name in
       let pp_E fmt () = 
-        let ev = pft.pt_ju.ju_ev in
+        let ev = pft.pt_ju.ju_se.se_ev in
         let fv = Se.elements (ExprUtils.e_vars ev) in
         let f = formula file [] None ev in
         let pp_let fmt v = 
@@ -2130,7 +2133,7 @@ let rec extract_proof file pft =
     let pr = extract_pr file mem pft.pt_ju in
     let cmp = cmp1 && cmp2 in
     let bound = f_radd bound1 bound2 in
-    let g = find_game file pft.pt_ju.ju_gdef in
+    let g = find_game file pft.pt_ju.ju_se.se_gdef in
     let ev = formula file [g.mod_name] None e in
     let proof fmt () =
       F.fprintf fmt "(* Case event *)@ ";
@@ -2164,7 +2167,7 @@ let rec extract_proof file pft =
   | Rrw_ev (i, dir) -> 
     let pft' = List.hd pft.pt_children in
     let proof _file fmt () = 
-      let ev = pft.pt_ju.ju_ev in
+      let ev = pft.pt_ju.ju_se.se_ev in
       let evs = destr_Land_nofail ev in
       let his = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
       let hi = Format.sprintf "H%i" i in

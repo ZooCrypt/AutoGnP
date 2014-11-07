@@ -10,6 +10,7 @@ open Expr
 open ExprUtils
 open Game
 open Rules
+open CoreTypes
 open NormField
 open ParserUtil
 
@@ -24,13 +25,15 @@ let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RandomRules" ls
 (* \hd{Derived rule for random sampling} *)
 
 let parse_ctxt ts ju ty (sv,se) =
-  let vmap = vmap_of_globals ju.ju_gdef in
+  let sec = ju.ju_se in
+  let vmap = vmap_of_globals sec.se_gdef in
   (* bound name overshadows names in game *)
   let v = Vsym.mk sv ty in
   Hashtbl.add vmap sv v;
   (v,expr_of_parse_expr vmap ts se)
 
 let subst_ineq ju rv e =
+  let se = ju.ju_se in
   let ineqs = ref [] in
   let add_ineq e =
     if is_Not e then (
@@ -47,14 +50,14 @@ let subst_ineq ju rv e =
   let add_ineqs e =
     L.iter add_ineq (e_ty_outermost mk_Bool e)
   in
-  iter_gdef_exp add_ineqs ju.ju_gdef;
+  iter_gdef_exp add_ineqs se.se_gdef;
   mconcat !ineqs >>= fun ie ->
   let inter = Se.inter (e_vars ie) (e_vars e) in
   mconcat (Se.elements inter) >>= fun iv ->
   log_t (lazy (fsprintf "ineq rewrite: replace %a by %a in expression %a\n%!"
                  pp_exp iv pp_exp ie pp_exp e));
   let erv = mk_V rv in
-  let erv' = mk_V (Vsym.mk (CR.mk_name ()) erv.e_ty) in
+  let erv' = mk_V (Vsym.mk (CR.mk_name se) erv.e_ty) in
   let eq = Norm.norm_expr_nice (mk_FMinus (e_replace erv erv' e) (e_replace iv ie e)) in
   guard (is_FPlus eq) >>= fun _ ->
   log_t (lazy (fsprintf  "ineq rewrite: solve %a for %a\n%!" pp_exp eq pp_exp erv'));
@@ -70,8 +73,9 @@ let subst_ineq ju rv e =
   ret (e_replace erv' erv e)
 
 let transform_expr ju rv rvs mgen e =
+  let se = ju.ju_se in
   let erv = mk_V rv in
-  let gvars = Game.write_gcmds ju.ju_gdef in
+  let gvars = Game.write_gcmds se.se_gdef in
   let rves = L.map mk_V rvs in
   let evs = e_vars e in
   let factor_out_exprs =
@@ -107,6 +111,7 @@ let transform_expr ju rv rvs mgen e =
           (msum (L.map aux (L.filter (fun fe -> not (e_equal fe lge)) factor_out_exprs))))
 
 let contexts ju rv rvs mgen =
+  let se = ju.ju_se in
   (* find field expressions containing the sampled variable *)
   let es = ref [] in
   let add_subterms e =
@@ -116,8 +121,8 @@ let contexts ju rv rvs mgen =
         then es := !es @ [fe])
       (e_ty_outermost mk_Fq e)
   in
-  iter_gdef_exp add_subterms ju.ju_gdef;
-  add_subterms ju.ju_ev;
+  iter_gdef_exp add_subterms se.se_gdef;
+  add_subterms se.se_ev;
   mconcat !es >>= fun e ->
   log_t (lazy (fsprintf "possible expr=%a@\n%!" pp_exp e));
   transform_expr ju rv rvs mgen e >>= fun e ->
@@ -148,7 +153,8 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs  mgen i ju =
   CR.t_rnd i (v1,e1) (v2,e2) ju
 
 let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
-  let samps = samplings ju.ju_gdef in
+  let se = ju.ju_se in
+  let samps = samplings se.se_gdef in
   let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
   (match mi with
   | Some i -> ret i
@@ -180,8 +186,9 @@ let parse_ctxt_oracle ts opos ju ty (sv,se) =
   (v,expr_of_parse_expr vmap ts se)
 
 let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
-  let osamps = osamplings ju.ju_gdef in
-  let samps  = samplings ju.ju_gdef in
+  let se = ju.ju_se in
+  let osamps = osamplings se.se_gdef in
+  let samps  = samplings se.se_gdef in
   let rvs = L.map (fun (_,(rv,_)) -> rv) samps in
   (match mopos with
   | Some opos -> ret opos
@@ -192,7 +199,7 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   log_t (lazy (fsprintf "###############################\n%!"));
   log_t (lazy (fsprintf "t_rnd_oracle_maybe (%i,%i,%i)\n%!" i j k));
   (match mctxt2 with
-  | Some (sv2,se2) -> ret (parse_ctxt_oracle ts op ju ty (sv2,se2))
+  | Some (sv2,se2) -> ret (parse_ctxt_oracle ts op se ty (sv2,se2))
   | None           ->
     let e2s = run (-1) (contexts ju rv rvs None) in
     mconcat (sorted_nub e_compare (L.map Norm.norm_expr_nice e2s)) >>= fun e2 ->
@@ -200,7 +207,7 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   ) >>= fun ((v2,e2)) ->
   log_t (lazy (fsprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2));
   (match mctxt1 with
-  | Some(sv1,e1) -> ret (parse_ctxt_oracle ts op ju ty (sv1,e1))
+  | Some(sv1,e1) -> ret (parse_ctxt_oracle ts op se ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->
     ret (v2, DeducField.solve_fq_vars_known e2 v2)
   | None -> mempty

@@ -130,11 +130,11 @@ type dir = ToFront | ToEnd
 
 let vars_dexc rv es = e_vars (mk_Tuple ((mk_V rv)::es))
 
-let swap_max dir i ju vs =
+let swap_max dir i se vs =
   let step = if dir=ToEnd then 1 else -1 in
   let rec aux j =
-    if i+j < L.length ju.ju_gdef && 0 <= i+j then (
-      let gcmd = get_ju_gcmd ju (i+j) in
+    if i+j < L.length se.se_gdef && 0 <= i+j then (
+      let gcmd = get_se_gcmd se (i+j) in
       let cmd_vars = Se.union (write_gcmd gcmd) (read_gcmd gcmd) in
       if not (Se.is_empty (Se.inter vs cmd_vars)) then j - step else aux (j+step)
     ) else (
@@ -144,7 +144,8 @@ let swap_max dir i ju vs =
   aux step
 
 let t_swap_max dir i vs ju =
-  let offset = swap_max dir i ju vs in
+  let se = ju.ju_se in
+  let offset = swap_max dir i se vs in
   let swap_samp =
     if offset = 0
     then t_id
@@ -153,7 +154,8 @@ let t_swap_max dir i vs ju =
   swap_samp ju >>= fun ps -> ret (i+offset,ps)
 
 let t_swap_others_max dir i ju =
-  let samps = samplings ju.ju_gdef in
+  let se = ju.ju_se in
+  let samps = samplings se.se_gdef in
   let samp_others =
     filter_map
       (fun (j,(rv,(ty,es))) ->
@@ -264,7 +266,7 @@ let rec simplify_proof_tree pt =
     begin match pt1.pt_rule, pt1.pt_children with
     | Rconv,[pt11] ->
       (* skip intermediate judgment *)
-      let pss = t_conv true ~do_rename:true pt11.pt_ju pt.pt_ju in
+      let pss = t_conv true ~do_rename:true pt11.pt_ju.ju_se pt.pt_ju in
       let ps = Nondet.first pss in
       ps.validation [pt11]
     | _ -> 

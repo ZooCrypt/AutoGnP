@@ -35,7 +35,7 @@ type gdef = gcmd list
 
 type ev = expr
 
-type judgment = { ju_gdef : gdef; ju_ev : ev; }
+type sec_exp = { se_gdef : gdef; se_ev : ev; }
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Pretty printing} *)
@@ -60,9 +60,9 @@ val pp_igcmd : F.formatter -> int * gcmd -> unit
 
 val pp_gdef : F.formatter -> gdef -> unit
 
-val pp_ju : F.formatter -> judgment -> unit
+val pp_se : F.formatter -> sec_exp -> unit
 
-val pp_ps : F.formatter -> judgment list -> unit
+val pp_ps : F.formatter -> sec_exp list -> unit
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Generic functions} *)
@@ -77,7 +77,7 @@ val map_gcmd_exp : (expr -> expr) -> gcmd -> gcmd
 
 val map_gdef_exp : (expr -> expr) -> gdef -> gcmd list
 
-val map_ju_exp : (expr -> expr) -> judgment -> judgment
+val map_se_exp : (expr -> expr) -> sec_exp -> sec_exp
 
 val iter_distr_exp : ?iexc:bool -> ('a -> unit) -> 'b * 'a list -> unit
 
@@ -89,7 +89,7 @@ val iter_gcmd_exp : ?iexc:bool -> (expr -> unit) -> gcmd -> unit
 
 val iter_gdef_exp : ?iexc:bool -> (expr -> unit) -> gcmd list -> unit
 
-val iter_ju_exp :  ?iexc:bool -> (expr -> unit) -> judgment -> unit
+val iter_se_exp :  ?iexc:bool -> (expr -> unit) -> sec_exp -> unit
 
 val fold_union :  ('a -> Se.t) -> 'a list -> Se.t
 
@@ -102,37 +102,37 @@ type odef_pos = int * int
 
 type ocmd_pos = int * int * int
 
-val get_ju_gcmd : judgment -> gcmd_pos -> gcmd
+val get_se_gcmd : sec_exp -> gcmd_pos -> gcmd
 
-type ju_ctxt = { juc_left : gdef; juc_right : gdef; juc_ev : ev; }
+type se_ctxt = { sec_left : gdef; sec_right : gdef; sec_ev : ev; }
 
-val get_ju_ctxt : judgment -> gcmd_pos -> gcmd * ju_ctxt
+val get_se_ctxt : sec_exp -> gcmd_pos -> gcmd * se_ctxt
 
-val set_ju_ctxt : gcmd list -> ju_ctxt -> judgment
+val set_se_ctxt : gcmd list -> se_ctxt -> sec_exp
 
-val set_ju_gcmd : judgment -> gcmd_pos -> gcmd list -> judgment
+val set_se_gcmd : sec_exp -> gcmd_pos -> gcmd list -> sec_exp
 
-val get_ju_lcmd : judgment -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr
+val get_se_lcmd : sec_exp -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr
 
-type ju_octxt = {
-  juoc_asym : ads;
-  juoc_avars : vs list;
-  juoc_aarg : expr;
-  juoc_oleft : odef list;
-  juoc_oright : odef list;
-  juoc_osym : os;
-  juoc_oargs : vs list;
-  juoc_return : expr;
-  juoc_cleft : lcmd list;
-  juoc_cright : lcmd list;
-  juoc_juc : ju_ctxt;
+type se_octxt = {
+  seoc_asym : ads;
+  seoc_avars : vs list;
+  seoc_aarg : expr;
+  seoc_oleft : odef list;
+  seoc_oright : odef list;
+  seoc_osym : os;
+  seoc_oargs : vs list;
+  seoc_return : expr;
+  seoc_cleft : lcmd list;
+  seoc_cright : lcmd list;
+  seoc_sec : se_ctxt;
 }
 
-val get_ju_octxt : judgment -> ocmd_pos -> lcmd * ju_octxt
+val get_se_octxt : sec_exp -> ocmd_pos -> lcmd * se_octxt
 
-val set_ju_octxt : lcmd list -> ju_octxt -> judgment
+val set_se_octxt : lcmd list -> se_octxt -> sec_exp
 
-val set_ju_lcmd : judgment -> ocmd_pos -> lcmd list -> judgment
+val set_se_lcmd : sec_exp -> ocmd_pos -> lcmd list -> sec_exp
 
 (* \hd{Iterate with context} *) 
 
@@ -160,8 +160,8 @@ val iter_ctx_odef_exp :
 val iter_ctx_gdef_exp :
   ?iexc:bool -> (iter_ctx -> expr -> unit) -> gcmd list -> expr list
 
-val iter_ctx_ju_exp :
-  ?iexc:bool -> (iter_ctx -> expr -> unit) -> judgment -> unit
+val iter_ctx_se_exp :
+  ?iexc:bool -> (iter_ctx -> expr -> unit) -> sec_exp -> unit
 
 (*i ----------------------------------------------------------------------- i*)
 (*  \hd{Equality} *)
@@ -178,7 +178,7 @@ val gcmd_equal : gcmd -> gcmd -> bool
 
 val gdef_equal : gdef -> gdef -> bool
 
-val ju_equal : judgment -> judgment -> bool
+val se_equal : sec_exp -> sec_exp -> bool
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Read and write variables} *)
@@ -207,7 +207,7 @@ val write_gcmds : gcmd list -> Se.t
 
 val asym_gcmds : gcmd list -> ads list
 
-val read_ju : judgment -> Se.t
+val read_se : sec_exp -> Se.t
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Variable occurences} *)
@@ -231,13 +231,13 @@ val subst_v_gc : (vs -> vs) -> gcmd -> gcmd
 
 val subst_v_gdef : (vs -> vs) -> gdef -> gdef
 
-val subst_v_ju : (vs -> vs) -> judgment -> judgment
+val subst_v_se : (vs -> vs) -> sec_exp -> sec_exp
 
 type renaming = vs Vsym.M.t
 
 val id_renaming : renaming
 
-val unif_ju : judgment -> judgment -> renaming
+val unif_se : sec_exp -> sec_exp -> renaming
 
 val ren_injective : renaming -> bool
 
@@ -256,7 +256,7 @@ val vmap_of_globals : gdef -> vmap
 
 val vmap_of_all : gdef -> vmap
 
-val vmap_in_orcl : judgment -> ocmd_pos -> vmap
+val vmap_in_orcl : sec_exp -> ocmd_pos -> vmap
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Normal forms} *)
@@ -267,7 +267,7 @@ val norm_odef : ?norm:(expr -> expr) -> expr Me.t -> odef -> odef
 
 val norm_gdef : ?norm:(expr -> expr) -> gdef -> gdef * expr Me.t
 
-val norm_ju : ?norm:(expr -> expr) -> judgment -> judgment
+val norm_se : ?norm:(expr -> expr) -> sec_exp -> sec_exp
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Probabilistic polynomial time } *)
@@ -296,7 +296,7 @@ val is_ppt_gcmd : gcmd -> bool
 
 val is_ppt_gcmds : gcmd list -> bool
 
-val is_ppt_ju : judgment -> bool
+val is_ppt_se : sec_exp -> bool
 
 val is_call : gcmd -> bool
 

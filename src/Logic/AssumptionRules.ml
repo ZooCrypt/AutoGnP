@@ -12,6 +12,7 @@ open ExprUtils
 open Game
 open TheoryTypes
 open Rules
+open CoreTypes
 open RewriteRules
 
 module Ht = Hashtbl
@@ -26,8 +27,9 @@ let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "AssumptionRules" ls
 (* \subsection{Decisional assumptions} *)
 
 (** Compute substitution and perform let abstraction. *)
-let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
-  let gdef_samps = Util.take (L.length assm_samps) (samplings ju.ju_gdef) in
+let t_assm_dec_aux assm dir subst assm_samps assm_lets ju =
+  let se = ju.ju_se in
+  let gdef_samps = Util.take (L.length assm_samps) (samplings se.se_gdef) in
 
   (* subst renames assm into judgment *)
   guard (list_eq_for_all2
@@ -46,7 +48,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
   let n_let = L.length assm_lets in
   let ltac (i_let,subst) (i,(vs,e)) =
     (* FIXME: use deterministic name generation / reuse name *)
-    let name = CR.mk_name () in
+    let name = CR.mk_name se in
     let vs'  = Vsym.mk name vs.Vsym.ty in
     let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
     ( (i_let + 1, Vsym.M.add vs vs' subst)
@@ -55,7 +57,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
       (* We assume the last let definition differs between left and right
          and therefore enforce that it is used in the game *)
       (if i_let = n_let then
-          (t_guard (fun ju -> Se.mem (mk_V vs') (Game.read_ju ju)))
+          (t_guard (fun ju -> let se = ju.ju_se in Se.mem (mk_V vs') (Game.read_se se)))
        else
           CR.t_id)
     )
@@ -67,8 +69,8 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets  ju =
   let conv_common_prefix ju =
     let a_rn = inst_dec subst assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
-    let grest = Util.drop (L.length c) ju.ju_gdef in
-    (   CoreRules.t_conv true { ju with ju_gdef=c@grest }
+    let grest = Util.drop (L.length c) se.se_gdef in
+    (   CoreRules.t_conv true { se with se_gdef=c@grest }
      @> CoreRules.t_assm_dec dir subst [] assm) ju
   in
   try
@@ -119,6 +121,7 @@ let match_samps symvars assm_samps_typed gdef_samps_typed =
     applications that make assumption applicable. Compute sequence of
     let abstraction applications in next step. *)
 let t_assm_dec_auto assm dir subst ju =
+  let se = ju.ju_se in
   log_t (lazy "###############################");
   log_t (lazy (fsprintf "t_assm_dec_auto dir=%s ad=%s" (string_of_dir dir) assm.ad_name));
 
@@ -126,7 +129,7 @@ let t_assm_dec_auto assm dir subst ju =
   let assm_cmds  = if dir=LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
   let assm_samps = samplings assm_cmds in
   let assm_lets  = lets assm_cmds in
-  let gdef_samps = samplings ju.ju_gdef in
+  let gdef_samps = samplings se.se_gdef in
   log_t (lazy (fsprintf "@[assm samps:@\n%a@]" (pp_list "@\n" pp_samp) assm_samps));
   log_t (lazy (fsprintf "@[assm lets:@\n%a@]" (pp_list "@\n" pp_let)  assm_lets));
   log_t (lazy (fsprintf "@[gdef samplings:@\n%a@]" (pp_list "@\n" pp_samp) gdef_samps));
@@ -157,6 +160,7 @@ let t_assm_dec_auto assm dir subst ju =
 (** Supports placeholders for which all possible values are tried *)
 let t_assm_dec_non_exact
     ?i_assms:(iassms=Sstring.empty) ts massm_name mdir _mrngs  mvnames ju =
+  let se = ju.ju_se in
   (* use assumption with given name or try all decisional assumptions *)
   (match massm_name with
    | Some aname ->
@@ -177,7 +181,7 @@ let t_assm_dec_non_exact
   let required = max 0 (L.length needed - L.length given_vnames) in
   (* FIXME: prevent variable clashes here *)
   let generated_vnames =
-    L.map (fun _ -> CR.mk_name ()) (list_from_to 0 required)
+    L.map (fun _ -> CR.mk_name se) (list_from_to 0 required)
   in
   let ren = 
     L.fold_left2
@@ -189,6 +193,7 @@ let t_assm_dec_non_exact
   t_assm_dec_auto assm dir ren ju
 
 let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
+  let se = ju.ju_se in
   let dir = match mdir with Some s -> s | None -> tacerror "exact requires dir" in
   let assm_name = match massm_name with
     | Some s -> s
@@ -219,7 +224,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
       vnames
   in
   let c = if dir = LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
-  let c_ju = Util.take (List.length c) ju.ju_gdef in
+  let c_ju = Util.take (List.length c) se.se_gdef in
   if L.length c_ju <> L.length c then tacerror "Bad prefix";
   (* extend renaming with mappings for random samplings in prefix *)
   let ren =
@@ -237,7 +242,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
       (fun rn  (_,j) (_asym,vres,_) ->
         let nvres = L.length vres in
         let vres_ju =
-          Util.take nvres (Util.drop (j + 1 - nvres) ju.ju_gdef)
+          Util.take nvres (Util.drop (j + 1 - nvres) se.se_gdef)
           |> (fun gd -> log_t (lazy (fsprintf "%a" pp_gdef gd)); gd)
           |> L.map (function GLet (x,_) -> x | _ -> assert false)
         in
@@ -246,10 +251,11 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
       ren rngs assm.ad_acalls
   in
   let conv_common_prefix ju =
+    let se = ju.ju_se in
     let a_rn = inst_dec ren assm in
     let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
-    let grest = Util.drop (L.length c) ju.ju_gdef in
-    (   CR.t_ensure_progress (CoreRules.t_conv true { ju with ju_gdef=c@grest })
+    let grest = Util.drop (L.length c) se.se_gdef in
+    (   CR.t_ensure_progress (CoreRules.t_conv true { se with se_gdef=c@grest })
      @> CoreRules.t_assm_dec dir ren rngs assm) ju
   in
   (CR.t_assm_dec dir ren rngs assm @|| conv_common_prefix) ju
@@ -380,10 +386,11 @@ let t_assm_comp_match ?icases:(_icases=Se.empty) _before_t_assm _assm _subst _me
   *)
 
 let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
+  let se = ju.ju_se in
   let assm_cmds = assm.ac_prefix in
   let samp_assm = samplings assm_cmds in
   let lets_assm = lets assm_cmds in
-  let samp_gdef = samplings ju.ju_gdef |> Util.take (L.length samp_assm) in
+  let samp_gdef = samplings se.se_gdef |> Util.take (L.length samp_assm) in
   guard
     (list_eq_for_all2 (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2)
        samp_assm samp_gdef)
@@ -398,7 +405,7 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
   log_t (lazy (fsprintf "subst %a"
                  (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
   let ltac subst (i,((vs:Vsym.t),(e:expr))) =
-    let name = CR.mk_name () in
+    let name = CR.mk_name se in
     let vs'  = Vsym.mk name vs.Vsym.ty in
     let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
     ( Vsym.M.add vs vs' subst, t_let_abstract i vs' (Norm.norm_expr_weak e') None false)
@@ -414,6 +421,7 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
     Invalid_rule s -> log_d (lazy s); mempty
 
 let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
+  let se = ju.ju_se in
   tries := 0;
   log_t (lazy (fsprintf "###############################"));
   log_t (lazy (fsprintf "t_assm_comp assm=%s" assm.ac_name));
@@ -421,7 +429,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   let assm_cmds = assm.ac_prefix in
   let samp_assm = samplings assm_cmds in
   let lets_assm = lets assm_cmds in
-  let samp_gdef = samplings ju.ju_gdef in
+  let samp_gdef = samplings se.se_gdef in
   log_t (lazy (fsprintf "@[assm:@\n%a@]" (pp_list "@\n" pp_samp) samp_assm));
   log_t (lazy (fsprintf "@[assm:@\n%a@]" (pp_list "@\n" pp_let)  lets_assm));
   log_t (lazy (fsprintf "@[gdef:@\n%a@\n%!@]" (pp_list "@\n" pp_samp) samp_gdef));
@@ -449,10 +457,10 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   in
   (* FIXME: use case_ev and rfalse to handle case with missing events *)
   let remove_events =
-    if not (is_Land assm.ac_event && is_Land ju.ju_ev) then ( [] )
+    if not (is_Land assm.ac_event && is_Land se.se_ev) then ( [] )
     else (
       let ctypes = L.map conj_type (destr_Land assm.ac_event) in
-      destr_Land ju.ju_ev
+      destr_Land se.se_ev
       |> L.mapi (fun i e -> (i,conj_type e))
       |> L.filter (fun (_,ct) -> not (L.mem ct ctypes))
       |> L.map fst
@@ -464,7 +472,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
     @> t_seq_list excepts
     @> t_seq_list swaps
   in
-  guard (not (is_Land assm.ac_event && not (is_Land ju.ju_ev))) >>= fun _ ->
+  guard (not (is_Land assm.ac_event && not (is_Land se.se_ev))) >>= fun _ ->
   before_t_assm ju >>= fun ps ->
   CR.rapply_all (t_assm_comp_aux ~icases before_t_assm assm mev_e) ps >>= fun (ot,ps) ->
   match ot with
@@ -485,6 +493,7 @@ let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mrngs ju =
   t_assm_comp_auto ~icases ts assm mrngs ju
 
 let t_assm_comp_exact ts maname mrngs ju =
+  let se = ju.ju_se in
   let aname =
      match maname with
      | Some an -> an
@@ -502,7 +511,7 @@ let t_assm_comp_exact ts maname mrngs ju =
     with Not_found -> tacerror "error no assumption %s" aname
   in
   let c = assm.ac_prefix in
-  let jc = Util.take (L.length c) ju.ju_gdef in
+  let jc = Util.take (L.length c) se.se_gdef in
 
   (* initial renaming derived from samplings *)
   let ren =
@@ -522,7 +531,7 @@ let t_assm_comp_exact ts maname mrngs ju =
       (fun rn  (_,j) (_asym,vres,_) ->
         let nvres = L.length vres in
         let vres_ju =
-          Util.take nvres (Util.drop (j + 1 - nvres) ju.ju_gdef)
+          Util.take nvres (Util.drop (j + 1 - nvres) se.se_gdef)
           |> L.map (function GLet (x,_) -> x | _ -> assert false)
         in
         L.fold_left2 (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn) rn vres vres_ju)
@@ -530,8 +539,9 @@ let t_assm_comp_exact ts maname mrngs ju =
   in
 
   let conv_event ju =
+    let se = ju.ju_se in
     let a_rn = inst_comp ren assm in
-    (   CoreRules.t_conv true { ju with ju_ev=a_rn.ac_event }
+    (   CoreRules.t_conv true { se with se_ev=a_rn.ac_event }
      @> CR.t_assm_comp assm rngs ren) ju
   in
 

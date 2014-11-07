@@ -47,8 +47,8 @@ type gdef = gcmd list
 (** An event is just an expression. *)
 type ev = expr
 
-(** A judgment consists of a game and an event. *)
-type judgment = { ju_gdef : gdef; ju_ev : ev }
+(** A security experiment consists of a game and an event. *)
+type sec_exp = { se_gdef : gdef; se_ev : ev }
   (*i FIXME: add probability tag i*)
 
 (*i*)
@@ -111,16 +111,16 @@ let pp_igcmd fmt (i,gc) =
 let pp_gdef fmt gd =
   pp_list ";@;" pp_igcmd fmt (num_list gd)
 
-let pp_ju fmt ju =
-  F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef ju.ju_gdef pp_exp ju.ju_ev
+let pp_se fmt se =
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef se.se_gdef pp_exp se.se_ev
 
 let pp_ps fmt ps =
-  let ju_idxs =
+  let se_idxs =
     let i = ref 0 in L.map (fun ps -> incr i; (!i, ps)) ps
   in
-  let pp_ju_idx fmt (i,ju) = F.fprintf fmt "@[%i.@[ %a @]@]" i pp_ju ju in
+  let pp_se_idx fmt (i,se) = F.fprintf fmt "@[%i.@[ %a @]@]" i pp_se se in
   F.fprintf fmt "%a\n--------------------\n\n"
-    (pp_list "\n\n" pp_ju_idx) ju_idxs
+    (pp_list "\n\n" pp_se_idx) se_idxs
 
 (*i*)
 
@@ -147,8 +147,8 @@ let map_gcmd_exp f gcmd = match gcmd with
 
 let map_gdef_exp f gdef = L.map (map_gcmd_exp f) gdef
 
-let map_ju_exp f ju =
-  { ju_gdef = map_gdef_exp f ju.ju_gdef; ju_ev = f ju.ju_ev }
+let map_se_exp f se =
+  { se_gdef = map_gdef_exp f se.se_gdef; se_ev = f se.se_ev }
 
 (** iter *)
 
@@ -182,8 +182,8 @@ let iter_gdef_exp ?iexc:(iexc=false) f gdef =
   L.iter (iter_gcmd_exp_no_orcl ~iexc f) gdef;
   L.iter (iter_gcmd_exp_orcl ~iexc f) gdef
 
-let iter_ju_exp ?iexc:(iexc=false) f ju =
-  iter_gdef_exp ~iexc f ju.ju_gdef; f ju.ju_ev
+let iter_se_exp ?iexc:(iexc=false) f se =
+  iter_gdef_exp ~iexc f se.se_gdef; f se.se_ev
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Positions and replacement functions} *)
@@ -194,78 +194,78 @@ type odef_pos = (int * int)
 
 type ocmd_pos = (int * int * int)
 
-let get_ju_gcmd ju p = L.nth ju.ju_gdef p
+let get_se_gcmd se p = L.nth se.se_gdef p
 
-type ju_ctxt = {
-  juc_left : gdef;
-  juc_right : gdef;
-  juc_ev : ev
+type se_ctxt = {
+  sec_left : gdef;
+  sec_right : gdef;
+  sec_ev : ev
 }
   
-let get_ju_ctxt ju p =
-  let rhd,i,tl =  split_n p ju.ju_gdef in
-  i, { juc_left = rhd; juc_right = tl; juc_ev = ju.ju_ev}
+let get_se_ctxt se p =
+  let rhd,i,tl =  split_n p se.se_gdef in
+  i, { sec_left = rhd; sec_right = tl; sec_ev = se.se_ev}
 
-let set_ju_ctxt cmds {juc_left; juc_right; juc_ev} =
-  { ju_gdef = L.rev_append juc_left (cmds @ juc_right);
-    ju_ev   = juc_ev }
+let set_se_ctxt cmds {sec_left; sec_right; sec_ev} =
+  { se_gdef = L.rev_append sec_left (cmds @ sec_right);
+    se_ev   = sec_ev }
 
-let set_ju_gcmd ju p cmds =
-  assert (p >= 0 && p < L.length ju.ju_gdef);
-  let _, ctxt = get_ju_ctxt ju p in
-  set_ju_ctxt cmds ctxt
+let set_se_gcmd se p cmds =
+  assert (p >= 0 && p < L.length se.se_gdef);
+  let _, ctxt = get_se_ctxt se p in
+  set_se_ctxt cmds ctxt
 
-let get_ju_lcmd ju (i,j,k) = 
-  match get_ju_gcmd ju i with
+let get_se_lcmd se (i,j,k) = 
+  match get_se_gcmd se i with
   | GCall(_,_,_,os) ->
     let (o,vs,ms,e) = L.nth os j in
     o,vs,split_n k ms, e
   | _ -> assert false
 
-type ju_octxt = {
-  juoc_asym : ads;
-  juoc_avars : vs list;
-  juoc_aarg : expr;
-  juoc_oleft : odef list;
-  juoc_oright : odef list;    
-  juoc_osym : os;
-  juoc_oargs: vs list;
-  juoc_return : expr;
-  juoc_cleft : lcmd list;
-  juoc_cright : lcmd list;
-  juoc_juc : ju_ctxt
+type se_octxt = {
+  seoc_asym : ads;
+  seoc_avars : vs list;
+  seoc_aarg : expr;
+  seoc_oleft : odef list;
+  seoc_oright : odef list;    
+  seoc_osym : os;
+  seoc_oargs: vs list;
+  seoc_return : expr;
+  seoc_cleft : lcmd list;
+  seoc_cright : lcmd list;
+  seoc_sec : se_ctxt
 }
 
-let get_ju_octxt ju (i,j,k) = 
-  match get_ju_ctxt ju i with
-  | GCall(vsa,asym,e,os), juc ->
+let get_se_octxt se (i,j,k) = 
+  match get_se_ctxt se i with
+  | GCall(vsa,asym,e,os), sec ->
     let rohd, (o,vs,ms,oe), otl = split_n j os in
     let rhd, i, tl = split_n k ms in
-    i, { juoc_asym = asym;
-         juoc_avars = vsa;
-         juoc_aarg = e;
-         juoc_oright =  rohd;
-         juoc_oleft = otl;
-         juoc_osym = o;
-         juoc_oargs = vs;
-         juoc_return = oe;
-         juoc_cleft = rhd;
-         juoc_cright = tl;
-         juoc_juc = juc }
+    i, { seoc_asym = asym;
+         seoc_avars = vsa;
+         seoc_aarg = e;
+         seoc_oright =  rohd;
+         seoc_oleft = otl;
+         seoc_osym = o;
+         seoc_oargs = vs;
+         seoc_return = oe;
+         seoc_cleft = rhd;
+         seoc_cright = tl;
+         seoc_sec = sec }
   | _ -> assert false
 
-let set_ju_octxt lcmds c =
-  let ms = L.rev_append c.juoc_cleft (lcmds @ c.juoc_cright) in
-  let os = L.rev_append c.juoc_oleft
-             ((c.juoc_osym,c.juoc_oargs,ms,c.juoc_return)
-              :: c.juoc_oright)
+let set_se_octxt lcmds c =
+  let ms = L.rev_append c.seoc_cleft (lcmds @ c.seoc_cright) in
+  let os = L.rev_append c.seoc_oleft
+             ((c.seoc_osym,c.seoc_oargs,ms,c.seoc_return)
+              :: c.seoc_oright)
   in
-  let i = [GCall(c.juoc_avars, c.juoc_asym, c.juoc_aarg, os)] in
-  set_ju_ctxt i c.juoc_juc
+  let i = [GCall(c.seoc_avars, c.seoc_asym, c.seoc_aarg, os)] in
+  set_se_ctxt i c.seoc_sec
 
-let set_ju_lcmd ju p cmds = 
-  let _, ctxt = get_ju_octxt ju p in
-  set_ju_octxt cmds ctxt
+let set_se_lcmd se p cmds = 
+  let _, ctxt = get_se_octxt se p in
+  set_se_octxt cmds ctxt
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Iterate with context} *)
@@ -353,10 +353,10 @@ let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
   L.iteri go gdef;
   !nonZero
 
-let iter_ctx_ju_exp ?iexc:(iexc=false) f ju =
-  let nz = iter_ctx_gdef_exp ~iexc f ju.ju_gdef in
-  if is_Land ju.ju_ev then (
-    let conjs = destr_Land ju.ju_ev in
+let iter_ctx_se_exp ?iexc:(iexc=false) f se =
+  let nz = iter_ctx_gdef_exp ~iexc f se.se_gdef in
+  if is_Land se.se_ev then (
+    let conjs = destr_Land se.se_ev in
     let (ineqs,eqs) = L.partition is_Not conjs in
     let nonZero = ref nz in
     let _ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
@@ -372,7 +372,7 @@ let iter_ctx_ju_exp ?iexc:(iexc=false) f ju =
     L.iter (f ctx) eqs
   ) else (
     let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
-    f ctx ju.ju_ev
+    f ctx se.se_ev
   )
 
 (*i ----------------------------------------------------------------------- i*)
@@ -420,9 +420,9 @@ let gcmd_equal i1 i2 =
 
 let gdef_equal c1 c2 = list_eq_for_all2 gcmd_equal c1 c2
 
-let ju_equal ju1 ju2 =
-  gdef_equal ju1.ju_gdef ju2.ju_gdef &&
-    e_equal ju1.ju_ev ju2.ju_ev
+let se_equal se1 se2 =
+  gdef_equal se1.se_gdef se2.se_gdef &&
+    e_equal se1.se_ev se2.se_ev
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Read and write variables } *)
@@ -485,9 +485,9 @@ let asym_gcmd gcmd =
 let asym_gcmds gcmds =
   L.map asym_gcmd gcmds |> catSome
 
-(** Judgments. *)
+(** Sedgments. *)
 
-let read_ju ju = Se.union (read_gcmds ju.ju_gdef) (e_vars ju.ju_ev)
+let read_se se = Se.union (read_gcmds se.se_gdef) (e_vars se.se_ev)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Variable occurences} *) 
@@ -579,11 +579,11 @@ let vht_to_map ht =
   Vsym.H.fold (fun v x m -> Vsym.M.add v x m) ht Vsym.M.empty
 
 (** We only support an outermost exists binder *)
-let unif_ju ju1 ju2 =
+let unif_se se1 se2 =
   try
     let ren = Vsym.H.create 134 in
-    unif_gdef ren ju1.ju_gdef ju2.ju_gdef;
-    unif_expr ren ju1.ju_ev ju2.ju_ev;
+    unif_gdef ren se1.se_gdef se2.se_gdef;
+    unif_expr ren se1.se_ev se2.se_ev;
     vht_to_map ren
   with
     Not_found ->
@@ -640,8 +640,8 @@ let subst_v_gc tov = function
 
 let subst_v_gdef tov = L.map (subst_v_gc tov)
 
-let subst_v_ju tov ju =
-  { ju_gdef = subst_v_gdef tov ju.ju_gdef; ju_ev = subst_v_e tov ju.ju_ev }
+let subst_v_se tov se =
+  { se_gdef = subst_v_gdef tov se.se_gdef; se_ev = subst_v_e tov se.se_ev }
 
 (** Renaming of variables. *)
 type renaming = vs Vsym.M.t
@@ -699,17 +699,17 @@ let vmap_of_all gdef = vmap_of_vss (gdef_all_vars gdef)
 let ves_to_vss ves =
   Se.fold (fun e vss -> Vsym.S.add (destr_V e) vss) ves Vsym.S.empty
 
-let vmap_in_orcl ju op =
+let vmap_in_orcl se op =
   let (i,_,_) = op in
   let gdef_before =
-    let rbefore, _ = cut_n i ju.ju_gdef in
+    let rbefore, _ = cut_n i se.se_gdef in
     L.rev rbefore
   in
-  let _,juoc = get_ju_octxt ju op in
+  let _,seoc = get_se_octxt se op in
   vmap_of_vss
     (Vsym.S.union
        (ves_to_vss (gdef_global_vars gdef_before))
-       (set_of_list juoc.juoc_oargs))
+       (set_of_list seoc.seoc_oargs))
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Normal forms} *) 
@@ -758,10 +758,10 @@ let norm_gdef ?norm:(nf=Norm.norm_expr_nice) g =
   in
   aux Me.empty [] g
 
-let norm_ju ?norm:(nf=Norm.norm_expr_nice) ju =
-  let g,s = norm_gdef ~norm:nf ju.ju_gdef in
-  { ju_gdef = g;
-    ju_ev = nf (e_subst s ju.ju_ev) }
+let norm_se ?norm:(nf=Norm.norm_expr_nice) se =
+  let g,s = norm_gdef ~norm:nf se.se_gdef in
+  { se_gdef = g;
+    se_ev = nf (e_subst s se.se_ev) }
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Probabilistic polynomial time} *)
@@ -802,7 +802,7 @@ let is_ppt_gcmd = function
 
 let is_ppt_gcmds c = L.for_all is_ppt_gcmd c
 
-let is_ppt_ju ju = is_ppt_gcmds ju.ju_gdef && is_ppt ju.ju_ev 
+let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt se.se_ev 
 
 let is_call = function
   | GCall _ -> true

@@ -12,6 +12,7 @@ open Gsyms
 open TheoryTypes
 open TheoryState
 open Rules
+open CoreTypes
 open RewriteRules
 open AssumptionRules
 open RandomRules
@@ -52,16 +53,17 @@ let pp_jus i fmt jus =
     let n = L.length jus in
     let goal_num = if n = 1 then "" else F.sprintf " (of %i)" n in
     let pp_goal i ju =
-      F.fprintf fmt "goal %i%s:@\n%a@\n@\n" (i + 1) goal_num pp_ju ju
+      F.fprintf fmt "goal %i%s: %a@\n@\n" (i + 1) goal_num pp_ju ju
     in
     L.iteri pp_goal (Util.take i jus)
 
 let gpos_of_offset ju i =
-  if i < 1 then L.length ju.ju_gdef + i + 1 else i
+  if i < 1 then L.length ju.ju_se.se_gdef + i + 1 else i
 
 let epos_of_offset ju i =
-  if i < 1 && is_Land ju.ju_ev
-  then L.length (destr_Land ju.ju_ev) + i + 1
+  let ev = ju.ju_se.se_ev in
+  if i < 1 && is_Land ev
+  then L.length (destr_Land ev) + i + 1
   else i
 
 let gpos_of_apos ju ap =
@@ -75,7 +77,7 @@ let gpos_of_apos ju ap =
   match ap with
   | PT.Var s ->
     begin try
-      L.iteri (find s) ju.ju_gdef;
+      L.iteri (find s) ju.ju_se.se_gdef;
       tacerror "variable not found in game"
     with
       E.Found i -> i
@@ -109,7 +111,7 @@ let handle_tactic ts tac =
     | Wf.Wf_var_undef(v,e) ->
       tacerror "Wf: Var %a undefined in %a" Vsym.pp v pp_exp e
   in
-  let vmap_g = vmap_of_globals ju.ju_gdef in
+  let vmap_g = vmap_of_globals ju.ju_se.se_gdef in
   let e_pos = epos_of_offset ju in
   let t_pos = gpos_of_offset ju in
   let get_pos = gpos_of_apos ju in
@@ -157,9 +159,9 @@ let handle_tactic ts tac =
     apply (t_let_abstract (t_pos i) v e (map_opt t_pos mupto) (not no_norm))
 
   | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
-    let v = mk_new_var sv ju.ju_ev.e_ty in
-    let max = L.length ju.ju_gdef in
-    apply (t_let_abstract max v ju.ju_ev (map_opt t_pos mupto) (not no_norm))
+    let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
+    let max = L.length ju.ju_se.se_gdef in
+    apply (t_let_abstract max v ju.ju_se.se_ev (map_opt t_pos mupto) (not no_norm))
 
   | PT.Rlet_abstract(_,_,_,_,_) ->
     tacerror "No placeholders or placeholders for both position and event"
@@ -168,7 +170,7 @@ let handle_tactic ts tac =
     let vmap2 = Hashtbl.create 134 in
     let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
-    apply (CR.t_conv true ~do_rename:true { ju_gdef = gd2; ju_ev = ev2 })
+    apply (CR.t_conv true ~do_rename:true { se_gdef = gd2; se_ev = ev2 })
 
   | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
     apply (t_assm_dec ts exact maname mdir mrngs msvs)
@@ -185,7 +187,7 @@ let handle_tactic ts tac =
     i*)
 
   | PT.Rctxt_ev (sv,e,j) ->
-    let ev = ju.ju_ev in
+    let ev = ju.ju_se.se_ev in
     let b =
       match ev.e_node with
       | Nary(Land,es) when j < L.length es ->
@@ -199,7 +201,7 @@ let handle_tactic ts tac =
         let (e1,_,_) = destr_Exists b in e1.e_ty
       else tacerror "rctxt_ev: bad event"
     in
-    let vmap = vmap_of_globals ju.ju_gdef in
+    let vmap = vmap_of_globals ju.ju_se.se_gdef in
     let v1 = PU.create_var vmap sv ty in
     let e1 = PU.expr_of_parse_expr vmap ts e in
     let c = v1, e1 in
@@ -220,11 +222,12 @@ let handle_tactic ts tac =
 
   | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
     (* create symbol for new adversary *)
-    let _, juoc = get_ju_octxt ju opos in
-    let vmap = vmap_in_orcl ju opos in
+    let se = ju.ju_se in
+    let _, seoc = get_se_octxt se opos in
+    let vmap = vmap_in_orcl se opos in
     let t = PU.expr_of_parse_expr vmap ts t in
-    let oasym = juoc.juoc_asym in
-    let oty = juoc.juoc_osym.Osym.dom in
+    let oasym = seoc.seoc_asym in
+    let oty = seoc.seoc_osym.Osym.dom in
     let destr_prod ty = match oty.ty_node with
       | Prod(tys) -> tys
       | _ -> [ty]
@@ -248,13 +251,13 @@ let handle_tactic ts tac =
 
   | PT.Rbad(i,sx) ->
     let ty =
-      match get_ju_gcmd ju i with
+      match get_se_gcmd ju.ju_se i with
       | G.GLet(_,e') when is_H e' ->
         let _,e = destr_H e' in
         e.e_ty
       | _ -> tacerror "Line %is not hash assignment." i
     in
-    let vx = PU.create_var (vmap_of_globals ju.ju_gdef) sx ty in
+    let vx = PU.create_var (vmap_of_globals ju.ju_se.se_gdef) sx ty in
     apply (CR.t_bad (t_pos i) vx)
 
   | PT.Deduce(pes,pe) ->
@@ -276,10 +279,10 @@ let handle_tactic ts tac =
   | PT.FieldExprs(pes) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
     let ses = ref Se.empty in
-    Game.iter_ju_exp ~iexc:true
+    Game.iter_se_exp ~iexc:true
       (fun e' -> e_iter_ty_maximal mk_Fq
         (fun fe -> if L.exists (fun e -> e_exists (e_equal e) fe) es then ses := Se.add fe !ses) e')
-      ju;
+      ju.ju_se;
     let res = (lazy (fsprintf "field expressions with %a: @\n@[<hov 2>  %a@]"
                        (pp_list ", " pp_exp) es (pp_list ",@\n" pp_exp) (Se.elements !ses))) in
     log_i res;
@@ -358,7 +361,8 @@ let handle_instr verbose ts instr =
 
   | PT.Judgment(gd,e) ->
     let vmap = Ht.create 137 in
-    let ju = PU.ju_of_parse_ju vmap ts gd e in
+    let se = PU.se_of_parse_se vmap ts gd e in
+    let ju = { ju_se = se; ju_pr = Pr_Adv } in
     let ps = first (CR.t_id ju) in
     ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }
     , "Started proof of judgment.")

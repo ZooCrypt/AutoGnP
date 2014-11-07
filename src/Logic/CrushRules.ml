@@ -9,6 +9,7 @@ open Expr
 open ExprUtils
 open Game
 open Rules
+open CoreTypes
 open RewriteRules
 open Assumption
 open AssumptionRules
@@ -29,7 +30,7 @@ let log_i ls  = mk_logger "Logic.Crush" Bolt.Level.INFO  "CrushRules" ls
 (* \hd{Simplification} *)
 
 let t_split_ev_maybe mi ju =
-  let ev = ju.ju_ev in
+  let ev = ju.ju_se.se_ev in
   (match mi with
   | Some i -> ret i
   | None   ->
@@ -44,7 +45,7 @@ let t_split_ev_maybe mi ju =
   CR.t_split_ev i ju
 
 let t_rewrite_ev_maybe mi mdir ju =
-  let ev = ju.ju_ev in
+  let ev = ju.ju_se.se_ev in
   (match mi with
   | Some i ->
     begin match mdir with
@@ -76,7 +77,7 @@ let t_rewrite_oracle_maybe mopos mdir ju =
     | None   -> mplus (ret (opos,LeftToRight)) (ret (opos,RightToLeft))
     end
   | None ->
-    mconcat (oguards ju.ju_gdef) >>= fun (opos,e) ->
+    mconcat (oguards ju.ju_se.se_gdef) >>= fun (opos,e) ->
     guard (is_Eq e) >>= fun _ ->
     let (a,b) = destr_Eq e in
     msum
@@ -137,7 +138,7 @@ let psi_empty = {
 let psis_of_pt pt =
   let admit_psis = ref [] in
   let rec aux psi pt =
-    let gd = pt.CR.pt_ju.ju_gdef in
+    let gd = pt.CR.pt_ju.ju_se.se_gdef in
     let children = pt.CR.pt_children in
     match pt.CR.pt_rule with
     | CT.Rassm_dec(_,_,_,ad) ->
@@ -176,7 +177,7 @@ let psis_of_pt pt =
 type stats = {
   nstates   : int;
   unqstates : int;
-  jus       : judgment list
+  ses       : sec_exp list
 }
 
 let log_games = false
@@ -189,16 +190,17 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
   let icases = psi.psi_cases in
   (*i let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in i*)
   let t_after_simp ju =
-    let (jus,unqstates,is_old) =
-      let ju = { ju with ju_gdef = L.sort compare ju.ju_gdef } in
+    let (ses,unqstates,is_old) =
+      let se = ju.ju_se in
+      let se = { se with se_gdef = L.sort compare se.se_gdef } in
       log_t (lazy (fsprintf "+++++ state: %i, unique state: %i@\n%a"
-                     !stats.nstates !stats.unqstates pp_ju ju));
-      if not (L.mem ju !stats.jus)
-      then (ju::!stats.jus, !stats.unqstates + 1,false)
-      else (!stats.jus, !stats.unqstates,true)
+                     !stats.nstates !stats.unqstates pp_se se));
+      if not (L.mem se !stats.ses)
+      then (se::!stats.ses, !stats.unqstates + 1,false)
+      else (!stats.ses, !stats.unqstates,true)
     in
     let s = fsprintf "%a" pp_ju ju in
-    stats := { nstates = !stats.nstates + 1; unqstates = unqstates; jus = jus };
+    stats := { nstates = !stats.nstates + 1; unqstates = unqstates; ses = ses };
     if log_games then (
       Util.output_file (F.sprintf "%s/g%i.zc" gdir !stats.nstates)
         (s^(F.sprintf "\n depth %i\n" depth))
@@ -270,7 +272,7 @@ and t_crush must_finish mi ts ps ju =
     CR.get_proof
       (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps') ps)))
   in
-  let stats = ref { nstates = 0; unqstates = 0; jus = [] } in
+  let stats = ref { nstates = 0; unqstates = 0; ses = [] } in
   if i > 0 then (
     let res =
       if must_finish then

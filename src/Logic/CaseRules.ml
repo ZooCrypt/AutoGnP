@@ -12,6 +12,7 @@ open Syms
 open Nondet
 open Rules
 open TheoryState
+open CoreTypes
 open CoreRules
 open NormField
 
@@ -160,18 +161,19 @@ let maybe_hidden_rvars gdef =
   go [] gdef
 
 let get_cases fbuf ju =
-  let maybe_hidden = maybe_hidden_rvars ju.ju_gdef in
+  let se = ju.ju_se in
+  let maybe_hidden = maybe_hidden_rvars se.se_gdef in
   let cases = ref [] in
   F.fprintf fbuf "@[maybe hidden: %a@\n@\n@]" (pp_list ", " Vsym.pp) maybe_hidden;
   (*i write function that computes non-hidden variables (given out in exponent)
       and potentially hidden variables i*)
   (*i write function that traverses all maximal expression of type F_p together
       with position and determines useful case rule applications i*)
-  iter_ctx_ju_exp
+  iter_ctx_se_exp
     (fun ctx e ->
-      let cs = compute_case ju.ju_gdef maybe_hidden fbuf ctx e in
+      let cs = compute_case se.se_gdef maybe_hidden fbuf ctx e in
       cases := cs @ !cases)
-    ju;
+    se;
   let cases = sorted_nub compare_uc !cases in
   (* we choose the earliest position if there are multiple occurences with the
      same expression *)
@@ -261,6 +263,7 @@ let simp_eq_group e =
 let case_vars = ref []
 
 let t_add_test_maybe ju =
+  let se = ju.ju_se in
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
   let cases = get_cases fbuf ju in
@@ -276,7 +279,7 @@ let t_add_test_maybe ju =
   in
   mconcat except >>= fun (opos,t,aty,oty) ->
   let tys = destr_prod oty in
-  let wvars = write_gcmds ju.ju_gdef in
+  let wvars = write_gcmds se.se_gdef in
   (* test must contain oracle arguments, otherwise useless for type
      of examples we consider *)
   guard (not (Se.subset (e_vars t) wvars)) >>= fun _ ->
@@ -290,14 +293,14 @@ let t_add_test_maybe ju =
       in
       log_t (lazy "found case_ev already!");
       if not (Se.is_empty
-                (Se.inter (se_of_list (L.map mk_V vars)) (write_gcmds ju.ju_gdef)))
+                (Se.inter (se_of_list (L.map mk_V vars)) (write_gcmds se.se_gdef)))
       then raise Not_found;
-      if L.mem asym (asym_gcmds ju.ju_gdef) then raise Not_found;
+      if L.mem asym (asym_gcmds se.se_gdef) then raise Not_found;
       log_t (lazy "occurs check OK!@\n%!");
       (asym,vars)
     with Not_found ->
       let asym = Asym.mk "BBB" aty oty in
-      let vars = L.map (fun ty -> Vsym.mk (mk_name ()) ty) tys in
+      let vars = L.map (fun ty -> Vsym.mk (mk_name se) ty) tys in
       case_vars := ((opos,test),(asym,vars))::!case_vars;
       (asym,vars)
   in

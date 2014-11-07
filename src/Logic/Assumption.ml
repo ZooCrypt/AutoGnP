@@ -169,7 +169,7 @@ let pp_assm_comp fmt ac =
   F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ac.ac_symvars
 
 let mk_assm_comp name gd ev sym_vars =
-  ignore (Wf.wf_ju Wf.NoCheckDivZero { ju_gdef = gd; ju_ev = ev});
+  ignore (Wf.wf_se Wf.NoCheckDivZero { se_gdef = gd; se_ev = ev});
   let (pref,suff) = L.partition (function GCall _ -> false | _ -> true) gd in
   let rec go acc acalls =
     match acalls with

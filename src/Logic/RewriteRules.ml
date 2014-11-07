@@ -4,6 +4,7 @@
 open Abbrevs
 open Util
 open Game
+open CoreTypes
 open CoreRules
 open Expr
 open ExprUtils
@@ -20,26 +21,30 @@ let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RewriteRules" ls
 
 (** Unfold all lets and norm. *)
 let t_norm ?fail_eq:(fe=false) ju =
-  let new_ju = norm_ju ~norm:norm_expr_nice ju in
-  if fe && ju_equal ju new_ju
+  let se = ju.ju_se in
+  let new_se = norm_se ~norm:norm_expr_nice se in
+  if fe && se_equal se new_se
   then t_fail "t_norm: equal judgments" ju
-  else t_conv true new_ju ju
+  else t_conv true new_se ju
 
 (** Unfold all lets and norm, also remove tuple projection. *)
 let t_norm_tuple_proj ju = 
+  let se = ju.ju_se in
   let norm e = remove_tuple_proj (norm_expr_nice e) in
-  let new_ju = norm_ju ~norm ju in
-  t_conv true new_ju ju
+  let new_se = norm_se ~norm se in
+  t_conv true new_se ju
 
 (** Norm without unfolding. *)
 let t_norm_nounfold ju = 
-  let new_ju = map_ju_exp norm_expr_nice ju in
-  t_conv true new_ju ju
+  let se = ju.ju_se in
+  let new_se = map_se_exp norm_expr_nice se in
+  t_conv true new_se ju
 
 (** Unfold without norm. *)
 let t_unfold_only ju = 
-  let new_ju = norm_ju ~norm:id ju in
-  t_conv false new_ju ju
+  let se = ju.ju_se in
+  let new_se = norm_se ~norm:id se in
+  t_conv false new_se ju
 
 (*i [simp e unknown] takes an exponent expression [e] and a
    set [unknown] of unknown expressions.
@@ -132,9 +137,10 @@ let rewrite_exps unknown e0 =
    If there is a "let z=g^i" we can replace g^i by z in the next
    step. i*)
 let t_norm_unknown unknown ju =
+  let se = ju.ju_se in
   let norm e = remove_tuple_proj (abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr_weak e))) in
-  let new_ju = map_ju_exp norm ju in
-  t_conv true new_ju ju
+  let new_se = map_se_exp norm se in
+  t_conv true new_se ju
 
 let rewrite_div_reduce a e =
   let solve a e =
@@ -162,11 +168,13 @@ let rewrite_div_reduce a e =
 (*i normalize field expressions (in exponents and elsewhere such that polynomials are
     expressed as a*f + g i*)
 let t_norm_solve a ju =
+  let se = ju.ju_se in
   let norm e = abbrev_ggen (rewrite_div_reduce (norm_expr_weak a) (norm_expr_weak e)) in
-  let new_ju = map_ju_exp norm ju in
-  t_conv true new_ju ju
+  let new_se = map_se_exp norm se in
+  t_conv true new_se ju
 
 let t_let_abstract p vs e mupto do_norm_expr ju =
+  let se = ju.ju_se in
   let v = mk_V vs in
   let e = if do_norm_expr then remove_tuple_proj (norm_expr_nice e) else e in
   let subst a =
@@ -178,7 +186,7 @@ let t_let_abstract p vs e mupto do_norm_expr ju =
     )
   in
   log_t (lazy (fsprintf "t_let_abstr: %a" pp_exp e));
-  let l,r = Util.cut_n p ju.ju_gdef in
+  let l,r = Util.cut_n p se.se_gdef in
   let new_ju =
     match mupto with
     | Some j ->
@@ -188,18 +196,19 @@ let t_let_abstract p vs e mupto do_norm_expr ju =
       if (cl > L.length r) then tacerror "t_let_abstract: invalid upto %i" j;
       let r1,r2 = Util.cut_n cl r in
       let r = List.rev_append (map_gdef_exp subst r1) r2 in
-      { ju_gdef = List.rev_append l (GLet(vs,e)::r);
-        ju_ev = ju.ju_ev }
+      { se_gdef = List.rev_append l (GLet(vs,e)::r);
+        se_ev = se.se_ev }
     | None ->
-      { ju_gdef = List.rev_append l (GLet(vs,e)::map_gdef_exp subst r);
-        ju_ev = subst ju.ju_ev }
+      { se_gdef = List.rev_append l (GLet(vs,e)::map_gdef_exp subst r);
+        se_ev = subst se.se_ev }
   in
   t_conv true new_ju ju
 
 let t_subst p e1 e2 mupto ju =
+  let se = ju.ju_se in
   let subst a = e_replace e1 e2 a in
-  let l,r = cut_n p ju.ju_gdef in
-  let new_ju = 
+  let l,r = cut_n p se.se_gdef in
+  let new_se = 
     match mupto with
     | Some j ->
       if (j < p) then tacerror "t_let_abstract: invalid upto %i" j;
@@ -207,23 +216,24 @@ let t_subst p e1 e2 mupto ju =
       if (cl > L.length r) then tacerror "t_let_abstract: invalid upto %i" j;
       let r1,r2 = Util.cut_n cl r in
       let r = List.rev_append (map_gdef_exp subst r1) r2 in
-      { ju_gdef = List.rev_append l r;
-        ju_ev = ju.ju_ev }
+      { se_gdef = List.rev_append l r;
+        se_ev = se.se_ev }
     | None ->
-      { ju_gdef = L.rev_append l (map_gdef_exp subst r);
-        ju_ev   = subst ju.ju_ev }
+      { se_gdef = L.rev_append l (map_gdef_exp subst r);
+        se_ev   = subst se.se_ev }
   in
-  log_t (lazy (fsprintf "t_subst before:@\n  %a@\n" pp_ju ju));
-  log_t (lazy (fsprintf "t_subst after:@\n  %a@\n" pp_ju new_ju));
-  t_conv true new_ju ju
+  log_t (lazy (fsprintf "t_subst before:@\n  %a@\n" pp_se se));
+  log_t (lazy (fsprintf "t_subst after:@\n  %a@\n" pp_se new_se));
+  t_conv true new_se ju
 
 let t_let_unfold p ju =
-  match get_ju_ctxt ju p with
-  | GLet(vs,e), juc ->
+  let se = ju.ju_se in
+  match get_se_ctxt se p with
+  | GLet(vs,e), sec ->
     let subst a = e_replace (mk_V vs) e a in
-    let juc = { juc with
-                juc_right = map_gdef_exp subst juc.juc_right;
-                juc_ev = subst juc.juc_ev }
+    let juc = { sec with
+                sec_right = map_gdef_exp subst sec.sec_right;
+                sec_ev = subst sec.sec_ev }
     in
-    t_conv false (set_ju_ctxt [] juc) ju
+    t_conv false (set_se_ctxt [] juc) ju
   | _ -> tacerror "rlet_unfold: no let at given position"

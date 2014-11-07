@@ -300,7 +300,7 @@ let wf_gdef ctype gdef0 =
   in
   go (mk_wfs ()) gdef0
 
-let wf_ju ctype ju =
-  let wfs = wf_gdef ctype ju.ju_gdef in
-  assert (ty_equal mk_Bool ju.ju_ev.e_ty);
-  wf_exp ctype wfs ju.ju_ev
+let wf_se ctype se =
+  let wfs = wf_gdef ctype se.se_gdef in
+  assert (ty_equal mk_Bool se.se_ev.e_ty);
+  wf_exp ctype wfs se.se_ev

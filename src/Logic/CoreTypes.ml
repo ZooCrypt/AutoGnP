@@ -1,11 +1,56 @@
 
 (*i*)
+open Abbrevs
 open Util
 open Game
 open Assumption
 open Expr
 open ExprUtils
 (*i*)
+
+(** A probability tag associates a real number in [0,1] to a
+    security experiment. The three tags are interpreted as follows
+    for some $G : E$:
+    \begin{itemize}
+    \item [Pr_Succ] stands for $Pr[ G : E ]$
+    \item [Pr_Adv] stands for $2 * Pr[ G : E ] - 1$
+    \item [Pr_Dist(G',E')] stands for $|Pr[ G:E ] - Pr[ G':E']|$
+    \end{itemize}
+*)
+type pr_tag =
+  | Pr_Succ
+  | Pr_Adv
+  | Pr_Dist of sec_exp
+
+let pr_exp_equal pre1 pre2 =
+  match pre1, pre2 with
+  | Pr_Adv,Pr_Adv | Pr_Succ,Pr_Succ -> true
+  | Pr_Dist(se1),Pr_Dist(se2) -> se_equal se1 se2
+  | _ -> false
+
+(** The judgment [(G:Ev, pt)] is valid if the corresponding
+    probability (see above) is negligible. A proof additionally
+    establishes a concrete relation between judgments. *)
+type judgment = { ju_se : sec_exp; ju_pr : pr_tag }
+
+let ju_equal ju1 ju2 =
+  se_equal ju1.ju_se ju2.ju_se && pr_exp_equal ju1.ju_pr ju2.ju_pr
+
+let pp_ju fmt ju =
+  match ju.ju_pr with
+  | Pr_Succ -> 
+    F.fprintf fmt "Pr[ G : E ] negligible where@\nG : E := @\n@[<hv 2>  %a@\n  : %a@]"
+      pp_gdef ju.ju_se.se_gdef pp_exp ju.ju_se.se_ev
+  | Pr_Adv -> 
+    F.fprintf fmt "2*Pr[ G : E ] - 1 negligible where@\nG : E := @\n@[<hv 2>  %a@\n  : %a@]"
+      pp_gdef ju.ju_se.se_gdef pp_exp ju.ju_se.se_ev
+  | Pr_Dist se -> 
+    F.fprintf fmt
+      ("| Pr[ G : E ] - Pr[ G' : E' ] | negligible where@\n"^^
+       "G : E := @\n@[<hv 2>  %a@\n  : %a@\nand@\n@]"^^
+       "G' : E' := @\n@[<hv 2>  %a@\n  : %a@\nand@]")
+      pp_gdef ju.ju_se.se_gdef pp_exp ju.ju_se.se_ev
+      pp_gdef se.se_gdef pp_exp se.se_ev
 
 (* \hd{Low-level rules (extractable to EasyCrypt).} *)
 
