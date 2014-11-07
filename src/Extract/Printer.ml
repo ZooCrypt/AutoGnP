@@ -220,7 +220,7 @@ let pp_ty_distr file fmt ty =
   match ty.ty_node with
   | BS lv -> F.fprintf fmt "%a.Dword.dword" pp_mod_name (mod_lvar file lv)
   | Bool  -> F.fprintf fmt "{0,1}"
-  | G _gv -> assert false (* FIXME *)
+  | G _gv -> F.fprintf fmt "GDistr.dt (* FIXME *)"
   | Fq    -> F.fprintf fmt "FDistr.dt"
   | Prod _ -> assert false (* FIXME *)
   | Int    -> assert false

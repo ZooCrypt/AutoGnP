@@ -1,7 +1,7 @@
 #! /bin/sh
 
 FAILED=""
-for file in examples/all/*.zc; do
+for file in examples/ok/*.zc; do
   printf "File $file: \n"
   before=$(date +%s)
   if ! ./zoocrypt.native $file 2>&1 | grep --colour=always -i -e 'Finished Proof' -e 'EasyCrypt proof script.extracted'; then

@@ -233,7 +233,8 @@ let instructions file adv gdef =
   List.map (ginstr file adv) gdef 
 
 module Ass = Assumption
-let add_assumption_dec _file _name _assum = 
+let add_assumption_dec _file _name _assum =
+  ()
   (*
   let advty = top_name file ("Adv_"^name) in
   let ngame1 = top_name file ("G_"^name^string_of_int 1) in
@@ -282,10 +283,9 @@ let add_assumption_dec _file _name _assum =
   } in
   Ht.add file.assump_dec name info
   *)
-  failwith "undefined"
 
 let add_assumption_comp _file _name _assum =
-  failwith "undefined"
+  ()
   (*
   let advty = top_name file ("Adv_"^name) in
   let ngame = top_name file ("G_"^name) in
@@ -1175,7 +1175,6 @@ let extract_assum file dir subst ainfo pft pft' =
   concl, pr, abs 
 
 let extract_assum_comp _file _subst _ainfo _ranges _pft =
-  failwith "undefined"
   (*
   let g  = game file pft.pt_ju.ju_se.se_gdef in
   let nvc = List.length (vc_oracles file) in
@@ -1241,6 +1240,7 @@ let extract_assum_comp _file _subst _ainfo _ranges _pft =
     add_pr_lemma file (mk_cmp pr cmp_eq pra) (Some proof_ass) in
   lemma, pr, cmp_eq, pra
   *)
+  ()
 
 let rec skip_conv pft = 
   match pft.pt_rule with
@@ -1917,7 +1917,11 @@ let rec extract_proof file pft =
   | Rrnd_indep (side, pos) ->
     extract_rnd_indep file side pos pft.pt_ju 
     
-  | Rassm_dec (_ranges,dir,subst,assum) ->
+  | Rassm_dec (_ranges,_dir,_subst,_assum) ->
+    let pft' = List.hd pft.pt_children in
+    extract_proof_sb1 "Dec_comp" file pft pft' (pr_admit "Decisional assumption")
+    
+    (*
     let pft' = List.hd pft.pt_children in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
     let ainfo = 
@@ -1938,12 +1942,16 @@ let rec extract_proof file pft =
     let lemma3 = 
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
     lemma3, pr, cmp_le, bound 
+    *)
 
-  | Rassm_comp (ranges,subst, assum) -> 
+  | Rassm_comp (_ranges,_subst,_assum) ->
+    default_proof file mem "admit" pft
+    (*
     let ainfo = 
       try Ht.find file.assump_comp assum.Ass.ac_name 
       with Not_found -> assert false in
     extract_assum_comp file subst ainfo ranges pft
+    *)
 
   | Rexc (pos,l)   -> 
     let pft' = List.hd pft.pt_children in
