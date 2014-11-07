@@ -88,10 +88,6 @@ val pp_exp_tnp  : F.formatter -> expr -> unit
 
 val e_iter_ty_maximal : ty -> (expr -> unit) -> expr -> unit
 
-(** [e_ty_outermost ty e] returns the list of outmost subterms of [e] of
-    type [ty] *)
-val e_ty_outermost : ty -> expr -> expr list
-
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
 

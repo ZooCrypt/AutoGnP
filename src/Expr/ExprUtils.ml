@@ -344,18 +344,6 @@ let e_iter_ty_maximal ty g e0 =
   in
   go false e0
 
-let e_ty_outermost ty e =
-  let res = ref [] in
-  let rec go not_inside_type e =
-    let right_type = Type.ty_equal e.e_ty ty in
-    if not_inside_type && right_type  && not (L.mem e !res) then
-      res := e::!res
-    else
-      e_sub_iter (go (not right_type)) e
-  in
-  go true e;
-  L.rev !res
-
 let e_vars = e_find_all is_V
 
 let has_log e = e_exists (fun e -> is_GLog e) e

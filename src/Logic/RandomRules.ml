@@ -47,9 +47,7 @@ let subst_ineq ju rv e =
       )
     )
   in
-  let add_ineqs e =
-    L.iter add_ineq (e_ty_outermost mk_Bool e)
-  in
+  let add_ineqs e = e_iter_ty_maximal mk_Bool add_ineq e in
   iter_gdef_exp add_ineqs se.se_gdef;
   mconcat !ineqs >>= fun ie ->
   let inter = Se.inter (e_vars ie) (e_vars e) in
@@ -115,11 +113,11 @@ let contexts ju rv rvs mgen =
   (* find field expressions containing the sampled variable *)
   let es = ref [] in
   let add_subterms e =
-    L.iter
+    e_iter_ty_maximal mk_Fq
       (fun fe ->
-        if Se.mem (mk_V rv) (e_vars fe) && not (List.mem fe !es) && not (is_V fe)
+        if not (is_V fe) && not (List.mem fe !es) && Se.mem (mk_V rv) (e_vars fe)
         then es := !es @ [fe])
-      (e_ty_outermost mk_Fq e)
+      e
   in
   iter_gdef_exp add_subterms se.se_gdef;
   add_subterms se.se_ev;
@@ -130,7 +128,6 @@ let contexts ju rv rvs mgen =
   ret e
 
 let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs  mgen i ju = 
-  log_t (lazy (fsprintf "t_rnd_pos: mgen = %a" (pp_opt pp_exp) mgen));
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt ts ju ty (sv2,se2))
   | None           ->
@@ -140,8 +137,9 @@ let t_rnd_pos ts mctxt1 mctxt2 ty rv rvs  mgen i ju =
       |> nub e_equal
     in
     mconcat e2s >>= fun e2 ->
-    guard (not (e_equal (mk_FOpp (mk_V rv)) e2)) >>= fun () ->
     ret (rv,e2)
+    (* FIXME: this was required for Cramer-Shoup bycrush
+       guard (not (e_equal (mk_FOpp (mk_V rv)) e2)) >>= fun () -> *)
   ) >>= fun (v2,e2) ->
   log_t (lazy (fsprintf "t_rnd_pos: trying %a -> %a" Vsym.pp v2 pp_exp e2));
   (match mctxt1 with
@@ -170,9 +168,9 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
   let rnd i = t_rnd_pos ts mctxt1 mctxt2 ty rv rvs mgen i in
   if exact then rnd i ju
   else
-    ( t_swap_max ToEnd i vs @>= (fun i ->
-      t_swap_others_max ToFront i @>= (fun i ->
-      rnd i)))
+    (t_swap_max ToEnd i vs @>= fun i ->
+     t_swap_others_max ToFront i @>= fun i ->
+     rnd i)
     ju
 
 (*i ----------------------------------------------------------------------- i*)
