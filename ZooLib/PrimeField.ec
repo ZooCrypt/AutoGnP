@@ -188,25 +188,6 @@ theory FDistr.
 
 end FDistr.
 
-(* lifting of operations to function *)
-
-(* The constant function *)
-op [ +- ]  (c:'b) : ('a -> 'b) = fun a, c.
-
-theory Ffun.
-
-  op ( * ) (f1 f2:'a -> t) = fun a, f1 a * f2 a.
-  op ( + ) (f1 f2:'a -> t) = fun a, f1 a + f2 a.
-  op [ - ] (f1 :'a -> t) = fun a, -f1 a.
-  op inv (f1 : 'a -> t) = fun a, inv (f1 a).
-
-  op (-) (f1 f2:'a -> t) = fun a, f1 a - f2 a.
-  op (/) (f1 f2:'a -> t) = fun a, f1 a / f2 a.
-  op (^) (f1:'a -> t) (f2:'a -> int) = fun a, f1 a ^ f2 a.
-
-end Ffun.
-export Ffun.
-
 require import Monoid.
 clone Comoid as Fs with
   type Base.t   <- t,

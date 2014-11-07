@@ -118,7 +118,7 @@ let rec pp_form_lvl outer fmt = function
       | Ole,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "<=" e1 e2, eq_lvl
       | Olt,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "<" e1 e2, eq_lvl
       | Oiff, [e1;e2] -> pp_infix_n pp_form_lvl iff_lvl "<=>" e1 e2, iff_lvl
-      | Oand, [e1;e2] -> pp_infix_l pp_form_lvl and_lvl "/\\" e1 e2, and_lvl
+      | Oand, [e1;e2] -> pp_infix_r pp_form_lvl and_lvl "/\\" e1 e2, and_lvl
       | Oimp, [e1;e2] -> pp_infix_r pp_form_lvl imp_lvl "=>" e1 e2, imp_lvl
       | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff | Oimp), _ -> 
         assert false
@@ -187,8 +187,8 @@ let rec pp_exp_lvl outer fmt = function
       | Ole,  [e1;e2] -> pp_infix_n pp_exp_lvl eq_lvl  "<=" e1 e2, eq_lvl
       | Olt,  [e1;e2] -> pp_infix_n pp_exp_lvl eq_lvl  "<" e1 e2, eq_lvl
       | Oiff, [e1;e2] -> pp_infix_n pp_exp_lvl iff_lvl "<=>" e1 e2, iff_lvl
-      | Oand, [e1;e2] -> pp_infix_l pp_exp_lvl and_lvl "/\\" e1 e2, and_lvl
-      | Oimp, [e1;e2] -> pp_infix_r pp_exp_lvl imp_lvl "/\\" e1 e2, imp_lvl
+      | Oand, [e1;e2] -> pp_infix_r pp_exp_lvl and_lvl "/\\" e1 e2, and_lvl
+      | Oimp, [e1;e2] -> pp_infix_r pp_exp_lvl imp_lvl "=>" e1 e2, imp_lvl
       | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff | Oimp), _ -> 
         assert false
       | Ostr op, es ->
