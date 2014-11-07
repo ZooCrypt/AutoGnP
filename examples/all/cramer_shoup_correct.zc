@@ -25,6 +25,6 @@ prove
     let m' = c * (a^z1 * a'^z2)^(-1);
     let d' = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2);
   ] : not ((d = d') /\ (m = m')).
-  rnorm. rfalse_ev.
-  qed.
-  extract "extraction/cramer_shoup_correct.ec".
+  bysimp.
+qed.
+extract "extraction/cramer_shoup_correct.ec".

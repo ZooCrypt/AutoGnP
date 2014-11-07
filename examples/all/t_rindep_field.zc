@@ -5,7 +5,7 @@ prove [
    x2 <-$ Fq;
 ] : (gd = (g ^ (x1*la + x2*la' + -(w*x2*la) + -(w*y2*la*ha) + y2*la'*ha + y1*la*ha)))
   /\ not (w*la = la').
-rnorm.
-rindep.
+  norm.
+  indep!.
 qed.
 extract "extraction/t_rindep_field.ec".

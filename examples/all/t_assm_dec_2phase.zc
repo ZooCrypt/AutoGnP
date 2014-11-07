@@ -7,7 +7,7 @@ operator KDF : (G * G *  G * G) -> (BS_s * BS_m).
 adversary B1 : G -> (G * G).
 adversary B2 : (BS_s * BS_m) -> Bool.
 
-assumption_decisional kdf
+assumption kdf
   [ gx <-$ G;
     gy <-$ G;
     (gz1,gz2) <- B1(gy);
@@ -32,16 +32,17 @@ prove
     b_ <-$ Bool;
     b_' <-  A2(b_?KDF(gx_,gy_,gz1_,gz2_):(ks_,km_));
   ] : b_ = b_'.
-rnorm.
+  norm.
 
-(* first abstract results *)
-rlet_abstract 6 res1_1 gz1_.
-rlet_abstract 7 res1_2 gz2_.
-rlet_abstract 10 res2_1 (b_=b_').
-rlet_abstract 3 arg1 gy_ 7.
-rlet_abstract 9 arg2 KDF(gx_,gy_,res1_1,res1_2).
-(* gives ranges for both adversaries and names for new vars in right game *)
-assumption_decisional! kdf -> (3-8,9-12) aa bb.
-rnorm.
-admit.
+  (* first abstract results *)
+  let_abstract 6 res1_1 gz1_.
+  let_abstract 7 res1_2 gz2_.
+  let_abstract 10 res2_1 (b_=b_').
+  let_abstract 3 arg1 gy_ 7.
+  let_abstract 9 arg2 KDF(gx_,gy_,res1_1,res1_2).
+  (* gives ranges for both adversaries and names for new vars in right game *)
+  assumption_decisional kdf -> (3-8,9-12) aa bb.
+  norm.
+  admit.
 qed.
+extract "extraction/t_assm_dec_2phase.ec".

@@ -53,48 +53,48 @@ prove
 
   ] : b = b'.
   
-(* decisional assumption *)
-let_unfold. norm_unknown u w. swap 10 -8.
-let_abstract 3 arg (g^w,g^u,g^(w*u)).
-let_abstract _ res _.
-assumption_decisional ddh -> (3-13) v.
-norm.
+  (* decisional assumption *)
+  let_unfold. norm_unknown u w. swap 10 -8.
+  let_abstract 3 arg (g^w,g^u,g^(w*u)).
+  let_abstract _ res _.
+  assumption_decisional ddh -> (3-13) v.
+  norm.
   
-(* rnd rule for x1, y1, z1 *)
-except 3 u*w.
-rnd! x1 _ (x1 -> x1 + w*x2).
-rnd! y1 _ (y1 -> y1 + w*y2).
-rnd! z1 _ (z1 -> z1 + w*z2).
-norm.
+  (* rnd rule for x1, y1, z1 *)
+  except 3 u*w.
+  rnd! x1 _ (x1 -> x1 + w*x2).
+  rnd! y1 _ (y1 -> y1 + w*y2).
+  rnd! z1 _ (z1 -> z1 + w*z2).
+  norm.
   
-(* add test to Dec1 *)
-add_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
-  bycrush.
+  (* add test to Dec1 *)
+  add_test (10,1,1) (a^w = a') A3 ga ga' gc gd.
+    bycrush.
 
-(* rnd to x2 and y2 *)
-simp. norm. swap 4 7.
-rnd x2 _ _. norm.
-rnd! z2 _ _. norm.
+  (* rnd to x2 and y2 *)
+  simp. norm. swap 4 7.
+  rnd x2 _ _. norm.
+  rnd! z2 _ _. norm.
   
-(* add test to Dec2 *)
-add_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
-  last. bycrush.
+  (* add test to Dec2 *)
+  add_test (12,1,2) (a^w = a') A4 ea ea' ec ed.
+    last. bycrush.
 
-(* exclude hash collision *)
-simp. norm.
-case_ev H(ea,ea',ec) = H(g^u,g^v,g^z2).
-  last. bycrush.
-simp. norm.
-case_ev (ea,ea',ec) = (g^u,g^v,g^z2).
-  bycrush.
-swap 2 -1. swap 11 -9.
-except 4. swap 4 -2.
-remove_ev 1 2 3.
-let_abstract 4 arg (g^u,g^v,g^z2) 0.
-let_abstract 0 res1 ea.
-let_abstract 0 res2 ea'.
-let_abstract 0 res3 ec.
-assumption_computational tcr (4-16).
+  (* exclude hash collision *)
+  simp. norm.
+  case_ev H(ea,ea',ec) = H(g^u,g^v,g^z2).
+    last. bycrush.
+  simp. norm.
+  case_ev (ea,ea',ec) = (g^u,g^v,g^z2).
+    bycrush.
+  swap 2 -1. swap 11 -9.
+  except 4. swap 4 -2.
+  remove_ev 1 2 3.
+  let_abstract 4 arg (g^u,g^v,g^z2) 0.
+  let_abstract 0 res1 ea.
+  let_abstract 0 res2 ea'.
+  let_abstract 0 res3 ec.
+  assumption_computational tcr (4-16).
 qed.
 print_proof!.
-extract "extraction/cramer_shoup.ec".
+extract "extraction/cramer_shoup_long.ec".
