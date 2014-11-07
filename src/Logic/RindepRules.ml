@@ -143,7 +143,7 @@ let t_random_indep_no_exact ju =
       )
     | _ :: rc -> aux (i+1) rc
     | [] ->
-      fun _ -> mfail "rindep auto: can not find an independent random variable"
+      fun _ -> mfail (lazy "rindep auto: can not find an independent random variable")
   in
   (CR.t_random_indep @|| aux 0 (L.rev se.se_gdef)) ju
 

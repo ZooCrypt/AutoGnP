@@ -7,6 +7,7 @@ open Nondet
 open Syms
 open Expr
 open ExprUtils
+open Type
 open Game
 open Rules
 open CoreTypes
@@ -69,6 +70,30 @@ let t_rewrite_ev_maybe mi mdir ju =
   ) >>= fun (i,dir) ->
   (CR.t_ensure_progress (CR.t_rw_ev i dir)) ju
 
+let t_ctx_ev_maybe mi ju =
+  log_i (lazy (fsprintf "ctx_ev_maybe: %i" (from_opt (-1) mi)));
+  let ev = ju.ju_se.se_ev in
+  (match mi with
+  | Some i ->
+    let conjs = destr_Land_nofail ev in
+    let e = L.nth conjs i in
+    ret (i,e)
+  | None ->
+    guard (is_Land ev) >>= fun _ ->
+    let conjs = L.mapi (fun i e -> (i,e)) (destr_Land ev) in
+    mconcat conjs >>= fun (i,e) ->
+    ret (i,e)
+  ) >>= fun (i,e) ->
+  guard (is_Eq e) >>= fun _ ->
+  let (e1,e2) = destr_Eq e in
+  guard (ty_equal e1.e_ty mk_Fq) >>= fun _ ->
+  let cv = Vsym.mk (CR.mk_name ju.ju_se) mk_Fq in
+  let ce = mk_V cv in
+  let diff,cdiff = if is_FZ e2 then (e1,ce) else (mk_FMinus e1 e2,mk_FMinus ce e2) in
+  let c = mk_FDiv cdiff diff in
+  log_i (lazy (fsprintf "ctx_ev_maybe: %i, %a" i pp_exp e));
+  (CR.t_ctxt_ev i (cv,c) @> t_norm) ju
+
 let t_rewrite_oracle_maybe mopos mdir ju =
   (match mopos with
   | Some opos ->
@@ -113,6 +138,7 @@ let t_simp i must_finish _ts ju =
      @> (    CR.t_false_ev 
          @|| t_rewrite_oracle_maybe None None
          @|| t_split_ev_maybe None
+         @|| t_ctx_ev_maybe None
          @|| t_rewrite_ev_maybe None None))
   in
   t_fix i must_finish step ju

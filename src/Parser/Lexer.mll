@@ -71,6 +71,7 @@ rule lex = parse
   | "field_exprs" { LISTFE }
   | "bycrush" { BYCRUSH }
   | "simp" { RSIMP }
+  | "bysimp" { BYSIMP }
   | "split_ev" { RSPLIT_EV }
   | "false_ev" { RFALSE_EV }
   | "with"  { WITH }

@@ -68,14 +68,14 @@ type assgn_pos =
 
 type tactic =
   | Rnorm
-  | Rsimp
   | Rfalse_ev
   | Rnorm_nounfold
+  | Rsimp          of bool
   | Rnorm_unknown  of string list
   | Rnorm_solve    of parse_expr
   | Rswap          of int * int
   | Rswap_oracle   of ocmd_pos * int
-  | Rctxt_ev       of string * parse_expr * int
+  | Rctxt_ev       of int option * (string * parse_expr) option
   | Rrnd           of bool * assgn_pos option * (string * parse_expr) option *
                       (string * parse_expr) option * parse_expr option
   | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option * (string * parse_expr) option

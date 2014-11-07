@@ -2,7 +2,7 @@
 
 (*i*)
 open Tactic
-open Expr
+open ExprUtils
 (*i*)
 
 let main =

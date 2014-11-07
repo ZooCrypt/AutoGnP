@@ -101,6 +101,7 @@
 %token RCRUSH
 %token BYCRUSH
 %token RSIMP  
+%token BYSIMP
 %token RBAD
 %token RCASE_EV
 %token RFALSE_EV
@@ -438,7 +439,8 @@ tactic :
   { Apply (Rassm_comp(excl=None,s,rngs))}
 
 /* automated rules */
-| RSIMP                { Apply(Rsimp) }
+| BYSIMP              { Apply(Rsimp(true)) }
+| RSIMP                { Apply(Rsimp(false)) }
 | RCRUSH  mi=uopt(NAT) { Apply(Rcrush(false,mi)) }
 | RCRUSH               { Apply(Rcrush(false,Some(1))) }
 | BYCRUSH              { Apply(Rcrush(true,None)) }
@@ -456,8 +458,8 @@ tactic :
 | RREMOVE_EV is=gpos+         { Apply(Rremove_ev(is)) }
 | RSPLIT_EV i=gpos            { Apply(Rsplit_ev(i - 1)) }
 | RCASE_EV e=uopt(expr0)      { Apply(Rcase_ev(e)) }
-| RREWRITE_EV i=gpos d=dir? { Apply(Rrewrite_ev(i,opt id LeftToRight d)) }
-| RCTXT_EV LPAREN i1=ID TO e1=expr0 RPAREN j=gpos? { Apply(Rctxt_ev(i1,e1,opt id 0 j)) }
+| RREWRITE_EV i=gpos d=dir?   { Apply(Rrewrite_ev(i,opt id LeftToRight d)) }
+| RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Apply(Rctxt_ev(oj,c)) }
 
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Apply(Rindep(excl=None)) }

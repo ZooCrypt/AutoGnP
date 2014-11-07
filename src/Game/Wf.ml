@@ -1,6 +1,7 @@
 (*s Well-formedness of games. *)
 
 (*i*)
+open Abbrevs
 open Util
 open Expr
 open ExprUtils
@@ -12,7 +13,6 @@ open Norm
 
 let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
 let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
-
 (*i*)
 
 exception Wf_var_undef of Vsym.t * expr
@@ -23,16 +23,17 @@ let assert_exc c rf = if not c then rf ()
 
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
-type wf_state =
-  { wf_names : Sstring.t;    (* used names for variables, adversaries, and oracles *)
-    wf_bvars : Vsym.S.t;     (* bound variables, never two vsyms with the same name *)
-    wf_nzero : expr option } (* product of all nonzero-assumptions for field-expressions *)
+type wf_state = {
+  wf_names : Sstring.t;  (*r used names for variables, adversaries, and oracles *)
+  wf_bvars : Vsym.S.t;   (*r bound variables, never two vsyms with the same name *)
+  wf_nzero : expr option (*r product of all nonzero-assumptions for field-expressions *)
+}
 
 let mk_wfs () = {
-    wf_names = Sstring.empty;
-    wf_bvars = Vsym.S.empty;
-    wf_nzero = None 
-  }
+  wf_names = Sstring.empty;
+  wf_bvars = Vsym.S.empty;
+  wf_nzero = None
+}
 
 let ensure_name_fresh wfs name =
   if Sstring.mem name wfs.wf_names
@@ -43,14 +44,9 @@ let ensure_names_fresh wfs names =
   List.fold_left ensure_name_fresh wfs names
 
 let ensure_varname_fresh wfs vs =
-  (* we allow overshadowing of existing names *)
-  if Vsym.S.mem vs wfs.wf_bvars then (
-    wfs
-  ) else (
-    let name = Id.name vs.Vsym.id in
-    let wfs = ensure_name_fresh wfs name in
-    { wfs with wf_bvars = Vsym.S.add vs wfs.wf_bvars }
-  )
+  let name = Id.name vs.Vsym.id in
+  let wfs = ensure_name_fresh wfs name in
+  { wfs with wf_bvars = Vsym.S.add vs wfs.wf_bvars }
 
 let ensure_varnames_fresh wfs vs =
   List.fold_left ensure_varname_fresh wfs vs
@@ -59,38 +55,6 @@ let ty_prod vs =
   match List.map (fun vs -> vs.Vsym.ty) vs with
   | [a] -> a
   | ts  -> mk_Prod ts
-
-let ty_of_cnst c ty =
-  let ty' =
-    match c with
-    | B _     -> mk_Bool
-    | GGen    -> (match ty.ty_node with G _ -> ty | _ -> assert false)
-    | Z       -> (match ty.ty_node with BS _ -> ty | _ -> assert false)
-    | FNat(_) -> mk_Fq
-  in assert(ty_equal ty' ty); ty
-
-let ty_of_nop ty = function
-  | Land  -> mk_Bool
-  | Xor   -> (match ty.ty_node with BS _ | Bool -> ty | _ -> assert false)
-  | (FMult | FPlus) -> mk_Fq
-  | GMult  -> (match ty.ty_node with G _ -> ty | _ -> assert false)
-
-let ty_of_op ty argtys o =
-  match o with
-  | GExp gv  -> ([mk_G gv;mk_Fq],mk_G gv,[])
-  | GLog(gv) -> ([mk_G gv],mk_Fq,[])
-  | EMap(es) -> ([mk_G (es.Esym.source1); mk_G (es.Esym.source2)], mk_G (es.Esym.target),[])
-  | FMinus   -> ([mk_Fq;mk_Fq],mk_Fq,[])
-  | FOpp     -> ([mk_Fq],mk_Fq,[])
-  | FInv     -> ([mk_Fq],mk_Fq,[0])        (* argument 0 must be nonzero *)
-  | FDiv     -> ([mk_Fq; mk_Fq],mk_Fq,[1]) (* argument 1 must be nonzero *)
-  | Not      -> ([mk_Bool],mk_Bool,[])
-  | Ifte     -> ([mk_Bool;ty;ty],ty,[])
-     (* we ignore these inequality constraints, maybe restrict first
-        argument of if to boolean variable *)
-  | Eq      -> (match argtys with
-                | [t1;t2] when ty_equal t1 t2 -> ([t1;t2],mk_Bool,[])
-                | _ -> assert false)
 
 let rec add_ineq ctype wfs e1 e2 =
   try
@@ -114,7 +78,7 @@ let rec add_ineq ctype wfs e1 e2 =
       in
       match wfs.wf_nzero with
       | None    -> Some h
-      | Some nz -> Some (mk_FMult [ h; nz])
+      | Some nz -> Some (mk_FMult [h; nz])
     in
     match e1.e_ty.ty_node,e2.e_ty.ty_node with
     | Fq, Fq   -> { wfs with
@@ -127,122 +91,96 @@ let rec add_ineq ctype wfs e1 e2 =
     _ -> wfs
 
 and check_nonzero ctype wfs e =
-  log_t (lazy (fsprintf "check_nonzero @[<hov 2> %a@]" pp_exp e));
   if ctype = NoCheckDivZero then true
-  else
+  else (
+    log_t (lazy (fsprintf "check nonzero %a" pp_exp e));
     let check e =
-      log_t (lazy (fsprintf "check_nonzero-check @[<hov 2> %a@]" pp_exp e));
-      (* we know e itself is division-safe *)
       match wfs.wf_nzero with
-      | Some nz -> log_t (lazy (fsprintf "some_nz: %a" pp_exp nz)); CAS.mod_reduce nz e
-      | None    -> log_t (lazy "no_nz"); false
+      | Some nz -> CAS.mod_reduce nz e
+      | None    -> false
     in
+    (* we know e itself is division-safe *)
     let e = norm_expr_weak e in
     match e.e_node with
     | App(Ifte, [c; _a; b]) when is_False c -> check b
     | App(Ifte, [c; a; b]) when
-        is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in is_Zero v && e_equal u b) ->
+        is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in e_equal u b && is_Zero v) ->
       true
     | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
     | _                 -> check e (* e is polynomial *)
+  )
 
-(* FIXME Remark: I think the type checking is not necessary, it is ensured by the
-   smart constructor ... *)
 and wf_exp ctype wfs e0 =
   let rec go e =
-    let ty =
-      match e.e_node with
-      | Cnst c -> ty_of_cnst c e.e_ty
-      | Exists(e1,e2,(vhs)) ->
-        assert (List.for_all
-                  (fun (v,h) -> ty_equal v.Vsym.ty h.Hsym.dom) vhs);
-        let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
-        wf_exp ctype wfs e2;
-        wf_exp ctype wfs e1;
-        assert (ty_equal e1.e_ty e2.e_ty);
-        assert (ty_equal mk_Bool e.e_ty);
-        mk_Bool
-      | H(h,e1) ->
-        ignore (go e1);
-        assert (ty_equal h.Hsym.dom e1.e_ty);
-        assert (ty_equal h.Hsym.codom e.e_ty);
-        h.Hsym.codom
-      | Proj(i,e1) ->
-          ignore (go e1);
-          (match e1.e_ty.ty_node with
-           | Prod(ts) when List.length ts > i ->
-               assert (ty_equal (List.nth ts i) e.e_ty);
-               List.nth ts i
-           | _ -> assert false)
-      | Tuple(es) ->
-        let tys = List.map go es in
-        assert (es = [] || List.length es > 1);
-        assert (ty_equal (mk_Prod tys) e.e_ty);
-        mk_Prod tys
-      | V v ->
-        assert_exc (Vsym.S.mem v wfs.wf_bvars)
-          (fun () -> raise (Wf_var_undef (v,e0)));
-        assert (ty_equal v.Vsym.ty e.e_ty);
-        v.Vsym.ty
-      | Nary(Land,es) ->
-        let is_InEq e =
-           if is_App Not e then is_App Eq (destr_Not e) else false
-        in
-        let destr_InEq e = destr_Eq (destr_Not e) in
-        assert (ty_equal mk_Bool e.e_ty);
-        let (ineqs,others) = List.partition is_InEq es in
-        let ineqs =
-          Util.move_front
-            (fun ie -> let e1,_ = destr_InEq ie in ty_equal mk_Fq e1.e_ty)
-            ineqs
-        in
-        log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_exp) ineqs));
-        (* FIXME: add support for Ineqs that make other ineqs well-formed *)
-
-        let wfs = List.fold_left
-                    (fun wfs e ->
-                      log_t (lazy (fsprintf ">>> ineqs %a" pp_exp e));
-                      wf_exp ctype wfs e;
-                      let e1,e2 = destr_InEq e in
-                      add_ineq ctype wfs e1 e2) wfs ineqs
-        in
-        assert (List.for_all (fun (e :expr) ->
-                                wf_exp ctype wfs e;
-                                ty_equal e.e_ty mk_Bool) others);
-        mk_Bool
-      | Nary(op,es) ->
-        let rty = ty_of_nop e.e_ty op in
-        assert (List.for_all (fun (e :expr) -> ty_equal rty (go e)) es);
-        assert (ty_equal rty e.e_ty);
-        rty
-      | App(op,es) ->
-        let (tys,rty,nz) = ty_of_op e.e_ty (List.map (fun e -> e.e_ty) es) op in
-        assert (list_eq_for_all2 ty_equal tys (List.map go es));
-        assert_exc
-          (List.for_all
-            (fun i -> check_nonzero ctype wfs (List.nth es i)) nz)
-          (fun () -> raise (Wf_div_zero (List.map (fun i -> List.nth es i) nz)));
-        assert (ty_equal rty e.e_ty);
-        rty
-    in ty
+    match e.e_node with
+    | Cnst _ | V _ -> ()
+    | Exists(e1,e2,(vhs)) ->
+      let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
+      wf_exp ctype wfs e2;
+      wf_exp ctype wfs e1
+    | H(_,e1) | Proj(_,e1) -> go e1
+    | Nary(Land,es) ->
+      let is_InEq e =
+        if is_App Not e then is_App Eq (destr_Not e) else false
+      in
+      let destr_InEq e = destr_Eq (destr_Not e) in
+      let (ineqs,others) = List.partition is_InEq es in
+      (* first check and add ineqs that are division-safe *)
+      let ineqs =
+        Util.move_front
+          (fun ie -> try go ie; true with _ -> false)
+          ineqs
+      in
+      log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_exp) ineqs));
+      let wfs =
+        List.fold_left
+          (fun wfs e ->
+            log_t (lazy (fsprintf "check & add ineq %a" pp_exp e));
+            wf_exp ctype wfs e;
+            let e1,e2 = destr_InEq e in
+            add_ineq ctype wfs e1 e2)
+          wfs
+          ineqs
+      in
+      List.iter (wf_exp ctype wfs) others
+    | App(FInv,[e]) ->
+      assert_exc
+        (check_nonzero ctype wfs e)
+        (fun () -> raise (Wf_div_zero [e]));
+      go e
+    | App(FDiv,[e1;e2]) ->
+      assert_exc
+        (check_nonzero ctype wfs e2)
+        (fun () -> raise (Wf_div_zero [e2]));
+      go e1; go e2
+    | Tuple(es) | Nary(_,es) | App(_,es) ->
+      L.iter go es
   in
-  ignore (go e0); ()
+  go e0
+
+let wf_samp ctype wfs v t es =
+  assert (ty_equal v.Vsym.ty t &&
+            List.for_all (fun e -> ty_equal t e.e_ty) es &&
+            (es = [] || not (ty_equal t mk_Bool)));
+  List.iter (wf_exp ctype wfs) es;
+  let wfs = ensure_varname_fresh wfs v in
+  let v = mk_V v in
+  List.fold_left (fun wfs e -> add_ineq ctype wfs e v) wfs es
+
+let wf_let ctype wfs v e =
+  let wfs = ensure_varname_fresh wfs v in
+  assert (ty_equal v.Vsym.ty e.e_ty);
+  wf_exp ctype wfs e;
+  wfs
 
 let wf_lcmds ctype wfs0 odef0 =
   let rec go wfs odef = match odef with
     | [] -> wfs
     | LLet(v,e)::lcmds ->
-      let wfs = ensure_varname_fresh wfs v in
-      assert (ty_equal v.Vsym.ty e.e_ty);
-      wf_exp ctype wfs e;
+      let wfs = wf_let ctype wfs v e in
       go wfs lcmds
     | LSamp(v,(t,es))::lcmds ->
-      assert (ty_equal v.Vsym.ty t &&
-                List.for_all (fun e -> ty_equal t e.e_ty) es);
-      List.iter (wf_exp ctype wfs) es;
-      let wfs = ensure_varname_fresh wfs v in
-      let v = mk_V v in
-      let wfs = List.fold_left (fun wfs e -> add_ineq ctype wfs e v) wfs es in
+      let wfs = wf_samp ctype wfs v t es in
       go wfs lcmds
     | LBind (vs,hsym)::lcmds -> 
       assert (ty_equal (ty_prod vs) hsym.Hsym.dom);
@@ -273,18 +211,10 @@ let wf_gdef ctype gdef0 =
   let rec go wfs gdef = match gdef with
     | [] -> wfs
     | GLet(v,e)::gcmds ->
-      let wfs = ensure_varname_fresh wfs v in
-      assert (ty_equal v.Vsym.ty e.e_ty);
-      wf_exp ctype wfs e;
+      let wfs = wf_let ctype wfs v e in
       go wfs gcmds
     | GSamp(v,(t,es))::gcmds ->
-      assert (ty_equal v.Vsym.ty t &&
-                List.for_all (fun e -> ty_equal t e.e_ty) es &&
-                (not (ty_equal t mk_Bool) || es = []));
-      List.iter (wf_exp ctype wfs) es;
-      let wfs = ensure_varname_fresh wfs v in
-      let v = mk_V v in
-      let wfs = List.fold_left (fun wfs e -> add_ineq ctype wfs e v) wfs es in
+      let wfs = wf_samp ctype wfs v t es in
       go wfs gcmds
     | GCall(vs,asym,e,os)::gcmds ->
       let wfs = ensure_varnames_fresh wfs vs in
@@ -293,7 +223,7 @@ let wf_gdef ctype gdef0 =
                 ty_equal asym.Asym.dom e.e_ty);
       let wfs =
         ensure_names_fresh wfs
-          (List.map (fun (osym,_,_,_) -> Id.name (osym.Osym.id)) os)
+          (List.map (fun (osym,_,_,_) -> Id.name osym.Osym.id) os)
       in
       List.iter (wf_odef ctype wfs) os;
       go wfs gcmds

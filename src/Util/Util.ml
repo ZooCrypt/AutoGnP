@@ -415,6 +415,8 @@ let mk_logger tag level file ls =
   if not !no_log then
     Bolt.Logger.log tag level ~file (Lazy.force ls)
 
+let log_ig _ls = ()
+
 let log = mk_logger "Tacerror" Bolt.Level.INFO "Tacerror"
 
 exception Invalid_rule of string 

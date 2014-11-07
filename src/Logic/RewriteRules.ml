@@ -231,9 +231,9 @@ let t_let_unfold p ju =
   match get_se_ctxt se p with
   | GLet(vs,e), sec ->
     let subst a = e_replace (mk_V vs) e a in
-    let juc = { sec with
+    let sec = { sec with
                 sec_right = map_gdef_exp subst sec.sec_right;
                 sec_ev = subst sec.sec_ev }
     in
-    t_conv false (set_se_ctxt [] juc) ju
+    t_conv false (set_se_ctxt [] sec) ju
   | _ -> tacerror "rlet_unfold: no let at given position"

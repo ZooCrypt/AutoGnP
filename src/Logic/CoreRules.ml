@@ -90,8 +90,10 @@ let prove_by ru g =
           }
       }
   with
-    Invalid_rule s ->
-      mfail s
+  | Invalid_rule s ->
+    mfail (lazy s)
+  | Wf.Wf_div_zero es ->
+    mfail (lazy (fsprintf "Wf failed divzero check: %a" (pp_list "," pp_exp) es))
 
 (** Get proof from proof state with no open goals. *)
 let get_proof ps =
@@ -162,7 +164,7 @@ let t_cut t g =
   let pss = t g in
   match pull pss with
   | Left(Some s) -> mfail s
-  | Left None    -> mfail "t_cut: mempty"
+  | Left None    -> mfail (lazy "t_cut: mempty")
   | Right(x,_)   -> ret x
 
 (** Apply [t1] to goal [g] and [t2] to all resulting subgoals. *)
@@ -173,7 +175,7 @@ let t_bind (t1 : 'a rtactic) (ft2 : 'a -> 'b rtactic) g =
   | [y,ps2] ->
     ret (y,merge_proof_states [ps2] ps1.validation)
   | _ ->
-    mfail "t_bind: expected exactly one goal"
+    mfail (lazy "t_bind: expected exactly one goal")
 
 let apply_all t ps =
   mapM t ps.subgoals >>= fun pss ->
@@ -185,7 +187,7 @@ let rapply_all rt ps =
   | [y,ps2] ->
     ret (y,merge_proof_states [ps2] ps.validation)
   | _ ->
-    mfail "t_bind: expected exactly one goal"
+    mfail (lazy "t_bind: expected exactly one goal")
 
 let t_seq_list t1 t2s g =
   t1 g >>= fun ps1 ->
@@ -218,7 +220,7 @@ let t_fail fs _g =
       F.pp_print_flush fbuf ();
       let s = Buffer.contents buf in
       log_t (lazy s);
-      mfail s)
+      mfail (lazy s))
     fbuf fs
 
 (*i ----------------------------------------------------------------------- i*)
@@ -232,29 +234,45 @@ let t_fail fs _g =
     normalizing and comparing the two judgments *)
 let rconv do_norm_terms ?do_rename:(do_rename=false) new_se ju =
   let se = ju.ju_se in
-  let (nf,ctype) =
-    if do_norm_terms
-    then (Norm.norm_expr_strong,CheckDivZero)
-    else (id,NoCheckDivZero)
-  in
-  wf_se ctype se;
-  wf_se ctype new_se;
-  let se' = norm_se ~norm:nf se in
-  let new_se' = norm_se ~norm:nf new_se in
+  log_ig (lazy (fsprintf "trying to convert: @\n@[<hv 2>  %a@]@\n to @\n@[<hv 2>  %a@]" pp_se se pp_se new_se));
+
+  (* check wf without DivZero and unfold *)
+  wf_se NoCheckDivZero se;
+  wf_se NoCheckDivZero new_se;
+  let se' = norm_se ~norm:id se in
+  let new_se' = norm_se ~norm:id new_se in
+  log_ig (lazy (fsprintf "after unfolding: @\n@[<hv 2>  %a@]@\n to @\n@[<hv 2>  %a@]" pp_se se' pp_se new_se'));
+
+  (* perform renaming if requested *)
   let se' =
-    if do_rename then
+    if not do_rename then
+      se'
+    else (
       try
         let sigma = Game.unif_se se' new_se' in
         if not (Game.ren_injective sigma) then
           tacerror "rconv: computed renaming is not bijective";
-        norm_se ~norm:nf (subst_v_se (fun vs -> Vsym.M.find vs sigma) se')
+        subst_v_se (fun vs -> Vsym.M.find vs sigma) se'
       with
         Not_found ->
           log_t (lazy "no renaming found");
           se'
-    else
-      se'
+    )
   in
+
+  (* check DivZero for unfolded and norm (if requested) *)
+  let se',new_se' =
+    if not do_norm_terms then
+      (se',new_se')
+    else (
+      wf_se CheckDivZero se';
+      wf_se CheckDivZero new_se';
+      let norm_rw = map_se_exp Norm.norm_expr_strong in
+      (norm_rw se', norm_rw new_se')
+    )
+  in
+
+  (* now check for equality *)
   if not (se_equal se' new_se') then
     tacerror "rconv: not convertible@\n %a@\n %a" pp_se se' pp_se new_se';
   log_d (lazy (fsprintf "!!! conv rule applied"));
@@ -568,8 +586,10 @@ let rctxt_ev i c ju =
     else tacerror "rctxt_ev: bad event, expected equality or exists"
   in
   let ev = mk_Land (L.rev_append l (b::r)) in
+  (* FIXME: check that this is really not required
   let wfs = wf_gdef NoCheckDivZero (se.se_gdef) in
-  wf_exp CheckDivZero wfs ev;
+  wf_exp NoCheckDivZero wfs ev;
+  *)
   let new_ju = { se with se_ev = ev } in
   log_d 
     (lazy (fsprintf "!!! rctxt_ev applied at %i for %a -> %a@\n"

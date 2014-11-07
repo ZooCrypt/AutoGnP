@@ -11,14 +11,14 @@ let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 (* \hd{Nondeterminism Monad} *)
 
 type 'a stream =
-    Nil  of string option
+    Nil  of (string lazy_t) option
   | Cons of 'a * ('a stream) lazy_t
 
 type 'a nondet = 'a stream lazy_t
 
 let mempty = lazy (Nil None)
 
-let mfail s = lazy (Nil (Some s))
+let mfail ls = lazy (Nil (Some ls))
 
 let ret a = lazy (Cons (a, mempty))
 

@@ -71,8 +71,8 @@ val permutations : 'a list -> 'a list nondet
 
 val is_nil : 'a nondet -> bool
 
-val pull : 'a nondet -> (string option, ('a * 'a nondet)) either
+val pull : 'a nondet -> ((string lazy_t) option, ('a * 'a nondet)) either
 
 val first : 'a nondet -> 'a
 
-val mfail : string -> 'a nondet
+val mfail : string lazy_t -> 'a nondet

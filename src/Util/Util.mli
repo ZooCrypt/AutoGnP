@@ -238,3 +238,5 @@ exception Invalid_rule of string
 val tacerror : ('a, F.formatter, unit, 'b) format4 -> 'a
 
 val mk_logger : string -> Bolt.Level.t -> string -> string Lazy.t -> unit
+
+val log_ig : string Lazy.t -> unit

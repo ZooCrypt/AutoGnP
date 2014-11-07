@@ -99,11 +99,11 @@ let handle_tactic ts tac =
       let pss = CR.apply_first r ps in
       begin match pull pss with
       | Left None     -> tacerror "mempty"
-      | Left (Some s) -> tacerror "%s" s
-      | Right(ps,pss) ->
-        let ops = Some (get_proof_state ts) in
-        let ts' = { ts with ts_ps = ActiveProof(ps,[],pss,ops) } in
-        (ts', lazy (diff_step ops ps))
+      | Left (Some s) -> tacerror "%s" (Lazy.force s)
+      | Right(nps,pss) ->
+        let ops = Some ps in
+        let ts' = { ts with ts_ps = ActiveProof(nps,[],pss,ops) } in
+        (ts', lazy (diff_step ops nps))
       end
     with
     | Wf.Wf_div_zero es ->
@@ -186,7 +186,11 @@ let handle_tactic ts tac =
     apply_rule (t_except_oracle op es) ts
     i*)
 
-  | PT.Rctxt_ev (sv,e,j) ->
+  | PT.Rctxt_ev (mj,Some(sv,e)) ->
+    let j = match mj with
+      | Some j -> j
+      | None -> tacerror "position placeholder not allowed if context is given"
+    in
     let ev = ju.ju_se.se_ev in
     let b =
       match ev.e_node with
@@ -207,8 +211,12 @@ let handle_tactic ts tac =
     let c = v1, e1 in
     apply (CR.t_ctxt_ev j c)
 
-  | PT.Rsimp ->
-    apply (t_simp false 20 ts)
+  | PT.Rctxt_ev (mj,None) ->
+    apply (CrushRules.t_ctx_ev_maybe mj)
+
+
+  | PT.Rsimp must_finish ->
+    apply (t_simp must_finish 20 ts)
 
   | PT.Rassm_comp(exact,maname,mrngs) ->
     apply (t_assm_comp ts exact maname mrngs)

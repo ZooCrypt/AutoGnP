@@ -352,7 +352,8 @@ let conj_type e =
   )
 
 let t_assm_comp_match ?icases:(_icases=Se.empty) _before_t_assm _assm _subst _mev_e _ju =
-  failwith "undefined" (*
+  mfail (lazy "undefined")
+  (*
   let assm = ac_inst subst assm in
   (match mev_e with
   | Some e -> ret e
