@@ -62,11 +62,70 @@ var OpenDialog = React.createClass({displayName: 'OpenDialog',
 function renderOpenDialog(files) {
   React.renderComponent(
     OpenDialog({files: files})
-    , document.getElementById('open-dialog')
+  , document.getElementById('open-dialog')
   );
 }
 
-renderOpenDialog(["a"]);
+renderOpenDialog(["no files available"]);
+
+var NewDialog = React.createClass({displayName: 'NewDialog',
+  getInitialState: function() {
+    return {filename: 'test.zc'};
+  },
+
+  handleChange: function(event) {
+    this.setState({filename: event.target.value});
+  },
+
+ render: function() {
+   var closeDialog = (function(_this) {
+     return (
+       function() {
+         $(_this.getDOMNode()).modal("hide");
+       })
+   })(this);
+
+   var openFile = (function(_this) {
+     return (
+       function() {
+         loadBuffer(_this.state.filename);
+         closeDialog();
+       })
+   })(this);
+
+   var filename = this.state.filename;
+   return (
+     React.DOM.div({id: "new-file-modal", className: "modal"}, 
+       React.DOM.div({className: "modal-dialog"}, 
+         React.DOM.div({className: "modal-content"}, 
+           React.DOM.div({className: "modal-header", style: {textAlign: "center"}}, 
+             React.DOM.h3({className: "modal-title"}, "Visit New File")
+           ), 
+           React.DOM.div({className: "modal-body", style: {textAlign: "center"}}, 
+              React.DOM.input({type: "test", value: filename, onChange: this.handleChange})
+           ), 
+           React.DOM.div({className: "modal-footer"}, 
+             React.DOM.div({className: "btn-group"}, 
+               React.DOM.button({type: "button", className: "btn btn-primary btn-default", 
+                  onClick: closeDialog}, "Cancel"), 
+               React.DOM.button({type: "button", className: "btn btn-primary btn-default", 
+                  onClick: openFile}, "Open")
+             )
+           )
+         )
+       )
+     ));
+ }
+});
+
+function renderNewDialog() {
+  React.renderComponent(
+    NewDialog(null)
+  , document.getElementById('new-dialog')
+  );
+}
+
+renderNewDialog();
 
 /* ******************************************************************/
 /* Toolbar                                                          */
@@ -87,9 +146,14 @@ var Toolbar = React.createClass({displayName: 'Toolbar',
       $("#open-file-modal").modal('show');
     };
 
+    var newDialog = function() {
+      $("#new-file-modal").modal('show');
+    };
+
     return (
       React.DOM.div({className: "btn-toolbar"}, 
         React.DOM.button({className: "btn btn-primary btn-default", onClick: openDialog}, "Open file"), 
+        React.DOM.button({className: "btn btn-primary btn-default", onClick: newDialog}, "New file"), 
         React.DOM.button({className: "btn btn-primary btn-default", onClick: saveBuffer}, "Save (", ctrl, "-s)"), 
         React.DOM.button({className: "btn btn-primary btn-default", onClick: evalNext}, "Eval next (Ctrl-n)"), 
         React.DOM.button({className: "btn btn-primary btn-default", onClick: evalCursor}, "Eval up to cursor (Ctrl-return)"), 

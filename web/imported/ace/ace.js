@@ -1417,7 +1417,7 @@ function normalizeCommandKeys(callback, e, keyCode) {
                 return;
         }
         if (keyCode === 18 || keyCode === 17) {
-            var location = e.location || e.keyLocation;
+            var location = e.location;
             if (keyCode === 17 && location === 1) {
                 ts = e.timeStamp;
             } else if (keyCode === 18 && hashId === 3 && location === 2) {
@@ -1453,7 +1453,7 @@ function normalizeCommandKeys(callback, e, keyCode) {
     }
     
     if (!hashId && keyCode === 13) {
-        if (e.location || e.keyLocation === 3) {
+        if (e.location === 3) {
             callback(e, hashId, -keyCode)
             if (e.defaultPrevented)
                 return;

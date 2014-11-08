@@ -18,6 +18,7 @@ let (>>=) = Lwt.bind
 let ps_file  = ref ""
 let ps_files = ref []
 let disallow_save = ref false
+let new_dir = ref ""
 let server_name = ref "localhost"
 
 (*i ----------------------------------------------------------------------- i*)
@@ -63,18 +64,22 @@ let process_unknown s =
 let process_list_files () =
   Lwt.return
     (Frame.of_string
-       (YS.to_string (`Assoc [("cmd", `String "setFiles");
-                              ("arg", `List (List.map (fun s -> `String s) !ps_files))])))
+       (YS.to_string
+          (`Assoc [("cmd", `String "setFiles");
+                   ("arg", `List (List.map (fun s -> `String s) !ps_files))])))
 
 let process_save filename content =
   F.printf "Save %s: %s\n%!" filename content;
-  assert (List.mem filename !ps_files);
   Lwt.return (
-    if (Sys.file_exists !ps_file && not !disallow_save) then (
+    if (Sys.file_exists !ps_file && List.mem filename !ps_files
+         && not !disallow_save) then (
       output_file filename content;
       Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
+    ) else if (!new_dir <> "") then (
+        output_file (!new_dir^filename) content;
+        Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else (
-      Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
+        Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
     )
   )
 
@@ -233,6 +238,8 @@ let main =
   let speclist =
     Arg.align
       [ ("-nosave", Arg.Set disallow_save, " disallow to save file");
+        ("-new_dir", Arg.Set_string new_dir,
+         " allow creation of new files in given directory");
         ("-s", Arg.Set_string server_name, " bind to this servername (default: localhost)")]
   in
   let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " <file>" in
