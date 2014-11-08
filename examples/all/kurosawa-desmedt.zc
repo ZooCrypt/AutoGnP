@@ -169,26 +169,14 @@ prove
   assumption_decisional samp_gen -> (2-14) w. norm.
 
   (* define g2 using the generator g1 instead of g2 *)
-  swap 2 -1. except 2. rnd 2 _ (w -> w/log(g1)). norm.
+  swap 2 -1. except 2. rnd w _ (w -> w/log(g1)). norm.
+  
+  rnd! x1 _ _ g1. norm.
+  rnd! y1 _ _ g1. norm.
 
-  rnd! 6 _ _ g1. norm.
-  rnd! 7 _ _ g1. norm.
-
-  norm_solve x2.
   (* add test to first oracle *)
   add_test (10,1,1) (u1^w = u2) CC tu1 tu2 te tt.
     simp. let_unfold. norm_solve x2.
-    (* make Kdf input random *)
-    (* we have x2*d + e, d is only guaranteed to be nonzero
-       in the event. Apply rnd x2 rule with (d=0)?1:d trick
-       for d and then rnd x2 _ _ to get rid of e. *)
-    swap 6 4.
-    let_abstract [-1] d (log(tu2) - w*log(tu1)).
-    rnd! x2 _ (x2 -> x2 * ((d=0)?1:d)).
-    let_unfold [-1].
-    case_ev (d = 0).
-      bysimp.
-    rewrite_ev 3 ->. norm. remove_ev 3.
     rnd! x2 _ _. norm.
     (* apply decisional Kdf assumption *)
     swap 10 -9. norm_unknown.
@@ -207,20 +195,19 @@ prove
   add_test (12,1,2) (u1^w = u2) CCC tu1 tu2 te tt.
     (* handle b = b' case first *)
     last. simp.
-    (* make Kdf input random *)
-    except 2 0.
-    except 4 r1.
-    norm_solve x2.
-    rnd! 6 _ _. let_unfold. norm_unknown.
+    (* make Kdf input random (FIXME add exceptions automatically) *)
+    except 2 0. except 4 r1.
+    rnd! 6 _ _. let_unfold.
     (* apply Kdf assumption *)
+    norm_unknown.
     swap 11 -10.
     let_abstract 2 arg Kdf(g^x2).
     let_abstract 14 res (b=b').
     assumption_decisional kdf -> (2-14) km ks.
     let_unfold.
     (* apply computational CPA1 assumption *)
-    swap 2 -1. swap 12 -10.
     norm_unknown.
+    swap 2 -1. swap 12 -10.
     let_abstract 3 arg1 ().
     let_abstract 14 res1_1 m0.
     let_abstract 15 res1_2 m1.
@@ -229,13 +216,12 @@ prove
     assumption_computational cpa1 (3-15,16-18).
 
   (* equality on u1,u2, but not on ciphertext and Mac implies Mac forgery *)
-  case_ev (tu1,tu2) = (g ^ (r1*log(g1)),g ^ (log(g1)*r2*w)).
+  case_ev (tu1,tu2) = (g ^ (r1*log(g1)),g ^ (log(g1)*r2*w)). 
     (* make Kdf input random *)
     simp. norm.
-    rewrite_ev 4 ->. rewrite_ev 5 ->. let_unfold.
-    norm_solve x2.
+    (* Make Kdf input random (FIXME add exceptions automatically) *)
     except 2 0. except 4 r1.
-    rnd! 6 _ _. norm.
+    rnd! x2 _ _. norm.
     case_ev (te = Enc(Kdf(g ^ x2)\1,b?m0:m1)).
       simp.
     (* apply Kdf security *)
@@ -256,11 +242,12 @@ prove
   simp. norm.
   (* Reduce hash collision case to TCR *)
   case_ev (H(i,tu1,tu2) = H(i,g1^r1,g1^(r2*w))).
-    (* apply TCR *)
+
     norm. remove_ev 1 2 3.
-    rnd! 3 _ _. norm.
+    rnd! r1 _ _. norm.
     except 2 0.
-    rnd! 3 _ _. norm.
+    rnd! r2 _ _. norm.
+    (* apply TCR *)
     norm_unknown r1 r2.
     swap 3 -2. swap 10 -8. swap 11 -8.
     let_abstract 4 arg (i,g^r1,g^r2).
@@ -273,17 +260,6 @@ prove
   (* check in which contexts x2 and y2 occur *)
   except w 0. except r2 r1.
   rnd! x2 _ _. norm.
-  (* we have y2*d + e, d is only guaranteed to be nonzero
-     in the event. Apply rnd y2 rule with (d=0)?1:d trick
-     for d and then rnd y2 _ _ to get rid of e. *)
-  let_abstract! 10 h1 H(i,g1^r1,g1^(r2*w)).
-  let_abstract! 0  h2 H(i,tu1,tu2). norm_solve y2.
-  let_abstract 0 d ((w*log(tu1) - log(tu2))*(h2 - h1)*log(g1)*(r1 - r2)).
-  rnd! y2 _ (y2 -> y2*((d=0)?1:d)).
-  let_unfold [-1].
-  case_ev (d=0).
-    bysimp.
-  rewrite_ev [-1]. remove_ev [-1]. norm.
   rnd! y2 _ _. norm.
   (* apply Kdf decisional assumption *)
   swap 12 -11. remove_ev 1 3 4 5 6.
