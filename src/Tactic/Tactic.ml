@@ -212,11 +212,10 @@ let handle_tactic ts tac =
     apply (CR.t_ctxt_ev j c)
 
   | PT.Rctxt_ev (mj,None) ->
-    apply (CrushRules.t_ctx_ev_maybe mj)
-
+    apply (SimpRules.t_ctx_ev_maybe mj)
 
   | PT.Rsimp must_finish ->
-    apply (t_simp must_finish 20 ts)
+    apply (SimpRules.t_simp must_finish 20 ts)
 
   | PT.Rassm_comp(exact,maname,mrngs) ->
     apply (t_assm_comp ts exact maname mrngs)
