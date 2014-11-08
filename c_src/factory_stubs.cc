@@ -6,7 +6,7 @@ using namespace std;
 
 #define FOR0(i,n) for (i = 0; i < n; i++)
 
-#define FOR1(i,n) for (i = 1; i < n+1; i++)
+#define FOR1(i,n) for (i = 1; i <= n+1; i++)
 
 /* --------------------------------------------------------------------- */
 /* Create new array of exponent vectors.                                 */
@@ -343,14 +343,27 @@ extern "C" {
   /* --------------------------------------------------------------------- */
   int
   wrap_reduce_zero(int maxvar1, int nterms1, long** expvecs1, long* coeffs1,
-              int maxvar2, int nterms2, long** expvecs2, long* coeffs2) {
-    // cout << "div" << endl;
+                   int maxvar2, int nterms2, long** expvecs2, long* coeffs2) {
 
     CanonicalForm g = distrToCf(maxvar1,nterms1,expvecs1,coeffs1);
     CanonicalForm f = distrToCf(maxvar2,nterms2,expvecs2,coeffs2);
-    CanonicalForm h = reduce(g,f);
-    
-    return (h == 0);
+    //CanonicalForm h = reduce(g,f);
+
+    // FIXME: debug why reduce is not working here:
+    // reduce -v_2 v_1*v_2 = 0
+    //
+    // cout << "reduce_zero" << endl;
+    // cout << "g: " << g << endl;
+    // cout << "f: " << f << endl;
+    // cout << "reduce f g: " << reduce(f,g) << endl;
+    // cout << "reduce g f: " << reduce(g,f) << endl;
+    // cout << "div g f: " << div(g,f) << endl;
+    // cout << "gcd g f: " << gcd(g,f) << endl;
+
+    // return (h == 0);
+
+    CanonicalForm w = gcd(g,f);
+    return (w == f || -w == f);
   }
 
   /* --------------------------------------------------------------------- */

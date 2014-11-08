@@ -1,10 +1,13 @@
 (*s Bindings to factory C++ library for polynomial arithmetic (used in Singular) *)
 
 (*i*)
+open Util
 open Ctypes
 open Foreign
 open PolyInsts
 open Abbrevs
+
+let _log_i ls = mk_logger "CAS" Bolt.Level.INFO "Factory" ls
 (*i*)
 
 module US = Unsigned.Size_t
@@ -177,6 +180,7 @@ let reduce_zero p1 p2 =
   let res = c_reduce_zero maxvar1 nt1 cevs1 cos1 maxvar2 nt2 cevs2 cos2 in
   free_cpoly (maxvar1, nt1, cevs1, cos1);
   free_cpoly (maxvar2, nt2, cevs2, cos2);
+  log_ig (lazy (fsprintf "reduce %a %a %i" IP.pp p1 IP.pp p2 res));
   (res = 1)
 
 let gcd_div p1 p2 =
