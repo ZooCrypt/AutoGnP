@@ -86,8 +86,8 @@ val t_conv : bool -> ?do_rename:bool -> sec_exp -> tactic
 val rctxt_ev  : int -> ctxt -> rule 
 val t_ctxt_ev : int -> ctxt -> tactic
 
-val rcase_ev  : ?flip:bool -> expr -> rule
-val t_case_ev : ?flip:bool -> expr -> tactic
+val rcase_ev  : ?flip:bool -> ?allow_existing:bool -> expr -> rule
+val t_case_ev : ?flip:bool -> ?allow_existing:bool -> expr -> tactic
 
 val rremove_ev  : int list -> rule 
 val t_remove_ev : int list -> tactic 

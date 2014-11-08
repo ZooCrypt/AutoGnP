@@ -15,6 +15,7 @@ open CoreTypes
 
 let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "CoreRules" ls
 let log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "CoreRules" ls
+let log_i ls = mk_logger "Logic.Core" Bolt.Level.INFO "CoreRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -94,6 +95,8 @@ let prove_by ru g =
     mfail (lazy s)
   | Wf.Wf_div_zero es ->
     mfail (lazy (fsprintf "Wf failed divzero check: %a" (pp_list "," pp_exp) es))
+  | Wf.Wf_var_undef(vs,e) ->
+    mfail (lazy (fsprintf "Wf variable undefined: %a in %a" Vsym.pp vs pp_exp e))
 
 (** Get proof from proof state with no open goals. *)
 let get_proof ps =
@@ -323,7 +326,7 @@ let t_swap i delta = prove_by (rswap i delta)
 let ensure_bijection c1 c2 v =
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
           Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
-  then tacerror "random: contexts not bijective"
+  then tacerror "rrnd: contexts not bijective"
 
 (*i 'random p c1 c2' takes a position p and two contexts.
     It first ensures that there is a random sampling 'x <-$ d' at position p.
@@ -336,15 +339,21 @@ let rrnd p c1 c2 ju =
   match get_se_ctxt se p with
   | GSamp(vs,((_t,[]) as d)), sec ->
     let v = mk_V vs in
+    log_i (lazy "check bij");
     ensure_bijection c1 c2 v;
+    log_i (lazy "check bij done");
     let vslet = Vsym.mk (mk_name se) vs.Vsym.ty in
     let cmds =
       [ GSamp(vs,d);
         GLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
     let wfs = wf_gdef NoCheckDivZero (L.rev sec.sec_left) in
-    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    (* check second context first because we prefer undef to divzero error *)
+    log_i (lazy (fsprintf "check wf1: %a" pp_exp (snd c2)));
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
+    log_i (lazy "check wf1 done");
+    wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    log_i (lazy "check wf2 done");
     let subst e = e_replace v (mk_V vslet) e in
     let sec =
       { sec with
@@ -468,13 +477,13 @@ let t_except_oracle p es = prove_by (rexcept_oracle p es)
 
 (** Perform case distinction on event. *)
 
-let rcase_ev ?flip:(flip=false) e ju =
+let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   (*i FIXME: think about allowed ju_pr and ju_pr of result i*)
   let se = ju.ju_se in
   let ev = se.se_ev in
   let se1 = { se with se_ev = mk_Land [ev;e] } in
   let se2 = { se with se_ev = mk_Land [ev; (mk_Not e)] } in
-  if is_Land ev &&
+  if not ae && is_Land ev &&
     let evs = L.map Norm.norm_expr_weak (destr_Land ev) in
     (L.mem (Norm.norm_expr_weak e) evs || L.mem (Norm.norm_expr_weak (mk_Not e)) evs)
   then tacerror "rcase_ev: event or negation already in event";
@@ -483,7 +492,8 @@ let rcase_ev ?flip:(flip=false) e ju =
   let ju2 = { ju with ju_se = se2 } in  
   Rcase_ev(flip, e), if flip then [ju2; ju1] else [ju1;ju2]
 
-let t_case_ev ?flip:(flip=false) e = prove_by (rcase_ev ~flip e)
+let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
+  prove_by (rcase_ev ~flip ~allow_existing:ae e)
 
 (** Up-to bad: add new test to oracle.\\
    We get two new judgments for $G : E$ after

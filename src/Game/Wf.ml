@@ -13,6 +13,7 @@ open Norm
 
 let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
 let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
+let log_i ls = mk_logger "Logic.Wf" Bolt.Level.INFO "Wf" ls
 (*i*)
 
 exception Wf_var_undef of Vsym.t * expr
@@ -96,7 +97,9 @@ and check_nonzero ctype wfs e =
     log_t (lazy (fsprintf "check nonzero %a" pp_exp e));
     let check e =
       match wfs.wf_nzero with
-      | Some nz -> CAS.mod_reduce nz e
+      | Some nz ->
+        log_i (lazy (fsprintf "nonzero assumption: %a" pp_exp nz));
+        CAS.mod_reduce nz e
       | None    -> false
     in
     (* we know e itself is division-safe *)
@@ -113,7 +116,10 @@ and check_nonzero ctype wfs e =
 and wf_exp ctype wfs e0 =
   let rec go e =
     match e.e_node with
-    | Cnst _ | V _ -> ()
+    | Cnst _ -> ()
+    | V vs -> 
+      assert_exc (Vsym.S.mem vs wfs.wf_bvars)
+        (fun () -> raise (Wf_var_undef(vs,e)))
     | Exists(e1,e2,(vhs)) ->
       let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
       wf_exp ctype wfs e2;
