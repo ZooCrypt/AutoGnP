@@ -57,7 +57,8 @@ let mk_name se =
   let vars = gdef_all_vars se.se_gdef in
   let name_of_int i = "r"^(string_of_int i) in
   let names =
-    Vsym.S.fold (fun vs se -> Sstring.add (Id.name vs.Vsym.id) se) vars Sstring.empty
+    Vsym.S.fold
+      (fun vs se -> Sstring.add (Id.name vs.Vsym.id) se) vars Sstring.empty
   in
   let rec go n =
     let name = name_of_int n in
@@ -437,26 +438,28 @@ let t_swap_oracle i delta = prove_by (rswap_oracle i delta)
 let rrnd_oracle p c1 c2 ju =
   let se = ju.ju_se in
   match get_se_octxt se p with
-  | LSamp(vs,((_t,[]) as d)), juoc ->
+  | LSamp(vs,((_t,[]) as d)), seoc ->
     let v = mk_V vs in
     ensure_bijection c1 c2 v;
+    let vslet = Vsym.mk (mk_name se) vs.Vsym.ty in
     let cmds = [ LSamp(vs,d);
-                 LLet(vs, inst_ctxt c1 (mk_V vs)) ]
+                 LLet(vslet, inst_ctxt c1 (mk_V vs)) ]
     in
     (* ensure both contexts well-defined *)
-    let wfs = wf_gdef CheckDivZero (L.rev juoc.seoc_sec.sec_left) in
-    let wfs = ensure_varnames_fresh wfs juoc.seoc_oargs in
-    let wfs = wf_lcmds CheckDivZero wfs (L.rev juoc.seoc_cleft) in
+    let wfs = wf_gdef CheckDivZero (L.rev seoc.seoc_sec.sec_left) in
+    let wfs = ensure_varnames_fresh wfs seoc.seoc_oargs in
+    let wfs = wf_lcmds CheckDivZero wfs (L.rev seoc.seoc_cleft) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
-    let juoc = { juoc with
-                 seoc_return = juoc.seoc_return;
-                 seoc_cright = juoc.seoc_cright }
+    let subst e = e_replace v (mk_V vslet) e in
+    let seoc = { seoc with
+                 seoc_return = subst seoc.seoc_return;
+                 seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright }
     in
     let (i,j,k) = p in
     log_d (lazy
       (fsprintf "!!! rrnd_oracle applied at (%i,%i,%i) for %a" i j k Vsym.pp vs));
-    Rrnd_orcl(p,c1,c2), [ { ju with ju_se = set_se_octxt cmds juoc } ]
+    Rrnd_orcl(p,c1,c2), [ { ju with ju_se = set_se_octxt cmds seoc } ]
   | _ -> tacerror "random: position given is not a sampling"
 
 let t_rnd_oracle p c1 c2 = prove_by (rrnd_oracle p c1 c2)

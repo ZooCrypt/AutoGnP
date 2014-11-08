@@ -179,12 +179,10 @@ let handle_tactic ts tac =
     let e = parse_e se in
     apply (RewriteRules.t_norm_solve e)
 
-  | PT.Rexcept_orcl(_op,_es) ->
-    failwith "undefined"
-    (*i
-    let es = L.map (PU.expr_of_parse_expr ts) es in
-    apply_rule (t_except_oracle op es) ts
-    i*)
+  | PT.Rexcept_orcl(op,pes) ->
+    let vmap = vmap_in_orcl ju.ju_se op in
+    let es = L.map (PU.expr_of_parse_expr vmap ts) pes in
+    apply (CR.t_except_oracle op es)
 
   | PT.Rctxt_ev (mj,Some(sv,e)) ->
     let j = match mj with
@@ -283,6 +281,7 @@ let handle_tactic ts tac =
        Not_found ->
          tacerror "Not found@\n");
     (ts,lazy "")
+
   | PT.FieldExprs(pes) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
     let ses = ref Se.empty in

@@ -97,6 +97,8 @@ let rewrite_exps unknown e0 =
       assert (is_GGen a);
       let gen = a in
       let (ies,ce) = simp_exp b unknown in
+      let to_exp (a,b,c) = mk_GExp (mk_GExp (from_opt gen a) b) (from_opt mk_FOne c) in
+      log_t (lazy (fsprintf "norm_unknown: %a" (pp_list ", " pp_exp) (L.map to_exp ies)));
       let get_gen og = match og with None -> gen | Some a -> a in
       let expio b ie moe =
         let g = get_gen b in
@@ -111,8 +113,11 @@ let rewrite_exps unknown e0 =
         | ies        ->
           (* merge elements with the same base *)
           let iess =
-            group (fun (e1,_,oe1) (e2,_,oe2) ->
-              oe1 = None && oe2 = None && e_equal (get_gen e1) (get_gen e2)) ies
+            group
+              (fun (e1,u1,oe1) (e2,u2,oe2) ->
+                oe1 = None && oe2 = None && e_equal (get_gen e1) (get_gen e2)
+                  && ((not (is_GLog u1) && not (is_GLog u2)) || e_equal u1 u2))
+              ies
           in
           let combine_group ies =
             match ies with
@@ -173,10 +178,10 @@ let t_norm_solve a ju =
   let new_se = map_se_exp norm se in
   t_conv true new_se ju
 
-let t_let_abstract p vs e mupto do_norm_expr ju =
+let t_let_abstract p vs e0 mupto do_norm_expr ju =
   let se = ju.ju_se in
   let v = mk_V vs in
-  let e = if do_norm_expr then remove_tuple_proj (norm_expr_nice e) else e in
+  let e = if do_norm_expr then norm_expr_nice e0 else e0 in
   let subst a =
     if is_Tuple e then (
       let subst = me_of_list (L.mapi (fun i a -> (a,mk_Proj i v)) (destr_Tuple e)) in
@@ -185,9 +190,9 @@ let t_let_abstract p vs e mupto do_norm_expr ju =
       e_replace e v a
     )
   in
-  log_t (lazy (fsprintf "t_let_abstr: %a" pp_exp e));
+  log_t (lazy (fsprintf "t_let_abstr: %a" pp_exp e0));
   let l,r = Util.cut_n p se.se_gdef in
-  let new_ju =
+  let new_se =
     match mupto with
     | Some j ->
       log_t (lazy (fsprintf "<< %i" j));
@@ -196,13 +201,13 @@ let t_let_abstract p vs e mupto do_norm_expr ju =
       if (cl > L.length r) then tacerror "t_let_abstract: invalid upto %i" j;
       let r1,r2 = Util.cut_n cl r in
       let r = List.rev_append (map_gdef_exp subst r1) r2 in
-      { se_gdef = List.rev_append l (GLet(vs,e)::r);
+      { se_gdef = List.rev_append l (GLet(vs,e0)::r);
         se_ev = se.se_ev }
     | None ->
-      { se_gdef = List.rev_append l (GLet(vs,e)::map_gdef_exp subst r);
+      { se_gdef = List.rev_append l (GLet(vs,e0)::map_gdef_exp subst r);
         se_ev = subst se.se_ev }
   in
-  t_conv true new_ju ju
+  t_conv true new_se ju
 
 let t_subst p e1 e2 mupto ju =
   let se = ju.ju_se in
