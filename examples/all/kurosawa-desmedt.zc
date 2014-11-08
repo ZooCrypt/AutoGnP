@@ -223,7 +223,7 @@ prove
     except 2 0. except 4 r1.
     rnd! x2 _ _. norm.
     case_ev (te = Enc(Kdf(g ^ x2)\1,b?m0:m1)).
-      simp.
+      bysimp.
     (* apply Kdf security *)
     swap 11 -10. norm_unknown.
     let_abstract 2 arg Kdf(g^x2).
@@ -257,7 +257,7 @@ prove
 
   (* finish proof exploiting that hashes are not equal *)
   norm.
-  (* check in which contexts x2 and y2 occur *)
+  (* Make Kdf input random (FIXME add exceptions automatically) *)
   except w 0. except r2 r1.
   rnd! x2 _ _. norm.
   rnd! y2 _ _. norm.
@@ -267,7 +267,7 @@ prove
   let_abstract 2 arg Kdf(g^y2).
   let_abstract _ res _.
   assumption_decisional kdf -> (2-14) km ks.
-  (* reduce to CMA1 *)
+  (* reduce to CMA0 *)
   let_unfold. norm_unknown.
   let_abstract 2 arg ().
   let_abstract 0 res1 te.
