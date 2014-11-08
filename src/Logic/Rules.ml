@@ -200,41 +200,41 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   | Rexc(pos,es) ->
     F.fprintf fmt "rexc %i %a" pos (pp_list "," pp_exp) es
   | Rrnd(pos,vs,_,(v2,c2)) ->
-    F.fprintf fmt "rrnd %i %a @[<v>%a->%a@]" pos Vsym.pp vs Vsym.pp v2 pp_exp c2
+    F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_exp c2
   | Rrw_orcl((i,j,k),_dir) ->
-    F.fprintf fmt "rrw_orcl (%i,%i,%i)" i j k
+    F.fprintf fmt "rw_orcl (%i,%i,%i)" i j k
   | Rswap_orcl((i,j,k),_i) ->
-    F.fprintf fmt "rswap_orcl (%i,%i,%i)" i j k
+    F.fprintf fmt "swap_orcl (%i,%i,%i)" i j k
   | Rrnd_orcl((i,j,k),_c1,_c2)      ->
-    F.fprintf fmt "rrnd_orcl (%i,%i,%i)" i j k
+    F.fprintf fmt "rnd_orcl (%i,%i,%i)" i j k
   | Rexc_orcl((i,j,k),_es)          ->
-    F.fprintf fmt "rexc_orcl (%i,%i,%i)" i j k
+    F.fprintf fmt "exc_orcl (%i,%i,%i)" i j k
   | Radd_test((i,j,k),e,_ads,_vss) ->
-    F.fprintf fmt "radd_test (%i,%i,%i) (%a)" i j k pp_exp e
+    F.fprintf fmt "add_test (%i,%i,%i) (%a)" i j k pp_exp e
   | Rcase_ev(_,e)   ->
-    F.fprintf fmt "rcase @[<v 2>%a@]" pp_exp e
+    F.fprintf fmt "case @[<v 2>%a@]" pp_exp e
   | Rbad(_pos,_vs) ->
-    F.fprintf fmt "rbad"
+    F.fprintf fmt "bad"
   | Rctxt_ev(_i,_c) ->
-    F.fprintf fmt "rctxt"
+    F.fprintf fmt "ctxt"
   | Rremove_ev(is) ->
-    F.fprintf fmt "rremove [%a]" (pp_list "," pp_int) is
+    F.fprintf fmt "remove [%a]" (pp_list "," pp_int) is
   | Rmerge_ev(_i,_j) ->
-    F.fprintf fmt "rmerge"
+    F.fprintf fmt "merge"
   | Rsplit_ev(i) ->
-    F.fprintf fmt "rsplit %i" i
+    F.fprintf fmt "split %i" i
   | Rrw_ev(i,_dir) ->
-    F.fprintf fmt "rrw_ev %i" i
+    F.fprintf fmt "rw_ev %i" i
   | Rassm_dec(_rngs,_dir,_ren,assm) ->
-    F.fprintf fmt "rassm_dec(%s)" assm.ad_name
+    F.fprintf fmt "assm_dec(%s)" assm.ad_name
   | Rassm_comp(_,_ren,assm) ->
-    F.fprintf fmt "rassm_comp(%s)" assm.ac_name
+    F.fprintf fmt "assm_comp(%s)" assm.ac_name
   | Radmit _ ->
     if not hide_admit then F.fprintf fmt "radmit"
   | Rfalse_ev ->
-    F.fprintf fmt "rfalse_ev"
+    F.fprintf fmt "false_ev"
   | Rrnd_indep(b,i) ->
-    F.fprintf fmt "rrnd_indep %b %i" b i
+    F.fprintf fmt "rnd_indep %b %i" b i
 
 let rec pp_proof_tree_verbose ?hide_admit:(hide_admit=false) fmt pt =
   F.fprintf fmt
