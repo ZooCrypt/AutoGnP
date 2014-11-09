@@ -33,13 +33,13 @@ let (@||) t1 t2 ju =
   let mps = t1 ju in
   if is_nil mps then t2 ju else mps
 
-let rec t_seq_list = function
+let rec t_seq_fold = function
   | []    -> t_id
-  | t::ts -> t @> t_seq_list ts
+  | t::ts -> t @> t_seq_fold ts
 
-let rec t_or_list = function
+let rec t_or_fold = function
   | []    -> t_id
-  | t::ts -> t @| t_or_list ts
+  | t::ts -> t @| t_or_fold ts
 
 let t_print log s ju =
   log (lazy (fsprintf "%s:@\n%a" s pp_ju ju));

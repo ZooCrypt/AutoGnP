@@ -28,6 +28,7 @@ type proof_tree = {
   pt_ju       : judgment
 }
 
+(** Replace subproofs with (possibly) different proofs of the same facts. *)
 let pt_replace_children pt pts =
   let equal_fact pt1 pt2 = ju_equal pt1.pt_ju pt2.pt_ju in
   assert (Util.list_eq_for_all2 equal_fact pt.pt_children pts);
@@ -51,8 +52,14 @@ type proof_state = {
 
 (** A tactic takes a goal and returns a proof state. *)
 type tactic = goal -> proof_state nondet
+
+(** A tactic that takes a goal and returns a result and a proof state. *)
 type 'a rtactic = goal -> ('a * proof_state) nondet
 
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{General purpose functions} *)
+
+(** Create a variable name that is fresh in the given security experiment *)
 let mk_name se =
   let vars = gdef_all_vars se.se_gdef in
   let name_of_int i = "r"^(string_of_int i) in
@@ -66,18 +73,10 @@ let mk_name se =
   in
   go 1
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{General purpose functions} *)
-
 (** Raised if there is no open goal. *)
 exception NoOpenGoal
 
-(** Fail with message [s] if variable [vs] occurs in [ju]. *)
-let _fail_if_occur vs se s =
-  if (Vsym.S.mem vs (gdef_all_vars se.se_gdef)) then
-    tacerror "%s: variable %a occurs in judgment\n %a" s Vsym.pp vs pp_se se
-
-(** Prove goal [g] by rule [ru] which yields [subgoals]. *)
+(** Prove goal [g] by rule [ru] which yields a rule name and subgoals. *)
 let prove_by ru g =
   try
     let (rn,subgoals) = ru g in
@@ -116,7 +115,7 @@ let merge_proof_states pss validation =
       let hd, tl = Util.cut_n (L.length ps.subgoals) pts in
       validation' (ps.validation (L.rev hd) :: accu) pss tl
   in
-  { subgoals   = L.flatten (L.map (fun gs -> gs.subgoals) pss);
+  { subgoals   = conc_map (fun gs -> gs.subgoals) pss;
     validation = validation' [] pss }
 
 (*i ----------------------------------------------------------------------- i*)
@@ -130,7 +129,8 @@ let move_first_last ps =
     let validation pts =
       match L.rev pts with
       | pt :: pts -> ps.validation (pt::L.rev pts)
-      | _ -> assert false in
+      | _ -> assert false
+    in
     { subgoals = jus @ [ju];
       validation = validation }
 
@@ -138,18 +138,16 @@ let move_first_last ps =
 let apply_on_n n t ps =
   let len = L.length ps.subgoals in
   if len = 0 then raise NoOpenGoal;
-  if len <= n then tacerror "there is only %i subgoals" len;
-  let hd, g, tl =
-    Util.split_n n ps.subgoals
-  in
+  if len <= n then tacerror "expected %i, got %i subgoal(s)" n len;
+  let hd, g, tl = Util.split_n n ps.subgoals in
   t g >>= fun gsn ->
-  let vali pts =
+  let validation pts =
     let hd, tl = Util.cut_n n pts in
     let ptn, tl = Util.cut_n (L.length gsn.subgoals) tl in
     ps.validation (L.rev_append hd (gsn.validation (L.rev ptn) :: tl))
   in
   ret { subgoals = L.rev_append hd (gsn.subgoals @ tl);
-        validation = vali }
+        validation = validation }
 
 (** Apply the tactic [t] to the first subgoal in proof state [ps]. *)
 let apply_first t ps = apply_on_n 0 t ps
@@ -159,27 +157,12 @@ let t_id g = ret (
   { subgoals = [g];
     validation = fun pts -> match pts with [pt] -> pt | _ -> assert false })
 
-let t_bind_ignore (t1 : 'a rtactic) (ft2 : 'a -> tactic) g =
-  t1 g >>= fun (x,ps1) ->
-  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
-  ret (merge_proof_states ps2s ps1.validation)
-
 let t_cut t g =
   let pss = t g in
   match pull pss with
   | Left(Some s) -> mfail s
   | Left None    -> mfail (lazy "t_cut: mempty")
   | Right(x,_)   -> ret x
-
-(** Apply [t1] to goal [g] and [t2] to all resulting subgoals. *)
-let t_bind (t1 : 'a rtactic) (ft2 : 'a -> 'b rtactic) g =
-  t1 g >>= fun (x,ps1) ->
-  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
-  match ps2s with
-  | [y,ps2] ->
-    ret (y,merge_proof_states [ps2] ps1.validation)
-  | _ ->
-    mfail (lazy "t_bind: expected exactly one goal")
 
 let apply_all t ps =
   mapM t ps.subgoals >>= fun pss ->
@@ -204,11 +187,6 @@ let t_seq t1 t2 g =
   mapM t2 ps1.subgoals >>= fun ps2s ->
   ret (merge_proof_states ps2s ps1.validation)
 
-let t_ensure_progress t g =
-  t g >>= fun ps ->
-  guard (ps.subgoals <> [g]) >>= fun _ ->
-  ret ps
-
 (** Apply tactic [t1] to goal [g] or [t2] in case of failure. *)
 let t_or tn1 tn2 g = Nondet.mplus (tn1 g)  (tn2 g)
 
@@ -226,6 +204,26 @@ let t_fail fs _g =
       log_t (lazy s);
       mfail (lazy s))
     fbuf fs
+
+let t_ensure_progress t g =
+  t g >>= fun ps ->
+  guard (ps.subgoals <> [g]) >>= fun _ ->
+  ret ps
+
+(** Apply [t1] to goal [g] and [t2] to all resulting subgoals. *)
+let t_bind (t1 : 'a rtactic) (ft2 : 'a -> 'b rtactic) g =
+  t1 g >>= fun (x,ps1) ->
+  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
+  match ps2s with
+  | [y,ps2] ->
+    ret (y,merge_proof_states [ps2] ps1.validation)
+  | _ ->
+    mfail (lazy "t_bind: expected exactly one goal")
+
+let t_bind_ignore (t1 : 'a rtactic) (ft2 : 'a -> tactic) g =
+  t1 g >>= fun (x,ps1) ->
+  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
+  ret (merge_proof_states ps2s ps1.validation)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Rules for main (equivalence/small statistical distance)} *)

@@ -20,9 +20,9 @@ val ( @>>= ) : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 val ( @| ) : tactic -> tactic -> tactic
 val ( @|| ) : tactic -> tactic -> tactic
 
-val t_seq_list : tactic list -> tactic
+val t_seq_fold : tactic list -> tactic
 
-val t_or_list : tactic list -> tactic
+val t_or_fold : tactic list -> tactic
 
 val t_print : (string lazy_t -> unit) -> string -> tactic
 

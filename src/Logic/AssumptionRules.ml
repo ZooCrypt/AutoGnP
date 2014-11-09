@@ -77,7 +77,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets ju =
     ((*  t_print "after swapping, before unknown"
      @> *) t_norm_unknown priv_exprs
      (* @> t_print "after unknown" *)
-     @> t_seq_list let_abstrs
+     @> t_seq_fold let_abstrs
      (* @> t_print "after let" *)
      @> (CoreRules.t_assm_dec dir subst [] assm @|| conv_common_prefix)) ju
   with
@@ -155,7 +155,7 @@ let t_assm_dec_auto assm dir subst ju =
     |> filter_map (fun (old_pos,delta) ->
                     if delta = 0 then None else Some (CR.t_swap old_pos delta))
   in
-  (t_seq_list swaps @> t_assm_dec_aux assm dir subst assm_samps assm_lets) ju
+  (t_seq_fold swaps @> t_assm_dec_aux assm dir subst assm_samps assm_lets) ju
 
 (** Supports placeholders for which all possible values are tried *)
 let t_assm_dec_non_exact
@@ -413,7 +413,7 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
   in
   let (subst, let_abstrs) = map_accum ltac subst lets_assm in
   incr tries;
-  let t_before = t_seq_list let_abstrs in
+  let t_before = t_seq_fold let_abstrs in
      (* @> t_debug (fsprintf "assm_comp_auto tried %i combinations so far@\n" !tries) *)
   try
     t_before ju >>= fun ps ->
@@ -470,12 +470,13 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   let before_t_assm =
     CR.t_remove_ev remove_events
     @> t_norm_unknown priv_exprs
-    @> t_seq_list excepts
-    @> t_seq_list swaps
+    @> t_seq_fold excepts
+    @> t_seq_fold swaps
   in
   guard (not (is_Land assm.ac_event && not (is_Land se.se_ev))) >>= fun _ ->
   before_t_assm ju >>= fun ps ->
-  CR.rapply_all (t_assm_comp_aux ~icases before_t_assm assm mev_e) ps >>= fun (ot,ps) ->
+  CR.rapply_all
+    (t_assm_comp_aux ~icases before_t_assm assm mev_e) ps >>= fun (ot,ps) ->
   match ot with
   | Some t -> t ju
   | None   -> ret ps

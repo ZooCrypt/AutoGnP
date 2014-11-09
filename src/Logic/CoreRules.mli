@@ -52,19 +52,21 @@ val apply_all : tactic -> proof_state -> proof_state nondet
 val rapply_all : 'a rtactic -> proof_state -> ('a * proof_state) nondet
 val apply_first : tactic -> proof_state -> proof_state nondet
 
-val merge_proof_states : proof_state list -> (proof_tree list -> proof_tree) -> proof_state
+val merge_proof_states :
+  proof_state list -> (proof_tree list -> proof_tree) -> proof_state
 
 val t_id : tactic
 val t_seq : tactic -> tactic -> tactic
 val t_seq_list : tactic -> tactic list -> tactic
-val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
-val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 val t_cut : tactic -> tactic
 
 val t_try : tactic -> tactic
 val t_or  : tactic -> tactic -> tactic
 val t_fail : ('a, F.formatter, unit, 'b nondet) format4 -> 'c -> 'a
 val t_ensure_progress : tactic -> tactic
+
+val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
+val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Core rules of the logic} *)
