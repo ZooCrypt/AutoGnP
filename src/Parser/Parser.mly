@@ -1,6 +1,7 @@
 %{
   (** Parser for expressions, games, judgments, and tactic command. *)
   open ParserTypes
+  open Assumption
   open Util
 
 %}
@@ -82,6 +83,8 @@
 %token RANDOM
 %token BILINEAR
 %token MAP
+%token SUCC
+%token ADV
 %token BOUNDDIST
 %token BOUNDSUCC
 %token BOUNDADV
@@ -377,6 +380,10 @@ assgn_pos:
 /************************************************************************/
 /* declarations */
 
+atype:
+| SUCC { A_Succ }
+| ADV  { A_Adv }
+
 decl :
 | ADVERSARY i=AID  COLON t1=typ0 TO t2=typ0 { ADecl(i,t1,t2) }
 | ORACLE    i=AID  COLON t1=typ0 TO t2=typ0 { ODecl(i,t1,t2) }
@@ -387,8 +394,8 @@ decl :
     i=ID sym=option(sym_vars) LBRACK g0=gdef0 RBRACK LBRACK g1=gdef0 RBRACK
   { AssmDec(i,g0,g1,opt id [] sym) }
 | ASSUMPTION
-    i1=ID sym=option(sym_vars) LBRACK g=gdef0 RBRACK COLON e=expr0
-  { AssmComp(i1,g,e,opt id [] sym) }
+    i1=ID at=atype sym=option(sym_vars) LBRACK g=gdef0 RBRACK COLON e=expr0
+  { AssmComp(i1,at,g,e,opt id [] sym) }
 | BOUNDSUCC LBRACK g=gdef0 RBRACK e=event { JudgSucc(g,e) }
 | BOUNDADV LBRACK g=gdef0 RBRACK e=event { JudgAdv(g,e) }
 | BOUNDDIST LBRACK g1=gdef0 RBRACK e1=event

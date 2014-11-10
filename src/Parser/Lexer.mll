@@ -47,6 +47,8 @@ rule lex = parse
   | "random" { RANDOM }
   | "bilinear" { BILINEAR }
   | "map" { MAP }
+  | "succ" { SUCC }
+  | "adv" { ADV }
   | "bound_dist" { BOUNDDIST }
   | "bound_succ" { BOUNDSUCC }
   | "bound_adv" { BOUNDADV }

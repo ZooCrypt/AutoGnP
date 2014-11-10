@@ -31,8 +31,14 @@ val private_vars_dec : assm_dec -> Se.t
 val inst_dec : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
 
 (* \hd{Computational assumptions.} *)
+
+type assm_type = A_Succ | A_Adv
+
+val pp_atype : F.formatter -> assm_type -> unit
+
 type assm_comp = private {
   ac_name       : string;       (*r name of assumption *)
+  ac_type       : assm_type;    (* type of assumption *)
   ac_prefix     : gdef;         (*r prefix of assumption *)
   ac_event      : Expr.expr;    (*r event expression *)
   ac_acalls     : (Asym.t * Vsym.t list * expr) list;
@@ -42,7 +48,7 @@ type assm_comp = private {
 
 val pp_assm_comp :  F.formatter -> assm_comp -> unit
 
-val mk_assm_comp : string -> gdef -> expr -> vs list list -> assm_comp
+val mk_assm_comp : string -> assm_type -> gdef -> expr -> vs list list -> assm_comp
 
 val private_vars_comp : assm_comp -> Se.t
 

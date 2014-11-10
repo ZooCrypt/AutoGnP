@@ -21,7 +21,7 @@ operator H : (BS_i * G * G) -> Fq.
 
 adversary A_tcr : (BS_i * G * G) ->  (G * G).
 
-assumption tcr
+assumption tcr succ
   [ i <-$ BS_i; a <-$ Fq; b <-$ Fq; (gu,gv) <- A_tcr(i,g^a,g^b); ]
   : (H(i,gu,gv) = H(i,g^a,g^b)) /\ ((gu,gv) <> (g^a,g^b)).
 
@@ -30,7 +30,7 @@ assumption tcr
    discrete logarithms of the chosen inputs. *)
 adversary A_tcr_dlog : (BS_i * Fq * Fq) ->  (G * G).
 
-assumption tcr_dlog
+assumption tcr_dlog succ
   [ i <-$ BS_i; a <-$ Fq; b <-$ Fq; (gu,gv) <- A_tcr_dlog(i,a,b); ]
   : (H(i,gu,gv) = H(i,g^a,g^b)) /\ ((gu,gv) <> (g^a,g^b)).
 
@@ -54,7 +54,7 @@ operator Dec : (BS_ks * BS_enc) -> BS_msg.
 adversary A1_cpa1 : () -> (BS_msg * BS_msg).
 adversary A2_cpa1 : BS_enc -> Bool.
 
-assumption cpa1
+assumption cpa1 adv
   [ ks      <-$ BS_ks;
     b       <-$ Bool;
     (m0,m1) <-  A1_cpa1();
@@ -69,7 +69,7 @@ operator Mac : (BS_km * BS_enc) -> BS_tag.
 adversary A1_cma1 : () -> BS_enc.
 adversary A2_cma1 : BS_tag -> (BS_enc * BS_tag).
 
-assumption cma1
+assumption cma1 succ
   [ km    <-$ BS_km;
     ec    <-  A1_cma1();
     (e,t) <-  A2_cma1(Mac(km,ec));
@@ -77,7 +77,7 @@ assumption cma1
 
 adversary A2_cma0 : () -> (BS_enc * BS_tag).
 
-assumption cma0
+assumption cma0 succ
   [ km    <-$ BS_km;
     (e,t) <-  A2_cma0();
   ] : (Mac(km,e) = t).

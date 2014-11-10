@@ -149,8 +149,15 @@ let inst_dec ren assm =
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Computational assumptions} *)
 
+type assm_type = A_Succ | A_Adv
+
+let pp_atype fmt = function
+  | A_Succ -> pp_string fmt "Succ"
+  | A_Adv  -> pp_string fmt "Adv"
+
 type assm_comp = {
   ac_name       : string;       (*r name of assumption *)
+  ac_type       : assm_type;
   ac_prefix     : gdef;         (*r prefix of assumption *)
   ac_event      : Expr.expr;    (*r event expression *)
   ac_acalls     : (Asym.t * Vsym.t list * expr) list;
@@ -163,12 +170,12 @@ let pp_acall_comp fmt (asym,vs1,args1) =
     (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_exp args1
 
 let pp_assm_comp fmt ac =
-  F.fprintf fmt "assumption %s:@\n" ac.ac_name;
+  F.fprintf fmt "assumption %s (%a):@\n" ac.ac_name pp_atype ac.ac_type;
   F.fprintf fmt "prefix left:@\n%a@\n"  pp_gdef ac.ac_prefix;
   F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_comp) ac.ac_acalls;
   F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ac.ac_symvars
 
-let mk_assm_comp name gd ev sym_vars =
+let mk_assm_comp name atype gd ev sym_vars =
   ignore (Wf.wf_se Wf.NoCheckDivZero { se_gdef = gd; se_ev = ev});
   let (pref,suff) = L.partition (function GCall _ -> false | _ -> true) gd in
   let rec go acc acalls =
@@ -184,6 +191,7 @@ let mk_assm_comp name gd ev sym_vars =
   in
   let ac = {
     ac_name       = name;
+    ac_type       = atype;
     ac_prefix     = pref;
     ac_event      = ev;
     ac_acalls     = go [] suff;
@@ -204,7 +212,7 @@ let inst_comp ren assm =
   let ren_v (x:Vsym.t) = try Vsym.M.find x ren with Not_found -> x in
   let ren_acall (asym,vres,e) = (asym, L.map ren_v vres, subst_v_e ren_v e) in
   let subst_g = Game.subst_v_gdef ren_v in
-  { ac_name       = assm.ac_name;
+  { assm with
     ac_prefix     = subst_g assm.ac_prefix;
     ac_event      = subst_v_e ren_v assm.ac_event;
     ac_acalls     = L.map ren_acall assm.ac_acalls;

@@ -267,6 +267,14 @@ let ensure_ppt rn gdef =
   if not (is_ppt_gcmds gdef) then
     tacerror "%s: %a is not ppt" rn pp_gdef gdef
 
+let ensure_pr_Adv rn ju =
+  if ju.ju_pr <> Pr_Adv then
+    tacerror "%s: Adv judgment expected" rn
+
+let ensure_pr_Succ_or_Adv rn ju =
+  if ju.ju_pr <> Pr_Succ && ju.ju_pr <> Pr_Adv then
+    tacerror "%s: Succ or Adv judgment expected" rn
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Core rules: Lossless bridging rules} *)
 (*i ----------------------------------------------------------------------- i*)
@@ -762,11 +770,12 @@ let assm_comp_valid_ranges rn assm acalls_ju rngs =
   in
   go rngs assm.ac_acalls
 
-(*i FIXME: associate probability tag with assumption and check here i*)
 let rassm_comp assm0 rngs ren ju =
   let rn = "assumption_computational" in
   let se = ju.ju_se in
   let assm = Assumption.inst_comp ren assm0 in
+  if assm.ac_type = A_Adv then ensure_pr_Adv rn ju;
+  if assm.ac_type = A_Succ then ensure_pr_Succ_or_Adv rn ju;
   let pref = assm.ac_prefix in
   let pref_len = L.length pref in
   let pref_ju = Util.take pref_len se.se_gdef in

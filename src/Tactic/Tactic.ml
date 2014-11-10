@@ -347,7 +347,7 @@ let handle_instr verbose ts instr =
     in
     (ts, "Declared decisional assumption.")
 
-  | PT.AssmComp(s,g,ev,symvs) ->
+  | PT.AssmComp(s,at,g,ev,symvs) ->
     let vmap = Ht.create 137 in
     let g = PU.gdef_of_parse_gdef vmap ts g in
     let parse_var s =
@@ -356,7 +356,7 @@ let handle_instr verbose ts instr =
     in
     let symvs = L.map (L.map parse_var) symvs in
     let ev = PU.expr_of_parse_expr vmap ts ev in
-    let assm = Assumption.mk_assm_comp s g ev symvs in
+    let assm = Assumption.mk_assm_comp s at g ev symvs in
     if Mstring.mem s ts.ts_assms_comp then
       tacerror "assumption with the same name already exists";
     let ts = { ts with ts_assms_comp = Mstring.add s assm ts.ts_assms_comp } in

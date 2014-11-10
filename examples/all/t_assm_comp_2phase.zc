@@ -4,7 +4,7 @@ operator MAC : (BS_m * BS_l) -> BS_t.
 adversary B1 : () -> BS_l.
 adversary B2 : BS_t -> (BS_l * BS_t).
 
-assumption cma1
+assumption cma1 succ
   [ k     <-$ BS_m;
     mc    <-  B1();
     (m,t) <-  B2(MAC(k,mc));
