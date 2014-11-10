@@ -56,11 +56,9 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets ju =
       @>
       (* We assume the last let definition differs between left and right
          and therefore enforce that it is used in the game *)
-      (if i_let = n_let then
-          (t_guard (fun ju -> let se = ju.ju_se in Se.mem (mk_V vs') (Game.read_se se)))
-       else
-          CR.t_id)
-    )
+      (if i_let = n_let
+       then t_guard (fun ju -> Se.mem (mk_V vs') (Game.read_se ju.ju_se))
+       else CR.t_id))
   in
   let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) gdef_samps in
   let ((_,subst), let_abstrs) =  map_accum ltac (1,subst) assm_lets in
@@ -193,20 +191,16 @@ let t_assm_dec_non_exact
   t_assm_dec_auto assm dir ren ju
 
 let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
+  let rn = "asumption_decisional" in
+  let fail_opt mo s = fail_opt mo (rn^": "^s) in
   let se = ju.ju_se in
-  let dir = match mdir with Some s -> s | None -> tacerror "exact requires dir" in
-  let assm_name = match massm_name with
-    | Some s -> s
-    | None   -> tacerror "exact requires sname"
-  in
+  let dir = fail_opt mdir "requires direction" in
+  let assm_name = fail_opt massm_name "requires assumption" in
   let assm =
     try Mstring.find assm_name ts.ts_assms_dec
-    with Not_found -> tacerror "error no assumption %s" assm_name
+    with Not_found -> tacerror "%s: error no assumption %s" rn assm_name
   in
-  let rngs = match mrngs with
-    | Some rngs -> rngs
-    | None      -> tacerror "exact requires ranges"
-  in
+  let rngs = fail_opt mrngs "requires ranges" in
   let vneeded = needed_vars_dec dir assm in
   let acalls  = assm.ad_acalls in
   let vnames = match mvnames with
@@ -214,48 +208,64 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
     | None when L.length vneeded <> 0 -> tacerror "exact required vnames"
     | None                            -> []
   in
-  if L.length vneeded <> L.length vnames then tacerror "Bad number of variables";
-  if L.length acalls <> L.length rngs then tacerror "Bad number of ranges";
+  if L.length vneeded <> L.length vnames then 
+    tacerror "%s: wrong number of variables" rn;
+  if L.length acalls <> L.length rngs then tacerror "%s: Wrong number of ranges" rn;
+  (* initial renaming with mappings from needed variables to given variables *)
   let ren =
     List.fold_left2
       (fun s v x -> let v' = Vsym.mk x v.Vsym.ty in Vsym.M.add v v' s)
-      Vsym.M.empty
-      vneeded
-      vnames
+      Vsym.M.empty vneeded vnames
   in
-  let c = if dir = LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
-  let c_ju = Util.take (List.length c) se.se_gdef in
-  if L.length c_ju <> L.length c then tacerror "Bad prefix";
+  let get_dir c1 c2 = if dir = LeftToRight then c1 else c2 in
+  let pref = get_dir assm.ad_prefix1 assm.ad_prefix2 in
+  let pref_len = L.length pref in
+  let pref_ju = Util.take pref_len se.se_gdef in
+  if L.length pref_ju <> pref_len then tacerror "%s: bad prefix" rn;
   (* extend renaming with mappings for random samplings in prefix *)
   let ren =
     List.fold_left2
-      (fun rn  i1 i2 ->
+      (fun ren i1 i2 ->
         match i1, i2 with
         | GSamp(x1,_), GSamp(x2,_) when Type.ty_equal x1.Vsym.ty x2.Vsym.ty ->
-          Vsym.M.add x1 x2 rn
-        | _ -> tacerror "assumption_decisional: can not infer renaming")
-      ren c c_ju
+          Vsym.M.add x1 x2 ren
+        | _ -> tacerror "%s: can not infer renaming" rn)
+      ren pref pref_ju
   in
   (* extend renaming with mappings for variables binding return values *)
   let ren =
     List.fold_left2
-      (fun rn  (_,j) (_asym,vres,_) ->
+      (fun ren  (_,j) (_asym,vres,_) ->
         let nvres = L.length vres in
         let vres_ju =
           Util.take nvres (Util.drop (j + 1 - nvres) se.se_gdef)
-          |> (fun gd -> log_t (lazy (fsprintf "%a" pp_gdef gd)); gd)
           |> L.map (function GLet (x,_) -> x | _ -> assert false)
         in
-        if L.length vres <> L.length vres_ju then tacerror "return type does not match";
-        L.fold_left2 (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn) rn vres vres_ju)
+        if L.length vres <> L.length vres_ju then
+          tacerror "%s: return type does not match" rn;
+        L.fold_left2
+          (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn)
+          ren vres vres_ju)
       ren rngs assm.ad_acalls
   in
   let conv_common_prefix ju =
     let se = ju.ju_se in
     let a_rn = inst_dec ren assm in
-    let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
-    let grest = Util.drop (L.length c) se.se_gdef in
-    (   CR.t_ensure_progress (CoreRules.t_conv true { se with se_gdef=c@grest })
+    let pref = get_dir a_rn.ad_prefix1 a_rn.ad_prefix2 in
+    let assm_terms =
+      L.map2 (fun (_,_,(e1,e2)) (i,_) -> (i,get_dir e1 e2)) a_rn.ad_acalls rngs
+    in
+    let grest =
+      L.mapi
+        (fun i c ->
+          match c with
+          | GLet(v,e') ->
+            let e = try L.assoc (i + pref_len) assm_terms with Not_found -> e' in
+            GLet(v,e)
+          | _ -> c)
+        (Util.drop pref_len se.se_gdef)
+    in
+    (   CR.t_ensure_progress (CR.t_conv true { se with se_gdef=pref@grest })
      @> CoreRules.t_assm_dec dir ren rngs assm) ju
   in
   (CR.t_assm_dec dir ren rngs assm @|| conv_common_prefix) ju
@@ -480,7 +490,6 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   match ot with
   | Some t -> t ju
   | None   -> ret ps
-  
 
 let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mrngs ju =
   (match maname with

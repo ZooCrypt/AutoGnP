@@ -531,7 +531,9 @@ let gdef_global_vars gdef = Se.union (read_gcmds gdef) (write_gcmds gdef)
 let ensure_same_length l1 l2 =
   if L.length l1 <> L.length l2 then raise Not_found
 
-let unif_vs ren v1 v2 = Vsym.H.add ren v1 v2
+let unif_vs ren v1 v2 =
+  if not (Vsym.equal v1 v2) then
+    Vsym.H.add ren v1 v2
 
 (* FIXME: pretty incomplete *)
 let unif_expr ren e1 e2 =
@@ -611,6 +613,11 @@ let subst_v_e tov =
   let rec aux e =
     match e.e_node with
     | V v -> mk_V (tov v)
+    (* we could reorder n-ary constructors here after the renaming
+    | Nary(o, es) when o == FPlus || o == FMult || o == GMult || o == Xor ->
+      let es = L.map (e_map_top aux) es in
+      Expr.mk_nary "subst" true o (L.sort e_compare es) (L.hd es).e_ty
+    *)
     | Exists(e1,e2,binders) ->
       let e1 = e_map_top aux e1 in
       let e2 = e_map_top aux e2 in
@@ -645,7 +652,6 @@ let subst_v_se tov se =
 
 (** Renaming of variables. *)
 type renaming = vs Vsym.M.t
-
 
 let id_renaming = Vsym.M.empty
 

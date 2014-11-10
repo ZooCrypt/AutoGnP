@@ -58,7 +58,7 @@ let pp_jus i fmt jus =
     L.iteri pp_goal (Util.take i jus)
 
 let gpos_of_offset ju i =
-  if i < 1 then L.length ju.ju_se.se_gdef + i + 1 else i
+  if i < 0 then L.length ju.ju_se.se_gdef + i + 1 else i
 
 let epos_of_offset ju i =
   let ev = ju.ju_se.se_ev in
@@ -98,7 +98,7 @@ let handle_tactic ts tac =
       let ts = opt (fun ad -> { ts with ts_adecls = ad }) ts adecls in
       let pss = CR.apply_first r ps in
       begin match pull pss with
-      | Left None     -> tacerror "mempty"
+      | Left None     -> tacerror "tactic failed, no error message"
       | Left (Some s) -> tacerror "%s" (Lazy.force s)
       | Right(nps,pss) ->
         let ops = Some ps in
@@ -139,7 +139,12 @@ let handle_tactic ts tac =
     apply t_case_ev_maybe
 
   | PT.Rexcept(Some(i),Some(ses)) ->
+    log_i (lazy (fsprintf "pos: %s"
+                   (match i with PT.Var s -> "var: "^s 
+                   | PT.Pos i -> "pos:" ^ string_of_int i)));
+    
     apply (CR.t_except (get_pos i) (L.map (parse_e) ses))
+
   | PT.Rexcept(i,ses) ->
     apply (t_rexcept_maybe (map_opt get_pos i) ses)
 
@@ -170,7 +175,7 @@ let handle_tactic ts tac =
     let vmap2 = Hashtbl.create 134 in
     let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
-    apply (CR.t_conv true ~do_rename:true { se_gdef = gd2; se_ev = ev2 })
+    apply (CR.t_conv true { se_gdef = gd2; se_ev = ev2 })
 
   | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
     apply (t_assm_dec ts exact maname mdir mrngs msvs)
@@ -254,16 +259,8 @@ let handle_tactic ts tac =
   | PT.Radd_test(_,_,_,_) ->
     tacerror "radd_test expects either all values or only placeholders"
 
-  | PT.Rbad(i,sx) ->
-    let ty =
-      match get_se_gcmd ju.ju_se i with
-      | G.GLet(_,e') when is_H e' ->
-        let _,e = destr_H e' in
-        e.e_ty
-      | _ -> tacerror "Line %is not hash assignment." i
-    in
-    let vx = PU.create_var (vmap_of_globals ju.ju_se.se_gdef) sx ty in
-    apply (CR.t_bad (t_pos i) vx)
+  | PT.Rbad(_i,_sx) ->
+    tacerror "not implemented"
 
   | PT.Deduce(pes,pe) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in

@@ -30,8 +30,11 @@ let ( @>= ) = t_bind_ignore
 let ( @| ) = t_or
 
 let (@||) t1 t2 ju =
-  let mps = t1 ju in
-  if is_nil mps then t2 ju else mps
+  let pss = t1 ju in
+  match pull pss with (* try to preserve error from first call *)
+  | Left (Some s) -> mplus (t2 ju) (mfail s)
+  | Left None -> t2 ju
+  | Right(_) -> pss
 
 let rec t_seq_fold = function
   | []    -> t_id
@@ -266,7 +269,7 @@ let rec simplify_proof_tree pt =
     begin match pt1.pt_rule, pt1.pt_children with
     | Rconv,[pt11] ->
       (* skip intermediate judgment *)
-      let pss = t_conv true ~do_rename:true pt11.pt_ju.ju_se pt.pt_ju in
+      let pss = t_conv true pt11.pt_ju.ju_se pt.pt_ju in
       let ps = Nondet.first pss in
       ps.validation [pt11]
     | _ -> 
