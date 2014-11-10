@@ -65,14 +65,23 @@ let from_opt x o = match o with
   | Some y -> y
   | None   -> x
 
+let get_opt_exc o = match o with
+  | Some y -> y
+  | None   -> raise Not_found
+
 let opt f x o = match o with
   | Some y -> f y
   | None   -> x
 
+let opt_f f g o = match o with
+  | Some y -> f y
+  | None   -> g ()
 
 let swap (x,y) = (y,x)
 
 let compare_on f x y = compare (f x) (f y)
+
+let eq_on f x y = f x = f y
 
 let input_file file_name =
   let in_channel = open_in file_name in
@@ -431,3 +440,8 @@ let tacerror fmt =
       log (lazy s);
       raise (Invalid_rule s))
     fbuf fmt
+
+let fail_opt ox s =
+  match ox with
+  | Some x -> x
+  | None -> tacerror "%s" s

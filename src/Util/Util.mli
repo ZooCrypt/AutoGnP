@@ -89,7 +89,11 @@ val map_opt : ('a -> 'b) -> 'a option -> 'b option
 
 val from_opt : 'a -> 'a option -> 'a
 
+val get_opt_exc : 'a option -> 'a
+
 val opt : ('a -> 'b) -> 'b -> 'a option -> 'b
+
+val opt_f : ('a -> 'b) -> (unit -> 'b) -> 'a option -> 'b
 
 
 (*i ----------------------------------------------------------------------- i*)
@@ -236,6 +240,8 @@ exception Invalid_rule of string
 
 (** [tacerror s] raises a rule application error with information [s]. *)
 val tacerror : ('a, F.formatter, unit, 'b) format4 -> 'a
+
+val fail_opt : 'a option -> string -> 'a
 
 val mk_logger : string -> Bolt.Level.t -> string -> string Lazy.t -> unit
 

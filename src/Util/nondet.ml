@@ -32,7 +32,8 @@ let sforce x =
   | Failure s ->
     failwith s
   | e ->
-    log_i (lazy (Format.sprintf "sforce: exception %s\n%!" (Printexc.to_string e)));
+    let err = Printexc.to_string e in
+    log_i (lazy (F.sprintf "sforce: exception %s\n%!" err));
     Nil None
 
 let rec mplus a b = from_fun (fun () ->
@@ -90,7 +91,6 @@ let sequence ms =
     ret (x::xs)))
   in
   List.fold_right go ms (ret [])
-
 
 let mapM f ms = sequence (List.map f ms)
 let foreachM ms f = mapM f ms
