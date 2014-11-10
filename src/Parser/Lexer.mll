@@ -64,6 +64,8 @@ rule lex = parse
   | "add_test" { RADD_TEST }
   | "case_ev" { RCASE_EV }
   | "remove_ev" { RREMOVE_EV }
+  | "dist_sym" { RDIST_SYM }
+  | "dist_eq" { RDIST_EQ }
   | "norm_nounfold" { RNORM_NOUNFOLD }
   | "let_abstract"  { RLET_ABSTRACT }
   | "let_unfold"  { RLET_UNFOLD }

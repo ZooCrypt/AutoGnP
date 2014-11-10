@@ -282,6 +282,14 @@ let ensure_pr_Succ_or_Adv rn ju =
 (*i ----------------------------------------------------------------------- i*)
 (* \bf{Conversion.} *)
 
+let rename_if_required rn se1 se2 =
+  let ren = Game.unif_se se1 se2 in
+  if Vsym.M.is_empty ren then se1
+  else (
+    ensure_ren_inj rn ren;
+    subst_v_se (fun vs -> Vsym.M.find vs ren) se1
+  )
+
 let rconv do_norm_terms new_se ju =
   let rn = "conv" in
   let se = ju.ju_se in
@@ -291,14 +299,7 @@ let rconv do_norm_terms new_se ju =
   let se'     = norm_se ~norm:id se in
   let new_se' = norm_se ~norm:id new_se in
   (* perform renaming if required *)
-  let ren = Game.unif_se se' new_se' in
-  let se' =
-    if Vsym.M.is_empty ren then se'
-    else (
-      ensure_ren_inj rn ren;
-      subst_v_se (fun vs -> Vsym.M.find vs ren) se'
-    )
-  in
+  let se' = rename_if_required rn se' new_se' in
   (* check DivZero for unfolded+renamed and normalize (if requested) *)
   let se',new_se' =
     if not do_norm_terms then (se',new_se')
@@ -590,8 +591,6 @@ let t_except_oracle p es = prove_by (rexcept_oracle p es)
 (* \hd{Core rules: Weaken event} *)
 (*i ----------------------------------------------------------------------- i*)
 
-(* FIXME: decide how to deal with probability tag for these rules *)
-
 (*i ----------------------------------------------------------------------- i*)
 (* \bf{Perform case distinction on event.} *)
 
@@ -657,13 +656,39 @@ let t_remove_ev rm = prove_by (rremove_ev rm)
 (* \hd{Core rules: Bound probability directly} *)
 (*i ----------------------------------------------------------------------- i*)
 
-(* FIXME: check probability tag for these rules *)
-
 (*i ----------------------------------------------------------------------- i*)
 (* \bf{Admit proof obligation} *)
 
 let radmit s _g = Radmit s, []
 let t_admit s = prove_by (radmit s)
+
+(*i ----------------------------------------------------------------------- i*)
+(* \bf{Distinguishability judgments are symmetric} *)
+
+let rdist_sym ju =
+  match ju.ju_pr with
+  | Pr_Dist se' ->
+    Rdist_sym, [ { ju_se = se'; ju_pr = Pr_Dist ju.ju_se } ]
+  | _ ->
+    tacerror "rdist_sym: Dist judgment expected"
+
+let t_dist_sym = prove_by rdist_sym
+
+(*i ----------------------------------------------------------------------- i*)
+(* \bf{Equal experiments cannot be distinguished} *)
+
+let rdist_eq ju =
+  match ju.ju_pr with
+  | Pr_Dist se' ->
+    let se = rename_if_required "dist_eq" ju.ju_se se' in
+    if se_equal se' se then
+      Rdist_eq, []
+    else
+      tacerror "rdist_eq: judgments not equal"
+  | _ ->
+    tacerror "rdist_eq: Dist judgment expected"
+
+let t_dist_eq = prove_by rdist_eq
 
 (*i ----------------------------------------------------------------------- i*)
 (* \bf{Bound false event} *)

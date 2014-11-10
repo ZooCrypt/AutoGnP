@@ -48,8 +48,8 @@ let pp_ju fmt ju =
   | Pr_Dist se -> 
     F.fprintf fmt
       ("| Pr[ G : E ] - Pr[ G' : E' ] | negligible where@\n"^^
-       "G : E := @\n@[<hv 2>  %a@\n  : %a@\nand@\n@]"^^
-       "G' : E' := @\n@[<hv 2>  %a@\n  : %a@\nand@]")
+       "G : E := @\n@[<hv 2>  %a@\n  : %a@]@\n"^^
+       "and G' : E' := @\n@[<hv 2>  %a@\n  : %a@]")
       pp_gdef ju.ju_se.se_gdef pp_exp ju.ju_se.se_ev
       pp_gdef se.se_gdef pp_exp se.se_ev
 
@@ -130,3 +130,7 @@ type rule_name =
   | Rfalse_ev
 
   | Rrnd_indep of bool * int
+
+  | Rdist_sym
+
+  | Rdist_eq

@@ -124,6 +124,8 @@ let handle_tactic ts tac =
   | PT.Rlet_unfold(Some(i))  -> apply (t_let_unfold (get_pos i))
   | PT.Rlet_unfold(None)     -> apply (t_unfold_only)
   | PT.Rswap(i,j)            -> apply (CR.t_swap (t_pos i) j)
+  | PT.Rdist_eq              -> apply CR.t_dist_eq
+  | PT.Rdist_sym             -> apply CR.t_dist_sym
   | PT.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
   | PT.Rsplit_ev(i)          -> apply (CR.t_split_ev (e_pos i))
   | PT.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev (e_pos i) d)

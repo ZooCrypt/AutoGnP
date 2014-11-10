@@ -102,6 +102,8 @@
 %token RRND_ORACLE
 %token RSWAP
 %token RCONV
+%token RDIST_SYM
+%token RDIST_EQ
 %token RINDEP
 %token RCRUSH
 %token BYCRUSH
@@ -483,6 +485,10 @@ tactic :
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Apply(Rindep(excl=None)) }
 | RFALSE_EV         { Apply(Rfalse_ev)}
+
+/* bounding distinguishing probability */
+| RDIST_EQ  { Apply(Rdist_eq)}
+| RDIST_SYM { Apply(Rdist_sym)}
 
 /* debugging */
 | DEDUCE  LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Apply(Deduce(es,e)) }

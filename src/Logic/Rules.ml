@@ -198,6 +198,10 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   match ru with
   | Rconv ->
     F.fprintf fmt "rconv"
+  | Rdist_eq ->
+    F.fprintf fmt "dist_eq"
+  | Rdist_sym ->
+    F.fprintf fmt "dist_sym"
   | Rswap(pos,delta) ->
     F.fprintf fmt "rswap %i %i" pos delta
   | Rexc(pos,es) ->

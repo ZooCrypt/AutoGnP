@@ -107,6 +107,12 @@ val t_false_ev : tactic
 val radmit : string -> rule
 val t_admit : string -> tactic
 
+val rdist_sym : rule
+val t_dist_sym :tactic
+
+val rdist_eq : rule
+val t_dist_eq :tactic
+
 val rrw_ev   : int -> direction -> rule
 val t_rw_ev  : int -> direction -> tactic
 

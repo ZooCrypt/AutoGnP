@@ -1869,6 +1869,8 @@ let pp_cintros fmt hs =
 
 let rec extract_proof file pft = 
   match pft.pt_rule with
+  | Rdist_sym -> assert false
+  | Rdist_eq -> assert false
   | Rconv -> 
     extract_conv file pft [] pft
 

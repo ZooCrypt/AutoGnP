@@ -176,9 +176,8 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
   | Some i -> ret i
   | None   -> mconcat (L.map fst samps)
   ) >>= fun i ->
-  let (rv,(ty,es)) = L.assoc i samps in
+  let (rv,(_,es)) = L.assoc i samps in
   let vs = vars_dexc rv es in
-  guard (ty_equal ty mk_Fq) >>= fun _ ->
   guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
   log_t (lazy "###############################");
   log_t (lazy (fsprintf "t_rnd_maybe %i\n%!" i));

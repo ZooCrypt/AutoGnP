@@ -45,8 +45,8 @@ let rec mk_simpl_op _strong op l =
     let p2 = destr_gexp es.Esym.source2 g2 in
     let p = norm_field_expr (mk_FMult [p1; p2]) in
     mk_gexp es.Esym.target p
-  | Eq, [e1;e2] when is_False e1            -> mk_Not e2
-  | Eq, [e1;e2] when is_False e2            -> mk_Not e1
+  | Eq, [e1;e2] when is_False e1            -> norm_expr (mk_Not e2)
+  | Eq, [e1;e2] when is_False e2            -> norm_expr (mk_Not e1)
   | Eq, [e1;e2] when is_True e1             -> e2
   | Eq, [e1;e2] when is_True e2             -> e1
   | Eq, [e1;e2] when e_equal e1 e2          -> mk_True

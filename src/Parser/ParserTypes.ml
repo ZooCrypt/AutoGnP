@@ -69,6 +69,8 @@ type assgn_pos =
 
 type tactic =
   | Rnorm
+  | Rdist_eq
+  | Rdist_sym
   | Rfalse_ev
   | Rnorm_nounfold
   | Rsimp          of bool
