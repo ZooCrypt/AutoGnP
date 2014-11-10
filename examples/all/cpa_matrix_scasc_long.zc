@@ -1,4 +1,4 @@
-(* CPA encryption from the 2Casc, we follow the matrix assumption paper *)
+(* CPA encryption from 2Casc, we follow the matrix assumption paper *)
 
 adversary A_twocasc : (G * G * G * G) -> Bool.
 

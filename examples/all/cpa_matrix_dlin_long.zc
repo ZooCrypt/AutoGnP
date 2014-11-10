@@ -33,7 +33,7 @@ prove
   norm_unknown.
   let_abstract! 5 arg (g^a1,g^a2,g^(a1*r1),g^(a2*r2),g^(r1+r2)).
   let_abstract _ res _.
-  assumption_decisional dlin -> (5-9) t. (* we exploit that subst sorts terms for n-ary operators here *)
+  assumption_decisional dlin -> (5-9) t.
   bycrush.
 qed.
 print_proof.
