@@ -1,9 +1,0 @@
-(* We divide by zero, it is allowed in the definition, but we are not
-   allowed to use rnorm. *)
-
-prove [
-  x <-$ Fq;
-  y <-$ Fq \ (x/x);
-] : true.
-rnorm.
-print_goals : after_rnorm.

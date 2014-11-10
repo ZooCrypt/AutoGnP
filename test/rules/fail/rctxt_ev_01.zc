@@ -1,9 +1,0 @@
-prove [
-  x <-$ Fq;
-  y <-$ Fq;
-  z <-$ Fq;
-  a <-$ Fq;
-] : not (x = y) /\ ((1 * (x - y)) = z * (x - y)) /\ (a = x).
-rctxt_ev (w -> w / x) 2.
-rnorm.
-print_goals : t2.
