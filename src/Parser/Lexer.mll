@@ -47,7 +47,9 @@ rule lex = parse
   | "random" { RANDOM }
   | "bilinear" { BILINEAR }
   | "map" { MAP }
-  | "prove" { PROVE }
+  | "bound_dist" { BOUNDDIST }
+  | "bound_succ" { BOUNDSUCC }
+  | "bound_adv" { BOUNDADV }
   | "print_goals" { PRINTGOALS }
   | "print_goal" { PRINTGOAL }
   | "print_proof" { PRINTPROOF }

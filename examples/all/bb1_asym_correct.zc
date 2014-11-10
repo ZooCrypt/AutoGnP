@@ -1,7 +1,7 @@
 adversary A1 : () -> (Fq * G_t).
 bilinear map e : G_1 * G_2 -> G_t.
 
-prove
+bound_succ
   [ (* master secret/public key *)
     al <-$ Fq;
     be  <-$ Fq;

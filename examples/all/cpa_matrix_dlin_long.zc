@@ -11,7 +11,7 @@ assumption dlin ([a1,a2])
 adversary A1 : (G * G) -> (G * G).
 adversary A2 : (G * G * G) -> Bool.
 
-prove
+bound_adv
   [ (* secret key a1,a2 *)
     a1 <-$ Fq;
     a2 <-$ Fq;

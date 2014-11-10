@@ -1,7 +1,7 @@
 adversary A1 : () -> G.
 operator H : (G * G * G) -> Fq.
 
-prove
+bound_succ
   [ w  <-$ Fq;
     x1 <-$ Fq;
     x2 <-$ Fq;

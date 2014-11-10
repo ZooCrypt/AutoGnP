@@ -11,7 +11,7 @@ assumption twocasc
 adversary A1 : G -> (G * G).
 adversary A2 : (G * G * G) -> Bool.
 
-prove
+bound_adv
   [ (* secret key a1,a2 *)
     a <-$ Fq;
     let p1 = g^a;

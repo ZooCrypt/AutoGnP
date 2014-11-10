@@ -1,6 +1,6 @@
 adversary A : () -> Fq.
 
-prove
+bound_succ
   [ s <- A();
     w <-$ Fq \ 0;
     r <-$ Fq;

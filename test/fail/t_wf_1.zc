@@ -1,6 +1,6 @@
 adversary A : () -> Fq.
 
-prove
+bound_succ
   [ x <-  A();
     u <-$ Fq \ 0;
   ] : 1 / u*x = 0.

@@ -13,7 +13,7 @@ assumption cma1
 adversary A1 : G -> (BS_l * G).
 adversary A2 : BS_t -> (BS_l * BS_t).
 
-prove
+bound_succ
   [ gx <-$ G;
     k_ <-$ BS_m;
     (mc_,gy) <- A1(gx);

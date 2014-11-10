@@ -107,7 +107,9 @@ type instr =
   | ADecl      of string * parse_ty * parse_ty
   | AssmDec    of string * gdef * gdef * (string list) list
   | AssmComp   of string * gdef * parse_expr * string list list
-  | Judgment   of gdef * parse_expr
+  | JudgSucc   of gdef * parse_expr 
+  | JudgAdv    of gdef * parse_expr
+  | JudgDist   of gdef * parse_expr * gdef * parse_expr
   | PrintGoal  of string
   | PrintGoals of string
   | PrintProof of bool

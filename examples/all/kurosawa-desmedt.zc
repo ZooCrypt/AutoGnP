@@ -107,7 +107,7 @@ adversary A2 : (G * G * BS_enc * BS_tag) -> Bool.
 oracle Dec1 : (G * G * BS_enc * BS_tag) -> BS_msg.
 oracle Dec2 : (G * G * BS_enc * BS_tag) -> BS_msg.
 
-prove
+bound_adv
   [ 
     (* Sample a hash function (its index) and two generators of G *)
     i <-$ BS_i;

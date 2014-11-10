@@ -82,7 +82,9 @@
 %token RANDOM
 %token BILINEAR
 %token MAP
-%token PROVE
+%token BOUNDDIST
+%token BOUNDSUCC
+%token BOUNDADV
 %token DOT
 %token PRINTGOALS
 %token PRINTGOAL
@@ -387,7 +389,11 @@ decl :
 | ASSUMPTION
     i1=ID sym=option(sym_vars) LBRACK g=gdef0 RBRACK COLON e=expr0
   { AssmComp(i1,g,e,opt id [] sym) }
-| PROVE LBRACK g=gdef0 RBRACK e=event { Judgment(g,e) }
+| BOUNDSUCC LBRACK g=gdef0 RBRACK e=event { JudgSucc(g,e) }
+| BOUNDADV LBRACK g=gdef0 RBRACK e=event { JudgAdv(g,e) }
+| BOUNDDIST LBRACK g1=gdef0 RBRACK e1=event
+     LBRACK g2=gdef0 RBRACK e2=event
+   { JudgDist(g1,e1,g2,e2) }
 ;
 
 /************************************************************************/

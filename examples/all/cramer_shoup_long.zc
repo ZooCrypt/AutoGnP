@@ -17,7 +17,7 @@ adversary A2 : (G * G * G * G) -> Bool.
 oracle Dec1 : (G * G * G * G) -> G.
 oracle Dec2 : (G * G * G * G) -> G.
 
-prove
+bound_adv
   [ w  <-$ Fq;
     x1 <-$ Fq;
     x2 <-$ Fq;

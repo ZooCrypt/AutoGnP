@@ -23,7 +23,7 @@ assumption kdf
 adversary A1 : G -> (G * G).
 adversary A2 : (BS_s * BS_m) -> Bool.
 
-prove
+bound_adv
   [ gx_ <-$ G;
     gy_ <-$ G;
     ks_  <-$ BS_s;

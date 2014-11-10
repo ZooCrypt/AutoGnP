@@ -362,10 +362,21 @@ let handle_instr verbose ts instr =
     let ts = { ts with ts_assms_comp = Mstring.add s assm ts.ts_assms_comp } in
     (ts, "Declared computational assumption.")
 
-  | PT.Judgment(gd,e) ->
+  | PT.JudgAdv(gd,e) | PT.JudgSucc(gd,e)->
     let vmap = Ht.create 137 in
     let se = PU.se_of_parse_se vmap ts gd e in
-    let ju = { ju_se = se; ju_pr = Pr_Adv } in
+    let pt = match instr with PT.JudgAdv _ -> Pr_Adv | _ -> Pr_Succ in
+    let ju = { ju_se = se; ju_pr = pt } in
+    let ps = first (CR.t_id ju) in
+    ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }
+    , "Started proof of judgment.")
+
+  | PT.JudgDist(gd1,e1,gd2,e2) ->
+    let vmap1 = Ht.create 137 in
+    let se1 = PU.se_of_parse_se vmap1 ts gd1 e1 in
+    let vmap2 = Ht.create 137 in
+    let se2 = PU.se_of_parse_se vmap2 ts gd2 e2 in
+    let ju = { ju_se = se1; ju_pr = Pr_Dist se2 } in
     let ps = first (CR.t_id ju) in
     ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }
     , "Started proof of judgment.")
