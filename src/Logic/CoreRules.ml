@@ -602,6 +602,7 @@ let conj_or_negation_included e ev =
 
 let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   let se = ju.ju_se in
+  ensure_pr_Succ_or_Adv "case_ev" ju;
   let ev = se.se_ev in
   if not ae && conj_or_negation_included e ev then
     tacerror "rcase_ev: event or negation already in event";
@@ -616,6 +617,7 @@ let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
 (* \bf{Apply context to event} *)
 
 let rctxt_ev i c ju =
+  ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
   let ev = se.se_ev in
   let evs = destr_Land_nofail ev in
@@ -639,6 +641,7 @@ let t_ctxt_ev i c = prove_by (rctxt_ev i c)
 (* \bf{Remove an event} *)
 
 let rremove_ev (rm:int list) ju =
+  ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
   let evs =
     destr_Land_nofail se.se_ev
@@ -666,6 +669,7 @@ let t_admit s = prove_by (radmit s)
 (* \bf{Bound false event} *)
 
 let rfalse_ev ju =
+  ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   if is_False ju.ju_se.se_ev
   then Rfalse_ev, []
   else tacerror "rfalse_ev: event false expected"
@@ -706,7 +710,9 @@ let check_event r ev =
 let rrandom_indep ju =
   let se = ju.ju_se in
   match L.rev se.se_gdef with
-  | GSamp(r,_)::_ -> check_event r se.se_ev, []
+  | GSamp(r,_)::_ ->
+    if ty_equal r.Vsym.ty mk_Bool then ensure_pr_Adv "indep" ju;
+    check_event r se.se_ev, []
   | _             -> tacerror "rindep: the last instruction is not a random"
 
 let t_random_indep = prove_by rrandom_indep
