@@ -292,12 +292,18 @@ mexprlist0 :
 
 gcmd :
 | LET i=ID EQUAL e=expr0 { GLet(i,e) }
-| is=idlist LEFTARROW asym=AID LPAREN e=mexprlist0 RPAREN WITH os=odeflist { GCall(is,asym,e,os) }
-| is=idlist LEFTARROW asym=AID LPAREN e=mexprlist0 RPAREN                    { GCall(is,asym,e,[]) }
-| is=idlist LEFTARROW asym=AID UNIT WITH os=odeflist { GCall(is,asym,Tuple [],os) }
-| is=idlist LEFTARROW asym=AID UNIT                    { GCall(is,asym,Tuple [],[]) }
-| i=ID SAMP t=typ0 BACKSLASH es=exprlist0 { GSamp(i,t,es) }
-| i=ID SAMP t=typ0                          { GSamp(i,t,[]) }
+| is=idlist LEFTARROW asym=AID LPAREN e=mexprlist0 RPAREN WITH os=odeflist
+  { GCall(is,asym,e,os) }
+| is=idlist LEFTARROW asym=AID LPAREN e=mexprlist0 RPAREN
+  { GCall(is,asym,e,[]) }
+| is=idlist LEFTARROW asym=AID UNIT WITH os=odeflist
+  { GCall(is,asym,Tuple [],os) }
+| is=idlist LEFTARROW asym=AID UNIT
+  { GCall(is,asym,Tuple [],[]) }
+| i=ID SAMP t=typ0 BACKSLASH es=exprlist0
+  { GSamp(i,t,es) }
+| i=ID SAMP t=typ0
+  { GSamp(i,t,[]) }
 
 gcmdlist0 :
 | c=gcmd SEMICOLON { [c] }
