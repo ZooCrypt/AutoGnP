@@ -371,6 +371,8 @@ let catch_TypeError f =
 
 let se_of_list = L.fold_left (fun s e -> Se.add e s) Se.empty
 
+let se_disjoint s1 s2 = Se.is_empty (Se.inter s1 s2)
+
 let me_of_list es = L.fold_left (fun s (k,v) -> Me.add k v s) Me.empty es
 
 type ctxt = Vsym.t * expr

@@ -97,6 +97,8 @@ val is_ppt : expr -> bool
 
 val se_of_list : expr list -> Se.t
 
+val se_disjoint : Se.t -> Se.t -> bool
+
 val me_of_list : (Me.key * 'a) list -> 'a Me.t
 
 type ctxt = Vsym.t * expr
