@@ -26,21 +26,22 @@ let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
 (* Useful (in)equalities that can be obtained by applying one of the three rules *)
 type useful_cases =
   | AppAddTest    of ocmd_pos * expr * ty * ty
-  | AppExceptOrcl of ocmd_pos * expr
   | AppExcept     of gcmd_pos * expr
   | AppCaseEv     of expr
+(*   | AppExceptOrcl of ocmd_pos * expr *)
 
 let uc_exp uc = match uc with
-  | AppAddTest(_,e,_,_) | AppExceptOrcl(_,e) | AppExcept(_,e) | AppCaseEv(e) -> e
+  | AppAddTest(_,e,_,_) (* | AppExceptOrcl(_,e)  *)
+  | AppExcept(_,e) | AppCaseEv(e) -> e
 
 let compare_uc uc1 uc2 =
   match uc1, uc2 with
   | AppAddTest(opos1,e1,_,_), AppAddTest(opos2,e2,_,_) ->
     let cmp = compare opos1 opos2 in
     if cmp <> 0 then cmp else e_compare e1 e2
-  | AppExceptOrcl(opos1,e1), AppExceptOrcl(opos2,e2) ->
-    let cmp = compare opos1 opos2 in
-    if cmp <> 0 then cmp else e_compare e1 e2
+(*  | AppExceptOrcl(opos1,e1), AppExceptOrcl(opos2,e2) ->
+      let cmp = compare opos1 opos2 in
+      if cmp <> 0 then cmp else e_compare e1 e2 *)
   | AppExcept(gpos1,e1), AppExcept(gpos2,e2) ->
     let cmp = compare gpos1 gpos2 in
     if cmp <> 0 then cmp else e_compare e1 e2
@@ -48,21 +49,21 @@ let compare_uc uc1 uc2 =
     e_compare e1 e2
   | AppAddTest _, _ -> 1
   | _, AppAddTest _ -> -1
-  | AppExceptOrcl _, _ -> 1
-  | _, AppExceptOrcl _ -> -1
   | AppExcept _, _ -> 1
   | _, AppExcept _ -> -1
+(*  | AppExceptOrcl _, _ -> 1
+    | _, AppExceptOrcl _ -> -1 *)
 
 let pp_useful_cases fmt uc =
   match uc with
   | AppAddTest((g_idx,oi,o_idx),e,_,_) ->
     F.fprintf fmt "app(raddtest (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e
-  | AppExceptOrcl((g_idx,oi,o_idx),e) ->
-    F.fprintf fmt "app(rexcept_orcl (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e
   | AppExcept(g_idx,e) ->
     F.fprintf fmt "app(rexcept (%i) %a)" g_idx pp_exp e
   | AppCaseEv(e) ->
     F.fprintf fmt "app(rcase_ev %a)" pp_exp e
+(*  | AppExceptOrcl((g_idx,oi,o_idx),e) ->
+      F.fprintf fmt "app(rexcept_orcl (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e *)
 
 let is_Useless e =
   is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e)) || is_H e
