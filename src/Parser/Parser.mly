@@ -100,6 +100,7 @@
 %token RNORM_NOUNFOLD
 %token RRND
 %token RRND_ORACLE
+%token RSWAP_MAIN
 %token RSWAP
 %token RCONV
 %token RDIST_SYM
@@ -446,6 +447,7 @@ tactic :
 /* swapping */
 | RSWAP i=gpos  j=int { Apply(Rswap(i,j)) }
 | RSWAP op=opos j=int { Apply(Rswap_oracle(op,j)) }
+| RSWAP_MAIN op=opos v=ID { Apply(Rswap_main(op,v)) }
 
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?

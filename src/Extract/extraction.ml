@@ -1872,6 +1872,7 @@ let rec extract_proof file pft =
   | Rdist_sym -> assert false
   | Rdist_eq -> assert false
   | Rhybrid  -> assert false
+  | Rswap_main _ -> assert false
   | Rconv -> 
     extract_conv file pft [] pft
 

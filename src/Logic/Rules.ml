@@ -204,10 +204,12 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "dist_sym"
   | Rhybrid ->
     F.fprintf fmt "hybrid"
+  | Rswap_main _ ->
+    F.fprintf fmt "swap_main"
   | Rswap(pos,delta) ->
-    F.fprintf fmt "rswap %i %i" pos delta
+    F.fprintf fmt "swap %i %i" pos delta
   | Rexc(pos,es) ->
-    F.fprintf fmt "rexc %i %a" pos (pp_list "," pp_exp) es
+    F.fprintf fmt "except %i %a" pos (pp_list "," pp_exp) es
   | Rrnd(pos,vs,_,(v2,c2)) ->
     F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_exp c2
   | Rrw_orcl((i,j,k),_dir) ->

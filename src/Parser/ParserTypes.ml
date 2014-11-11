@@ -80,6 +80,7 @@ type tactic =
   | Rnorm_solve    of parse_expr
   | Rswap          of int * int
   | Rswap_oracle   of ocmd_pos * int
+  | Rswap_main     of ocmd_pos * string
   | Rctxt_ev       of int option * (string * parse_expr) option
   | Rrnd           of bool * assgn_pos option * (string * parse_expr) option *
                       (string * parse_expr) option * parse_expr option

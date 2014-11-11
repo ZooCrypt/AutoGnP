@@ -8,6 +8,7 @@ open Syms
 open Type
 open Expr
 open ExprUtils
+open Gsyms
 open Game
 open Wf
 open Assumption
@@ -287,7 +288,7 @@ let rename_if_required rn se1 se2 =
   if Vsym.M.is_empty ren then se1
   else (
     ensure_ren_inj rn ren;
-    subst_v_se (fun vs -> Vsym.M.find vs ren) se1
+    subst_v_se (fun vs -> try Vsym.M.find vs ren with Not_found -> vs) se1
   )
 
 let rconv do_norm_terms new_se ju =
@@ -546,6 +547,35 @@ let rrw_ev i d ju =
   Rrw_ev(i,d), [ { ju with ju_se = new_se } ]
 
 let t_rw_ev i d = prove_by (rrw_ev i d)
+
+(*i ----------------------------------------------------------------------- i*)
+(* \bf{Swap sampling from once-oracle to main.} *)
+
+let rswap_main opos vname ju =
+  let se = ju.ju_se in
+  let lcmd,seoc = get_se_octxt se opos in
+  match lcmd with
+  | LSamp(vs,d) ->
+    assert seoc.seoc_oonce;
+    let vs_new = Vsym.mk vname vs.Vsym.ty in
+    let subst e =  e_replace (mk_V vs) (mk_V vs_new) e in
+    let samp = GSamp(vs_new,d) in
+    let sec = { seoc.seoc_sec with sec_left = samp::seoc.seoc_sec.sec_left } in
+    let seoc =
+      { seoc with
+          seoc_sec = sec;
+          seoc_cleft = L.map (map_lcmd_exp subst) seoc.seoc_cleft;
+          seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright;
+          seoc_return = subst seoc.seoc_return }
+    in
+    let ju = { ju with ju_se = set_se_octxt [] seoc } in
+    (* FIXME: check that read lcmd \intersect write seoc.seoc_cleft = empty *)
+    Rswap_main opos, [ ju ]
+  | _ ->
+    assert false
+
+let t_swap_main opos vname =
+  prove_by (rswap_main opos vname)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Core rules: Bridging rules with small loss} *)
@@ -927,7 +957,7 @@ let t_add_test p tnew asym fvs = prove_by (radd_test p tnew asym fvs)
 (*i ----------------------------------------------------------------------- i*)
 (* \bf{Hybrid argument.} *)
 
-let rhybrid gpos oidx new_lcmds new_eret _asym1 _asym2 _asym3 ju =
+let rhybrid gpos oidx new_lcmds new_eret asym1 asym2 asym3 ju =
   let se = ju.ju_se in
   (* replace oracle definition in second judgment *)
   let _lcmd, seoc =  get_se_octxt se (gpos,oidx,0) in
@@ -937,18 +967,28 @@ let rhybrid gpos oidx new_lcmds new_eret _asym1 _asym2 _asym3 ju =
   let cmd,ctx = get_se_ctxt se gpos in
   let (cmd1,cmd2_left,cmd2_right,cmd3) =
     match cmd with
-    | GCall(vs,ads,e,odefs) ->
+    | GCall(vs,_ads,e,odefs) ->
       let odefs_before,od,odefs_after = split_n oidx odefs in
       let (os,ovs,lcmds,eret,b) = od in
       assert (not b);
-      let od_new once = (os,ovs,new_lcmds,new_eret,once) in
-      let middle_odefs_left = odefs_before@[os,ovs,lcmds,eret,true]@odefs_after in
-      let middle_odefs_right = odefs_before@[od_new true]@odefs_after in
-      let new_odefs = odefs_before@[od_new false]@odefs_after in
-      ( GCall([],ads,e,odefs)
-      , GCall([],ads,mk_Tuple [],middle_odefs_left)
-      , GCall([],ads,mk_Tuple [],middle_odefs_right)
-      , GCall(vs,ads,mk_Tuple [],new_odefs)
+      let osym2 =
+        Osym.mk (Id.name os.Osym.id ^ "_2") os.Osym.dom os.Osym.codom
+      in 
+      let osym3 =
+        Osym.mk (Id.name os.Osym.id ^ "_3") os.Osym.dom os.Osym.codom
+      in 
+      let od_new osym once = (osym,ovs,new_lcmds,new_eret,once) in
+      let middle_odefs_left =
+        odefs_before@[osym2,ovs,lcmds,eret,true]@odefs_after
+      in
+      let middle_odefs_right =
+        odefs_before@[od_new osym2 true]@odefs_after
+      in
+      let new_odefs = odefs_before@[od_new osym3 false]@odefs_after in
+      ( GCall([],asym1,e,odefs)
+      , GCall([],asym2,mk_Tuple [],middle_odefs_left)
+      , GCall([],asym2,mk_Tuple [],middle_odefs_right)
+      , GCall(vs,asym3,mk_Tuple [],new_odefs)
       )
     | _ -> assert false
   in

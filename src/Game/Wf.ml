@@ -37,9 +37,10 @@ let mk_wfs () = {
 }
 
 let ensure_name_fresh wfs name =
-  if Sstring.mem name wfs.wf_names
-  then failwith "duplicate name (variables, oracles, and adversaries)"
-  else { wfs with wf_names = Sstring.add name wfs.wf_names }
+  if Sstring.mem name wfs.wf_names then
+    failwith (fsprintf "Wf: duplicate name %s" name)
+  else
+    { wfs with wf_names = Sstring.add name wfs.wf_names }
 
 let ensure_names_fresh wfs names =
   List.fold_left ensure_name_fresh wfs names

@@ -136,3 +136,5 @@ type rule_name =
   | Rdist_eq
 
   | Rhybrid (* FIXME: add arguments *)
+
+  | Rswap_main of ocmd_pos

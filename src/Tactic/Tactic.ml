@@ -124,6 +124,7 @@ let handle_tactic ts tac =
   | PT.Rlet_unfold(Some(i))  -> apply (t_let_unfold (get_pos i))
   | PT.Rlet_unfold(None)     -> apply (t_unfold_only)
   | PT.Rswap(i,j)            -> apply (CR.t_swap (t_pos i) j)
+  | PT.Rswap_main(opos,vs)   -> apply (CR.t_swap_main opos vs)
   | PT.Rdist_eq              -> apply CR.t_dist_eq
   | PT.Rdist_sym             -> apply CR.t_dist_sym
   | PT.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
@@ -245,8 +246,8 @@ let handle_tactic ts tac =
       "rhybrid: adversary with same name already declared";
     let tunit = mk_Prod [] in
     let asym1 = Asym.mk (aname^"_1") oasym.Asym.dom tunit in
-    let asym2 = Asym.mk (aname^"_1") tunit          tunit in
-    let asym3 = Asym.mk (aname^"_1") tunit          oasym.Asym.codom in
+    let asym2 = Asym.mk (aname^"_2") tunit          tunit in
+    let asym3 = Asym.mk (aname^"_3") tunit          oasym.Asym.codom in
     let adecls =
       L.fold_left
         (fun decls (an,asym) -> Mstring.add an asym decls)
