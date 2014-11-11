@@ -31,8 +31,9 @@ type lcmd =
   | LGuard of expr         (*r $LGuard(t): t$ *)
 
 (** Oracle definition. *)
-type odef = os * vs list * lcmd list * Expr.expr (*r
-  $(o,\vec{x}, \vec{m},e): o(x_1,..,x_l) = [e | m_1, .., m_k]$ *)
+type odef = os * vs list * lcmd list * Expr.expr * bool (*r
+  $(o,\vec{x}, \vec{m},e,b): o(x_1,..,x_l) = [e | m_1, .., m_k]$
+  and it can be called only once if b is true *)
 
 (** Game command. *)
 type gcmd =
@@ -49,7 +50,6 @@ type ev = expr
 
 (** A security experiment consists of a game and an event. *)
 type sec_exp = { se_gdef : gdef; se_ev : ev }
-  (*i FIXME: add probability tag i*)
 
 (*i*)
 (* ----------------------------------------------------------------------- *)
@@ -87,9 +87,11 @@ let pp_lcomp fmt (e,m) =
   | _  -> F.fprintf fmt "@[%a;@\n%i: return %a;@]"
             (pp_list ";@\n" pp_ilcmd) (num_list m) (L.length m + 1) pp_exp e
 
-let pp_odef fmt (o, vs, ms, e) =
-  F.fprintf fmt "@[<v>%a %a = [@,  @[<v>%a@]@,]@]" 
-    Osym.pp o pp_binder vs pp_lcomp (e,ms)
+let pp_odef fmt (o, vs, ms, e, call_once) =
+  F.fprintf fmt "@[<v>%a %a%s = [@,  @[<v>%a@]@,]@]" 
+    Osym.pp o pp_binder vs
+    (if call_once then "[once]" else "")
+    pp_lcomp (e,ms)
 
 let pp_gcmd fmt gc = match gc with
   | GLet(vs,e)      -> 
@@ -137,8 +139,8 @@ let map_lcmd_exp f lcmd = match lcmd with
   | LSamp(v,d)  -> LSamp(v, map_distr_exp f d)
   | LGuard(e)   -> LGuard(f e)
 
-let map_odef_exp f (o,vs,ms,e) =
-  (o,vs,L.map (map_lcmd_exp f) ms, f e)
+let map_odef_exp f (o,vs,ms,e,b) =
+  (o,vs,L.map (map_lcmd_exp f) ms, f e,b)
 
 let map_gcmd_exp f gcmd = match gcmd with
   | GLet(vs,e)     -> GLet(vs, f e)
@@ -160,7 +162,7 @@ let iter_lcmd_exp ?iexc:(iexc=false) f lcmd = match lcmd with
   | LSamp(_,d) -> iter_distr_exp ~iexc f d
   | LGuard(e)  -> f e
 
-let iter_odef_exp ?iexc:(iexc=false) f (_o,_vs,ms,e) =
+let iter_odef_exp ?iexc:(iexc=false) f (_o,_vs,ms,e,_b) =
   L.iter (iter_lcmd_exp ~iexc f) ms; f e
 
 let iter_gcmd_exp ?iexc:(iexc=false) f gcmd = match gcmd with
@@ -218,8 +220,8 @@ let set_se_gcmd se p cmds =
 let get_se_lcmd se (i,j,k) = 
   match get_se_gcmd se i with
   | GCall(_,_,_,os) ->
-    let (o,vs,ms,e) = L.nth os j in
-    o,vs,split_n k ms, e
+    let (o,vs,ms,e,b) = L.nth os j in
+    o,vs,split_n k ms, e, b
   | _ -> assert false
 
 type se_octxt = {
@@ -231,6 +233,7 @@ type se_octxt = {
   seoc_osym : os;
   seoc_oargs: vs list;
   seoc_return : expr;
+  seoc_oonce  : bool;
   seoc_cleft : lcmd list;
   seoc_cright : lcmd list;
   seoc_sec : se_ctxt
@@ -239,7 +242,7 @@ type se_octxt = {
 let get_se_octxt se (i,j,k) = 
   match get_se_ctxt se i with
   | GCall(vsa,asym,e,os), sec ->
-    let rohd, (o,vs,ms,oe), otl = split_n j os in
+    let rohd, (o,vs,ms,oe,ob), otl = split_n j os in
     let rhd, i, tl = split_n k ms in
     i, { seoc_asym = asym;
          seoc_avars = vsa;
@@ -249,6 +252,7 @@ let get_se_octxt se (i,j,k) =
          seoc_osym = o;
          seoc_oargs = vs;
          seoc_return = oe;
+         seoc_oonce  = ob;
          seoc_cleft = rhd;
          seoc_cright = tl;
          seoc_sec = sec }
@@ -257,7 +261,7 @@ let get_se_octxt se (i,j,k) =
 let set_se_octxt lcmds c =
   let ms = L.rev_append c.seoc_cleft (lcmds @ c.seoc_cright) in
   let os = L.rev_append c.seoc_oleft
-             ((c.seoc_osym,c.seoc_oargs,ms,c.seoc_return)
+             ((c.seoc_osym,c.seoc_oargs,ms,c.seoc_return,c.seoc_oonce)
               :: c.seoc_oright)
   in
   let i = [GCall(c.seoc_avars, c.seoc_asym, c.seoc_aarg, os)] in
@@ -302,7 +306,7 @@ let pp_iter_ctx fmt ic =
     (pp_list " /\\ " (pp_around "" " = 0" pp_exp)) ic.ic_isZero
     (pp_list " /\\ " (pp_around "" " <> 0" pp_exp)) ic.ic_nonZero
 
-let iter_ctx_odef_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (o,_vs,ms,e) =
+let iter_ctx_odef_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (o,_vs,ms,e,_) =
   let tests = ref 0 in
   let nonZero = ref nz in
   let isZero  = ref [] in
@@ -397,11 +401,12 @@ let lcmd_equal i1 i2 =
 
 let lcmds_equal c1 c2 = list_eq_for_all2 lcmd_equal c1 c2
 
-let odef_equal (o1,xs1,c1,e1) (o2,xs2,c2,e2) =
+let odef_equal (o1,xs1,c1,e1,once1) (o2,xs2,c2,e2,once2) =
   Osym.equal o1 o2 &&
     list_eq_for_all2 Vsym.equal xs1 xs2 &&
     lcmds_equal c1 c2 &&
-    e_equal e1 e2 
+    e_equal e1 e2 &&
+    once1 = once2
 
 let gcmd_equal i1 i2 =
   match i1, i2 with
@@ -457,7 +462,7 @@ let write_lcmd i =
 let write_lcmds c = fold_union write_lcmd c
 
 (** We assume oracles do not overshadow variables from main. *)
-let read_odef (_,xs,cmd,e) =
+let read_odef (_,xs,cmd,e,_) =
   let r = Se.union (read_lcmds cmd) (e_vars e) in
   let w = Se.union (add_binding xs) (write_lcmds cmd) in
   Se.diff r w 
@@ -510,7 +515,7 @@ let lcmd_vars = function
 
 let lcmds_vars c = fold_union_vs lcmd_vars c
 
-let odef_vars (_,vs,cmd,e) =
+let odef_vars (_,vs,cmd,e,_) =
   Vsym.S.union (set_of_list vs) (Vsym.S.union (expr_vars e) (lcmds_vars cmd))
 
 let gcmd_all_vars = function
@@ -556,7 +561,7 @@ let unif_lcmd ren lc1 lc2 =
   | _ -> 
     raise Not_found
 
-let unif_odef ren (_,vs1,lcmds1,_) (_,vs2,lcmds2,_) =
+let unif_odef ren (_,vs1,lcmds1,_,_) (_,vs2,lcmds2,_,_) =
   ensure_same_length vs1 vs2;
   ensure_same_length lcmds1 lcmds2;
   L.iter2 (unif_vs ren) vs1 vs2;
@@ -632,11 +637,11 @@ let subst_v_lc tov = function
   | LSamp(v,d) -> LSamp(tov v, map_distr_exp (subst_v_e tov) d)
   | LGuard e -> LGuard (subst_v_e tov e)
 
-let subst_v_odef tov (o,vs,lc,e) =
+let subst_v_odef tov (o,vs,lc,e,once) =
   let vs = L.map tov vs in
   let lc = L.map (subst_v_lc tov) lc in
   let e = subst_v_e tov e in
-  (o, vs, lc, e)
+  (o, vs, lc, e, once)
 
 let subst_v_gc tov = function
   | GLet(v,e) -> GLet(tov v, subst_v_e tov e)
@@ -723,10 +728,10 @@ let vmap_in_orcl se op =
 let norm_distr ?norm:(nf=(Norm.norm_expr_nice)) s (ty,es) = 
   (ty, L.map (fun e -> nf (e_subst s e)) es)
 
-let norm_odef ?norm:(nf=Norm.norm_expr_nice) s (o,vs,lc,e) =
+let norm_odef ?norm:(nf=Norm.norm_expr_nice) s (o,vs,lc,e,once) =
   let rec aux s rc lc = 
     match lc with
-    | [] -> (o,vs,L.rev rc, nf (e_subst s e))
+    | [] -> (o,vs,L.rev rc, nf (e_subst s e),once)
     | LLet (v, e) :: lc' ->
       let e = nf (e_subst s e) in
       let v = mk_V v in
@@ -781,7 +786,7 @@ let has_log_lcmd = function
 
 let has_log_lcmds c = L.exists has_log_lcmd c
 
-let has_log_o (_,_,c,e) = has_log e || has_log_lcmds c
+let has_log_o (_,_,c,e,_) = has_log e || has_log_lcmds c
 
 let has_log_gcmd = function
   | GLet(_,e)       -> has_log e
@@ -799,7 +804,7 @@ let is_ppt_lcmd = function
 
 let is_ppt_lcmds c = L.for_all is_ppt_lcmd c
 
-let is_ppt_o (_,_,c,e) = is_ppt e && is_ppt_lcmds c
+let is_ppt_o (_,_,c,e,_) = is_ppt e && is_ppt_lcmds c
 
 let is_ppt_gcmd = function
   | GLet(_,e)       -> is_ppt e

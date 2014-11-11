@@ -2,7 +2,6 @@
 
 (*i*)
 open Syms
-open Gsyms
 (*i*)
 
 exception Wf_var_undef of Vsym.t * Expr.expr
@@ -29,11 +28,7 @@ val wf_exp : wf_check_type -> wf_state -> Expr.expr -> unit
 
 val wf_lcmds : wf_check_type -> wf_state -> Game.lcmd list -> wf_state
 
-val wf_odef :
-  wf_check_type ->
-  wf_state ->
-  Osym.t * Vsym.S.elt list * Game.lcmd list * Expr.expr ->
-  unit
+val wf_odef : wf_check_type -> wf_state -> Game.odef -> unit
 
 val wf_gdef : wf_check_type -> Game.gcmd list -> wf_state
 

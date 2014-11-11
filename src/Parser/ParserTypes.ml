@@ -67,6 +67,8 @@ type assgn_pos =
   | Pos of int
   | Var of string
 
+type range = int * int
+
 type tactic =
   | Rnorm
   | Rdist_eq
@@ -81,11 +83,12 @@ type tactic =
   | Rctxt_ev       of int option * (string * parse_expr) option
   | Rrnd           of bool * assgn_pos option * (string * parse_expr) option *
                       (string * parse_expr) option * parse_expr option
-  | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option * (string * parse_expr) option
+  | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option *
+                      (string * parse_expr) option
   | Requiv         of gdef * parse_expr
-  | Rassm_dec      of bool * string option * direction option * ((int * int) list) option *
+  | Rassm_dec      of bool * string option * direction option * (range list) option *
                       (string list) option
-  | Rassm_comp     of bool * string option * ((int * int) list) option
+  | Rassm_comp     of bool * string option * (range list) option
   | Rlet_abstract  of int option * string * parse_expr option * int option * bool
   | Rsubst         of int * parse_expr * parse_expr * int option
   | Rlet_unfold    of assgn_pos option
@@ -94,7 +97,9 @@ type tactic =
   | Rbad           of int * string
   | Rexcept        of assgn_pos option * (parse_expr list) option
   | Rexcept_orcl   of ocmd_pos * parse_expr list
-  | Radd_test      of ocmd_pos option * parse_expr option * string option * (string list) option
+  | Radd_test      of ocmd_pos option * parse_expr option * string option *
+                      (string list) option
+  | Rhybrid        of (int * int) * lcomp * string
   | Rrewrite_orcl  of ocmd_pos * direction
   | Rcase_ev       of parse_expr option
   | Rremove_ev     of int list

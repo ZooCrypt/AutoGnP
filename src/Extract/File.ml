@@ -466,7 +466,7 @@ let oOname o = omod, oname o
 let game_info file gdef = 
   let otbl = Osym.H.create 7 in
   let atbl = Asym.H.create 3 in
-  let add_oinfo (o, params, _body, e) = 
+  let add_oinfo (o, params, _body, e,_) = 
     assert (not (Osym.H.mem otbl o));
     let qname = top_name file ("q" ^ oname o) in
     add_top file (Cbound qname);
@@ -481,7 +481,7 @@ let game_info file gdef =
     match i with
     | GCall(_,a,_,odef) ->
       List.iter add_oinfo odef;    
-      Asym.H.add atbl a (List.map (fun (o,_,_,_) -> o) odef)
+      Asym.H.add atbl a (List.map (fun (o,_,_,_,_) -> o) odef)
     | _ -> () in
   List.iter make_info gdef;
   { oinfo = otbl; ainfo = atbl } 

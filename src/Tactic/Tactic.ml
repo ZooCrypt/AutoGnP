@@ -232,6 +232,29 @@ let handle_tactic ts tac =
   | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
     apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
 
+  | PT.Rhybrid((i,j),(lcmds,eret),aname) ->
+    let se = ju.ju_se in
+    let opos = (i,j,0) in
+    let _, seoc = get_se_octxt se opos in
+    let vmap = vmap_in_orcl se opos in
+    let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts) lcmds in
+    let eret = PU.expr_of_parse_expr vmap ts eret in
+    let oasym = seoc.seoc_asym in
+    let name_new suff = not (Mstring.mem (aname^suff) ts.ts_adecls) in
+    fail_unless (fun () -> name_new "_1" && name_new "_1" && name_new "_3")
+      "rhybrid: adversary with same name already declared";
+    let tunit = mk_Prod [] in
+    let asym1 = Asym.mk (aname^"_1") oasym.Asym.dom tunit in
+    let asym2 = Asym.mk (aname^"_1") tunit          tunit in
+    let asym3 = Asym.mk (aname^"_1") tunit          oasym.Asym.codom in
+    let adecls =
+      L.fold_left
+        (fun decls (an,asym) -> Mstring.add an asym decls)
+        ts.ts_adecls
+        [(aname^"_1",asym1); (aname^"_2",asym2); (aname^"_3",asym3)]
+    in
+    apply ~adecls (CR.t_hybrid i j lcmds eret asym1 asym2 asym3)
+
   | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
     (* create symbol for new adversary *)
     let se = ju.ju_se in

@@ -154,6 +154,10 @@ val t_except_oracle : ocmd_pos -> expr list -> tactic
 val radd_test  : ocmd_pos -> expr -> Asym.t -> vs list -> rule 
 val t_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> tactic
 
+val rhybrid : gcmd_pos -> int -> lcmd list -> expr -> Asym.t -> Asym.t -> Asym.t -> rule
+val t_hybrid :
+  gcmd_pos -> int -> lcmd list -> expr -> Asym.t -> Asym.t -> Asym.t -> tactic
+
 (** [rrewrite_oracle p d j] returns the judgment resulting from rewriting
     commands after oracle position [p] with the equality at position [p]
     in direction [d]. *)

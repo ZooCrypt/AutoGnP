@@ -206,7 +206,7 @@ let wf_lcmds ctype wfs0 odef0 =
   in
   go wfs0 odef0
 
-let wf_odef ctype wfs (osym,vs,lcmds,e) =
+let wf_odef ctype wfs (osym,vs,lcmds,e,_) =
    assert (ty_equal osym.Osym.dom (ty_prod vs) &&
              ty_equal osym.Osym.codom e.e_ty);
    let wfs = ensure_varnames_fresh wfs vs in
@@ -229,7 +229,7 @@ let wf_gdef ctype gdef0 =
                 ty_equal asym.Asym.dom e.e_ty);
       let wfs =
         ensure_names_fresh wfs
-          (List.map (fun (osym,_,_,_) -> Id.name osym.Osym.id) os)
+          (List.map (fun (osym,_,_,_,_) -> Id.name osym.Osym.id) os)
       in
       List.iter (wf_odef ctype wfs) os;
       go wfs gcmds

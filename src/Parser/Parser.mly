@@ -120,6 +120,7 @@
 %token RSUBST
 %token RCTXT_EV
 %token REXCEPT
+%token RHYBRID
 %token RADD_TEST
 %token REXCEPT_ORACLE
 %token RREWRITE_ORACLE
@@ -469,11 +470,13 @@ tactic :
 
 /* oracles */
 | RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Apply(Rrnd_orcl(op,c1,c2)) }
-| RREWRITE_ORACLE op=opos d=dir                         { Apply(Rrewrite_orcl(op,d)) }
-| RBAD i=NAT s=ID                                         { Apply(Rbad (i-1,s)) }
+| RREWRITE_ORACLE op=opos d=dir                       { Apply(Rrewrite_orcl(op,d)) }
+| RBAD i=NAT s=ID                                     { Apply(Rbad (i-1,s)) }
 | RADD_TEST op=opos e=expr0 asym=AID fvs=ID*
   { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }
 | RADD_TEST UNDERSCORE { Apply(Radd_test(None,None,None,None)) }
+| RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=lcomp asym=AID
+  { Apply(Rhybrid((i-1,j-1),lc,asym)) }
 
 /* events */
 | RREMOVE_EV is=gpos+         { Apply(Rremove_ev(is)) }

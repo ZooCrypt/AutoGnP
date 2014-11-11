@@ -4,13 +4,13 @@
 open Abbrevs
 open Util
 open Nondet
+open Syms
 open Type
 open Expr
 open ExprUtils
 open Game
 open Wf
 open Assumption
-open Syms
 open CoreTypes
 
 let _log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "CoreRules" ls
@@ -450,11 +450,10 @@ let rrewrite_oracle op dir ju =
   let se = ju.ju_se in
   match get_se_octxt se op with
   | LGuard(t) as lc, seoc ->
-    let (a,b) = match t.e_node with
-      | App(Eq,[u;v]) ->
-        if dir = LeftToRight then (u,v) else (v,u)
-      | _ ->
-        tacerror "rewrite_oracle: can only rewrite equalities"
+    let (a,b) =
+      match t.e_node with
+      | App(Eq,[u;v]) -> if dir = LeftToRight then (u,v) else (v,u)
+      | _ -> tacerror "rewrite_oracle: can only rewrite equalities"
     in
     let subst e = e_replace a b e in
     let seoc = { seoc with
@@ -559,7 +558,7 @@ let rexcept p es ju =
   let se = ju.ju_se in
   let len = L.length se.se_gdef in
   if not (p < len) && p >= 0 then
-    tacerror "except: invalid position,  %i not between 1 and %i" (p+1) len;
+    tacerror "except: invalid position, %i not between 1 and %i" (p+1) len;
   match get_se_ctxt se p with
   | GSamp(_,(_,es')), _ when list_equal e_equal es' es ->
     tacerror "except: identical exceptions already present"    
@@ -604,7 +603,7 @@ let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   ensure_pr_Succ_or_Adv "case_ev" ju;
   let ev = se.se_ev in
   if not ae && conj_or_negation_included e ev then
-    tacerror "rcase_ev: event or negation already in event";
+    tacerror "case_ev: event or negation already in event";
   let ju1 = { ju with ju_se = { se with se_ev = mk_Land [ev;e] } } in
   let ju2 = { ju with ju_se = { se with se_ev = mk_Land [ev; mk_Not e] } } in
   Rcase_ev(flip,e), if flip then [ju2; ju1] else [ju1;ju2]
@@ -626,7 +625,7 @@ let rctxt_ev i c ju =
     if is_Eq b then
       let (e1,e2) = destr_Eq b in
       mk_Eq (inst_ctxt c e1) (inst_ctxt c e2)
-    else tacerror "rctxt_ev: bad event, expected equality"
+    else tacerror "ctxt_ev: bad event, expected equality"
   in
   let ev = mk_Land (L.rev_append l (b::r)) in
   let wfs = wf_gdef NoCheckDivZero (se.se_gdef) in
@@ -670,7 +669,7 @@ let rdist_sym ju =
   | Pr_Dist se' ->
     Rdist_sym, [ { ju_se = se'; ju_pr = Pr_Dist ju.ju_se } ]
   | _ ->
-    tacerror "rdist_sym: Dist judgment expected"
+    tacerror "dist_sym: Dist judgment expected"
 
 let t_dist_sym = prove_by rdist_sym
 
@@ -684,9 +683,9 @@ let rdist_eq ju =
     if se_equal se' se then
       Rdist_eq, []
     else
-      tacerror "rdist_eq: judgments not equal"
+      tacerror "dist_eq: judgments not equal"
   | _ ->
-    tacerror "rdist_eq: Dist judgment expected"
+    tacerror "dist_eq: Dist judgment expected"
 
 let t_dist_eq = prove_by rdist_eq
 
@@ -697,7 +696,7 @@ let rfalse_ev ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   if is_False ju.ju_se.se_ev
   then Rfalse_ev, []
-  else tacerror "rfalse_ev: event false expected"
+  else tacerror "false_ev: event false expected"
 
 let t_false_ev = prove_by rfalse_ev
 
@@ -709,7 +708,7 @@ let check_event r ev =
   let rec aux i evs =
     match evs with
     | [] ->
-      tacerror "can not apply rindep for variable %a and event@\  %a@\n"
+      tacerror "indep: can not apply for variable %a and event@\  %a@\n"
         pp_exp r pp_exp ev
     | ev::evs ->
       let test_eq e1 e2 = e_equal e1 r && not (Se.mem r (e_vars e2)) in
@@ -738,7 +737,7 @@ let rrandom_indep ju =
   | GSamp(r,_)::_ ->
     if ty_equal r.Vsym.ty mk_Bool then ensure_pr_Adv "indep" ju;
     check_event r se.se_ev, []
-  | _             -> tacerror "rindep: the last instruction is not a random"
+  | _             -> tacerror "indep: the last instruction is not a random"
 
 let t_random_indep = prove_by rrandom_indep
 
@@ -763,9 +762,7 @@ let ensure_res_lets rn vres cres =
     (fun vs c ->
       match c with
       | GLet(vs',_) when Vsym.equal vs' vs -> ()
-      | _ ->
-        tacerror "%s: result binding not found for variables %a"
-          rn Vsym.pp vs)
+      | _ -> tacerror "%s: result binding not found for %a" rn Vsym.pp vs)
     vres cres
 
 let assm_comp_valid_ranges rn assm acalls_ju rngs =
@@ -901,10 +898,8 @@ let radd_test opos tnew asym fvs ju =
     let destr_guard lcmd =
       match lcmd with
       | LGuard(e) -> e
-      | _ ->
-        tacerror ("radd_test: new test cannot be inserted after %a, " ^^
-                   "preceeding commands must be tests")
-             pp_lcmd lcmd
+      | _ -> tacerror "add_test: new test cannot be inserted after %a, %s"
+               pp_lcmd lcmd "preceeding commands must be tests"
     in
     let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
     let subst =
@@ -912,27 +907,55 @@ let radd_test opos tnew asym fvs ju =
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
         Me.empty seoc.seoc_oargs fvs
     in
-    let seoc =
+    let seoc = { seoc with seoc_cleft = LGuard(tnew) :: seoc.seoc_cleft } in
+    let seoc_bad =
       { seoc with
-        seoc_cleft = LGuard(tnew) :: seoc.seoc_cleft }
+        seoc_asym = asym;
+        seoc_avars = fvs;
+        seoc_sec =
+          { seoc.seoc_sec with
+            sec_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
+            sec_right = [] } }
     in
-    let ju1 =
-      {ju_se = 
-         set_se_octxt [ LGuard(t) ]
-          { seoc with
-            seoc_asym = asym;
-            seoc_avars = fvs;
-            seoc_sec =
-              { seoc.seoc_sec with
-                sec_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
-                sec_right = []
-              }
-          };
-       ju_pr = Pr_Succ
-      }
-    in
+    let ju1 = {ju_se = set_se_octxt [ LGuard(t) ] seoc_bad; ju_pr = Pr_Succ } in
     let ju2 = { ju with ju_se =  set_se_octxt [ LGuard(t) ] seoc } in
     Radd_test(opos, tnew, asym, fvs), [ ju1; ju2 ]
-  | _ -> tacerror "radd_test: given position is not a test"
+  | _ -> tacerror "add_test: given position is not a test"
 
 let t_add_test p tnew asym fvs = prove_by (radd_test p tnew asym fvs)
+
+(*i ----------------------------------------------------------------------- i*)
+(* \bf{Hybrid argument.} *)
+
+let rhybrid gpos oidx new_lcmds new_eret _asym1 _asym2 _asym3 ju =
+  let se = ju.ju_se in
+  (* replace oracle definition in second judgment *)
+  let _lcmd, seoc =  get_se_octxt se (gpos,oidx,0) in
+  let seoc = { seoc with seoc_cright = new_lcmds; seoc_return = new_eret } in
+  let ju2 = { ju with ju_se = set_se_octxt [] seoc } in
+  (* split adversary into three in first judgment *)
+  let cmd,ctx = get_se_ctxt se gpos in
+  let (cmd1,cmd2_left,cmd2_right,cmd3) =
+    match cmd with
+    | GCall(vs,ads,e,odefs) ->
+      let odefs_before,od,odefs_after = split_n oidx odefs in
+      let (os,ovs,lcmds,eret,b) = od in
+      assert (not b);
+      let od_new once = (os,ovs,new_lcmds,new_eret,once) in
+      let middle_odefs_left = odefs_before@[os,ovs,lcmds,eret,true]@odefs_after in
+      let middle_odefs_right = odefs_before@[od_new true]@odefs_after in
+      let new_odefs = odefs_before@[od_new false]@odefs_after in
+      ( GCall([],ads,e,odefs)
+      , GCall([],ads,mk_Tuple [],middle_odefs_left)
+      , GCall([],ads,mk_Tuple [],middle_odefs_right)
+      , GCall(vs,ads,mk_Tuple [],new_odefs)
+      )
+    | _ -> assert false
+  in
+  let se1_left  = set_se_ctxt [cmd1; cmd2_left;  cmd3] ctx in
+  let se1_right = set_se_ctxt [cmd1; cmd2_right; cmd3] ctx in
+  let ju1 = { ju_se = se1_left; ju_pr = Pr_Dist se1_right } in
+  Rhybrid, [ ju1; ju2 ]
+
+let t_hybrid gpos oidx lcmds eret asym1 asym2 asym3 =
+  prove_by (rhybrid gpos oidx lcmds eret asym1 asym2 asym3)

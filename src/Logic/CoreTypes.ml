@@ -134,3 +134,5 @@ type rule_name =
   | Rdist_sym
 
   | Rdist_eq
+
+  | Rhybrid (* FIXME: add arguments *)

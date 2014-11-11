@@ -5,7 +5,6 @@ open Expr
 open Type
 open Game
 open Syms
-open Gsyms
 open TheoryTypes
 open ParserTypes
 (*i*)
@@ -31,9 +30,7 @@ val expr_of_parse_expr : vmap -> theory_state -> parse_expr -> expr
 val lcmd_of_parse_lcmd : vmap -> theory_state -> lcmd -> Game.lcmd
 
 val odef_of_parse_odef :
-  vmap -> theory_state ->
-  string * string list * (lcmd list * parse_expr) ->
-  (Osym.t * Vsym.t list * Game.lcmd list * expr)
+  vmap -> theory_state -> string * string list * (lcmd list * parse_expr) -> Game.odef
 
 val gcmd_of_parse_gcmd : vmap -> theory_state -> gcmd -> Game.gcmd
 

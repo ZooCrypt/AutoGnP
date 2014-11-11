@@ -24,7 +24,7 @@ type lcmd =
   | LSamp of vs * distr
   | LGuard of expr
 
-type odef = os * vs list * lcmd list * expr
+type odef = os * vs list * lcmd list * expr * bool
 
 type gcmd =
     GLet of vs * expr
@@ -112,7 +112,8 @@ val set_se_ctxt : gcmd list -> se_ctxt -> sec_exp
 
 val set_se_gcmd : sec_exp -> gcmd_pos -> gcmd list -> sec_exp
 
-val get_se_lcmd : sec_exp -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr
+val get_se_lcmd :
+  sec_exp -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr * bool
 
 type se_octxt = {
   seoc_asym : ads;
@@ -123,6 +124,7 @@ type se_octxt = {
   seoc_osym : os;
   seoc_oargs : vs list;
   seoc_return : expr;
+  seoc_oonce : bool;
   seoc_cleft : lcmd list;
   seoc_cright : lcmd list;
   seoc_sec : se_ctxt;

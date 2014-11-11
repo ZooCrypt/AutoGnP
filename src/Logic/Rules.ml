@@ -86,7 +86,7 @@ let osamplings gd =
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
-      L.concat (L.mapi (fun opos (_,_,lcmds,_) -> lcmds_samplings i opos lcmds) odefs)
+      L.concat (L.mapi (fun opos (_,_,lcmds,_,_) -> lcmds_samplings i opos lcmds) odefs)
     | _ -> []
   in
   L.concat (L.mapi samp gd)
@@ -101,7 +101,7 @@ let oguards gd =
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
-      L.concat (L.mapi (fun opos (_,_,lcmds,_) -> lcmds_guards i opos lcmds) odefs)
+      L.concat (L.mapi (fun opos (_,_,lcmds,_,_) -> lcmds_guards i opos lcmds) odefs)
     | _ -> []
   in
   L.concat (L.mapi samp gd)
@@ -202,6 +202,8 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "dist_eq"
   | Rdist_sym ->
     F.fprintf fmt "dist_sym"
+  | Rhybrid ->
+    F.fprintf fmt "hybrid"
   | Rswap(pos,delta) ->
     F.fprintf fmt "rswap %i %i" pos delta
   | Rexc(pos,es) ->

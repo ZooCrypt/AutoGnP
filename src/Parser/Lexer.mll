@@ -63,6 +63,7 @@ rule lex = parse
   | "norm" { RNORM }
   | "add_test" { RADD_TEST }
   | "case_ev" { RCASE_EV }
+  | "hybrid" { RHYBRID }
   | "remove_ev" { RREMOVE_EV }
   | "dist_sym" { RDIST_SYM }
   | "dist_eq" { RDIST_EQ }

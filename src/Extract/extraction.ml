@@ -367,7 +367,7 @@ let game ?(local=`Local) file g =
   try find_game file g 
   with Not_found ->
     let oinfo = Osym.H.create 7 in
-    let add_oinfo (o,params,body,e) = 
+    let add_oinfo (o,params,body,e,_) = 
       Osym.H.add oinfo o (params,body,e) in
     let mk_info i = 
       match i with
@@ -734,7 +734,7 @@ let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 =
     add_let_info file g2 v2 e2 false loc info in
   let add_rnd v1 v2 l1 l2 loc info = 
     add_rnd_info file g1 g2 v1 v2 l1 l2 loc info in
-  let prove_orcl info (o1,p1,lc1,_) (o2,p2,lc2,_) =
+  let prove_orcl info (o1,p1,lc1,_,_) (o2,p2,lc2,_,_) =
     let rec aux lc1 lc2 info = 
       match lc1, lc2 with
       | [], [] -> add_wp info.pos1 info.pos2 info.tacs
@@ -1646,7 +1646,7 @@ let proof_OrclTestM file osym ju gadv tOT tests =
       invs = f_and info.invs (f_eq e1 e2) } in
   let add_call vs odefs info =
     let prove_orcl o =
-      let (o,p,_,_) = o in
+      let (o,p,_,_,_) = o in
       if Osym.equal o osym then 
         let local = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p in
 (*        let tests = List.map destr_guard juoc.juoc_cleft in
@@ -1814,8 +1814,8 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb seoc etuple et2 =
     F.fprintf fmt "   rewrite (Hi Hn) oget_some;progress [-split];smt.@ ";
     F.fprintf fmt "call (_: @[<hov>%a@]).@ "
       Printer.pp_form invcall;
-    let ol  = List.map (fun (o,_,_,_) -> o) seoc.seoc_oleft in
-    let or_ = List.map (fun (o,_,_,_) -> o) seoc.seoc_oright in
+    let ol  = List.map (fun (o,_,_,_,_) -> o) seoc.seoc_oleft in
+    let or_ = List.map (fun (o,_,_,_,_) -> o) seoc.seoc_oright in
     F.fprintf fmt "  @[<v>%a@]@ "
       (pp_list "@ " pr_oracle) (List.rev_append ol (seoc.seoc_osym :: or_));
     F.fprintf fmt "swap{1} [1..3] %i;swap{2} 1 %i.@ " len1 len2;
@@ -1871,6 +1871,7 @@ let rec extract_proof file pft =
   match pft.pt_rule with
   | Rdist_sym -> assert false
   | Rdist_eq -> assert false
+  | Rhybrid  -> assert false
   | Rconv -> 
     extract_conv file pft [] pft
 
