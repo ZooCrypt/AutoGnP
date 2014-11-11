@@ -62,7 +62,12 @@ let rec mk_simpl_op _strong op l =
     if is_True e1 then e2
     else if is_False e1 then e3
     else if e_equal e2 e3 then e2
-    else norm_ggt (mk_Ifte e1 e2 e3)
+    else if is_GExp e2 && is_GExp e3 then (
+      let (e2_1,e2_2) = destr_GExp e2 in
+      let (e3_1,e3_2) = destr_GExp e3 in
+      if e_equal e2_1 e3_1 then mk_GExp e2_1 (mk_Ifte e1 e2_2 e3_2)
+      else norm_ggt (mk_Ifte e1 e2 e3)
+    ) else norm_ggt (mk_Ifte e1 e2 e3)
   | Not, [e] ->
     if is_True e then mk_False
     else if is_False e then mk_True
