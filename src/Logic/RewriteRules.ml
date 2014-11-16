@@ -97,8 +97,11 @@ let rewrite_exps unknown e0 =
       assert (is_GGen a);
       let gen = a in
       let (ies,ce) = simp_exp b unknown in
-      let to_exp (a,b,c) = mk_GExp (mk_GExp (from_opt gen a) b) (from_opt mk_FOne c) in
-      log_t (lazy (fsprintf "norm_unknown: %a" (pp_list ", " pp_exp) (L.map to_exp ies)));
+      let to_exp (a,b,c) =
+        mk_GExp (mk_GExp (from_opt gen a) b) (from_opt mk_FOne c)
+      in
+      log_t (lazy (fsprintf "norm_unknown: %a"
+                     (pp_list ", " pp_exp) (L.map to_exp ies)));
       let get_gen og = match og with None -> gen | Some a -> a in
       let expio b ie moe =
         let g = get_gen b in
@@ -122,7 +125,8 @@ let rewrite_exps unknown e0 =
           let combine_group ies =
             match ies with
             | (b,_,None)::_ ->
-              expio b (mk_FPlus (L.map (fun (_,ie,moe) -> assert (moe = None); ie) ies)) None
+              let es = L.map (fun (_,ie,moe) -> assert (moe = None); ie) ies in
+              expio b (mk_FPlus es) None
             | [ (b,ie,moe)]  ->
               expio b ie moe
             | _ -> assert false
@@ -143,7 +147,10 @@ let rewrite_exps unknown e0 =
    step. i*)
 let t_norm_unknown unknown ju =
   let se = ju.ju_se in
-  let norm e = remove_tuple_proj (abbrev_ggen (rewrite_exps (se_of_list unknown) (norm_expr_weak e))) in
+  let norm e =
+    rewrite_exps (se_of_list unknown) (norm_expr_weak e)
+    |> abbrev_ggen |> remove_tuple_proj 
+  in
   let new_se = map_se_exp norm se in
   t_conv true new_se ju
 
@@ -170,11 +177,13 @@ let rewrite_div_reduce a e =
   in
   e_map_ty_maximal Type.mk_Fq (solve a) e
 
-(*i normalize field expressions (in exponents and elsewhere such that polynomials are
-    expressed as a*f + g i*)
+(*i normalize field expressions (in exponents and elsewhere such that
+    polynomials are expressed as a*f + g i*)
 let t_norm_solve a ju =
   let se = ju.ju_se in
-  let norm e = abbrev_ggen (rewrite_div_reduce (norm_expr_weak a) (norm_expr_weak e)) in
+  let norm e =
+    abbrev_ggen (rewrite_div_reduce (norm_expr_weak a) (norm_expr_weak e))
+  in
   let new_se = map_se_exp norm se in
   t_conv true new_se ju
 
@@ -184,7 +193,9 @@ let t_let_abstract p vs e0 mupto do_norm_expr ju =
   let e = if do_norm_expr then norm_expr_nice e0 else e0 in
   let subst a =
     if is_Tuple e then (
-      let subst = me_of_list (L.mapi (fun i a -> (a,mk_Proj i v)) (destr_Tuple e)) in
+      let subst =
+        me_of_list (L.mapi (fun i a -> (a,mk_Proj i v)) (destr_Tuple e))
+      in
       e_subst subst a
     ) else (
       e_replace e v a

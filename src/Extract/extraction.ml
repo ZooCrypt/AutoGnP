@@ -38,6 +38,7 @@ let mk_fget file mem h f =
 let string_of_op file = function
   | GExp gv -> (gvar_mod file gv) ^ ".(^)"
   | GLog gv -> (gvar_mod file gv) ^ ".log"
+  | GInv    -> assert false
   | FOpp    -> "F.([-])"
   | FMinus  -> "F.(-)"
   | FInv    -> "F.inv"
@@ -50,6 +51,7 @@ let string_of_op file = function
 let op_of_op file = function
   | GExp _  -> Opow
   | GLog gv -> Ostr ((gvar_mod file gv) ^ ".log")
+  | GInv    -> assert false
   | FOpp    -> Oopp
   | FMinus  -> Osub
   | FInv    -> Ostr "F.inv"

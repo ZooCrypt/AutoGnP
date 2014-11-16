@@ -719,8 +719,10 @@ let vmap_in_orcl se op =
   let _,seoc = get_se_octxt se op in
   vmap_of_vss
     (Vsym.S.union
-       (ves_to_vss (gdef_global_vars gdef_before))
-       (set_of_list seoc.seoc_oargs))
+       (ves_to_vss
+          (Se.union (gdef_global_vars gdef_before)
+             (write_lcmds seoc.seoc_cleft)))
+          (set_of_list seoc.seoc_oargs))
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Normal forms} *) 

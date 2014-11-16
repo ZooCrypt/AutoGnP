@@ -33,6 +33,7 @@ let cnst_hash = (*c ... *) (*i*)
 type op =
     GExp of Groupvar.id  (*r exponentiation in $\group_i$ *)
   | GLog of Groupvar.id  (*r discrete logarithm in $\group_i$ *)
+  | GInv                 (* inverse in group *)
   | FOpp                 (*r additive inverse in $\field$ *)
   | FMinus               (*r subtraction in $\field$ *)
   | FInv                 (*r mult. inverse in $\field$ *)
@@ -48,14 +49,15 @@ let op_hash = (*c ... *) (*i*)
   function
   | GExp gv  -> Hashcons.combine 1 (Groupvar.hash gv)
   | GLog gv  -> Hashcons.combine 2 (Groupvar.hash gv)
-  | FOpp     -> 3
-  | FMinus   -> 4
-  | FInv     -> 5
-  | FDiv     -> 6
-  | Eq       -> 7
-  | Not      -> 8
-  | Ifte     -> 9
-  | EMap(es) ->  Hashcons.combine 10 (Esym.hash es)
+  | GInv     -> 3
+  | FOpp     -> 4
+  | FMinus   -> 5
+  | FInv     -> 6
+  | FDiv     -> 7
+  | Eq       -> 8
+  | Not      -> 9
+  | Ifte     -> 10
+  | EMap(es) ->  Hashcons.combine 11 (Esym.hash es)
   (*i*)
 
 
@@ -226,6 +228,10 @@ let mk_GExp a b =
 let mk_GLog a =
   let gv = ensure_ty_G a.e_ty "mk_GLog" in
   mk_App (GLog gv) [a] ty_Fq
+
+let mk_GInv a =
+  let _gv = ensure_ty_G a.e_ty "mk_GInv" in
+  mk_App GInv  [a] a.e_ty
 
 let mk_EMap es a b =
   ensure_ty_equal a.e_ty (ty_G es.Esym.source1) a None "mk_EMap";

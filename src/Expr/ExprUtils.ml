@@ -67,7 +67,7 @@ let is_Not e = is_App Not e
 
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
-  | GExp _ | GLog _ | EMap _
+  | GExp _ | GLog _ | GInv | EMap _
   | Eq | Ifte | Not -> false 
 
 let is_field_nop = function
@@ -198,6 +198,8 @@ and pp_op_p above fmt (op, es) =
       F.fprintf fmt "@[<hv>%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d
     in
     pp_maybe_paren true (notsep above) pp fmt ()
+  | GInv, [a] ->
+    pp_prefix GInv  "inv("     ")"    a
   | _             -> failwith "pp_op: invalid expression"
 
 (** Pretty-prints n-ary operator assuming that

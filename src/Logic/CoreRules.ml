@@ -558,7 +558,7 @@ let rswap_main opos vname ju =
   | LSamp(vs,d) ->
     assert seoc.seoc_oonce;
     let vs_new = Vsym.mk vname vs.Vsym.ty in
-    let subst e =  e_replace (mk_V vs) (mk_V vs_new) e in
+    let subst e = e_replace (mk_V vs) (mk_V vs_new) e in
     let samp = GSamp(vs_new,d) in
     let sec = { seoc.seoc_sec with sec_left = samp::seoc.seoc_sec.sec_left } in
     let seoc =
@@ -568,8 +568,10 @@ let rswap_main opos vname ju =
           seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright;
           seoc_return = subst seoc.seoc_return }
     in
+    let se = set_se_octxt [] seoc in
+    wf_se NoCheckDivZero se;
     let ju = { ju with ju_se = set_se_octxt [] seoc } in
-    (* FIXME: check that read lcmd \intersect write seoc.seoc_cleft = empty *)
+
     Rswap_main opos, [ ju ]
   | _ ->
     assert false

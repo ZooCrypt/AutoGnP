@@ -21,6 +21,7 @@ val cnst_hash : cnst -> int
 type op =
     GExp of Groupvar.id
   | GLog of Groupvar.id
+  | GInv
   | FOpp
   | FMinus
   | FInv
@@ -65,6 +66,8 @@ module Me : Map.S with type key = expr
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Constructor functions} *)
 
+val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
+
 exception TypeError of (ty *  ty * expr * expr option * string)
 
 val mk_V      : Vsym.t -> expr
@@ -83,6 +86,7 @@ val mk_False  : expr
 val mk_GMult  : expr list -> expr
 val mk_GExp   : expr -> expr -> expr
 val mk_GLog   : expr -> expr
+val mk_GInv   : expr -> expr
 val mk_EMap   : Esym.t -> expr -> expr -> expr
 val mk_FOpp   : expr -> expr
 val mk_FMinus : expr -> expr -> expr

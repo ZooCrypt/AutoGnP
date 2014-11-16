@@ -39,6 +39,11 @@ let rec mk_simpl_op _strong op l =
     let a = destr_gexp gv g1 in
     let p = norm_field_expr (mk_FMult [a; p1]) in
     mk_gexp gv p
+  | GInv, [g1] ->
+    let gv = ensure_ty_G g1.e_ty "norm" in
+    let a  = destr_gexp gv g1 in
+    let p = norm_field_expr (mk_FOpp a) in
+    mk_gexp gv p
   | GLog gv, [g1] -> destr_gexp gv g1
   | EMap es, [g1;g2] -> (*i e(g^a,g^b) -> e(g,g)^ab i*)
     let p1 = destr_gexp es.Esym.source1 g1 in
@@ -76,7 +81,7 @@ let rec mk_simpl_op _strong op l =
       | App(Not,[e]) -> e
       | _            -> mk_Not e
       end
-  | (        GExp _ | GLog _ | EMap _
+  | (        GExp _ | GLog _ | EMap _ | GInv
     | FOpp | FMinus | FInv   | FDiv
     | Eq   | Ifte   | Not)           , _ -> assert false
 

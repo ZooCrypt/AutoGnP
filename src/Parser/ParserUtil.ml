@@ -103,7 +103,6 @@ let expr_of_parse_expr vmap ts pe0 =
     | CB b         -> E.mk_B b
     | Plus(e1,e2)  -> E.mk_FPlus [go e1; go e2]
     | Minus(e1,e2) -> E.mk_FMinus (go e1) (go e2)
-    | Div(e1,e2)   -> E.mk_FDiv (go e1) (go e2)
     | Land(e1,e2)  -> E.mk_Land [go e1; go e2]
     | Xor(e1,e2)   -> E.mk_Xor [go e1; go e2]
     | Eq(e1,e2)    -> E.mk_Eq (go e1) (go e2)
@@ -115,6 +114,14 @@ let expr_of_parse_expr vmap ts pe0 =
     | Exp(e1,e2)   -> E.mk_GExp (go e1) (go e2)
     | CGen(s)      -> E.mk_GGen (create_groupvar ts s)
     | CZ(s)        -> E.mk_Z (create_lenvar ts s)
+    | Div(e1,e2)   ->
+      let e1 = go e1 in
+      let e2 = go e2 in
+      begin match e1.E.e_ty.T.ty_node with
+      | T.Fq  -> E.mk_FDiv e1 e2
+      | T.G _ -> E.mk_GMult [e1; E.mk_GInv e2]
+      | _     -> fail_parse "type error"
+      end
     | Mult(e1,e2)  ->
       let e1 = go e1 in
       let e2 = go e2 in
