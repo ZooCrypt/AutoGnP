@@ -70,7 +70,8 @@ let rec mk_simpl_op _strong op l =
     else if is_GExp e2 && is_GExp e3 then (
       let (e2_1,e2_2) = destr_GExp e2 in
       let (e3_1,e3_2) = destr_GExp e3 in
-      if e_equal e2_1 e3_1 then mk_GExp e2_1 (mk_Ifte e1 e2_2 e3_2)
+      if e_equal e2_1 e3_1 && not (is_GLog e2_2 || is_GLog e3_2)
+      then mk_GExp e2_1 (mk_Ifte e1 e2_2 e3_2)
       else norm_ggt (mk_Ifte e1 e2 e3)
     ) else norm_ggt (mk_Ifte e1 e2 e3)
   | Not, [e] ->
