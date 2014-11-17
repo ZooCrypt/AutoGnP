@@ -23,6 +23,7 @@ val is_True : expr -> bool
 val is_False : expr -> bool
 val is_GGen : expr -> bool
 val is_GLog : expr -> bool
+val is_GLog_gv : Groupvar.id -> expr -> bool
 val is_some_App : expr -> bool
 val is_App : op -> expr -> bool
 val is_FDiv : expr -> bool

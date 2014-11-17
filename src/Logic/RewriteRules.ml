@@ -3,13 +3,16 @@
 (*i*)
 open Abbrevs
 open Util
-open Game
-open CoreTypes
-open CoreRules
+open Type
+open Syms
 open Expr
 open ExprUtils
 open Norm
 open NormField
+open Game
+open CoreTypes
+open CoreRules
+open TheoryTypes
 
 module Ht = Hashtbl
 
@@ -46,62 +49,88 @@ let t_unfold_only ju =
   let new_se = norm_se ~norm:id se in
   t_conv false new_se ju
 
-(*i [simp e unknown] takes an exponent expression [e] and a
-   set [unknown] of unknown expressions.
-   It returns a pair [(ges,mdenom)] where [mdenom] is 
-   a denominator using [None] to encode [1] and [ges] is a
-   list of of triples (b,ue,ke) representing (b^ue)^ke
-   where [None] encodes the default group generator.
-   The whole list [ges] represent the product of group
-   elements in [ges]. i*)
-let simp_exp e unknown =
-  let norm_mult es = mk_FMult (List.sort e_compare es) in
-  let norm_fopp e  = mk_FOpp e in
+(** split exponent expression into a base and known/unknown terms *)
+let split_exponent ts e gv unknown =
+  let is_unknown e = Se.mem e unknown in
+  (* split into: base (from expression(s) log(a)), unknown and known exponents *)
   let rec split_unknown e =
-    let is_unknown e = Se.mem e unknown in
     match e.e_node with
     | Nary(FMult,es) ->
-      let de,es = List.partition is_GLog es in
-      let ue,ke = List.partition is_unknown es in 
-      let b,de = match de with
-        | []    -> (None,de)
-        | b::bs -> (Some (destr_GLog b),bs)
+      let mk_split b uk kn =
+        match uk,kn with
+        | [],ke -> (b,mk_FMult ke,None)
+        | ue,[] -> (b,mk_FMult ue,None)
+        | ue,ke -> (b,mk_FMult ue,Some(mk_FMult ke))
       in
-      begin match ue@de, ke with
-      | [],ke -> (b, norm_mult ke,None)
-      | ue,[] -> (b, norm_mult ue,None)
-      | ue,ke -> (b, norm_mult ue, Some(norm_mult ke))
-      end
+      let base,remaining =
+        match List.partition (is_GLog_gv gv) es with
+        | (b::bs,cs) -> (* find log(a) s.t. a in group gv  *)
+          (Some (destr_GLog b),bs@cs)
+        | ([],_) -> (* find log(a) and log(b) s.t. e(a,b) in group gv *)
+          let emaps =
+            L.filter
+              (fun esym -> Groupvar.equal esym.Esym.target gv)
+              (L.map snd (Mstring.bindings ts.ts_emdecls))
+          in
+          begin match emaps with
+          | esym::_ ->
+            let (gv1,gv2) = (esym.Esym.source1,esym.Esym.source2) in
+            if Groupvar.equal gv1 gv2 then (
+              let es_gv1,others = List.partition (is_GLog_gv gv1) es in
+              begin match es_gv1 with
+              | b1::b2::es_gv1 ->
+                (Some (mk_EMap esym (destr_GLog b1) (destr_GLog b2))
+                ,es_gv1@others)
+              | _ -> (None,es)
+              end
+            ) else (
+              let es_gv1,others = List.partition (is_GLog_gv gv1) es in
+              let es_gv2,others = List.partition (is_GLog_gv gv2) others in
+              begin match es_gv1,es_gv2 with
+              | b1::es_gv1, b2::es_gv2 ->
+                (Some (mk_EMap esym (destr_GLog b1) (destr_GLog b2))
+                ,es_gv1@es_gv2@others)
+              | [],_ | _,[] -> (None,es)
+              end
+            )
+          | [] -> (None,es)
+          end
+      in
+      let ue,ke = List.partition is_unknown remaining in
+      mk_split base ue ke
     | App(FOpp,[a]) ->
       begin match split_unknown a with
-      | (b,e1,None)    -> (b, norm_fopp e1,None)
-      | (b,e1,Some e2) -> (b, e1,Some(norm_fopp e2))
+      | (b,e1,None)    -> (b,mk_FOpp e1,None)
+      | (b,e1,Some e2) -> (b,e1,Some(mk_FOpp e2))
       end
     | _ -> (None,e,None)
   in
-  let go sum denom = (List.map split_unknown sum, denom) in
-  match e.e_node with
-  | Nary(FPlus,es)  -> go es None
-  | App(FDiv,[a;b]) ->
-    begin match a.e_node with
-    | Nary(FPlus,es) -> go es (Some b)
-    | _ -> ([(None,a,None)],Some b)
-    end
-  | _ -> ([ split_unknown e ], None)
+  (* extract list of summands and (possibly) denominator *)
+  let (sum,denom) =
+    match e.e_node with
+    | Nary(FPlus,es)  -> (es,None)
+    | App(FDiv,[a;b]) ->
+      begin match a.e_node with
+      | Nary(FPlus,es) -> (es,Some b)
+      | _ -> ([e],Some b)
+      end
+    | _ -> ([e], None)
+  in
+  (List.map split_unknown sum, denom)
 
-let rewrite_exps unknown e0 =
+let rewrite_exps ts unknown e0 =
   let rec go e =
     let e = e_sub_map go e in
     match e.e_node with
-    | App(GExp _,[a;b]) ->
+    | App(GExp gv,[a;b]) ->
       assert (is_GGen a);
       let gen = a in
-      let (ies,ce) = simp_exp b unknown in
+      let (ies,ce) = split_exponent ts b gv unknown in
       let to_exp (a,b,c) =
         mk_GExp (mk_GExp (from_opt gen a) b) (from_opt mk_FOne c)
       in
-      log_t (lazy (fsprintf "norm_unknown: %a"
-                     (pp_list ", " pp_exp) (L.map to_exp ies)));
+      log_t (lazy (fsprintf "norm_unknown: %a, ce = %a" (pp_list ", " pp_exp)
+                     (L.map to_exp ies) (pp_opt pp_exp) ce));
       let get_gen og = match og with None -> gen | Some a -> a in
       let expio b ie moe =
         let g = get_gen b in
@@ -145,10 +174,10 @@ let rewrite_exps unknown e0 =
    (g^i)^o or X where i might be unknown, but o is not unknown.
    If there is a "let z=g^i" we can replace g^i by z in the next
    step. i*)
-let t_norm_unknown unknown ju =
+let t_norm_unknown ts unknown ju =
   let se = ju.ju_se in
   let norm e =
-    rewrite_exps (se_of_list unknown) (norm_expr_weak e)
+    rewrite_exps ts (se_of_list unknown) (norm_expr_weak e)
     |> abbrev_ggen |> remove_tuple_proj 
   in
   let new_se = map_se_exp norm se in

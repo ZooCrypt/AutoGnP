@@ -27,7 +27,7 @@ let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "AssumptionRules" ls
 (* \subsection{Decisional assumptions} *)
 
 (** Compute substitution and perform let abstraction. *)
-let t_assm_dec_aux assm dir subst assm_samps assm_lets ju =
+let t_assm_dec_aux ts assm dir subst assm_samps assm_lets ju =
   let se = ju.ju_se in
   let gdef_samps = Util.take (L.length assm_samps) (samplings se.se_gdef) in
 
@@ -73,7 +73,7 @@ let t_assm_dec_aux assm dir subst assm_samps assm_lets ju =
   in
   try
     ((*  t_print "after swapping, before unknown"
-     @> *) t_norm_unknown priv_exprs
+     @> *) t_norm_unknown ts priv_exprs
      (* @> t_print "after unknown" *)
      @> t_seq_fold let_abstrs
      (* @> t_print "after let" *)
@@ -118,7 +118,7 @@ let match_samps symvars assm_samps_typed gdef_samps_typed =
 (** Fuzzy matching with given assumption, compute sequence of swap
     applications that make assumption applicable. Compute sequence of
     let abstraction applications in next step. *)
-let t_assm_dec_auto assm dir subst ju =
+let t_assm_dec_auto ts assm dir subst ju =
   let se = ju.ju_se in
   log_t (lazy "###############################");
   log_t (lazy (fsprintf "t_assm_dec_auto dir=%s ad=%s" (string_of_dir dir) assm.ad_name));
@@ -153,7 +153,7 @@ let t_assm_dec_auto assm dir subst ju =
     |> filter_map (fun (old_pos,delta) ->
                     if delta = 0 then None else Some (CR.t_swap old_pos delta))
   in
-  (t_seq_fold swaps @> t_assm_dec_aux assm dir subst assm_samps assm_lets) ju
+  (t_seq_fold swaps @> t_assm_dec_aux ts assm dir subst assm_samps assm_lets) ju
 
 (** Supports placeholders for which all possible values are tried *)
 let t_assm_dec_non_exact
@@ -188,7 +188,7 @@ let t_assm_dec_non_exact
       needed
       (given_vnames@generated_vnames)
   in
-  t_assm_dec_auto assm dir ren ju
+  t_assm_dec_auto ts assm dir ren ju
 
 let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   let rn = "asumption_decisional" in
@@ -396,7 +396,7 @@ let t_assm_comp_match ?icases:(_icases=Se.empty) _before_t_assm _assm _subst _me
   else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
   *)
 
-let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
+let t_assm_comp_aux ?icases:(icases=Se.empty) _ts before_t_assm assm mev_e ju =
   let se = ju.ju_se in
   let assm_cmds = assm.ac_prefix in
   let samp_assm = samplings assm_cmds in
@@ -414,12 +414,13 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
       samp_gdef
   in
   log_t (lazy (fsprintf "subst %a"
-                 (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
+    (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
   let ltac subst (i,((vs:Vsym.t),(e:expr))) =
     let name = CR.mk_name se in
     let vs'  = Vsym.mk name vs.Vsym.ty in
     let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
-    ( Vsym.M.add vs vs' subst, t_let_abstract i vs' (Norm.norm_expr_weak e') None false)
+    (Vsym.M.add vs vs' subst
+    ,t_let_abstract i vs' (Norm.norm_expr_weak e') None false)
   in
   let (subst, let_abstrs) = map_accum ltac subst lets_assm in
   incr tries;
@@ -427,11 +428,12 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) before_t_assm assm mev_e ju =
      (* @> t_debug (fsprintf "assm_comp_auto tried %i combinations so far@\n" !tries) *)
   try
     t_before ju >>= fun ps ->
-    CR.rapply_all (t_assm_comp_match ~icases (before_t_assm @> t_before) assm subst mev_e) ps
+    CR.rapply_all
+      (t_assm_comp_match ~icases (before_t_assm @> t_before) assm subst mev_e) ps
   with
     Invalid_rule s -> log_d (lazy s); mempty
 
-let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
+let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
   let se = ju.ju_se in
   tries := 0;
   log_t (lazy (fsprintf "###############################"));
@@ -458,7 +460,8 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   let swaps =
        parallel_swaps old_new_pos
     |> filter_map
-        (fun (old_p,delta) -> if delta = 0 then None else Some (CR.t_swap old_p delta))
+        (fun (old_p,delta) ->
+          if delta = 0 then None else Some (CR.t_swap old_p delta))
   in
   let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) match_samps in
   let excepts =
@@ -479,14 +482,14 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) _ts assm _mrngs ju =
   in
   let before_t_assm =
     CR.t_remove_ev remove_events
-    @> t_norm_unknown priv_exprs
+    @> t_norm_unknown ts priv_exprs
     @> t_seq_fold excepts
     @> t_seq_fold swaps
   in
   guard (not (is_Land assm.ac_event && not (is_Land se.se_ev))) >>= fun _ ->
   before_t_assm ju >>= fun ps ->
   CR.rapply_all
-    (t_assm_comp_aux ~icases before_t_assm assm mev_e) ps >>= fun (ot,ps) ->
+    (t_assm_comp_aux ~icases ts before_t_assm assm mev_e) ps >>= fun (ot,ps) ->
   match ot with
   | Some t -> t ju
   | None   -> ret ps

@@ -3,6 +3,7 @@
 (*i*)
 open Expr
 open CoreRules
+open TheoryTypes
 open Syms
 (*i*)
 
@@ -12,7 +13,7 @@ val t_norm_nounfold : tactic
 
 val t_unfold_only : tactic 
 
-val t_norm_unknown : expr list -> tactic
+val t_norm_unknown : theory_state -> expr list -> tactic
 
 val t_norm_solve : expr -> tactic
 

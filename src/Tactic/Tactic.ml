@@ -159,7 +159,7 @@ let handle_tactic ts tac =
 
   | PT.Rnorm_unknown(is) ->
     let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
-    apply (t_norm_unknown vs)
+    apply (t_norm_unknown ts vs)
 
   | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
     let e = parse_e se in
