@@ -28,7 +28,7 @@ type theory_proof_state =
     of proof_state * proof_state list * proof_state nondet * proof_state option
   | ClosedTheory of proof_tree
 
-(** We implicitly define length and group variables and
+(** We implicitly define length and group variables for which
     sharing is required when the same string occurs in
     different states. *)
 type theory_state = {
