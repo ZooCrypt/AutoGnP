@@ -1,16 +1,20 @@
 adversary A_ddh : (G * G * G) -> Bool.
 
 assumption ddh ([x,y])
-  [ x <-$ Fq; y <-$ Fq;           b <- A_ddh(g ^ x,g ^ y,g ^ (x * y)); ]
-  [ x <-$ Fq; y <-$ Fq; z <-$ Fq; b <- A_ddh(g ^ x,g ^ y,g ^ z);       ].
+  [ x <-$ Fq; y <-$ Fq;
+    b <- A_ddh(g^x,g^y,g^(x*y)); ]
+  [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
+    b <- A_ddh(g^x,g^y,g^z); ].
 
 operator H : (G * G * G) -> Fq.
 
 adversary A_tcr : (G * G * G) -> (G * G * G).
 
 assumption tcr succ
-  [ a <-$ Fq; b <-$ Fq; c <-$ Fq; (x1,x2,x3) <- A_tcr(g^a,g^b,g^c); ]
-  : (H(x1,x2,x3) = H(g^a,g^b,g^c)) /\ not ((x1,x2,x3) = (g^a,g^b,g^c)).
+  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
+    (x1,x2,x3) <- A_tcr(g^a,g^b,g^c); ]
+  : (H(x1,x2,x3) = H(g^a,g^b,g^c))
+    /\ not ((x1,x2,x3) = (g^a,g^b,g^c)).
 
 adversary A1 : (G * G * G * G) -> (G * G).
 adversary A2 : (G * G * G * G) -> Bool.
@@ -55,16 +59,15 @@ bound_adv
   
   (* decisional assumption *)
   let_unfold. norm_unknown u w. swap 10 -8.
-  let_abstract 3 arg (g^w,g^u,g^(w*u)).
-  let_abstract _ res _.
+  let_abstract 3 arg (g^w,g^u,g^(w*u)). let_abstract _ res _.
   assumption_decisional ddh -> (3-13) v.
   norm.
   
   (* rnd rule for x1, y1, z1 *)
   except 3 u*w.
-  rnd! x1 _ (x1 -> x1 + w*x2).
-  rnd! y1 _ (y1 -> y1 + w*y2).
-  rnd! z1 _ (z1 -> z1 + w*z2).
+  rnd! x1 _ _.  (* x1 -> x1 + w*x2. *)
+  rnd! y1 _ _.  (* y1 -> y1 + w*y2. *)
+  rnd! z1 _ _.  (* z1 -> z1 + w*z2. *)
   norm.
   
   (* add test to Dec1 *)
@@ -73,7 +76,7 @@ bound_adv
 
   (* rnd to x2 and y2 *)
   simp. norm. swap 4 7.
-  rnd x2 _ _. norm.
+  rnd! x2 _ _. norm.
   rnd! z2 _ _. norm.
   
   (* add test to Dec2 *)
@@ -91,9 +94,7 @@ bound_adv
   except 4. swap 4 -2.
   remove_ev 1 2 3.
   let_abstract 4 arg (g^u,g^v,g^z2) 0.
-  let_abstract 0 res1 ea.
-  let_abstract 0 res2 ea'.
-  let_abstract 0 res3 ec.
+  let_abstract 0 res1 ea. let_abstract 0 res2 ea'. let_abstract 0 res3 ec.
   assumption_computational tcr (4-16).
 qed.
 print_proof!.
