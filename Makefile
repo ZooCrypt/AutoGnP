@@ -186,19 +186,5 @@ Test_Pretty_Expr :
 Test_Solve_Fq :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Solve_Fq.d.byte && ./Test_Solve_Fq.d.byte
 
-
-test: zoocrypt
-	@echo "============ OK TESTS ==============="
-	@for file in test/rules/ok/*.zc; do\
-	   printf "File $$file:\n";\
-	   ./zoocrypt.native $$file;\
-	 done
-	@echo "============ FAILING TESTS ==============="
-	@for file in test/rules/fail/*.zc; do\
-	  printf "File $$file:\n";\
-	  ./zoocrypt.native $$file;\
-	   echo ;\
-	 done
-
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@
