@@ -8,7 +8,7 @@ ifeq ($(UNAME_S),Darwin)
   LIBFLAGS=-lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
 endif
 
-OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind
+OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind -quiet
 
 .PHONY : clean all doc test\
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
@@ -16,10 +16,10 @@ OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44" -use-menhir -menhir "menhir -v" -classic-
 all: wszoocrypt
 
 stubs:
-	test -d _build/c_src || mkdir -p _build/c_src
-	c++ -fPIC -c c_src/factory_stubs.cc -o _build/c_src/factory_stubs.o -I/usr/local/include/factory
-	ar rc _build/c_src/libfactorystubs.a _build/c_src/factory_stubs.o
-	c++ -shared -o _build/c_src/libfactorystubs.so _build/c_src/factory_stubs.o -lfactory
+	@test -d _build/c_src || mkdir -p _build/c_src
+	@c++ -fPIC -c c_src/factory_stubs.cc -o _build/c_src/factory_stubs.o -I/usr/local/include/factory
+	@ar rc _build/c_src/libfactorystubs.a _build/c_src/factory_stubs.o
+	@c++ -shared -o _build/c_src/libfactorystubs.so _build/c_src/factory_stubs.o -lfactory
 
 stubtest:
 	c++ c_src/factory_stubs.cc -o factory_test -I/usr/local/include/factory -DWITHMAIN -lfactory 
@@ -49,8 +49,8 @@ factory : stubs
 
 
 wszoocrypt : stubs
-	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wszoocrypt.native
-	-killall wszoocrypt.native
+	@ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wszoocrypt.native
+	-@killall wszoocrypt.native
 
 ##########################################################################
 # Build PDF from literate program using ocamlweb and pdflatex

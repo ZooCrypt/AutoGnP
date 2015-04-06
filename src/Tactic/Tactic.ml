@@ -119,7 +119,7 @@ let handle_tactic ts tac =
   let mk_new_var sv ty = assert (not (Ht.mem vmap_g sv)); Vsym.mk sv ty in
   match tac with
   (* Rules with primitive arguments *)
-  | PT.Rnorm                 -> apply t_norm
+  | PT.Rnorm                 -> apply (t_norm ~fail_eq:false)
   | PT.Rnorm_nounfold        -> apply t_norm_nounfold
   | PT.Rlet_unfold(Some(i))  -> apply (t_let_unfold (get_pos i))
   | PT.Rlet_unfold(None)     -> apply (t_unfold_only)

@@ -67,6 +67,8 @@ val string_of_dir : direction -> string
 
 val id : 'a -> 'a
 
+val eq_on : ('a -> 'b) -> 'a -> 'a -> bool
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{File I/O} *)
 

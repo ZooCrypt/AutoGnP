@@ -254,7 +254,7 @@ let rec pp_proof_tree_verbose ?hide_admit:(hide_admit=false) fmt pt =
      "  @[<v 0>%a@\n@]%!")
     pp_ju pt.pt_ju
     (pp_rule ~hide_admit) pt.pt_rule
-    (pp_list "@\n" pp_proof_tree_verbose) pt.pt_children
+    (pp_list "@\n" (pp_proof_tree_verbose ~hide_admit)) pt.pt_children
 
 let pp_proof_tree_non_verbose ?hide_admit:(hide_admit=false) fmt pt =
   let rec aux n pt =

@@ -29,7 +29,7 @@ let fail_parse s = raise (ParseError s)
 
 let create_var vmap s ty =
   if Ht.mem vmap s then
-    failwith "create_var: variable already defined"
+    tacerror "create_var: variable %s already defined" s
   else
     let v = Vsym.mk s ty in
     Ht.add vmap s v;

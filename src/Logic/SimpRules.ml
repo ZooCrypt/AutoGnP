@@ -87,7 +87,7 @@ let t_ctx_ev_maybe mi ju =
   let diff,cdiff = if is_FZ e2 then (e1,ce) else (mk_FMinus e1 e2,mk_FMinus ce e2) in
   let c = mk_FDiv cdiff diff in
   log_i (lazy (fsprintf "ctx_ev_maybe: %i, %a" i pp_exp e));
-  (CR.t_ctxt_ev i (cv,c) @> t_norm) ju
+  (CR.t_ctxt_ev i (cv,c) @> t_norm ~fail_eq:false) ju
 
 let t_rewrite_oracle_maybe mopos mdir ju =
   (match mopos with

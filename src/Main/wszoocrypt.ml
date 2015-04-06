@@ -57,13 +57,15 @@ let insert_ts_cache filename cmds (ts,msgs) =
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Handlers for different commands} *)
 
+let frame_of_string s = Frame.of_string ~content:s ()
+
 let process_unknown s =
   F.printf "unknown command: %s\n%!" s;
-  Lwt.return (Frame.of_string "Unknown command")
+  Lwt.return (frame_of_string "Unknown command")
 
 let process_list_files () =
   Lwt.return
-    (Frame.of_string
+    (frame_of_string
        (YS.to_string
           (`Assoc [("cmd", `String "setFiles");
                    ("arg", `List (List.map (fun s -> `String s) !ps_files))])))
@@ -74,12 +76,12 @@ let process_save filename content =
     if (Sys.file_exists !ps_file && List.mem filename !ps_files
          && not !disallow_save) then (
       output_file filename content;
-      Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
+      frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else if (!new_dir <> "") then (
         output_file (!new_dir^filename) content;
-        Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
+        frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else (
-        Frame.of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
+        frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
     )
   )
 
@@ -94,7 +96,7 @@ let process_load s =
   let res = `Assoc [("cmd", `String "setProof");
                     ("arg", `String s);
                     ("filename", `String !ps_file) ] in
-  Lwt.return (Frame.of_string (YS.to_string res))
+  Lwt.return (frame_of_string (YS.to_string res))
 
 let split_proof_script s =
   let rec find_dot i =
@@ -188,13 +190,16 @@ let process_eval fname proofscript =
                 ("msgs", `List (List.map (fun s -> `String s) !rmsgs));
                 ("arg", `String g) ]
   in
-  Lwt.return (Frame.of_string (YS.to_string res))
+  Lwt.return (frame_of_string (YS.to_string res))
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Frame processing and server setup} *)
 
 let process_frame frame =
-  let inp = Frame.content frame in
+  let inp = match Frame.content frame with
+    | Some s -> s
+    | None   -> failwith "frame error"
+  in
   F.printf "Command: ``%s''\n%!" inp;
   match YS.from_string inp with
   | `Assoc l ->
@@ -217,6 +222,13 @@ let process_frame frame =
       with Not_found -> process_unknown inp)
   | _ -> process_unknown inp
 
+let sockaddr_of_dns node service =
+  Lwt_unix.(
+    getaddrinfo node service [AI_FAMILY(PF_INET); AI_SOCKTYPE(SOCK_STREAM)] >>= fun s ->
+    match s with
+    | h::_ -> Lwt.return h.Lwt_unix.ai_addr
+    | []   -> Lwt.fail Not_found)
+
 let run_server node service =
   let rec zoocrypt_serve uri (stream, push) =
     Lwt_stream.next stream >>= fun frame ->
@@ -224,7 +236,7 @@ let run_server node service =
     Lwt.wrap (fun () -> push (Some frame')) >>= fun () ->
     zoocrypt_serve uri (stream, push)
   in
-  Lwt_io_ext.sockaddr_of_dns node service >>= fun sa ->
+  sockaddr_of_dns node service >>= fun sa ->
   Lwt.return (establish_server sa zoocrypt_serve)
 
 let rec wait_forever () =
