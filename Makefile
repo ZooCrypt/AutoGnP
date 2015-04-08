@@ -13,7 +13,7 @@ OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -class
 .PHONY : clean all doc test\
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
-all: wszoocrypt
+all: ldoc
 
 stubs:
 	@test -d _build/c_src || mkdir -p _build/c_src
@@ -67,12 +67,14 @@ SYMBOLIC_MODULES= Symbolic/Norm.ml Symbolic/Norm.mli \
   Symbolic/DeducXor.ml Symbolic/DeducXor.mli \
   Symbolic/Deduc.ml  Symbolic/Deduc.mli
 GAME_MODULES= Game/Gsyms.ml Game/Gsyms.mli Game/Game.ml Game/Game.mli Game/Wf.ml Game/Wf.mli
-LOGIC_MODULES= Logic/Assumption.ml Logic/Assumption.mli Logic/CoreRules.ml Logic/CoreRules.mli \
+LOGIC_MODULES= Logic/Assumption.ml Logic/Assumption.mli \
+  Logic/CoreRules.ml Logic/CoreRules.mli \
   Logic/Rules.ml Logic/Rules.mli Logic/CaseRules.ml Logic/CaseRules.mli \
   Logic/RewriteRules.ml Logic/RewriteRules.mli \
   Logic/RandomRules.ml Logic/RandomRules.mli \
   Logic/RindepRules.ml Logic/RindepRules.mli \
   Logic/CrushRules.ml Logic/CrushRules.mli
+
 PARSER_MODULES= Parser/ParserTypes.ml Parser/ParserUtil.ml Parser/ParserUtil.mli Parser/Parse.ml Parser/Parse.mli
 TACTIC_MODULES= Tactic/TheoryTypes.ml Tactic/TheoryState.ml Tactic/TheoryState.mli Tactic/Tactic.ml Tactic/Tactic.mli
 TOOL_MODULES= Main/zoocrypt.ml Main/wszoocrypt.ml

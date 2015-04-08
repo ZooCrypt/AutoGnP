@@ -205,7 +205,7 @@ let parse_ctxt_oracle ts opos ju ty (sv,se) =
   (v,expr_of_parse_expr vmap ts se)
 
 
-(** rnd_oracle tactic that tries all useful contexts if none are given *)
+(** rnd\_oracle tactic that tries all useful contexts if none are given *)
 let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   let se = ju.ju_se in
   let osamps = osamplings se.se_gdef in

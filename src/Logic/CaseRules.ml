@@ -28,10 +28,10 @@ type useful_cases =
   | AppAddTest    of ocmd_pos * expr * ty * ty
   | AppExcept     of gcmd_pos * expr
   | AppCaseEv     of expr
-(*   | AppExceptOrcl of ocmd_pos * expr *)
+(*i | AppExceptOrcl of ocmd_pos * expr i*)
 
 let uc_exp uc = match uc with
-  | AppAddTest(_,e,_,_) (* | AppExceptOrcl(_,e)  *)
+  | AppAddTest(_,e,_,_) (*i | AppExceptOrcl(_,e)  i*)
   | AppExcept(_,e) | AppCaseEv(e) -> e
 
 let compare_uc uc1 uc2 =
@@ -39,9 +39,9 @@ let compare_uc uc1 uc2 =
   | AppAddTest(opos1,e1,_,_), AppAddTest(opos2,e2,_,_) ->
     let cmp = compare opos1 opos2 in
     if cmp <> 0 then cmp else e_compare e1 e2
-(*  | AppExceptOrcl(opos1,e1), AppExceptOrcl(opos2,e2) ->
+(*i  | AppExceptOrcl(opos1,e1), AppExceptOrcl(opos2,e2) ->
       let cmp = compare opos1 opos2 in
-      if cmp <> 0 then cmp else e_compare e1 e2 *)
+      if cmp <> 0 then cmp else e_compare e1 e2 i*)
   | AppExcept(gpos1,e1), AppExcept(gpos2,e2) ->
     let cmp = compare gpos1 gpos2 in
     if cmp <> 0 then cmp else e_compare e1 e2
@@ -51,8 +51,8 @@ let compare_uc uc1 uc2 =
   | _, AppAddTest _ -> -1
   | AppExcept _, _ -> 1
   | _, AppExcept _ -> -1
-(*  | AppExceptOrcl _, _ -> 1
-    | _, AppExceptOrcl _ -> -1 *)
+(*i  | AppExceptOrcl _, _ -> 1
+     | _, AppExceptOrcl _ -> -1 i*)
 
 let pp_useful_cases fmt uc =
   match uc with
@@ -62,8 +62,8 @@ let pp_useful_cases fmt uc =
     F.fprintf fmt "app(rexcept (%i) %a)" g_idx pp_exp e
   | AppCaseEv(e) ->
     F.fprintf fmt "app(rcase_ev %a)" pp_exp e
-(*  | AppExceptOrcl((g_idx,oi,o_idx),e) ->
-      F.fprintf fmt "app(rexcept_orcl (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e *)
+(*i  | AppExceptOrcl((g_idx,oi,o_idx),e) ->
+      F.fprintf fmt "app(rexcept_orcl (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e i*)
 
 let is_Useless e =
   is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e)) || is_H e

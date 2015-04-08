@@ -60,7 +60,7 @@ let rec mk_simpl_op _strong op l =
     if e_equal e mk_FOne || e_equal e (mk_FOpp mk_FOne) then
       mk_False
     else
-      mk_Eq e1 e2 (* e mk_FZ *)
+      mk_Eq e1 e2 (*i e mk_FZ i*)
   | Eq, [e1;e2] ->
     mk_Eq e1 e2
   | Ifte, [e1;e2;e3] ->

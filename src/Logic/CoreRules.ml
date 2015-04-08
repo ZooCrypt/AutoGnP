@@ -191,8 +191,8 @@ let t_seq t1 t2 g =
   mapM t2 ps1.subgoals >>= fun ps2s ->
   ret (merge_proof_states ps2s ps1.validation)
 
-(** Sequential composition of the tactic [t1] with the tactics
-    [t2s]: apply [t1] to get [|t2s|] new proof states [ps2s], then
+(** Sequential composition of the tactic [t1] with the tactics [t2s]:
+    apply [t1] to get $|t2s|$ new proof states [ps2s], then
     apply the i-th element of [t2s] to the i-th proof state in [ps2s]. *)
 let t_seq_list t1 t2s g =
   t1 g >>= fun ps1 ->
