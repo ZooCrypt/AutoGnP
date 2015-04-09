@@ -281,7 +281,7 @@ let ensure_pr_Succ_or_Adv rn ju =
 (*i ----------------------------------------------------------------------- i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Conversion.} *)
+(** {\bf Conversion.} *)
 
 let rename_if_required rn se1 se2 =
   let ren = Game.unif_se se1 se2 in
@@ -318,7 +318,7 @@ let rconv do_norm_terms new_se ju =
 let t_conv do_norm_terms new_se = prove_by (rconv do_norm_terms new_se)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Instruction swapping.} *)
+(** {\bf Instruction swapping.} *)
 
 let ensure_disjoint rn read write i c =
   let i = [i] in
@@ -356,7 +356,7 @@ let rswap i delta ju = Rswap(i, delta), [swap i delta ju]
 let t_swap i delta = prove_by (rswap i delta)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Instruction swapping for Oracle.} *)
+(** {\bf Instruction swapping for Oracle.} *)
 
 let swap_oracle i delta ju =
   if delta = 0 then ju
@@ -385,7 +385,7 @@ let rswap_oracle i delta ju =
 let t_swap_oracle i delta = prove_by (rswap_oracle i delta)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Random sampling.} *)
+(** {\bf Random sampling.} *)
 
 let ensure_bijection c1 c2 v =
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
@@ -417,7 +417,7 @@ let rrnd p c1 c2 ju =
 let t_rnd p c1 c2 = prove_by (rrnd p c1 c2)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Random sampling in oracle.} *)
+(** {\bf Random sampling in oracle.} *)
 
 let rrnd_oracle p c1 c2 ju =
   let se = ju.ju_se in
@@ -445,7 +445,7 @@ let rrnd_oracle p c1 c2 ju =
 let t_rnd_oracle p c1 c2 = prove_by (rrnd_oracle p c1 c2)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Rewrite oracle using test.} *)
+(** {\bf Rewrite oracle using test.} *)
 
 let rrewrite_oracle op dir ju =
   let se = ju.ju_se in
@@ -468,7 +468,7 @@ let rrewrite_oracle op dir ju =
 let t_rewrite_oracle op dir = prove_by (rrewrite_oracle op dir)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Merge conjucts in event with equalities} *)
+(** {\bf Merge conjucts in event with equalities} *)
 
 let merge_base_event ev1 ev2 =
   match ev1.e_node, ev2.e_node with
@@ -493,7 +493,7 @@ let rmerge_ev i j ju =
 let t_merge_ev i j = prove_by (rmerge_ev i j)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Split equality on tuples into multiple equalities} *)
+(** {\bf Split equality on tuples into multiple equalities} *)
 
 let rsplit_ev i ju =
   let se = ju.ju_se in
@@ -519,7 +519,7 @@ let rsplit_ev i ju =
 let t_split_ev i = prove_by (rsplit_ev i)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Use equality conjunct to rewrite other conjuncts} *)
+(** {\bf Use equality conjunct to rewrite other conjuncts} *)
 
 let rrw_ev i d ju =
   let rn = "rewrite_ev" in
@@ -549,7 +549,7 @@ let rrw_ev i d ju =
 let t_rw_ev i d = prove_by (rrw_ev i d)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Swap sampling from once-oracle to main.} *)
+(* {\bf Swap sampling from once-oracle to main.} *)
 
 let rswap_main opos vname ju =
   let se = ju.ju_se in
@@ -584,7 +584,7 @@ let t_swap_main opos vname =
 (*i ----------------------------------------------------------------------- i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Sampling from excepted distribution.} *)
+(** {\bf Sampling from excepted distribution.} *)
 
 let rexcept p es ju =
   let se = ju.ju_se in
@@ -604,7 +604,7 @@ let rexcept p es ju =
 let t_except p es = prove_by (rexcept p es)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Sampling from excepted distribution for oracle.} *)
+(** {\bf Sampling from excepted distribution for oracle.} *)
 
 let rexcept_oracle p es ju =
   let se = ju.ju_se in
@@ -623,7 +623,7 @@ let t_except_oracle p es = prove_by (rexcept_oracle p es)
 (*i ----------------------------------------------------------------------- i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Perform case distinction on event.} *)
+(** {\bf Perform case distinction on event.} *)
 
 let conj_or_negation_included e ev =
   let norm = Norm.norm_expr_weak in
@@ -644,7 +644,7 @@ let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
   prove_by (rcase_ev ~flip ~allow_existing:ae e)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Apply context to event} *)
+(** {\bf Apply context to event} *)
 
 let rctxt_ev i c ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
@@ -668,7 +668,7 @@ let rctxt_ev i c ju =
 let t_ctxt_ev i c = prove_by (rctxt_ev i c)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Remove an event} *)
+(** {\bf Remove an event} *)
 
 let rremove_ev (rm:int list) ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
@@ -688,13 +688,13 @@ let t_remove_ev rm = prove_by (rremove_ev rm)
 (*i ----------------------------------------------------------------------- i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Admit proof obligation} *)
+(** {\bf Admit proof obligation} *)
 
 let radmit s _g = Radmit s, []
 let t_admit s = prove_by (radmit s)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Distinguishability judgments are symmetric} *)
+(** {\bf Distinguishability judgments are symmetric} *)
 
 let rdist_sym ju =
   match ju.ju_pr with
@@ -706,7 +706,7 @@ let rdist_sym ju =
 let t_dist_sym = prove_by rdist_sym
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Equal experiments cannot be distinguished} *)
+(** {\bf Equal experiments cannot be distinguished} *)
 
 let rdist_eq ju =
   match ju.ju_pr with
@@ -722,7 +722,7 @@ let rdist_eq ju =
 let t_dist_eq = prove_by rdist_eq
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Bound false event} *)
+(** {\bf Bound false event} *)
 
 let rfalse_ev ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
@@ -733,7 +733,7 @@ let rfalse_ev ju =
 let t_false_ev = prove_by rfalse_ev
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Bound random independence} *)
+(** {\bf Bound random independence} *)
 
 let check_event r ev =
   let r = mk_V r in
@@ -774,7 +774,7 @@ let rrandom_indep ju =
 let t_random_indep = prove_by rrandom_indep
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Apply computational assumption} *)
+(** {\bf Apply computational assumption} *)
 
 let ensure_ranges_cover_gdef rn rngs pref_len gdef =
   let gdef_len = L.length gdef in
@@ -855,7 +855,7 @@ let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
 (*i ----------------------------------------------------------------------- i*)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Apply decisional assumption} *)
+(** {\bf Apply decisional assumption} *)
  
 let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
   let swap_dir = if dir = LeftToRight then id else Util.swap in  
@@ -920,7 +920,7 @@ let rassm_dec dir ren rngs assm0 ju =
 let t_assm_dec dir ren rngs assm = prove_by (rassm_dec dir ren rngs assm)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Add a new test to oracle.} *)
+(** {\bf Add a new test to oracle.} *)
 
 let radd_test opos tnew asym fvs ju =
   let se = ju.ju_se in
@@ -957,7 +957,7 @@ let radd_test opos tnew asym fvs ju =
 let t_add_test p tnew asym fvs = prove_by (radd_test p tnew asym fvs)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \bf{Hybrid argument.} *)
+(** {\bf Hybrid argument.} *)
 
 let rhybrid gpos oidx new_lcmds new_eret asym1 asym2 asym3 ju =
   let se = ju.ju_se in
