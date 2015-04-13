@@ -70,10 +70,8 @@ by [].
 lemma mulf0 (x:t): x * zero = zero
 by [].
 
-lemma mulNf (x y:t): (-x) * y = - (x * y).
-proof.
-  admit.
-qed.
+lemma mulNf (x y:t): (-x) * y = - (x * y)
+by [].
 
 lemma mulfN (x y:t): y * (-x)= - (y * x)
 by [].  
