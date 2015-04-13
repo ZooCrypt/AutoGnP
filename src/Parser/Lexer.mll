@@ -31,6 +31,8 @@ rule lex = parse
   | "log"   { LOG }
   | "true"  { TRUE }
   | "false" { FALSE }
+  | "in"    { IN }
+  | "Log"   { QUERIES }
   | "let"   { LET }
   | "undo_back"  { UNDOBACK }
   | "undo_back!"  { UNDOBACK_EXCL }

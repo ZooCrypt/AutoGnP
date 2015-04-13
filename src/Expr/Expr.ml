@@ -5,6 +5,7 @@ open Abbrevs
 open Util
 open Type
 open Syms
+open Gsyms
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
@@ -94,6 +95,7 @@ and expr_node =
   | Cnst   of cnst            (*r constants *)
   | App    of op * expr list  (*r fixed arity operators *)
   | Nary   of nop * expr list (*r variable arity AC operators *)
+  | InLog  of expr * Osym.t   (* e in log o *)
   | Exists of expr * expr * (Vsym.t * Hsym.t) list
     (*r $Exists(e_1,e_2,[(x_1,L_{H_{h1}}),\ldots]$: $\exists x_1 \in L_{H_{h1}}.\, e_1 = e_2$ *)
 
@@ -117,6 +119,7 @@ module Hse = Hashcons.Make (struct
     | Cnst c1, Cnst c2           -> c1 = c2
     | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
+    | InLog(e1,o1), InLog(e2,o2) -> e_equal e1 e2 && Osym.equal o1 o2
     | Exists(e1,e1',vh1), Exists(e2,e2',vh2) -> 
       e_equal e1 e2 && e_equal e1' e2' &&
         list_eq_for_all2 (fun (v1,h1) (v2,h2) ->
@@ -133,6 +136,7 @@ module Hse = Hashcons.Make (struct
     | Cnst(c)    -> cnst_hash c
     | App(o,es)  -> Hashcons.combine_list e_hash (op_hash o) es
     | Nary(o,es) -> Hashcons.combine_list e_hash (nop_hash o) es
+    | InLog(e,o) -> Hashcons.combine (e_hash e) (Osym.hash o)
     | Exists(e1,e2,vh) -> 
         Hashcons.combine_list 
           (fun (v,h) -> Hashcons.combine (Vsym.hash v) (Hsym.hash h))
@@ -185,6 +189,10 @@ let mk_V v = mk_e (V v) v.Vsym.ty
 let mk_H h e =
   ensure_ty_equal e.e_ty h.Hsym.dom e None "mk_H";
   mk_e (H(h,e)) h.Hsym.codom
+
+let mk_InLog e orc = 
+  ensure_ty_equal e.e_ty orc.Osym.dom e None "mk_InLog";
+  mk_e (InLog(e,orc)) ty_Bool
 
 let mk_Tuple es =
   mk_e (Tuple es) (ty_Prod (L.map (fun e -> e.e_ty) es))
@@ -343,6 +351,10 @@ let sub_map g e =
       let es' = smart_map g es in
       if es == es' then e
       else mk_e (Nary(o,es')) e.e_ty
+  | InLog(e1,orc) ->
+      let e1' = g e1 in
+      if e1 == e1' then e
+      else mk_e (InLog(e1',orc)) e.e_ty
 
 let check_fun g e =
   let e' = g e in 
@@ -354,14 +366,14 @@ let e_sub_map g = sub_map (check_fun g)
 let e_sub_fold g acc e =
   match e.e_node with
   | V _ | Cnst _ -> acc
-  | H(_,e) | Proj(_, e) -> g acc e
+  | H(_,e) | Proj(_, e) | InLog(e,_)-> g acc e
   | Exists(e1,e2,_) -> g (g acc e1) e2
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | H(_,e) | Proj(_, e) -> g e
+  | H(_,e) | Proj(_, e) | InLog(e,_)-> g e
   | Exists(e1,e2,_) -> g e1; g e2
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
 
@@ -421,13 +433,16 @@ let e_map_ty_maximal ty g e0 =
       trans (mk_Tuple es)
     | Proj(i,e) ->
       let e = go ie e in
-      trans (mk_Proj i (go ie e))
+      trans (mk_Proj i e)
     | App(o,es) ->
       let es = L.map (go ie) es in
       trans (mk_App o es e.e_ty) 
     | Nary(o,es) -> 
       let es = L.map (go ie) es in
       trans (mk_e (Nary(o,es)) e.e_ty)
+    | InLog(e,orc) ->
+      let e = go ie e in
+      trans (mk_InLog e orc)
     | Exists(e1,e2,vh) ->
       let (e1, e2) = (go ie e1, go ie e2) in
       trans (mk_Exists e1 e2 vh)

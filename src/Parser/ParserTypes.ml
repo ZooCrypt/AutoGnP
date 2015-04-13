@@ -40,6 +40,7 @@ type parse_expr =
   | Land of parse_expr * parse_expr
   | Xor of parse_expr * parse_expr
   | Exists of parse_expr * parse_expr * (string * string) list
+  | InLog  of parse_expr * string 
 
 type parse_ctx = string * parse_expr
 

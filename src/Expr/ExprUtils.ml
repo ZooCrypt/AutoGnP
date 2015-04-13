@@ -4,6 +4,7 @@
 open Expr
 open Type
 open Syms
+open Gsyms
 open Abbrevs
 open Util
 (*i*)
@@ -147,6 +148,11 @@ let rec pp_exp_p above fmt e =
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op_p above fmt (o,es) 
   | Nary(o,es) -> pp_nop_p above fmt (o,es)
+  | InLog(e,orc) -> 
+    let pp fmt () = 
+      F.fprintf fmt "@[<hov>%a in@ Log(%a)@]"
+        (pp_exp_p Top) e Osym.pp orc in
+    pp_maybe_paren true true pp fmt ()
   | Exists(e1,e2,h) ->
     let pp fmt () = 
       F.fprintf fmt "@[<hv 2>exists %a:@ %a =@ %a@]"
@@ -340,7 +346,7 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | H(_,e) | Proj(_,e) -> 
+    | H(_,e) | Proj(_,e) | InLog(e,_) -> 
       go ie e; run e0
     | Tuple(es) | App(_,es) | Nary(_,es) ->
       L.iter (go ie) es;  run e0

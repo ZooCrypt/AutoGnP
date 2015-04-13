@@ -53,7 +53,8 @@
 %token UNIT
 %token LOG
 %token <string> ZBS
-
+%token QUERIES
+%token IN
 /************************************************************************/
 /* Tokens for games */
 
@@ -205,6 +206,7 @@ expr0 :
 | e1=expr1 EQUAL e2=expr1 { Eq(e1,e2) }
 | e1=expr1 NEQ e2=expr1 { Not(Eq(e1,e2)) }
 | e1=expr1 QUESTION e2=expr1 COLON e3=expr1 { Ifte(e1, e2, e3) }
+| e1=expr1 IN QUERIES LPAREN oname=AID RPAREN { InLog(e1,oname) } 
 | e=expr1 { e }
 
 expr1 :

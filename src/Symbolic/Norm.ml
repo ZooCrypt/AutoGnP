@@ -141,6 +141,7 @@ and norm_expr ?strong:(strong=false) e =
   | H(h,e) -> norm_ggt (mk_H h (norm_expr ~strong e))
   | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
   | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)
+  | InLog(e,orc) -> mk_InLog (norm_expr ~strong e) orc
   | Exists(e1,e2,h) ->
     mk_Exists (norm_expr ~strong e1) (norm_expr ~strong e2) h
   | App (op, l) ->

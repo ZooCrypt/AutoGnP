@@ -29,7 +29,7 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
     )
   and add_subterms e inv =
     match e.e_node with
-    | V _  | H _ | Proj _ | Cnst _ | Exists _ -> ()
+    | V _  | H _ | Proj _ | Cnst _ | Exists _ | InLog _ -> ()
     | Tuple es -> 
       List.iteri (fun i e -> add_known e (mk_Proj i inv)) es
     | App(op, es) ->
@@ -89,7 +89,7 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
       | FPlus | FMult -> if not f then add_base e; List.iter (register_subexprs true) es
       | Xor -> add_base e; List.iter (register_subexprs false) es
       end
-    | Cnst _ | Exists _ -> ()
+    | Cnst _ | Exists _ | InLog _ -> ()
   in
 
   (** Try to construct unknown useful expressions *)
@@ -147,7 +147,7 @@ let invert' ?ppt_inverter:(ppt=false) do_div known_es to_ =
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
       end
-    | V _ | Cnst _ | Exists _ -> ()
+    | V _ | Cnst _ | Exists _ | InLog _ -> ()
   in
  
   (* Try do deduce interesting subterms for the given type using solvers *)

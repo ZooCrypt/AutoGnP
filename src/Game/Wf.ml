@@ -126,6 +126,7 @@ and wf_exp ctype wfs e0 =
       wf_exp ctype wfs e2;
       wf_exp ctype wfs e1
     | H(_,e1) | Proj(_,e1) -> go e1
+    | InLog(e,_orc) -> go e (* FIXME check oracle name, allows only in event *)
     | Nary(Land,es) ->
       let is_InEq e =
         if is_App Not e then is_App Eq (destr_Not e) else false
