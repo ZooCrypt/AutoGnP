@@ -104,6 +104,7 @@ val me_of_list : (Me.key * 'a) list -> 'a Me.t
 
 type ctxt = Vsym.t * expr
 
+val ctxt_ty : ctxt -> ty * ty
 val inst_ctxt : ctxt -> expr -> expr
 
 (** [sub t] is a generic subtraction function that

@@ -93,6 +93,32 @@ let destr_Prod ty = match ty.ty_node with
   | Prod ts -> ts
   | _ -> assert false
 
+(*
+(*i ----------------------------------------------------------------------- i*)
+(** Check size equality of type *)
+type size = {
+  mutable s_BS : Id.S.t;
+  mutable s_B  : int;
+  mutable s_G  : Id.S.t;
+  mutable s_Fq : int
+}
+
+let size_of t = 
+  let s = { s_Bs = Id.S.empty; s_B = 0; s_G = Id.S.empty;s_Fq = 0 } in
+  let rec aux ty = 
+    match ty.ty_node with
+    | BS id  -> s.s_Bs <- Id.S.add id s.s_Bs 
+    | Bool   -> s.s_B  <- 1 + s.s_B
+    | G id   -> s.s_G  <- Id.S.add id s.s_G
+    | Fq     -> s.s_Fq <- 1 + s.s_Fq
+    | Prod l -> List.iter aux l
+    | Int    -> assert false in
+  aux ty;
+  s
+*)
+
+
+
 (*i ----------------------------------------------------------------------- i*)
 
 (*i*)

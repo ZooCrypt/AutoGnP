@@ -61,9 +61,9 @@ type 'a rtactic = goal -> ('a * proof_state) nondet
 (* \hd{General purpose functions} *)
 
 (** Create a variable name that is fresh in the given security experiment *)
-let mk_name se =
+let mk_name ?(name="r") se =
   let vars = gdef_all_vars se.se_gdef in
-  let name_of_int i = "r"^(string_of_int i) in
+  let name_of_int i = name^(string_of_int i) in
   let names =
     Vsym.S.fold
       (fun vs se -> Sstring.add (Id.name vs.Vsym.id) se) vars Sstring.empty
@@ -387,30 +387,55 @@ let t_swap_oracle i delta = prove_by (rswap_oracle i delta)
 (*i ----------------------------------------------------------------------- i*)
 (** {\bf Random sampling.} *)
 
-let ensure_bijection c1 c2 v =
-  if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v)) v &&
-          Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)
-  then tacerror "rnd: contexts not bijective"
+let ensure_bijection se c1 c2 rs =
+  (* v : t
+     c1 : t' -> t
+     c2 : t  -> t' *)
+  let dty1,cty1 = ctxt_ty c1 in
+  let dty2,cty2 = ctxt_ty c2 in
+  let t = rs.Vsym.ty in
+  let t' = dty1 in
+  if not (ty_equal cty1 t && ty_equal dty2 t && ty_equal cty2 t') then
+    begin
+ (*     Format.eprintf "c1 : %a -> %a while %a -> %a is expected@."
+        pp_ty dty1 pp_ty cty1 pp_ty t' pp_ty t;
+      Format.eprintf "c2 : %a -> %a while %a -> %a is expected@."
+        pp_ty dty2 pp_ty cty2 pp_ty t pp_ty t'; *)
+      tacerror "rnd: invalid type for contexts";
+    end;
+
+  let v  = mk_V rs in
+  let v' = mk_V (Vsym.mk (mk_name se) t') in
+  if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v')) v' &&
+            Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v) then
+    tacerror "rnd: contexts not bijective"
+(*  if not (ty_equal_size dty1 dty2) then
+    tacerror "rnd: invalid size type for contexts" *)
 
 let rrnd p c1 c2 ju =
   let se = ju.ju_se in
   match get_se_ctxt se p with
-  | GSamp(rvs,(_,exc)) as csamp, sec ->
+  | GSamp(rvs,(_,exc)), sec ->
     if exc <> [] then tacerror "rnd: excepted distribution not allowed";
-    let rv = mk_V rvs in
-    ensure_bijection c1 c2 rv;
+    let new_ty = (fst c1).Vsym.ty in
+    ensure_bijection se c1 c2 rvs;
     (* check second context first such that divZero does not clobber undef *)
     let wfs = wf_gdef NoCheckDivZero (L.rev sec.sec_left) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    let rv = mk_V rvs in
+    let nrvs = 
+      if ty_equal rvs.Vsym.ty new_ty then rvs 
+      else Vsym.mk (mk_name ~name:(Id.name rvs.Vsym.id) se) new_ty in
+    let nrv = mk_V nrvs in
     let vslet = Vsym.mk (mk_name se) rv.e_ty in
-    let cmds = [ csamp; GLet(vslet, inst_ctxt c1 rv) ] in
+    let cmds = [ GSamp(nrvs,(new_ty, [])); GLet(vslet, inst_ctxt c1 nrv) ] in
     let subst e = e_replace rv (mk_V vslet) e in
     let sec = { sec with
                 sec_right = map_gdef_exp subst sec.sec_right;
                 sec_ev    = subst sec.sec_ev }
     in
-    Rrnd(p,rvs,c1,c2), [ { ju with ju_se = set_se_ctxt cmds sec } ]
+    Rrnd(p,nrvs,c1,c2), [ { ju with ju_se = set_se_ctxt cmds sec } ]
   | _ ->
     tacerror "rnd: position given is not a sampling"
 
@@ -422,18 +447,23 @@ let t_rnd p c1 c2 = prove_by (rrnd p c1 c2)
 let rrnd_oracle p c1 c2 ju =
   let se = ju.ju_se in
   match get_se_octxt se p with
-  | LSamp(rvs,(_,exc)) as csamp, seoc ->
+  | LSamp(rvs,(_,exc)), seoc ->
     if exc <> [] then tacerror "rnd_oracle: excepted distribution not allowed";
-    let rv = mk_V rvs in
-    ensure_bijection c1 c2 rv;
+    let new_ty = (fst c1).Vsym.ty in
+    ensure_bijection se c1 c2 rvs;
     (* check second context first such that divZero does not clobber undef *)
     let wfs = wf_gdef CheckDivZero (L.rev seoc.seoc_sec.sec_left) in
     let wfs = ensure_varnames_fresh wfs seoc.seoc_oargs in
     let wfs = wf_lcmds CheckDivZero wfs (L.rev seoc.seoc_cleft) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
+    let rv = mk_V rvs in
+    let nrvs = 
+      if ty_equal rvs.Vsym.ty new_ty then rvs 
+      else Vsym.mk (mk_name ~name:(Id.name rvs.Vsym.id) se) new_ty in
+    let nrv = mk_V nrvs in
     let vslet = Vsym.mk (mk_name se) rv.e_ty in
-    let cmds = [ csamp; LLet(vslet, inst_ctxt c1 rv) ] in
+    let cmds = [ LSamp(nrvs,(new_ty, [])); LLet(vslet, inst_ctxt c1 nrv) ] in
     let subst e = e_replace rv (mk_V vslet) e in
     let seoc = { seoc with
                  seoc_return = subst seoc.seoc_return;

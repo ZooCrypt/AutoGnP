@@ -46,7 +46,7 @@ exception NoOpenGoal
 (* \hd{Basic manipulation tactics}  *)
 
 val get_proof : proof_state -> proof_tree
-val mk_name : sec_exp -> string
+val mk_name : ?name:string -> sec_exp -> string
 val merge_proof_states :
   proof_state list -> (proof_tree list -> proof_tree) -> proof_state
 

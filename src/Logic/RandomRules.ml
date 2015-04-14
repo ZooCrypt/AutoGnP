@@ -100,7 +100,6 @@ let contexts se rv mgen =
 let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
   let se = ju.ju_se in
   let ty = rv.Vsym.ty in
-
   (* find useful contexts *)
   (match mctxt2 with
   | Some (sv2,se2) -> ret (parse_ctxt ts se ty (sv2,se2))
@@ -115,8 +114,9 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
 
   (* compute inverse context if required *)
   (match mctxt1 with
-  | Some(sv1,e1) -> ret (parse_ctxt ts se ty (sv1,e1))
+  | Some(sv1,e1) -> ret (parse_ctxt ts se e2.e_ty (sv1,e1))
   | None when ty_equal ty mk_Fq ->
+    (* FIXME *)
     ret (v2, DeducField.solve_fq_vars_known e2 v2)
   | None -> mempty
   ) >>= fun (v1,e1) ->
@@ -125,7 +125,8 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     CR.t_rnd i (v1,e1) (v2,e2) ju
    with
    (* try different strategies to prevent failures by applying other tactics beforehand *)
-   | Invalid_rule s -> mfail (lazy s)
+   | Invalid_rule s -> 
+     mfail (lazy s)
    | Wf.Wf_var_undef(vs,e) ->
      let ls = lazy (fsprintf "t_rnd_pos: variable %a undefined in %a" Vsym.pp vs pp_exp e) in
      log_i ls;

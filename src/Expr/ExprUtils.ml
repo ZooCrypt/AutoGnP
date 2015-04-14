@@ -388,6 +388,8 @@ let me_of_list es = L.fold_left (fun s (k,v) -> Me.add k v s) Me.empty es
 
 type ctxt = Vsym.t * expr
 
+let ctxt_ty (v,e) = v.Vsym.ty, e.e_ty 
+
 let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 
 let sub t = 

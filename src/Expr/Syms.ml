@@ -9,7 +9,7 @@ open Type
 
 module Vsym = struct
   type t = { 
-    id  : id;
+    id : id;
     ty : ty;
   }
 
