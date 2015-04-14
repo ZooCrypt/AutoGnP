@@ -1,0 +1,4 @@
+#!/bin/sh
+
+export BOLT_CONFIG=log_bolt.config
+./wszoocrypt.native $@

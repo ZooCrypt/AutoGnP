@@ -4,7 +4,7 @@ open Lazy
 open Abbrevs
 open Util
 
-let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
+let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Nondet" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
