@@ -4,19 +4,19 @@ bilinear map e : G * G -> G_t.
 adversary A_dbdh : (G * G * G * G * G_t) -> Bool.
 
 assumption dbdh
-  [ g1 <-$ G; c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq;
+  [ let g1 = g; c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq;
     b <- A_dbdh(g1,g1^c1,g1^c2,g1^c3,e(g1,g1)^(c1*c2*c3)); ]
-  [ g1 <-$ G; c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq; t <-$ Fq;
+  [ let g1 = g; c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq; t <-$ Fq;
     b <- A_dbdh(g1,g1^c1,g1^c2,g1^c3,e(g1,g1)^t); ].
 
 (* DLIN assumption *)
 adversary A_dlin : (G * G * G * G * G * G) -> Bool.
 
 assumption dlin
-  [ g1 <-$ G; f <-$ G; v <-$ G; c1 <-$ Fq; c2 <-$ Fq;
-    b <- A_dlin(g1,f,v,g1^c1,f^c2,v^(c1+c2)); ]
-  [ g1 <-$ G; f <-$ G; v <-$ G; c1 <-$ Fq; c2 <-$ Fq; t <-$ Fq;
-    b <- A_dlin(g1,f,v,g1^c1,f^c2,g1^t); ].
+  [ let g1 = g; f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq;
+    b <- A_dlin(g1,f,nu,g1^c1,f^c2,nu^(c1+c2)); ]
+  [ let g1 = g; f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq; t <-$ G;
+    b <- A_dlin(g1,f,nu,g1^c1,f^c2,t); ].
 
 
 adversary A1 : (G*G*G*G*G*G*G*G*G*G*G*G*G_t) -> (Fq * G_t * G_t).
@@ -26,8 +26,8 @@ oracle KeyGen2 : Fq -> (Fq*G*G*G*G*G*G*G*G).
 
 bound_succ
 [ (* setup *)
-  g1    <-$ G;
-  v     <-$ G;
+  let g1 = g;
+  v     <-$ G; 
   v1    <-$ G;
   v2    <-$ G;
   w     <-$ G;
@@ -104,6 +104,10 @@ bound_succ
         let k  = (u^i*w^tagk*h)^r1 ];
 ] : beta = beta' /\ not (ci in Log (KeyGen1)).
 (* make ciphertext semi-functional by applying DLIN *)
+swap 8 -6. swap 9 -6.
+let_abstract 4 f (g1^a1).
+let_abstract 5 nu (g1^a2).
+rnd 6 (yv -> g1 ^ yv) (v -> log(v)).
 let_unfold 12. let_unfold 12. let_unfold 12.
 let_unfold 12. let_unfold 12. let_unfold 12.
 let_unfold 12. let_unfold 12.
@@ -111,6 +115,10 @@ norm_nounfold.
 norm_unknown a1 a2.
 let_abstract 10 f (g1^a1).
 let_abstract 11 nu (g1^a2).
+
+
+
+
 subst 1 (e(g1,g1)^a1) (e(f,g1)).
 swap 8 -5. except 3 0. rnd 4 (v1 -> v1^(1/a1)) (v1 -> v1 ^ a1). let_unfold 5.
 subst 1 ((v1^(1 / a1))^a1) v1.

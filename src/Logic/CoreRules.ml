@@ -426,7 +426,7 @@ let rrnd p c1 c2 ju =
     let rv = mk_V rvs in
     let nrvs = 
       if ty_equal rvs.Vsym.ty new_ty then rvs 
-      else Vsym.mk (mk_name ~name:(Id.name rvs.Vsym.id) se) new_ty in
+      else Vsym.mk (mk_name ~name:(Id.name  (fst c1).Vsym.id) se) new_ty in
     let nrv = mk_V nrvs in
     let vslet = Vsym.mk (mk_name se) rv.e_ty in
     let cmds = [ GSamp(nrvs,(new_ty, [])); GLet(vslet, inst_ctxt c1 nrv) ] in
@@ -460,7 +460,7 @@ let rrnd_oracle p c1 c2 ju =
     let rv = mk_V rvs in
     let nrvs = 
       if ty_equal rvs.Vsym.ty new_ty then rvs 
-      else Vsym.mk (mk_name ~name:(Id.name rvs.Vsym.id) se) new_ty in
+      else Vsym.mk (mk_name ~name:(Id.name (fst c1).Vsym.id) se) new_ty in
     let nrv = mk_V nrvs in
     let vslet = Vsym.mk (mk_name se) rv.e_ty in
     let cmds = [ LSamp(nrvs,(new_ty, [])); LLet(vslet, inst_ctxt c1 nrv) ] in
