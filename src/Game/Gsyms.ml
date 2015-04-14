@@ -31,7 +31,9 @@ module Asym = struct
   let mk name dom codom = 
     { id = Id.mk name; dom = dom; codom = codom }
 
-  let pp fmt os = F.fprintf fmt "%s" (Id.name os.id)
+  let pp fmt asym = F.fprintf fmt "%s" (Id.name asym.id)
+  let pp_long fmt asym =
+    F.fprintf fmt "%s : %a -> %a" (Id.name asym.id) pp_ty asym.dom pp_ty asym.codom
   let to_string os = Id.name os.id
 end
 
@@ -61,5 +63,7 @@ module Osym = struct
     { id = Id.mk name; dom = dom; codom = codom }
 
   let pp fmt os = F.fprintf fmt "%s" (Id.name os.id)
+  let pp_long fmt os =
+    F.fprintf fmt "%s : %a -> %a" (Id.name os.id) pp_ty os.dom pp_ty os.codom
   let to_string os = Id.name os.id
 end

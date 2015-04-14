@@ -8,8 +8,8 @@ assumption twocasc
   [ a <-$ Fq; r1 <-$ Fq; r2 <-$ Fq; t <-$ Fq;
     b <- A_twocasc(g^a,g^(a*r1),g^(r1 + a*r2),g^t); ].
 
-adversary A1 : G -> (G * G).
-adversary A2 : (G * G * G) -> Bool.
+adversary A1 : G -> G^2.
+adversary A2 : G^3 -> Bool.
 
 bound_adv
   [ (* secret key a1,a2 *)

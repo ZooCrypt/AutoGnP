@@ -342,14 +342,14 @@ let handle_instr verbose ts instr =
       tacerror "Oracle with same name already declared.";
     let os = Osym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
     let ts = { ts with ts_odecls = Mstring.add s os ts.ts_odecls } in
-    (ts, "Declared oracle.")
+    (ts, Util.fsprintf "Declared oracle: %a" Osym.pp_long os)
 
   | PT.ADecl(s,t1,t2) ->
     if Mstring.mem s ts.ts_adecls then
       tacerror "adversary with same name already declared.";
     let asym = Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
     let ts = { ts with ts_adecls = Mstring.add s asym ts.ts_adecls } in
-    (ts, "Declared adversary.")
+    (ts, Util.fsprintf "Declared adversary: %a" Asym.pp_long asym)
 
   | PT.AssmDec(s,g0,g1,symvs) ->
     let vmap1 = Ht.create 137 in

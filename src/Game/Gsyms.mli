@@ -13,6 +13,7 @@ module Asym : sig
   val compare : t -> t -> int
   val mk : string -> ty -> ty -> t
   val pp : F.formatter -> t -> unit
+  val pp_long : F.formatter -> t -> unit
   val to_string : t -> string
   module M : Map.S with type key = t
   module S : Set.S with type elt = t
@@ -27,6 +28,7 @@ module Osym : sig
   val compare : t -> t -> int
   val mk : string -> ty -> ty -> t
   val pp : F.formatter -> t -> unit
+  val pp_long : F.formatter -> t -> unit
   val to_string : t -> string
   module M : Map.S with type key = t
   module S : Set.S with type elt = t

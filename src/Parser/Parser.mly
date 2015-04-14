@@ -185,11 +185,10 @@ typ0 :
 | i=TG { G(i) }
 | TFQ { Fq }
 | UNIT { Prod([]) }
-| LPAREN l=typlist0 RPAREN { Prod(l) }
-
-typlist0 :
-| t=typ0 STAR l=typlist0 { t::l }
-| t=typ0 { [t] }
+| LPAREN l=separated_list(STAR,typ0) RPAREN
+  { match l with [t] -> t | _ -> Prod(l) }
+| t=typ0 CARET n=NAT
+  { Prod(Util.replicate n t) }
 
 /************************************************************************/
 /* Expressions */
