@@ -4,21 +4,26 @@ bilinear map e : G * G -> G_t.
 adversary A_dbdh : (G * G * G * G * G_t) -> Bool.
 
 assumption dbdh
-  [ let g1 = g; c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq;
-    b <- A_dbdh(g1,g1^c1,g1^c2,g1^c3,e(g1,g1)^(c1*c2*c3)); ]
-  [ let g1 = g; c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq; t <-$ Fq;
-    b <- A_dbdh(g1,g1^c1,g1^c2,g1^c3,e(g1,g1)^t); ].
+  [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq;
+    b <- A_dbdh(g, g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)); ]
+  [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq; t <-$ Fq;
+    b <- A_dbdh(g, g^c1, g^c2,g^c3, e(g,g)^t); ].
 
 (* DLIN assumption *)
 adversary A_dlin : (G * G * G * G * G * G) -> Bool.
 
 assumption dlin
-  [ let g1 = g; f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq;
-    b <- A_dlin(g1,f,nu,g1^c1,f^c2,nu^(c1+c2)); ]
-  [ let g1 = g; f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq; t <-$ G;
-    b <- A_dlin(g1,f,nu,g1^c1,f^c2,t); ].
+  [ f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq;
+    b <- A_dlin(g, f, nu,g^c1, f^c2, nu^(c1+c2)); ]
+  [ f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq; t <-$ G;
+    b <- A_dlin(g, f, nu,g^c1, f^c2,t); ].
+    
+adversary A_dkill : () -> Bool.
 
-
+assumption dkill
+  [ k <-$ Fq; b <- A_dkill(); ]
+  [ b <- A_dkill(); ].
+  
 adversary A1 : (G*G*G*G*G*G*G*G*G*G*G*G*G_t) -> (Fq * G_t * G_t).
 adversary A2 : (Fq*G_t*G*G*G*G*G*G*G*G*G) -> Bool.
 oracle KeyGen1 : Fq -> (Fq*G*G*G*G*G*G*G*G).
@@ -102,13 +107,39 @@ bound_succ
         let d6 = g1^(r2*b),
         let d7 = g1^r1,
         let k  = (u^i*w^tagk*h)^r1 ];
-] : beta = beta' /\ not (ci in Log (KeyGen1)).
+] : (beta = beta') /\ not (ci in Log (KeyGen1)).
 (* make ciphertext semi-functional by applying DLIN *)
 swap 8 -6. swap 9 -6.
-let_abstract 4 f (g1^a1).
-let_abstract 5 nu (g1^a2).
-rnd 6 (yv -> g1 ^ yv) (v -> log(v)).
-let_unfold 12. let_unfold 12. let_unfold 12.
+let_unfold 1.
+let_abstract 3 f (g^a1).
+let_abstract 4 nu (g^a2).
+rnd 5 (yv -> g ^ yv) (v -> log(v)).
+rnd 7 (yv1 -> g ^ yv1) (v1 -> log(v1)).
+rnd 9 (yv2 -> g ^ yv2) (v2 -> log(v2)).
+let_unfold 6. let_unfold 7. let_unfold 8.
+subst 1 ((g^yv1)^a1) (f^yv1).
+subst 1 ((g^yv2)^a2) (nu^yv2).
+subst 1 (g^(a1*b)) (f^b).
+subst 1 (g^(a2*b)) (nu^b).
+subst 1 (g^(a1*alpha)) (f^alpha).
+subst 1 (e(g,g)^(a1*b*alpha)) (e(f,g)^(b*alpha)).
+rnd 1 (f' -> log(f')) (a1 -> g ^ a1).
+let_unfold 2. subst 1 (g^log(f')) f'. let_unfold 3.
+rnd 2 (nu' -> log(nu')) (a2 -> g ^ a2).
+let_unfold 3. subst 1 (g^log(nu')) nu'. let_unfold 3.
+let_abstract 1 arg ().
+let_abstract _ res _.
+assumption_decisional dkill <- (1 - 38) c1'.
+swap 2 - 1.
+assumption_decisional dkill <- (1 - 39) c2'.
+let_unfold 2. let_unfold 39.
+let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13.
+rnd 17 (s2 -> s2 + c1') (s2 -> s2 - c1').
+
+let_abstrat 1 g1 
+assumption_decisional dlin -> .
+
+;
 let_unfold 12. let_unfold 12. let_unfold 12.
 let_unfold 12. let_unfold 12.
 norm_nounfold.
