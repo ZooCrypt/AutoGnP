@@ -66,7 +66,7 @@ type gdef = gcmd list
 
 type assgn_pos =
   | Pos of int
-  | Var of string
+  | Var of string * int option
 
 type range = int * int
 
@@ -91,13 +91,15 @@ type tactic =
   | Rassm_dec      of bool * string option * direction option * (range list) option *
                       (string list) option
   | Rassm_comp     of bool * string option * (range list) option
-  | Rlet_abstract  of int option * string * parse_expr option * int option * bool
-  | Rsubst         of int * parse_expr * parse_expr * int option
-  | Rlet_unfold    of assgn_pos option
+  | Rlet_abstract  of assgn_pos option * string * parse_expr option * 
+                      assgn_pos option * bool
+  | Rsubst         of assgn_pos option * parse_expr * parse_expr * 
+                      assgn_pos option
+  | Rlet_unfold    of assgn_pos list
   | Rindep         of bool
   | Rcrush         of bool * int option
   | Rbad           of int * string
-  | Rexcept        of assgn_pos option * (parse_expr list) option
+  | Rexcept        of assgn_pos option * (parse_expr list) option 
   | Rexcept_orcl   of ocmd_pos * parse_expr list
   | Radd_test      of ocmd_pos option * parse_expr option * string option *
                       (string list) option

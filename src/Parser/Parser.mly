@@ -378,8 +378,10 @@ sym_vars:
 ;
 
 assgn_pos:
-| n=gpos { Pos(n) }
-| i=ID   { Var(i) } 
+| n=gpos           { Pos(n)          }
+| i=ID             { Var(i,None)     } 
+| i=ID PLUS  n=NAT { Var(i,Some n)   }
+| i=ID MINUS n=NAT { Var(i,Some (-n))} 
 ;
 
 /************************************************************************/
@@ -429,6 +431,12 @@ proof_command :
 
 /************************************************************************/
 /* tactics */
+br_exprlist0:
+| LBRACK es=exprlist0 RBRACK { es }
+;
+
+inter_pos:
+| LBRACK i1=assgn_pos i2=assgn_pos? RBRACK { Some i1, i2 }
 
 tactic :
 
@@ -440,9 +448,12 @@ tactic :
 
 /* conversion */
 | RCONV LBRACK gd=gdef0 RBRACK e=event      { Apply(Requiv(gd,e)) }
-| RSUBST i=NAT e1=expr0 e2=expr0 mupto=NAT? { Apply(Rsubst(i - 1,e1,e2,mupto)) }
-| RLET_UNFOLD i=assgn_pos?                  { Apply(Rlet_unfold(i)) }
-| RLET_ABSTRACT excl=EXCL? i=uopt(gpos) i1=ID e1=uopt(expr0) mupto=gpos?
+| RSUBST i=inter_pos? e1=expr0 e2=expr0 { 
+    let i, mupto = from_opt (None,None) i in
+    Apply(Rsubst(i,e1,e2,mupto)) } 
+| RLET_UNFOLD i=assgn_pos*            { Apply(Rlet_unfold(i)) }
+| RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
+          i1=ID e1=uopt(expr0) mupto=assgn_pos?
   { Apply(Rlet_abstract(i,i1,e1,mupto,excl=None)) }
 
 /* swapping */
@@ -453,7 +464,7 @@ tactic :
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?
   { Apply(Rrnd(excl=None,mi,mc1,mc2,mgen)) }
-| REXCEPT i=uopt(assgn_pos) es=uopt(expr0*) { Apply(Rexcept(i,es)) }
+| REXCEPT i=uopt(assgn_pos) es=uopt(br_exprlist0) { Apply(Rexcept(i,es)) }
 | REXCEPT_ORACLE op=opos es=expr0*          { Apply(Rexcept_orcl(op,es)) }
 
 /* assumptions */

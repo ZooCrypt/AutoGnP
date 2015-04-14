@@ -109,31 +109,29 @@ bound_succ
         let k  = (u^i*w^tagk*h)^r1 ];
 ] : (beta = beta') /\ not (ci in Log (KeyGen1)).
 (* make ciphertext semi-functional by applying DLIN *)
-swap 8 -6. swap 9 -6.
-let_unfold 1.
-let_abstract 3 f (g^a1).
-let_abstract 4 nu (g^a2).
-rnd 5 (yv -> g ^ yv) (v -> log(v)).
-rnd 7 (yv1 -> g ^ yv1) (v1 -> log(v1)).
-rnd 9 (yv2 -> g ^ yv2) (v2 -> log(v2)).
-let_unfold 6. let_unfold 7. let_unfold 8.
-subst 1 ((g^yv1)^a1) (f^yv1).
-subst 1 ((g^yv2)^a2) (nu^yv2).
-subst 1 (g^(a1*b)) (f^b).
-subst 1 (g^(a2*b)) (nu^b).
-subst 1 (g^(a1*alpha)) (f^alpha).
-subst 1 (e(g,g)^(a1*b*alpha)) (e(f,g)^(b*alpha)).
-rnd 1 (f' -> log(f')) (a1 -> g ^ a1).
-let_unfold 2. subst 1 (g^log(f')) f'. let_unfold 3.
-rnd 2 (nu' -> log(nu')) (a2 -> g ^ a2).
-let_unfold 3. subst 1 (g^log(nu')) nu'. let_unfold 3.
-let_abstract 1 arg ().
-let_abstract _ res _.
+swap [8] -6. swap 9 -6.
+unfold g1.
+abstract v f (g^a1).
+abstract v nu (g^a2).
+rnd v (yv -> g ^ yv) (v -> log(v)).
+rnd v1 (yv1 -> g ^ yv1) (v1 -> log(v1)).
+rnd v2 (yv2 -> g ^ yv2) (v2 -> log(v2)).
+unfold r3 r4 r5.
+subst ((g^yv1)^a1) (f^yv1).
+subst ((g^yv2)^a2) (nu^yv2).
+subst (g^(a1*b)) (f^b).
+subst (g^(a2*b)) (nu^b).
+subst (g^(a1*alpha)) (f^alpha).
+subst (e(g,g)^(a1*b*alpha)) (e(f,g)^(b*alpha)).
+rnd a1 (f' -> log(f')) (a1 -> g ^ a1). unfold r3. subst (g^log(f')) f'. unfold f.
+rnd a2 (nu' -> log(nu')) (a2 -> g ^ a2). unfold r3. subst (g^log(nu')) nu'. unfold nu.
+abstract 1 arg (). abstract _ res _.
 assumption_decisional dkill <- (1 - 38) c1'.
 swap 2 - 1.
 assumption_decisional dkill <- (1 - 39) c2'.
-let_unfold 2. let_unfold 39.
-let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13.
+unfold arg res.
+unfold tau1 tau2.
+let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13.
 rnd 17 (s2 -> s2 + c1')  (s2 -> s2 - c1'). let_unfold 18.
 subst 1 ((g^b)^(s2 + s1 + c1')) (g^(b*(s2+s1))* ((g^c1')^b)).
 rnd 16 (s1 -> s1 - c1')  (s1 -> s1 + c1'). let_unfold 17.

@@ -75,13 +75,14 @@ let gpos_of_apos ju ap =
     | _ -> ()
   in
   match ap with
-  | PT.Var s ->
-    begin try
-      L.iteri (find s) ju.ju_se.se_gdef;
-      tacerror "variable not found in game"
-    with
-      E.Found i -> i
-    end
+  | PT.Var (s,i) ->
+    let p = 
+      try
+        L.iteri (find s) ju.ju_se.se_gdef;
+        tacerror "variable not found in game"
+      with E.Found i -> i in 
+    let i = from_opt 0 i in
+    p + i
   | PT.Pos i -> gpos_of_offset ju i
 
 (*i ----------------------------------------------------------------------- i*)
@@ -121,8 +122,12 @@ let handle_tactic ts tac =
   (* Rules with primitive arguments *)
   | PT.Rnorm                 -> apply (t_norm ~fail_eq:false)
   | PT.Rnorm_nounfold        -> apply t_norm_nounfold
-  | PT.Rlet_unfold(Some(i))  -> apply (t_let_unfold (get_pos i))
-  | PT.Rlet_unfold(None)     -> apply (t_unfold_only)
+  | PT.Rlet_unfold([])       -> apply (t_unfold_only)
+  | PT.Rlet_unfold(l)        -> 
+    let l = List.rev l in
+    let lt = List.map (fun i -> t_let_unfold (get_pos i)) l in
+    apply (Rules.t_seq_fold lt)
+
   | PT.Rswap(i,j)            -> apply (CR.t_swap (t_pos i) j)
   | PT.Rswap_main(opos,vs)   -> apply (CR.t_swap_main opos vs)
   | PT.Rdist_eq              -> apply CR.t_dist_eq
@@ -136,14 +141,20 @@ let handle_tactic ts tac =
     apply (CR.t_case_ev (parse_e se))
 
   | PT.Rsubst(i,e1,e2,mupto) ->
-    apply (t_subst (t_pos i) (parse_e e1) (parse_e e2) mupto)
+    apply (t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) 
+          (map_opt get_pos mupto))
 
   | PT.Rcase_ev(None) ->
     apply t_case_ev_maybe
 
   | PT.Rexcept(Some(i),Some(ses)) ->
     log_i (lazy (fsprintf "pos: %s"
-                   (match i with PT.Var s -> "var: "^s 
+                   (match i with 
+                   | PT.Var (s,i) -> 
+                     let si = 
+                       match i with None -> "" 
+                       | Some i-> " "^string_of_int i in
+                     "var: "^s^si
                    | PT.Pos i -> "pos:" ^ string_of_int i)));
     
     apply (CR.t_except (get_pos i) (L.map (parse_e) ses))
@@ -164,12 +175,12 @@ let handle_tactic ts tac =
   | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
     let e = parse_e se in
     let v = mk_new_var sv e.e_ty in
-    apply (t_let_abstract (t_pos i) v e (map_opt t_pos mupto) (not no_norm))
+    apply (t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm))
 
   | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
     let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
     let max = L.length ju.ju_se.se_gdef in
-    apply (t_let_abstract max v ju.ju_se.se_ev (map_opt t_pos mupto) (not no_norm))
+    apply (t_let_abstract max v ju.ju_se.se_ev (map_opt get_pos mupto) (not no_norm))
 
   | PT.Rlet_abstract(_,_,_,_,_) ->
     tacerror "No placeholders or placeholders for both position and event"

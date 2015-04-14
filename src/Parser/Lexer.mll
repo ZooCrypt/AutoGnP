@@ -70,8 +70,8 @@ rule lex = parse
   | "dist_sym" { RDIST_SYM }
   | "dist_eq" { RDIST_EQ }
   | "norm_nounfold" { RNORM_NOUNFOLD }
-  | "let_abstract"  { RLET_ABSTRACT }
-  | "let_unfold"  { RLET_UNFOLD }
+  | "abstract"  { RLET_ABSTRACT }
+  | "unfold"  { RLET_UNFOLD }
   | "subst" { RSUBST }
   | "rewrite_oracle"  { RREWRITE_ORACLE }
   | "rewrite_ev" { RREWRITE_EV }
