@@ -68,7 +68,7 @@
 %token SEMICOLON
 %token <string> LIST
 %token WITH
-%token <string> AID
+/* %token <string> AID */
 %token <int> NAT
 
 /************************************************************************/
@@ -120,6 +120,7 @@
 %token RLET_ABSTRACT
 %token RLET_UNFOLD
 %token RSUBST
+%token RRENAME
 %token RCTXT_EV
 %token REXCEPT
 %token RHYBRID
@@ -205,7 +206,7 @@ expr0 :
 | e1=expr1 EQUAL e2=expr1 { Eq(e1,e2) }
 | e1=expr1 NEQ e2=expr1 { Not(Eq(e1,e2)) }
 | e1=expr1 QUESTION e2=expr1 COLON e3=expr1 { Ifte(e1, e2, e3) }
-| e1=expr1 IN QUERIES LPAREN oname=AID RPAREN { InLog(e1,oname) } 
+| e1=expr1 IN QUERIES LPAREN oname=ID RPAREN { InLog(e1,oname) } 
 | e=expr1 { e }
 
 expr1 :
@@ -242,8 +243,9 @@ expr6 :
 | i=ZBS { CZ(i) }
 | TRUE    { CB(true) }
 | FALSE   { CB(false) }
-| s=AID LPAREN l=exprlist0 RPAREN { HApp(s,l) }
-| s=ID LPAREN l=exprlist0 RPAREN { SApp(s,l) }
+(* | s=ID LPAREN l=exprlist0 RPAREN { HApp(s,l) } *)
+| s=ID LPAREN l=exprlist0 RPAREN
+  { SApp(s,l) }
 | MINUS e1=expr6 { Opp(e1) }
 | NOT e=expr6 { Not(e) }
 | LOG LPAREN e1=expr0 RPAREN { Log(e1) }
@@ -286,8 +288,8 @@ lcomp :
 | LBRACK e=expr0 MID cmds=lcmdlist RBRACK { (cmds, e) }
 
 odef :
-| oname=AID UNIT EQUAL lc=lcomp { (oname,[],lc) }
-| oname=AID LPAREN args=idlist RPAREN EQUAL lc=lcomp { (oname, args, lc) }
+| oname=ID UNIT EQUAL lc=lcomp { (oname,[],lc) }
+| oname=ID LPAREN args=idlist RPAREN EQUAL lc=lcomp { (oname, args, lc) }
 
 /************************************************************************/
 /* games */
@@ -302,13 +304,13 @@ mexprlist0 :
 
 gcmd :
 | LET i=ID EQUAL e=expr0 { GLet(i,e) }
-| is=idlist LEFTARROW asym=AID LPAREN e=mexprlist0 RPAREN WITH os=odeflist
+| is=idlist LEFTARROW asym=ID LPAREN e=mexprlist0 RPAREN WITH os=odeflist
   { GCall(is,asym,e,os) }
-| is=idlist LEFTARROW asym=AID LPAREN e=mexprlist0 RPAREN
+| is=idlist LEFTARROW asym=ID LPAREN e=mexprlist0 RPAREN
   { GCall(is,asym,e,[]) }
-| is=idlist LEFTARROW asym=AID UNIT WITH os=odeflist
+| is=idlist LEFTARROW asym=ID UNIT WITH os=odeflist
   { GCall(is,asym,Tuple [],os) }
-| is=idlist LEFTARROW asym=AID UNIT
+| is=idlist LEFTARROW asym=ID UNIT
   { GCall(is,asym,Tuple [],[]) }
 | i=ID SAMP t=typ0 BACKSLASH es=exprlist0
   { GSamp(i,t,es) }
@@ -392,10 +394,10 @@ atype:
 | ADV  { A_Adv }
 
 decl :
-| ADVERSARY i=AID  COLON t1=typ0 TO t2=typ0 { ADecl(i,t1,t2) }
-| ORACLE    i=AID  COLON t1=typ0 TO t2=typ0 { ODecl(i,t1,t2) }
-| RANDOM ORACLE i=AID COLON t1=typ0 TO t2=typ0 { RODecl(i,true,t1,t2) }
-| OPERATOR i=AID COLON t1=typ0 TO t2=typ0 { RODecl(i,false,t1,t2) }
+| ADVERSARY i=ID  COLON t1=typ0 TO t2=typ0 { ADecl(i,t1,t2) } 
+| ORACLE    i=ID  COLON t1=typ0 TO t2=typ0 { ODecl(i,t1,t2) }
+| RANDOM ORACLE i=ID COLON t1=typ0 TO t2=typ0 { RODecl(i,true,t1,t2) }
+| OPERATOR i=ID COLON t1=typ0 TO t2=typ0 { RODecl(i,false,t1,t2) }
 | BILINEAR MAP i=ID COLON g1=TG STAR g2=TG TO g3=TG { EMDecl(i,g1,g2,g3) }
 | ASSUMPTION
     i=ID sym=option(sym_vars) LBRACK g0=gdef0 RBRACK LBRACK g1=gdef0 RBRACK
@@ -451,6 +453,7 @@ tactic :
 | RSUBST i=inter_pos? e1=expr0 e2=expr0 { 
     let i, mupto = from_opt (None,None) i in
     Apply(Rsubst(i,e1,e2,mupto)) } 
+| RRENAME v1=ID v2=ID { Apply(Rrename(v1,v2)) }
 | RLET_UNFOLD i=assgn_pos*            { Apply(Rlet_unfold(i)) }
 | RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
           i1=ID e1=uopt(expr0) mupto=assgn_pos?
@@ -486,10 +489,10 @@ tactic :
 | RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Apply(Rrnd_orcl(op,c1,c2)) }
 | RREWRITE_ORACLE op=opos d=dir                       { Apply(Rrewrite_orcl(op,d)) }
 | RBAD i=NAT s=ID                                     { Apply(Rbad (i-1,s)) }
-| RADD_TEST op=opos e=expr0 asym=AID fvs=ID*
+| RADD_TEST op=opos e=expr0 asym=ID fvs=ID*
   { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }
 | RADD_TEST UNDERSCORE { Apply(Radd_test(None,None,None,None)) }
-| RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=lcomp asym=AID
+| RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=lcomp asym=ID
   { Apply(Rhybrid((i-1,j-1),lc,asym)) }
 
 /* events */

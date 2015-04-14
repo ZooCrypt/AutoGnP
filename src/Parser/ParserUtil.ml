@@ -94,12 +94,10 @@ let expr_of_parse_expr vmap ts pe0 =
       let e1 = go e1 in
       let e2 = go e2 in
       E.mk_Exists e1 e2 lH
-    | HApp(s,es) when Mstring.mem s ts.ts_rodecls ->
+    | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (List.map go es) in
       E.mk_H h es
-    | HApp(s,_) ->
-      fail_parse (F.sprintf "undefined hash symbol %s" s)
     | SApp(s,[a;b]) when Mstring.mem s ts.ts_emdecls ->
       let es = Mstring.find s ts.ts_emdecls in
       E.mk_EMap es (go a) (go b)

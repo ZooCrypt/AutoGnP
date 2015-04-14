@@ -73,6 +73,7 @@ rule lex = parse
   | "abstract"  { RLET_ABSTRACT }
   | "unfold"  { RLET_UNFOLD }
   | "subst" { RSUBST }
+  | "rename" { RRENAME }
   | "rewrite_oracle"  { RREWRITE_ORACLE }
   | "rewrite_ev" { RREWRITE_EV }
   | "crush" { RCRUSH }
@@ -108,12 +109,12 @@ rule lex = parse
   | "G" { TG("") }
   | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
-  | ['a'-'z']
+  | ['a'-'z' 'A'-'Z' ]
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
     as s { ID s }
-  | ['A'-'Z']
+(*  | ['A'-'Z']
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
-    as s { AID s }
+    as s { AID s } *)
   | ":"     { COLON }
   | ";"     { SEMICOLON }
   | "()"    { UNIT }

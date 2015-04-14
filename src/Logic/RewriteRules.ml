@@ -249,6 +249,11 @@ let t_let_abstract p vs e0 mupto do_norm_expr ju =
   in
   t_conv true new_se ju
 
+let t_rename v1 v2 ju =
+  let se = ju.ju_se in
+  let new_se = subst_v_se (fun v -> if Vsym.equal v v1 then v2 else v) se in
+  t_conv true new_se ju
+
 let t_subst p e1 e2 mupto ju =
   let se = ju.ju_se in
   let subst a = e_replace e1 e2 a in

@@ -144,6 +144,11 @@ let handle_tactic ts tac =
     apply (t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) 
           (map_opt get_pos mupto))
 
+  | PT.Rrename(v1,v2) ->
+    let v1 = Ht.find vmap_g v1 in
+    let v2 = mk_new_var v2 v1.Vsym.ty in
+    apply (t_rename v1 v2)
+
   | PT.Rcase_ev(None) ->
     apply t_case_ev_maybe
 

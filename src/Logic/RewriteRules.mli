@@ -9,6 +9,8 @@ open Syms
 
 val t_norm : ?fail_eq:bool -> tactic
 
+val t_rename : Vsym.t -> Vsym.t -> tactic
+
 val t_norm_nounfold : tactic
 
 val t_unfold_only : tactic 

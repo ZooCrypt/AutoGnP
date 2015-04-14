@@ -19,7 +19,6 @@ type parse_ty =
 type parse_expr =
     V of string
   | SApp of string * parse_expr list
-  | HApp of string * parse_expr list
   | Tuple of parse_expr list
   | Proj of int * parse_expr
   | CB of bool
@@ -76,6 +75,7 @@ type tactic =
   | Rdist_sym
   | Rfalse_ev
   | Rnorm_nounfold
+  | Rrename        of string * string
   | Rsimp          of bool
   | Rnorm_unknown  of string list
   | Rnorm_solve    of parse_expr
