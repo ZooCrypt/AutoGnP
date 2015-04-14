@@ -125,7 +125,7 @@ let handle_tactic ts tac =
   | PT.Rlet_unfold([])       -> apply (t_unfold_only)
   | PT.Rlet_unfold(l)        -> 
     let l = List.rev l in
-    let lt = List.map (fun i -> t_let_unfold (get_pos i)) l in
+    let lt = List.map (fun i ju -> t_let_unfold (gpos_of_apos ju i) ju) l in
     apply (Rules.t_seq_fold lt)
 
   | PT.Rswap(i,j)            -> apply (CR.t_swap (t_pos i) j)
