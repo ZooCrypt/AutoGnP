@@ -68,11 +68,13 @@ let mk_name ?(name="r") se =
     Vsym.S.fold
       (fun vs se -> Sstring.add (Id.name vs.Vsym.id) se) vars Sstring.empty
   in
-  let rec go n =
-    let name = name_of_int n in
-    if Sstring.mem name  names then go (n+1) else name
-  in
-  go 1
+  if Sstring.mem name names then
+    let rec go n =
+      let name = name_of_int n in
+      if Sstring.mem name  names then go (n+1) else name
+    in
+    go 1
+  else name 
 
 (** Raised if there is no open goal. *)
 exception NoOpenGoal
@@ -395,14 +397,12 @@ let ensure_bijection se c1 c2 rs =
   let dty2,cty2 = ctxt_ty c2 in
   let t = rs.Vsym.ty in
   let t' = dty1 in
-  if not (ty_equal cty1 t && ty_equal dty2 t && ty_equal cty2 t') then
-    begin
- (*     Format.eprintf "c1 : %a -> %a while %a -> %a is expected@."
-        pp_ty dty1 pp_ty cty1 pp_ty t' pp_ty t;
-      Format.eprintf "c2 : %a -> %a while %a -> %a is expected@."
-        pp_ty dty2 pp_ty cty2 pp_ty t pp_ty t'; *)
-      tacerror "rnd: invalid type for contexts";
-    end;
+  if not (ty_equal cty1 t) then
+    tacerror "rnd: c1 has type %a -> %a while %a -> %a is expected"
+      pp_ty dty1 pp_ty cty1 pp_ty t' pp_ty t;
+  if not (ty_equal dty2 t && ty_equal cty2 t') then
+    tacerror "rnd: c2 has type %a -> %a while %a -> %a is expected"
+      pp_ty dty2 pp_ty cty2 pp_ty t pp_ty t';
 
   let v  = mk_V rs in
   let v' = mk_V (Vsym.mk (mk_name se) t') in
