@@ -237,6 +237,8 @@ let pp_nop fmt x = pp_nop_p Top fmt x
 (** Pretty-printing without parens around tuples. *)
 let pp_exp_tnp fmt e = pp_exp_p PrefixApp fmt e
 
+let pp_ctxt fmt (v,e) = 
+  F.fprintf fmt "@[<hov>(%a ->@ %a)@]" Vsym.pp v pp_exp e 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Destructor functions} *)
 

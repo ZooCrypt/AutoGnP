@@ -134,8 +134,11 @@ swap 2 - 1.
 assumption_decisional dkill <- (1 - 39) c2'.
 let_unfold 2. let_unfold 39.
 let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13. let_unfold 13.
-rnd 17 (s2 -> s2 + c1') (s2 -> s2 - c1').
-
+rnd 17 (s2 -> s2 + c1')  (s2 -> s2 - c1'). let_unfold 18.
+subst 1 ((g^b)^(s2 + s1 + c1')) (g^(b*(s2+s1))* ((g^c1')^b)).
+rnd 16 (s1 -> s1 - c1')  (s1 -> s1 + c1'). let_unfold 17.
+subst 1 
+subst 1 ((g^b)^((c1' + s2) + s1)) (g^(b*(s2+s1))* ((g^c1')^b)).
 let_abstrat 1 g1 
 assumption_decisional dlin -> .
 

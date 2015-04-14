@@ -81,7 +81,6 @@ val pp_cnst : F.formatter -> cnst -> Type.ty -> unit
 val pp_exp  : F.formatter -> expr -> unit
 val pp_op   : F.formatter -> op * expr list -> unit
 val pp_nop  : F.formatter -> nop * expr list -> unit
-
 val pp_exp_tnp  : F.formatter -> expr -> unit
 
 (*i ----------------------------------------------------------------------- i*)
@@ -106,6 +105,7 @@ type ctxt = Vsym.t * expr
 
 val ctxt_ty : ctxt -> ty * ty
 val inst_ctxt : ctxt -> expr -> expr
+val pp_ctxt : F.formatter -> ctxt -> unit
 
 (** [sub t] is a generic subtraction function that
     returns context [(x1,x2,c)] and a [zero]

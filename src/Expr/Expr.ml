@@ -320,6 +320,14 @@ let mk_GMult es =
     end
   | _ -> assert false
 
+let mk_Nary op es =
+  match op with
+  | FPlus -> mk_FPlus es
+  | FMult -> mk_FMult es
+  | Xor   -> mk_Xor   es
+  | Land  -> mk_Land  es
+  | GMult -> mk_GMult es
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Generic functions on expressions} *)
 
@@ -329,32 +337,32 @@ let sub_map g e =
   | H(h,e1) ->
       let e1' = g e1 in
       if e1 == e1' then e
-      else mk_e (H(h,e1')) e.e_ty
+      else mk_H h e1'
   | Exists(e1,e2,h) ->
       let e1' = g e1 in
       let e2' = g e2 in
       if e1 == e1' && e2 == e2' then e
-      else mk_e (Exists(e1',e2',h)) e.e_ty
+      else mk_Exists e1' e2' h 
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
-      else mk_e (Tuple(es')) e.e_ty
+      else mk_Tuple es'
   | Proj(i, e1) ->
       let e1' = g e1 in
       if e1 == e1' then e
-      else mk_e (Proj(i,e1')) e.e_ty
+      else mk_Proj i e1' 
   | App(o, es) ->
       let es' = smart_map g es in
       if es == es' then e
-      else mk_e (App(o,es')) e.e_ty
+      else mk_App o es' e.e_ty
   | Nary(o, es) ->
       let es' = smart_map g es in
       if es == es' then e
-      else mk_e (Nary(o,es')) e.e_ty
+      else mk_Nary o es'
   | InLog(e1,orc) ->
       let e1' = g e1 in
       if e1 == e1' then e
-      else mk_e (InLog(e1',orc)) e.e_ty
+      else mk_InLog e1' orc
 
 let check_fun g e =
   let e' = g e in 
@@ -439,7 +447,7 @@ let e_map_ty_maximal ty g e0 =
       trans (mk_App o es e.e_ty) 
     | Nary(o,es) -> 
       let es = L.map (go ie) es in
-      trans (mk_e (Nary(o,es)) e.e_ty)
+      trans (mk_Nary o es) 
     | InLog(e,orc) ->
       let e = go ie e in
       trans (mk_InLog e orc)

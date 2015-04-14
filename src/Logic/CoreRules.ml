@@ -408,7 +408,9 @@ let ensure_bijection se c1 c2 rs =
   let v' = mk_V (Vsym.mk (mk_name se) t') in
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v')) v' &&
             Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v) then
-    tacerror "rnd: contexts not bijective"
+    tacerror "rnd: contexts %a and %a are not bijective"
+      pp_ctxt c1 pp_ctxt c2
+
 (*  if not (ty_equal_size dty1 dty2) then
     tacerror "rnd: invalid size type for contexts" *)
 
