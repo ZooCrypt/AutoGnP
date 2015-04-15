@@ -1,13 +1,13 @@
 bilinear map e : G * G -> G_t.
 
 (* DBDH assumption *)
-adversary A_dbdh : (G * G * G * G * G_t) -> Bool.
+adversary A_dbdh : (G * G * G * G_t) -> Bool.
 
 assumption dbdh
   [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq;
-    b <- A_dbdh(g, g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)); ]
+    b <- A_dbdh(g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)); ]
   [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq; t <-$ Fq;
-    b <- A_dbdh(g, g^c1, g^c2,g^c3, e(g,g)^t); ].
+    b <- A_dbdh(g^c1, g^c2,g^c3, e(g,g)^t); ].
 
 (* DLIN assumption *)
 adversary A_dlin : (G * G * G * G * G * G) -> Bool.
@@ -29,7 +29,7 @@ adversary A2 : (Fq*G_t*G*G*G*G*G*G*G*G*G) -> Bool.
 oracle KeyGen1 : Fq -> (Fq*G*G*G*G*G*G*G*G).
 oracle KeyGen2 : Fq -> (Fq*G*G*G*G*G*G*G*G).
 
-bound_succ
+bound_adv
 [ (* setup *)
   let g1 = g;
   v     <-$ G; 
@@ -320,10 +320,22 @@ hybrid (42,1)
     let D2 = D2' * g^(a2*gamma),
     let D4 = D4' * g^(a1*gamma) ] C.
   admit. (* proof for second hybrid argument *)
+(* make ciphertext one-time-pad by applying DBDH *)
 rename a2 c2.
 rename alpha c1.
-except 9 [0].
-rnd c1 (c1 -> c1 * c2) (c1 -> c1 / c2). unfold r3.
-
-(* make ciphertext one-time-pad by applying DBDH *)
+except c2 [0]. rnd c1 (c1 -> c1 * c2) (c1 -> c1 / c2). except c2 []. unfold r3.
+rnd v (yv -> g^yv) _. rnd v1 (yv1 -> g^yv1) _.
+rnd v2 (yv2 -> g^yv2) _. rnd w (w -> g^w) _.
+rnd h (h -> g^h) _. rnd u (u -> g^u) _. norm.
+rnd_oracle (11,1,6) (gamma -> gamma + c1) (gamma -> gamma - c1). norm.
+rnd_oracle (18,1,6) (gamma -> gamma + c1) (gamma -> gamma - c1). norm.
+rename s2 c3. rename x x'. rnd x' (x' -> x' - c3) _. norm.
+swap c1 yv. swap c2 yv. swap c3 yv.
+norm_unknown c1 c2 c3.
+abstract 4 args (g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)).
+abstract _ res _.
+subst (g_t^(c2*c1)) (e(args#0,args#1)).
+subst (g_t^(c2*c1*c3)) (args#3).
+assumption_decisional dbdh -> [args] tt. norm.
+except a1 [0]. except b [0]. rnd! tt _ _. norm. swap 13 beta'. indep!.
 qed.
