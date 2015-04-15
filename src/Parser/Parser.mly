@@ -339,14 +339,6 @@ event:
 | COLON e=expr0 { e }
 ;
 
-range:
-| i=NAT MINUS j=NAT { (i - 1,j - 1) }
-;
-
-ranges:
-| LPAREN rs=separated_nonempty_list(COMMA,range) RPAREN {rs} 
-;
-
 dir:
 | LEFTARROW { Util.RightToLeft }
 | TO        { Util.LeftToRight }
@@ -478,13 +470,13 @@ tactic :
 
 /* assumptions */
 | ASSUMPTION_DECISIONAL excl=EXCL?
-    s=uopt(ID) d=uopt(dir) rngs=ranges? xs=option(ID+)
+    s=uopt(ID) d=uopt(dir) rngs=inter_pos* xs=option(ID+)
   { Apply (Rassm_dec(excl=None,s,d,rngs,xs))}
-| ASSUMPTION_COMPUTATIONAL excl=EXCL? s=uopt(ID) rngs=ranges?
+| ASSUMPTION_COMPUTATIONAL excl=EXCL? s=uopt(ID) rngs=inter_pos*
   { Apply (Rassm_comp(excl=None,s,rngs))}
 
 /* automated rules */
-| BYSIMP              { Apply(Rsimp(true)) }
+| BYSIMP               { Apply(Rsimp(true)) }
 | RSIMP                { Apply(Rsimp(false)) }
 | RCRUSH  mi=uopt(NAT) { Apply(Rcrush(false,mi)) }
 | RCRUSH               { Apply(Rcrush(false,Some(1))) }

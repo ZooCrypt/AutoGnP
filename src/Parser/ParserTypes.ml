@@ -70,6 +70,7 @@ type assgn_pos =
 type range_pos = assgn_pos option * assgn_pos option
 
 type range = int * int
+type ranges = range_pos list
 
 type tactic =
   | Rnorm
@@ -90,9 +91,9 @@ type tactic =
   | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option *
                       (string * parse_expr) option
   | Requiv         of gdef * parse_expr
-  | Rassm_dec      of bool * string option * direction option * (range list) option *
+  | Rassm_dec      of bool * string option * direction option * ranges *
                       (string list) option
-  | Rassm_comp     of bool * string option * (range list) option
+  | Rassm_comp     of bool * string option * ranges
   | Rlet_abstract  of assgn_pos option * string * parse_expr option * 
                       assgn_pos option * bool
   | Rsubst         of assgn_pos option * parse_expr * parse_expr * 

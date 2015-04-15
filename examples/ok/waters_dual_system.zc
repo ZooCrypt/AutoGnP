@@ -111,24 +111,39 @@ bound_succ
 (* make ciphertext semi-functional by applying DLIN *)
 swap [a1 a2] v.
 unfold g1.
+(* should be assumption_decisional dkill <- [a1] c2'. *)
 abstract a1 arg (). abstract _ res _.
-assumption_decisional dkill <- (1 - 38) c2'.
-swap arg -1. assumption_decisional dkill <- (1 - 39) c1'.
-unfold arg. swap [a1 a2] c1'.
-abstract v f' (g^a1).
-abstract v nu' (g^a2).
+assumption_decisional dkill <- [arg] c2'.
+(* end *)
+(* should be assumption_decisional dkill <- [c2'] c1'. *)
+swap arg -1. assumption_decisional dkill <- [arg] c1'.
+unfold arg. 
+(* end *)
+(* should be *)
+(* rnd pos c1 c2. rnd pos c1 _. rnd pos _ c2. rnd pos c1 *)
+(* 
+swap [a1 a2] c1'.
+rnd v (yv -> g ^ yv). 
+rnd v1 (yv1 -> g ^ yv1).
+rnd v2 (yv2 -> g ^ yv2).
+rnd a1 (f -> log(f)). unfold r3 f'. subst (g^log(f)) f.
+rnd a2 (nu -> log(nu)). unfold r3 nu'. subst (g^log(nu)) nu.
+rnd s2 (s2 -> s2 + c1' + c2').
+rnd s1 (s1 -> s1 - c2').
+assumption_decisional dlin -> [v] tt.
+*)
+(* end *)
+swap [a1 a2] c1'.
 rnd v (yv -> g ^ yv) (v -> log(v)).
 rnd v1 (yv1 -> g ^ yv1) (v1 -> log(v1)).
 rnd v2 (yv2 -> g ^ yv2) (v2 -> log(v2)).
 unfold r3 r4 r5.
-subst ((g^yv1)^a1) (f'^yv1).
-subst ((g^yv2)^a2) (nu'^yv2).
-subst (g^(a1*b)) (f'^b).
-subst (g^(a2*b)) (nu'^b).
-subst (g^(a1*alpha)) (f'^alpha). 
-subst (e(g,g)^(a1*b*alpha)) (e(g,f')^(b*alpha)).
-rnd a1 (f -> log(f)) (a1 -> g ^ a1). unfold r3. subst (g^log(f)) f. unfold f'.
-rnd a2 (nu -> log(nu)) (a2 -> g ^ a2). unfold r3. subst (g^log(nu)) nu. unfold nu'.
+norm_unknown a1 a2.
+subst (g_t^a1)^(b*alpha) (e(g,g^a1)^(b*alpha)).
+abstract yv f'  (g^a1).
+abstract yv nu' (g^a2).
+rnd a1 (f -> log(f)) (a1 -> g ^ a1). unfold r3 f'. subst (g^log(f)) f.
+rnd a2 (nu -> log(nu)) (a2 -> g ^ a2). unfold r3 nu'. subst (g^log(nu)) nu.
 unfold tau1 tau2 p0 p1 p2 p3 p4 p5.
 rnd s2 (s2 -> s2 + c1' + c2') (s2 -> s2 - c1' - c2').
 rnd s1 (s1 -> s1 - c2')  (s1 -> s1 + c2'). unfold r3 r4.
@@ -138,11 +153,11 @@ subst ((g^b)^(s2 + c1' + c2' + (s1 - c2'))) (g^(b*(s2 + s1)) * (g^c1')^b).
 subst (f^b)^(s1 - c2') (f^(b*s1) * (f^c2')^(-b)).
 subst f^(s1 - c2') (f^s1 * (f^c2')^(-1)).
 subst (nu^b)^(s2 + c1' + c2') (nu^(b*s2) * (nu^(c1'+c2'))^b).
-subst nu^(s2 + c1' + c2') (nu^s2 * nu^(c1'+c2')).
-subst ((g^yv * f^yv1)^(s1 - c2') * (g^yv * nu^yv2)^(s2 + c1' + c2'))
+subst nu^(s2 + c2' + c1') (nu^s2 * nu^(c1'+c2')).
+subst ((g^yv * f^yv1)^(s1 - c2') * (g^yv * nu^yv2)^(s2 + c2' + c1'))
    (g^(yv * (s1 + s2)) * f^(yv1*s1) * nu^(yv2 * s2) * (nu^(c1'+c2'))^yv2 *
       (f^c2')^(-yv1) * (g^c1')^yv).
-subst (w^-t* ((g^yv * f^yv1)^b)^(s1 - c2') * ((g^yv * nu^yv2)^b)^(s2 + c1' + c2'))
+subst (w^-t * (g^yv * f^yv1)^(b*(s1 - c2')) * (g^yv * nu^yv2)^(b*(s2 + c2' + c1')))
       (w^-t * g^(yv*b*s1) * f^(yv1*b*s1) * (f^c2')^(-yv1*b) * (g^c1')^(b*yv) *
           g^(yv*b*s2) * nu^(s2*yv2*b) * (nu^(c1'+c2'))^(yv2*b)).
 abstract yv arg (g, f, nu, g^c1', f^c2', nu^(c1'+c2')).
@@ -152,7 +167,7 @@ subst [6] g^c1' arg\3.
 subst [6] nu arg\2.
 subst [6] f arg\1.
 subst [6] g arg\0.
-assumption_decisional dlin -> (5 - 32) tt.
+assumption_decisional dlin -> [arg] tt.
 
 (* make queried keys semi-functional by applying DLIN *)
 (* make ciphertext one-time-pad by applying DBDH *)

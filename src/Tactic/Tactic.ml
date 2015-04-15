@@ -99,7 +99,11 @@ let t_swap inter delta ju =
   let lt = List.map (fun i -> CR.t_swap i delta) li in
   if delta < 0 then Rules.t_seq_fold lt ju
   else Rules.t_seq_fold (List.rev lt) ju
-  
+
+let ranges ju l = 
+  let l = List.map (interval ju) l in
+  if l = [] then None else Some l
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Tactic handling} *)
 
@@ -207,7 +211,7 @@ let handle_tactic ts tac =
     apply (CR.t_conv true { se_gdef = gd2; se_ev = ev2 })
 
   | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
-    apply (t_assm_dec ts exact maname mdir mrngs msvs)
+    apply (t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs)
 
   | PT.Rnorm_solve(se) ->
     let e = parse_e se in
@@ -250,7 +254,7 @@ let handle_tactic ts tac =
     apply (SimpRules.t_simp must_finish 20 ts)
 
   | PT.Rassm_comp(exact,maname,mrngs) ->
-    apply (t_assm_comp ts exact maname mrngs)
+    apply (t_assm_comp ts exact maname (ranges ju mrngs))
 
   | PT.Rrnd(exact,mi,mctxt1,mctxt2,mgen) ->
     let mgen = map_opt parse_e mgen in
