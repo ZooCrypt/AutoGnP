@@ -168,7 +168,162 @@ subst [6] nu arg#2.
 subst [6] f arg#1.
 subst [6] g arg#0.
 assumption_decisional dlin -> [arg] tt.
-
 (* make queried keys semi-functional by applying DLIN *)
+(* setup *)
+trans [
+  let g1 = g;
+  v     <-$ G; 
+  v1    <-$ G;
+  v2    <-$ G;
+  w     <-$ G;
+  u     <-$ G;
+  h     <-$ G;
+  a1    <-$ Fq;
+  a2    <-$ Fq;
+  b     <-$ Fq;
+  alpha <-$ Fq;
+  
+  let tau1 = v*v1^a1;
+  let tau2 = v*v2^a2;
+  let P0   = g1^b;
+  let P1   = g1^a1;
+  let P2   = g1^a2;
+  let P3   = g1^(b*a1);
+  let P4   = g1^(b*a2);
+  let P5   = e(g1,g1)^(alpha*a1*b);
+  (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,w,u,h,P5)
+    with
+    KeyGen1(i) =
+      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
+      | r1   <-$ Fq,
+        r2   <-$ Fq,
+        z1   <-$ Fq,
+        z2   <-$ Fq,
+        tagk <-$ Fq,
+        let r  = r1 + r2,
+        let D1 = g1^(alpha*a1)*v^r,
+        let D2 = g1^(-alpha)*v1^r*g1^z1,
+        let D3 = (g1^b)^-z1,
+        let D4 = v2^r*g1^z2,
+        let D5 = (g1^b)^-z2,
+        let D6 = g1^(r2*b),
+        let D7 = g1^r1,
+        let k  = (u^i*w^tagk*h)^r1 ];
+  
+  beta <-$ Bool;  
+  let m = beta?m0:m1;
+  (* encryption of Enc(PK,i,m) *)
+  s1   <-$ Fq;
+  s2   <-$ Fq;
+  t    <-$ Fq;
+  tagc <-$ Fq;
+  let C0 = m*P5^s2;
+  let C1 = P0^(s1+s2);
+  let C2 = P3^s1;
+  let C3 = P1^s1;
+  let C4' = P4^s2;
+  let C5' = P2^s2;
+  let C6' = tau1^s1*tau2^s2;
+  let C7' = (tau1^b)^s1*(tau2^b)^s2*w^-t;
+  let E1 = (u^ci*w^tagc*h)^t;
+  let E2 = g1^t;
+
+  (* modifications to make ciphertext semi-functional *)
+  x <-$ Fq;
+  let C4 = C4' *  g^(b*a2*x);
+  let C5 = C5' * g^(a2*x);
+  let C6 = C6' * v2^(a2*x);
+  let C7 = C7' * v2^(b*a2*x);
+  
+  beta' <- A2(tagc,C0,C1,C2,C3,C4,C5,C6,C7,E1,E2)
+    with
+    KeyGen2(i) =
+      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
+      | i <> ci,
+        r1   <-$ Fq,
+        r2   <-$ Fq,
+        z1   <-$ Fq,
+        z2   <-$ Fq,
+        tagk <-$ Fq,
+        let r  = r1 + r2,
+        let D1 = g1^(alpha*a1)*v^r,
+        let D2 = g1^(-alpha)*v1^r*g1^z1,
+        let D3 = (g1^b)^-z1,
+        let D4 = v2^r*g1^z2,
+        let D5 = (g1^b)^-z2,
+        let D6 = g1^(r2*b),
+        let D7 = g1^r1,
+        let k  = (u^i*w^tagk*h)^r1 ];
+] : (beta = beta') /\ not (ci in Log (KeyGen1)).
+  norm. swap w f. swap u w. swap h u. swap alpha h. swap b alpha.
+    rnd f (a1 -> g^a1) (f -> log(f)). norm. swap a1 b.
+    rnd nu (a2 -> g^a2) (nu -> log(nu)). norm. swap a2 a1.
+    rnd yv1 (v1 -> log(v1)) (yv1 -> g^yv1). norm. swap v1 a2.
+    rnd yv2 (v2 -> log(v2)) (yv2 -> g^yv2). norm. swap v2 v1.
+    rnd yv  (v -> log(v)) (yv -> g^yv). norm. swap v v2.
+    rnd s2 _ (s2 -> s2 + c1' + c2'). norm.
+    rnd s1 _ (s1 -> s1 - c2'). norm.
+    except a2 [0].
+    rnd tt (x -> g^(x*a2)) _. except a2 []. norm.
+    rnd x (x -> x + c1' + c2') _. norm.
+    swap c1' tagc. swap c2' tagc. swap x tagc.
+    swap c2' -17. swap c1' -17.
+    abstract 2 arg (). abstract _ res _. norm_unknown.
+    assumption_decisional dkill -> [arg].
+    swap arg 1. assumption_decisional dkill -> [arg].
+    norm.
+  dist_sym.
+  norm. swap w v. swap u w. swap h u. swap alpha h. swap b alpha.
+    swap a1 b. swap a2 a1. swap v1 a2. swap v2 v1. swap v v2.
+print_games "g2" "g1".
+dist_eq.
+(* make ciphertext semi-functional by applying DLIN *)
+hybrid (20,1)
+  [ (tagk,D1,D2,D3,D4,D5,D6,D7,k) |
+    r1 <-$ Fq,
+    r2 <-$ Fq,
+    z1 <-$ Fq,
+    z2 <-$ Fq,
+    tagk <-$ Fq,
+    gamma <-$ Fq,
+    let r = r2 + r1,
+    let D1' = g1^(a1*alpha) * v^r,
+    let D2' = g1^-alpha * v1^r * g1^z1,
+    let D3 = (g1^b)^-z1,
+    let D4' = v2^r * g1^z2,
+    let D5 = (g1^b)^-z2,
+    let D6 = g1^(b*r2),
+    let D7 = g1^r1,
+    let k = (h * u^i * w^tagk)^r1,
+    let D1 = D1' * g^(-a1*a2*gamma),
+    let D2 = D2' * g^(a2*gamma),
+    let D4 = D4' * g^(a1*gamma) ] B.
+  admit. (* proof for first hybrid argument *)
+hybrid (42,1)
+  [ (tagk,D1,D2,D3,D4,D5,D6,D7,k) |
+    r1 <-$ Fq,
+    r2 <-$ Fq,
+    z1 <-$ Fq,
+    z2 <-$ Fq,
+    tagk <-$ Fq,
+    gamma <-$ Fq,
+    let r = r2 + r1,
+    let D1' = g1^(a1*alpha) * v^r,
+    let D2' = g1^-alpha * v1^r * g1^z1,
+    let D3 = (g1^b)^-z1,
+    let D4' = v2^r * g1^z2,
+    let D5 = (g1^b)^-z2,
+    let D6 = g1^(b*r2),
+    let D7 = g1^r1,
+    let k = (h * u^i * w^tagk)^r1,
+    let D1 = D1' * g^(-a1*a2*gamma),
+    let D2 = D2' * g^(a2*gamma),
+    let D4 = D4' * g^(a1*gamma) ] C.
+  admit. (* proof for second hybrid argument *)
+rename a2 c2.
+rename alpha c1.
+except 9 [0].
+rnd c1 (c1 -> c1 * c2) (c1 -> c1 / c2). unfold r3.
+
 (* make ciphertext one-time-pad by applying DBDH *)
 qed.
