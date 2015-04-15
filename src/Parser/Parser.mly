@@ -61,6 +61,7 @@
 %token LEFTARROW
 %token LET
 %token SAMP
+%token SHARP
 %token BACKSLASH
 %token LBRACK
 %token RBRACK
@@ -202,7 +203,7 @@ expr :
 expr0 :
 | EXISTS bd=hbindings COLON e1=expr1 EQUAL e2=expr1
      { Exists(e1,e2,bd) }
-| e1=expr0 BACKSLASH i=NAT { Proj(i,e1) }
+| e1=expr0 SHARP i=NAT { Proj(i,e1) }
 | e1=expr1 EQUAL e2=expr1 { Eq(e1,e2) }
 | e1=expr1 NEQ e2=expr1 { Not(Eq(e1,e2)) }
 | e1=expr1 QUESTION e2=expr1 COLON e3=expr1 { Ifte(e1, e2, e3) }

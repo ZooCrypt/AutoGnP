@@ -126,7 +126,8 @@ rule lex = parse
   | "<-"    { LEFTARROW }
   | "<>"    { NEQ }
   | "<-$"   { SAMP }
-  | "\\"    { BACKSLASH }
+  | "\\"     { BACKSLASH }
+  | "#"     { SHARP }
   | "["     { LBRACK }
   | "]"     { RBRACK }
   | "="     { EQUAL }

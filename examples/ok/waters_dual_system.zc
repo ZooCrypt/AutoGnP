@@ -161,12 +161,12 @@ subst (w^-t * (g^yv * f^yv1)^(b*(s1 - c2')) * (g^yv * nu^yv2)^(b*(s2 + c2' + c1'
       (w^-t * g^(yv*b*s1) * f^(yv1*b*s1) * (f^c2')^(-yv1*b) * (g^c1')^(b*yv) *
           g^(yv*b*s2) * nu^(s2*yv2*b) * (nu^(c1'+c2'))^(yv2*b)).
 abstract yv arg (g, f, nu, g^c1', f^c2', nu^(c1'+c2')).
-subst [6] nu^(c1'+c2') arg\5.
-subst [6] f^c2' arg\4.
-subst [6] g^c1' arg\3.
-subst [6] nu arg\2.
-subst [6] f arg\1.
-subst [6] g arg\0.
+subst [6] nu^(c1'+c2') arg#5.
+subst [6] f^c2' arg#4.
+subst [6] g^c1' arg#3.
+subst [6] nu arg#2.
+subst [6] f arg#1.
+subst [6] g arg#0.
 assumption_decisional dlin -> [arg] tt.
 
 (* make queried keys semi-functional by applying DLIN *)
