@@ -66,25 +66,40 @@ let epos_of_offset ju i =
   then L.length (destr_Land ev) + i + 1
   else i
 
-let gpos_of_apos ju ap =
-  let module E = struct exception Found of int end in
-  let find s i cmd =
-    match cmd with
-    | GLet(vs,_) | GSamp(vs,_)
-      when s = Id.name vs.Vsym.id -> raise (E.Found i)
-    | _ -> ()
-  in
-  match ap with
-  | PT.Var (s,i) ->
-    let p = 
-      try
-        L.iteri (find s) ju.ju_se.se_gdef;
-        tacerror "variable not found in game"
-      with E.Found i -> i in 
-    let i = from_opt 0 i in
-    p + i
-  | PT.Pos i -> gpos_of_offset ju i
+let find_gvar ju s = 
+  let test = function
+    | GLet(vs,_) | GSamp(vs,_) -> s = Id.name vs.Vsym.id 
+    | GCall(vss,_,_,_) -> List.exists (fun vs -> s = Id.name vs.Vsym.id) vss in
+  try find_at test ju.ju_se.se_gdef
+  with Not_found -> tacerror "variable not found in game %s" s
 
+let gpos_of_apos ju ap =
+  match ap with
+  | PT.Var s -> find_gvar ju s
+  | PT.Pos i -> (gpos_of_offset ju i) - 1
+
+let interval ju (i1,i2) = 
+  let i1 = opt (gpos_of_apos ju) 0 i1 in
+  let i2 = 
+    opt_f (gpos_of_apos ju) (fun _ -> List.length ju.ju_se.se_gdef - 1) i2 in
+  i1, i2
+
+let t_swap inter delta ju = 
+  let (i1,i2) = interval ju inter in
+  if i2 < i1 then tacerror "swap: empty interval [%i .. %i]" i1 i2;
+  let delta = 
+    match delta with
+    | PT.Var s -> 
+      let p = find_gvar ju s in
+      if p <= i1 then p - i1
+      else if p >= i2 then p - i2
+      else tacerror "swap: invalid position %s" s
+    | PT.Pos i -> i in
+  let li = list_from_to i1 (i2+1) in
+  let lt = List.map (fun i -> CR.t_swap i delta) li in
+  if delta < 0 then Rules.t_seq_fold lt ju
+  else Rules.t_seq_fold (List.rev lt) ju
+  
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Tactic handling} *)
 
@@ -114,7 +129,6 @@ let handle_tactic ts tac =
   in
   let vmap_g = vmap_of_globals ju.ju_se.se_gdef in
   let e_pos = epos_of_offset ju in
-  let t_pos = gpos_of_offset ju in
   let get_pos = gpos_of_apos ju in
   let parse_e se = PU.expr_of_parse_expr vmap_g ts se in
   let mk_new_var sv ty = assert (not (Ht.mem vmap_g sv)); Vsym.mk sv ty in
@@ -128,7 +142,7 @@ let handle_tactic ts tac =
     let lt = List.map (fun i ju -> t_let_unfold (gpos_of_apos ju i) ju) l in
     apply (Rules.t_seq_fold lt)
 
-  | PT.Rswap(i,j)            -> apply (CR.t_swap (t_pos i) j)
+  | PT.Rswap(i,j)            -> apply (t_swap i j)
   | PT.Rswap_main(opos,vs)   -> apply (CR.t_swap_main opos vs)
   | PT.Rdist_eq              -> apply CR.t_dist_eq
   | PT.Rdist_sym             -> apply CR.t_dist_sym
@@ -155,11 +169,7 @@ let handle_tactic ts tac =
   | PT.Rexcept(Some(i),Some(ses)) ->
     log_i (lazy (fsprintf "pos: %s"
                    (match i with 
-                   | PT.Var (s,i) -> 
-                     let si = 
-                       match i with None -> "" 
-                       | Some i-> " "^string_of_int i in
-                     "var: "^s^si
+                   | PT.Var s -> "var: "^s
                    | PT.Pos i -> "pos:" ^ string_of_int i)));
     
     apply (CR.t_except (get_pos i) (L.map (parse_e) ses))

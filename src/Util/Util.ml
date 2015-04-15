@@ -120,6 +120,12 @@ let id x = x
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{List functions} *)
 
+let find_at f l = 
+  let i = ref 0 in
+  let t a = if f a then true else (incr i; false) in
+  ignore (List.find t l);
+  !i 
+
 let list_eq_for_all2 f l1 l2 =
   try List.for_all2 f l1 l2 with _ -> false
 

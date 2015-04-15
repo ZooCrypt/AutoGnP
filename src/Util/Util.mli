@@ -134,6 +134,8 @@ val filter_map : ('a -> 'b option) -> 'a list -> 'b list
      numbers from [i] to [j-1]. *)
 val list_from_to : int -> int -> int list
 
+val find_at : ('a -> bool) -> 'a list -> int
+
 val replicate_r : 'a list -> int -> 'a -> 'a list
 
 val replicate   : int -> 'a -> 'a list

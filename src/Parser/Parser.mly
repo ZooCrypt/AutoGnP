@@ -356,12 +356,6 @@ opos:
 | LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1) }
 ;
 
-gpos:
-| i=NAT { i - 1 }
-| LBRACK i=NAT RBRACK { i - 1 }
-| LBRACK MINUS i=NAT RBRACK { (-i) - 1}
-;
-
 %public uopt(X):
 | UNDERSCORE { None }
 | x=X { Some x }
@@ -377,13 +371,6 @@ sym_class:
 
 sym_vars:
 | LPAREN symclass=sym_class* RPAREN {symclass}
-;
-
-assgn_pos:
-| n=gpos           { Pos(n)          }
-| i=ID             { Var(i,None)     } 
-| i=ID PLUS  n=NAT { Var(i,Some n)   }
-| i=ID MINUS n=NAT { Var(i,Some (-n))} 
 ;
 
 /************************************************************************/
@@ -437,8 +424,27 @@ br_exprlist0:
 | LBRACK es=exprlist0 RBRACK { es }
 ;
 
+gpos:
+| i=NAT { i - 1 }
+| LBRACK i=NAT RBRACK { i - 1 }
+| LBRACK MINUS i=NAT RBRACK { (-i) - 1}
+;
+
+assgn_pos:
+| n=int            { Pos(n) }
+| i=ID             { Var(i) } 
+(*| i=ID PLUS  n=NAT { Var(i,Some n)   }
+| i=ID MINUS n=NAT { Var(i,Some (-n))} *)
+;
+
 inter_pos:
 | LBRACK i1=assgn_pos i2=assgn_pos? RBRACK { Some i1, i2 }
+;
+
+swap_pos:
+| i=inter_pos  { i } 
+| i1=assgn_pos { Some i1 , Some i1 }
+; 
 
 tactic :
 
@@ -460,7 +466,7 @@ tactic :
   { Apply(Rlet_abstract(i,i1,e1,mupto,excl=None)) }
 
 /* swapping */
-| RSWAP i=gpos  j=int { Apply(Rswap(i,j)) }
+| RSWAP i=swap_pos j=assgn_pos { Apply(Rswap(i,j)) }
 | RSWAP op=opos j=int { Apply(Rswap_oracle(op,j)) }
 | RSWAP_MAIN op=opos v=ID { Apply(Rswap_main(op,v)) }
 

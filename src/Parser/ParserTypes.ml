@@ -65,7 +65,9 @@ type gdef = gcmd list
 
 type assgn_pos =
   | Pos of int
-  | Var of string * int option
+  | Var of string 
+
+type range_pos = assgn_pos option * assgn_pos option
 
 type range = int * int
 
@@ -79,7 +81,7 @@ type tactic =
   | Rsimp          of bool
   | Rnorm_unknown  of string list
   | Rnorm_solve    of parse_expr
-  | Rswap          of int * int
+  | Rswap          of range_pos * assgn_pos
   | Rswap_oracle   of ocmd_pos * int
   | Rswap_main     of ocmd_pos * string
   | Rctxt_ev       of int option * (string * parse_expr) option
