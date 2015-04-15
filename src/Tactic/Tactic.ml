@@ -204,11 +204,17 @@ let handle_tactic ts tac =
   | PT.Rlet_abstract(_,_,_,_,_) ->
     tacerror "No placeholders or placeholders for both position and event"
 
-  | PT.Requiv(sgd,sev) ->
+  | PT.Rconv(sgd,sev) ->
     let vmap2 = Hashtbl.create 134 in
     let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
     let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
     apply (CR.t_conv true { se_gdef = gd2; se_ev = ev2 })
+
+  | PT.Rtrans(sgd,sev) ->
+    let vmap2 = Hashtbl.create 134 in
+    let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
+    let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
+    apply (CR.t_trans { se_gdef = gd2; se_ev = ev2 })
 
   | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
     apply (t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs)
@@ -553,6 +559,29 @@ let handle_instr verbose ts instr =
   | PT.Extract filename ->
     Extraction.extract ts filename;
     (ts, "EasyCrypt proof script extracted into file: "^filename)
+
+  | PT.PrintGame filename ->
+    let ps = get_proof_state ts in
+    let ju = match ps.CR.subgoals with
+      | ju::_ -> ju
+      | []    -> tacerror "cannot print game: there is no goal"
+    in
+    output_file filename (fsprintf "%a" pp_se_nonum ju.ju_se);
+    (ts, "Current game printed into file: "^filename)
+
+  | PT.PrintGames(fn1,fn2) ->
+    let ps = get_proof_state ts in
+    let se1,se2 = match ps.CR.subgoals with
+      | ju::_ ->
+        begin match ju.ju_pr with
+        | Pr_Dist se2 -> (ju.ju_se,se2)
+        | _ -> tacerror "cannot print game: judgment of wrong type"
+        end
+      | [] -> tacerror "cannot print games: there is no goal"
+    in
+    output_file fn1 (fsprintf "%a" pp_se_nonum se1);
+    output_file fn2 (fsprintf "%a" pp_se_nonum se2);
+    (ts, F.sprintf "Current games printed into files: %s and %s" fn1 fn2)
 
   | PT.Debug cmd ->
     begin match cmd with

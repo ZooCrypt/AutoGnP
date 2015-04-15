@@ -58,6 +58,10 @@ val pp_gcmd : F.formatter -> gcmd -> unit
 
 val pp_igcmd : F.formatter -> int * gcmd -> unit
 
+val pp_gdef_nonum : F.formatter -> gdef -> unit
+
+val pp_se_nonum : F.formatter -> sec_exp -> unit
+
 val pp_gdef : F.formatter -> gdef -> unit
 
 val pp_se : F.formatter -> sec_exp -> unit

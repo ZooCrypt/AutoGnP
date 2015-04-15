@@ -95,31 +95,45 @@ let contexts se rv mgen =
   (* find useful subexpressions of e (in the right order) *)
   useful_subexprs se rv mgen e
 
-
 (** rnd tactic that tries out useful contexts for given random variable *)
 let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
   let se = ju.ju_se in
   let ty = rv.Vsym.ty in
-  (* find useful contexts *)
-  (match mctxt2 with
-  | Some (sv2,se2) -> ret (parse_ctxt ts se ty (sv2,se2))
-  | None           ->
+  let deduc = DeducField.solve_mixed_type in
+  let parse ty (sv,se') =
+    try
+      parse_ctxt ts se ty (sv,se')
+    with
+      (* FIXME: for now, a:Fq, rnd a (ga -> log(ga)) _.
+                not supported because we would have to
+                guess the group name for ga. *)
+      _ as exc ->
+        if not (ty_equal ty mk_Fq)
+        then parse_ctxt ts se mk_Fq (sv,se')
+        else raise exc
+  in
+  (match mctxt1, mctxt2 with
+  | Some (sv1,se1), Some (sv2,se2) ->
+    let (v2,e2) = parse ty (sv2,se2) in
+    let (v1,e1) = parse e2.e_ty (sv1,se1) in
+    ret ((v1,e1),(v2,e2))
+  | None,           Some (sv2,se2) ->
+    let (v2,e2) = parse ty (sv2,se2) in
+    ret (deduc e2 v2,(v2,e2))
+  | Some (sv1,se1), None           ->
+    let (v1,e1) = parse ty (sv1,se1) in
+    ret ((v1,e1), deduc e1 v1)
+  | None,           None           ->
     let e2s =
       run (-1) (contexts se rv mgen) |> L.map Norm.norm_expr_nice |> nub e_equal
     in
-    mconcat (L.map (fun e2 -> (rv,e2)) e2s)
+    mconcat (L.map (fun e2 -> (rv,e2)) e2s) >>= fun (v2,e2) ->
+    ret (deduc e2 v2, (v2,e2))
     (* FIXME: for CS bycrush, we excluded contexts rv -> - rv *)
-  ) >>= fun (v2,e2) ->
-  log_t (lazy (fsprintf "t_rnd_pos: trying %a -> %a" Vsym.pp v2 pp_exp e2));
-
+  ) >>= fun ((v1,e1),(v2,e2)) ->
+  log_t (lazy (fsprintf "t_rnd_pos: trying %a -> %a with inverse %a -> %a"
+                 Vsym.pp v1 pp_exp e1 Vsym.pp v2 pp_exp e2));
   (* compute inverse context if required *)
-  (match mctxt1 with
-  | Some(sv1,e1) -> ret (parse_ctxt ts se e2.e_ty (sv1,e1))
-  | None when ty_equal ty mk_Fq ->
-    (* FIXME *)
-    ret (v2, DeducField.solve_fq_vars_known e2 v2)
-  | None -> mempty
-  ) >>= fun (v1,e1) ->
   try
     ignore (CR.rrnd i (v1,e1) (v2,e2) ju);
     CR.t_rnd i (v1,e1) (v2,e2) ju
@@ -166,7 +180,6 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
        mfail ls
      )
 
-
 (** rnd tactic that tries all positions and contexts if none are given *)
 let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
   let se = ju.ju_se in
@@ -192,7 +205,6 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
      t_swap_others_max ToFront i @>= fun i ->
      rnd i)
     ju
-
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Random rule in oracle} *)

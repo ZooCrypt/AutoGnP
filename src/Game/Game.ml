@@ -116,6 +116,12 @@ let pp_gdef fmt gd =
 let pp_se fmt se =
   F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef se.se_gdef pp_exp se.se_ev
 
+let pp_gdef_nonum fmt gd =
+  pp_list ";@;" pp_gcmd fmt gd
+
+let pp_se_nonum fmt se =
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef_nonum se.se_gdef pp_exp se.se_ev
+
 let pp_ps fmt ps =
   let se_idxs =
     let i = ref 0 in L.map (fun ps -> incr i; (!i, ps)) ps

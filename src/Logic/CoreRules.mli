@@ -75,6 +75,12 @@ val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
 val rconv  : bool -> sec_exp -> rule
 val t_conv : bool -> sec_exp -> tactic
 
+(** [rtans new_se] an be used to replace the current security
+    experiment [se] with [new_se] after proving that [se] and
+    [new_se] are indistinguishable *)
+val rtrans  : sec_exp -> rule
+val t_trans : sec_exp -> tactic
+
 (** [rswap p i ju] returns the judgment resulting from moving the
     command at position [p] [i] positions forward. *)
 val rswap  : gcmd_pos -> int -> rule 

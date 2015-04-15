@@ -13,3 +13,5 @@ open ExprUtils
 val solve_fq : (expr * inverter) list -> expr -> inverter
 
 val solve_fq_vars_known : expr -> Vsym.t  -> expr
+
+val solve_mixed_type : expr -> Vsym.t -> ctxt

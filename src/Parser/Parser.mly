@@ -96,6 +96,8 @@
 %token PRINTPROOF
 %token PRINTPROOF_EX
 %token PRINTDEBUG
+%token PRINTGAME
+%token PRINTGAMES
 %token RNORM
 %token RNORM_UNKNOWN
 %token RNORM_SOLVE
@@ -105,6 +107,7 @@
 %token RSWAP_MAIN
 %token RSWAP
 %token RCONV
+%token RTRANS
 %token RDIST_SYM
 %token RDIST_EQ
 %token RINDEP
@@ -409,11 +412,14 @@ proof_command :
 | PRINTPROOF_EX { PrintProof(true) }
 | PRINTGOALS { PrintGoals("") }
 | PRINTDEBUG s=STRING { Debug s }
+| PRINTGAME s=STRING { PrintGame s }
+| PRINTGAMES s1=STRING s2=STRING { PrintGames(s1,s2) }
 ;
 
 /************************************************************************/
 /* tactics */
 br_exprlist0:
+| LBRACK RBRACK { [] }
 | LBRACK es=exprlist0 RBRACK { es }
 ;
 
@@ -448,7 +454,8 @@ tactic :
 | RNORM_SOLVE e=expr0  { Apply(Rnorm_solve(e)) }
 
 /* conversion */
-| RCONV LBRACK gd=gdef0 RBRACK e=event      { Apply(Requiv(gd,e)) }
+| RCONV LBRACK gd=gdef0 RBRACK e=event   { Apply(Rconv(gd,e)) }
+| RTRANS LBRACK gd=gdef0 RBRACK e=event  { Apply(Rtrans(gd,e)) }
 | RSUBST i=inter_pos? e1=expr0 e2=expr0 { 
     let i, mupto = from_opt (None,None) i in
     Apply(Rsubst(i,e1,e2,mupto)) } 

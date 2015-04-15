@@ -989,6 +989,19 @@ let radd_test opos tnew asym fvs ju =
 let t_add_test p tnew asym fvs = prove_by (radd_test p tnew asym fvs)
 
 (*i ----------------------------------------------------------------------- i*)
+(** {\bf Transitivity: bound distance to given intermediate game.} *)
+
+let rtrans new_se ju =
+  let se = ju.ju_se in
+  let ju1 = { ju_se = se; ju_pr = Pr_Dist new_se } in
+  let ju2 = { ju_se = new_se; ju_pr = ju.ju_pr } in
+  Rtrans, [ ju1; ju2 ]
+
+let t_trans new_se =
+  prove_by (rtrans new_se)
+
+
+(*i ----------------------------------------------------------------------- i*)
 (** {\bf Hybrid argument.} *)
 
 let rhybrid gpos oidx new_lcmds new_eret asym1 asym2 asym3 ju =

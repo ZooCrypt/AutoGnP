@@ -83,3 +83,53 @@ let solve_fq (ecs : (expr * inverter) list) e =
   ) else (
     I (solve_fq_var ecs e)
   )
+
+let solve_mixed_type k s =
+  let open Type in
+  let open Syms in
+  let ty_k, ty_s = k.e_ty, s.Vsym.ty in
+  match ty_k.ty_node, ty_s.ty_node with
+  | Fq, Fq ->
+    (s,solve_fq_vars_known k s)
+
+  (* example: ga -> ga^b
+     1. try to deduce log(ga) from log(ga^b) = log(ga)*b
+     2. abstract log(ga) by v: v*b |-> v ==> get v/b.
+     3. translate as ga -> g^(log(ga)/b)  *)
+  | G n1, G n2 when Groupvar.equal n1 n2 ->
+    let v_fq = Vsym.mk "v_fq" mk_Fq in
+    let to_gn1 e = mk_GExp (mk_GGen n1) e in
+    let k_fq =
+      norm_expr_strong (mk_GLog k)
+      |> e_replace (mk_V s) (to_gn1 (mk_V v_fq))
+      |> norm_expr_strong
+    in
+    let ce = solve_fq_vars_known k_fq v_fq in
+    (s, to_gn1 (e_replace (mk_V v_fq) (mk_GLog (mk_V s)) ce))
+                                 
+  (* example: a -> g^a*b
+     1. try to deduce a from log(g^a*b) = a*b, get a/b.
+     2. we get ga -> log(ga)/b *)
+  | G _, Fq ->
+    let _,k_fq = destr_GExp (norm_expr_strong k) in
+    let ce = solve_fq_vars_known k_fq s in
+    let v_g = Vsym.mk "v_g" ty_k in
+    (v_g, e_replace (mk_V s) (mk_GLog (mk_V v_g)) ce)
+
+  (* example: ga -> log(ga)*b
+     1. try to deduce log(A) from log(A)*b
+     2. abstract log(ga) by v: v*b |-> v ==> get v/b.
+     3. translate as v -> g^(v/b) *)
+  | Fq, G n1 ->
+    let v_fq = Vsym.mk "v_fq" mk_Fq in
+    let to_gn1 e = mk_GExp (mk_GGen n1) e in
+    let k_fq =
+      e_replace (mk_V s) (to_gn1 (mk_V v_fq)) k
+      |> norm_expr_strong
+    in
+    let ce = solve_fq_vars_known k_fq v_fq in
+    (v_fq, ce)
+
+  | _ ->
+    tacerror "t_rnd_pos: cannot invert for given types, known %a, secret %a"
+      pp_ty ty_k pp_ty ty_s

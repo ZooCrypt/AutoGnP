@@ -135,6 +135,8 @@ type rule_name =
 
   | Rdist_eq
 
+  | Rtrans  (* FIXME: do we need any arguments? *)
+
   | Rhybrid (* FIXME: add arguments *)
 
   | Rswap_main of ocmd_pos

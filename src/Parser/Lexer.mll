@@ -59,6 +59,8 @@ rule lex = parse
   | "print_proof" { PRINTPROOF }
   | "print_proof!" { PRINTPROOF_EX }
   | "print_debug" { PRINTDEBUG }
+  | "print_games" { PRINTGAMES }
+  | "print_game" { PRINTGAME }
 
   | "norm_unknown" { RNORM_UNKNOWN }
   | "norm_solve" { RNORM_SOLVE }
@@ -91,6 +93,7 @@ rule lex = parse
   | "swap" { RSWAP }
   | "swap_main" { RSWAP_MAIN }
   | "conv" { RCONV }
+  | "trans" { RTRANS }
   | "indep" { RINDEP }
   | "rnd_oracle" { RRND_ORACLE }
   | "bad"           { RBAD }

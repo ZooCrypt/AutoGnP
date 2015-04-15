@@ -198,6 +198,8 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   match ru with
   | Rconv ->
     F.fprintf fmt "rconv"
+  | Rtrans ->
+    F.fprintf fmt "rtrans"
   | Rdist_eq ->
     F.fprintf fmt "dist_eq"
   | Rdist_sym ->

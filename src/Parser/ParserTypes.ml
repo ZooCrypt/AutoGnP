@@ -65,7 +65,7 @@ type gdef = gcmd list
 
 type assgn_pos =
   | Pos of int
-  | Var of string 
+  | Var of string
 
 type range_pos = assgn_pos option * assgn_pos option
 
@@ -90,7 +90,8 @@ type tactic =
                       (string * parse_expr) option * parse_expr option
   | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option *
                       (string * parse_expr) option
-  | Requiv         of gdef * parse_expr
+  | Rconv          of gdef * parse_expr
+  | Rtrans         of gdef * parse_expr
   | Rassm_dec      of bool * string option * direction option * ranges *
                       (string list) option
   | Rassm_comp     of bool * string option * ranges
@@ -136,5 +137,7 @@ type instr =
   | Qed
   | Extract    of string
   | Debug      of string
+  | PrintGame  of string
+  | PrintGames of string * string
 
 type theory = instr list
