@@ -420,7 +420,6 @@ proof_command :
 /************************************************************************/
 /* tactics */
 br_exprlist0:
-| LBRACK RBRACK { [] }
 | LBRACK es=exprlist0 RBRACK { es }
 ;
 
