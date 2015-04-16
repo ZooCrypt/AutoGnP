@@ -71,7 +71,10 @@ let mk_G gv = mk_ty (G gv)
 let mk_Fq = mk_ty Fq
 let mk_Bool = mk_ty Bool
 let mk_Int = mk_ty Int
-let mk_Prod tys = mk_ty (Prod tys)
+let mk_Prod tys = 
+  match tys with
+  | [t] -> t 
+  | _ -> mk_ty (Prod tys)
 
 (** Indicator functions for types. *)
 let is_G ty = match ty.ty_node with

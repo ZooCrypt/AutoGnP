@@ -195,7 +195,9 @@ let mk_InLog e orc =
   mk_e (InLog(e,orc)) ty_Bool
 
 let mk_Tuple es =
-  mk_e (Tuple es) (ty_Prod (L.map (fun e -> e.e_ty) es))
+  match es with
+  | [e] -> e
+  | _   -> mk_e (Tuple es) (ty_Prod (L.map (fun e -> e.e_ty) es))
 
 let mk_Proj i e = 
   match e.e_ty.ty_node with

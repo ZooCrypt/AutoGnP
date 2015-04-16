@@ -129,8 +129,8 @@ bound_adv
         | let alpha = H(i,u1,u2),
           let v = u1^(x1 + y1*alpha)*u2^(x2 +y2*alpha),
           let k = Kdf(v),
-          let km = k\0,
-          let ks = k\1,
+          let km = k#0,
+          let ks = k#1,
           Mac(km,e) = t ];
   
     b <-$ Bool;
@@ -143,8 +143,8 @@ bound_adv
     let ca = H(i,cu1,cu2);
     let cv = c^r1*d^(r1*ca);
     let ck = Kdf(cv);
-    let ce = Enc(ck\1,mb);
-    let ct = Mac(ck\0,ce);
+    let ce = Enc(ck#1,mb);
+    let ct = Mac(ck#0,ce);
     b' <- A2(cu1,cu2,ce,ct) with
       Dec2(u1,u2,e,t) =
         [ Dec(ks,e)
@@ -152,92 +152,92 @@ bound_adv
           let alpha = H(i,u1,u2),
           let v = u1^(x1 + y1*alpha)*u2^(x2 +y2*alpha),
           let k = Kdf(v),
-          let km = k\0,
-          let ks = k\1,
+          let km = k#0,
+          let ks = k#1,
           Mac(km,e) = t ];
   ] : b = b'.
 
   (* apply DDH to g1,g2,r1 *)
-  let_unfold. norm_unknown r1.
+  unfold. norm_unknown r1.
   swap 2 -1. swap 3 - 1. swap 10 - 7.
-  let_abstract 4 arg (g1,g2,g1^r1,g2^r1). let_abstract _ res _.
-  assumption_decisional ddh -> (4-13) r2.
-  let_unfold. norm_unknown.
+  abstract 4 arg (g1,g2,g1^r1,g2^r1). abstract _ res _.
+  assumption_decisional ddh -> [4] r2.
+  unfold. norm_unknown.
 
   (* sample exponent of g2 directly *)
-  swap 2 -1. let_abstract 2 arg g2. let_abstract _ res _.
-  assumption_decisional samp_gen -> (2-14) w. norm.
+  swap 2 -1. abstract 2 arg g2. abstract _ res _.
+  assumption_decisional samp_gen -> [2] w. norm.
 
   (* define g2 using the generator g1 instead of g2 *)
-  swap 2 -1. except 2. rnd w _ (w -> w/log(g1)). norm.
+  swap 2 -1. except 2 []. rnd w _ (w -> w/log(g1)). norm.
   
   rnd! x1 _ _ g1. norm.
   rnd! y1 _ _ g1. norm.
 
   (* add test to first oracle *)
   add_test (10,1,1) (u1^w = u2) CC tu1 tu2 te tt.
-    simp. let_unfold. norm_solve x2.
+    simp. unfold. norm_solve x2.
     rnd! x2 _ _. norm.
     (* apply decisional Kdf assumption *)
     swap 10 -9. norm_unknown.
-    let_abstract 2 arg Kdf(g^x2).
-    let_abstract _ res _.
-    assumption_decisional kdf -> (2-12) km ks.
+    abstract 2 arg Kdf(g^x2).
+    abstract _ res _.
+    assumption_decisional kdf -> [2] km ks.
     (* apply CMA0 assumption *)
-    let_unfold. norm_unknown.
-    let_abstract 2 arg ().
-    let_abstract 0 res1 te.
-    let_abstract 0 res2 tt.
+    unfold. norm_unknown.
+    abstract 2 arg ().
+    abstract 13 res2 tt.
+    abstract res2 res1 te.
     remove_ev 2.
-    assumption_computational cma0 (2-14).
+    assumption_computational cma0 [2].
 
   (* add test to second oracle *)
   add_test (12,1,2) (u1^w = u2) CCC tu1 tu2 te tt.
     (* handle b = b' case first *)
     last. simp.
     (* make Kdf input random (FIXME add exceptions automatically) *)
-    except 2 0. except 4 r1.
-    rnd! 6 _ _. let_unfold.
+    except 2 [0]. except 4 [r1].
+    rnd! 6 _ _. unfold.
     (* apply Kdf assumption *)
     norm_unknown.
     swap 11 -10.
-    let_abstract 2 arg Kdf(g^x2).
-    let_abstract 14 res (b=b').
-    assumption_decisional kdf -> (2-14) km ks.
-    let_unfold.
+    abstract 2 arg Kdf(g^x2).
+    abstract 14 res (b=b').
+    assumption_decisional kdf -> [2 14] km ks.
+    unfold.
     (* apply computational CPA1 assumption *)
     norm_unknown.
     swap 2 -1. swap 12 -10.
-    let_abstract 3 arg1 ().
-    let_abstract 14 res1_1 m0.
-    let_abstract 15 res1_2 m1.
-    let_abstract 16 arg2 Enc(ks,b?res1_1:res1_2).
-    let_abstract 0 res2 b'.
-    assumption_computational cpa1 (3-15,16-18).
+    abstract 3 arg1 ().
+    abstract 14 res1_1 m0.
+    abstract 15 res1_2 m1.
+    abstract 16 arg2 Enc(ks,b?res1_1:res1_2).
+    abstract 18 res2 b'.
+    assumption_computational cpa1 [3 15] [16 18].
 
   (* equality on u1,u2, but not on ciphertext and Mac implies Mac forgery *)
   case_ev (tu1,tu2) = (g ^ (r1*log(g1)),g ^ (log(g1)*r2*w)). 
     (* make Kdf input random *)
     simp. norm.
     (* Make Kdf input random (FIXME add exceptions automatically) *)
-    except 2 0. except 4 r1.
+    except 2 [0]. except 4 [r1].
     rnd! x2 _ _. norm.
-    case_ev (te = Enc(Kdf(g ^ x2)\1,b?m0:m1)).
+    case_ev (te = Enc(Kdf(g ^ x2)#1,b?m0:m1)).
       bysimp.
     (* apply Kdf security *)
     swap 11 -10. norm_unknown.
-    let_abstract 2 arg Kdf(g^x2).
-    let_abstract _ res _.
-    assumption_decisional kdf -> (2-14) km ks.
+    abstract 2 arg Kdf(g^x2).
+    abstract _ res _.
+    assumption_decisional kdf -> [2 14] km ks.
     (* reduce to CMA1 *)
-    let_unfold. norm_unknown.
+    unfold. norm_unknown.
     remove_ev 1 3 4 5.
-    let_abstract 2 arg1 ().
-    let_abstract 14 res1 Enc(ks,b?m0:m1).
-    let_abstract 15 arg2 Mac(km,res1).
-    let_abstract 0 res1_1 te.
-    let_abstract 0 res1_2 tt.
-    assumption_computational cma1 (2-14,15-18).
+    abstract 2 arg1 ().
+    abstract 14 res1 Enc(ks,b?m0:m1).
+    abstract 15 arg2 Mac(km,res1).
+    abstract 17 res1_1 te.
+    abstract 18 res1_2 tt.
+    assumption_computational cma1 [2 14] [15 18].
 
   simp. norm.
   (* Reduce hash collision case to TCR *)
@@ -245,33 +245,33 @@ bound_adv
 
     norm. remove_ev 1 2 3.
     rnd! r1 _ _. norm.
-    except 2 0.
+    except 2 [0].
     rnd! r2 _ _. norm.
     (* apply TCR *)
     norm_unknown r1 r2.
     swap 3 -2. swap 10 -8. swap 11 -8.
-    let_abstract 4 arg (i,g^r1,g^r2).
-    let_abstract 0 res1 tu1.
-    let_abstract 0 res2 tu2.
-    assumption_computational tcr (4-15).
+    abstract 4 arg (i,g^r1,g^r2).
+    abstract 14 res1 tu1.
+    abstract 15 res2 tu2.
+    assumption_computational tcr [4 15].
 
   (* finish proof exploiting that hashes are not equal *)
   norm.
   (* Make Kdf input random (FIXME add exceptions automatically) *)
-  except w 0. except r2 r1.
+  except w [0]. except r2 [r1].
   rnd! x2 _ _. norm.
   rnd! y2 _ _. norm.
   (* apply Kdf decisional assumption *)
   swap 12 -11. remove_ev 1 3 4 5 6.
   norm_unknown.
-  let_abstract 2 arg Kdf(g^y2).
-  let_abstract _ res _.
-  assumption_decisional kdf -> (2-14) km ks.
+  abstract 2 arg Kdf(g^y2).
+  abstract _ res _.
+  assumption_decisional kdf -> [2 14] km ks.
   (* reduce to CMA0 *)
-  let_unfold. norm_unknown.
-  let_abstract 2 arg ().
-  let_abstract 0 res1 te.
-  let_abstract 0 res2 tt.
-  assumption_computational cma0 (2-16).
+  unfold. norm_unknown.
+  abstract 2 arg ().
+  abstract 15 res1 te.
+  abstract 16 res2 tt.
+  assumption_computational cma0 [2].
 qed.
 extract "extraction/kurosawa-desmedt.ec".
