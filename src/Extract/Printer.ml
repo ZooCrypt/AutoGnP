@@ -80,10 +80,12 @@ let rec pp_type file fmt ty =
   | G gv     -> pp_tvar fmt (get_gvar file gv)
   | Fq       -> F.fprintf fmt "F.t"
   | Prod tys ->
-    if tys = [] then 
-      F.fprintf fmt "unit"
-    else
+    begin match tys with
+    | []  -> F.fprintf fmt "unit"
+    | [t] -> pp_type file fmt t
+    | _   -> 
       F.fprintf fmt "(@[%a@])" (pp_list " *@ " (pp_type file)) tys
+    end
   | Int -> F.fprintf fmt "int"
 
 let pp_at_mem fmt = function
@@ -220,7 +222,7 @@ let pp_ty_distr file fmt ty =
   match ty.ty_node with
   | BS lv -> F.fprintf fmt "%a.Dword.dword" pp_mod_name (mod_lvar file lv)
   | Bool  -> F.fprintf fmt "{0,1}"
-  | G _gv -> F.fprintf fmt "GDistr.dt (* FIXME *)"
+  | G gv  -> F.fprintf fmt "%s.Distr.dt" (get_gvar file gv).tvar_mod
   | Fq    -> F.fprintf fmt "FDistr.dt"
   | Prod _ -> assert false (* FIXME *)
   | Int    -> assert false
@@ -407,46 +409,7 @@ let pp_var_decl file fmt x =
   F.fprintf fmt "%a:%a"
     Vsym.pp x (pp_type file) (x.Vsym.ty)
 
-let pp_assumption_dec fmt file _name assum =
-  (* Declare the module type for the adversary *)
-  let pp_adv_decl file fmt pub = 
-    F.fprintf fmt "proc main (@[%a@]) : bool"
-      (pp_list ",@ " (pp_var_decl file)) pub in
-  let pp_mod_ty fmt pub = 
-    F.fprintf fmt "module type %s = {@   %a@ }.@ "
-      assum.ad_advty (pp_adv_decl file) pub in
-    
-  F.fprintf fmt "@[<v>%a@ %a.@ @ %a.@]@ @ "
-    pp_mod_ty assum.ad_param
-    (pp_mod_def file) assum.ad_cmd1
-    (pp_mod_def file) assum.ad_cmd2
-
-let pp_assumption_comp fmt file _name assum =
-  (* Declare the module type for the adversary *)
-  let pp_adv_decl file fmt pub = 
-    F.fprintf fmt "proc main (@[%a@]) : %a"
-      (pp_list ",@ " (pp_var_decl file)) pub 
-    (pp_type file) assum.ac_advret in
-  let pp_mod_ty fmt pub = 
-    F.fprintf fmt "module type %s = {@   %a@ }.@ "
-      assum.ac_advty (pp_adv_decl file) pub in
-    
-  F.fprintf fmt "@[<v>%a@ %a.@]@ @ "
-    pp_mod_ty assum.ac_param
-    (pp_mod_def file) assum.ac_cmd
-    
-let pp_assumptions fmt file = 
-  if Ht.length file.assump_dec <> 0 then begin
-    F.fprintf fmt "(** { Decisional Assumptions. } *)@ @ ";
-    Ht.iter (pp_assumption_dec fmt file) file.assump_dec
-  end;
-  if Ht.length file.assump_comp <> 0 then begin
-    F.fprintf fmt "(** { Computational Assumptions. } *)@ @ ";
-    Ht.iter (pp_assumption_comp fmt file) file.assump_comp
-  end
   
-    
-
 let pp_oname1 fmt name = F.fprintf fmt "o%a" Osym.pp name
 let pp_oname fmt name = F.fprintf fmt "O.%a" pp_oname1 name
 
@@ -511,6 +474,27 @@ let pp_modty file fmt modt =
     modt.modt_name
     pp_modtparam modt.modt_param
     pp_modtproc  modt.modt_proc
+
+let pp_assumption_dec fmt file _name assum =
+  F.fprintf fmt "@[<v>%a@ %a.@ @ %a.@]@ @ "
+    (pp_modty file) assum.ad_advty
+    (pp_mod_def file) assum.ad_cmd1
+    (pp_mod_def file) assum.ad_cmd2
+
+let pp_assumption_comp fmt file _name assum =
+  F.fprintf fmt "@[<v>%a@ @ %a.@]@ @ "
+    (pp_modty file) assum.ac_advty
+    (pp_mod_def file) assum.ac_cmd
+    
+let pp_assumptions fmt file = 
+  if Ht.length file.assump_dec <> 0 then begin
+    F.fprintf fmt "(** { Decisional Assumptions. } *)@ @ ";
+    Ht.iter (pp_assumption_dec fmt file) file.assump_dec
+  end;
+  if Ht.length file.assump_comp <> 0 then begin
+    F.fprintf fmt "(** { Computational Assumptions. } *)@ @ ";
+    Ht.iter (pp_assumption_comp fmt file) file.assump_comp
+  end
 
 let pp_clone file fmt info = 
   let pp_local fmt local = 

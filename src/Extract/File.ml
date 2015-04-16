@@ -250,23 +250,16 @@ type hash_info = {
                          
 type assumption_dec_info = {
   ad_name  : string;
-  ad_priv  : Vsym.S.t; 
-  ad_param : Vsym.t list;
-  ad_advty : string;
+  ad_advty : mod_ty;
   ad_cmd1  : mod_def;
-  ad_len1  : int;
   ad_cmd2  : mod_def;
-  ad_len2  : int;
 }
 
 type assumption_comp_info = {
   ac_name  : string;
-  ac_priv  : Vsym.S.t;
-  ac_param : Vsym.t list;
-  ac_advret: ty;
-  ac_advty : string;
+  ac_kind  : Assumption.assm_type;
+  ac_advty : mod_ty;
   ac_cmd   : mod_def;
-  ac_len   : int;
 }
 
 type bmap_info = string

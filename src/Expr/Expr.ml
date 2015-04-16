@@ -337,32 +337,32 @@ let sub_map g e =
   | H(h,e1) ->
       let e1' = g e1 in
       if e1 == e1' then e
-      else mk_H h e1'
+      else mk_e (H(h, e1')) e.e_ty
   | Exists(e1,e2,h) ->
       let e1' = g e1 in
       let e2' = g e2 in
       if e1 == e1' && e2 == e2' then e
-      else mk_Exists e1' e2' h 
+      else mk_e (Exists(e1', e2', h)) e.e_ty
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
-      else mk_Tuple es'
+      else mk_e (Tuple es') e.e_ty
   | Proj(i, e1) ->
       let e1' = g e1 in
       if e1 == e1' then e
-      else mk_Proj i e1' 
+      else mk_e (Proj(i, e1')) e.e_ty
   | App(o, es) ->
       let es' = smart_map g es in
       if es == es' then e
-      else mk_App o es' e.e_ty
+      else mk_e (App(o, es')) e.e_ty
   | Nary(o, es) ->
       let es' = smart_map g es in
       if es == es' then e
-      else mk_Nary o es'
+      else mk_e (Nary(o, es')) e.e_ty
   | InLog(e1,orc) ->
       let e1' = g e1 in
       if e1 == e1' then e
-      else mk_InLog e1' orc
+      else mk_e (InLog(e1', orc)) e.e_ty
 
 let check_fun g e =
   let e' = g e in 

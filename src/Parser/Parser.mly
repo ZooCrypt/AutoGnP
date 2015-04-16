@@ -235,9 +235,12 @@ expr5:
 | e1=expr6 CARET e2=expr6 { Exp(e1, e2) }
 | e =expr6 { e }
 
-exprlist0 :
+exprlist1 :
 | e=expr0 { [e] }
-| e=expr0 COMMA l=exprlist0 { e::l }
+| e=expr0 COMMA l=exprlist1 { e::l }
+
+exprlist0 :
+| l=exprlist1? { from_opt [] l }
 
 expr6 :
 | s=ID  { V(s) }
@@ -247,14 +250,13 @@ expr6 :
 | i=ZBS { CZ(i) }
 | TRUE    { CB(true) }
 | FALSE   { CB(false) }
-(* | s=ID LPAREN l=exprlist0 RPAREN { HApp(s,l) } *)
-| s=ID LPAREN l=exprlist0 RPAREN
+| s=ID LPAREN l=exprlist1 RPAREN
   { SApp(s,l) }
 | MINUS e1=expr6 { Opp(e1) }
 | NOT e=expr6 { Not(e) }
 | LOG LPAREN e1=expr0 RPAREN { Log(e1) }
 | LPAREN e=expr0 RPAREN {e}
-| LPAREN e=expr0 COMMA l=exprlist0 RPAREN { Tuple(e::l) }
+| LPAREN l=exprlist1 RPAREN { Tuple(l) }
 ;
 
 hbinding:
@@ -280,7 +282,7 @@ idlist0 :
 lcmd :
 | LET i=ID EQUAL e=expr0 { LLet(i,e) }
 | is=idlist LEFTARROW hsym=LIST { LBind(is,hsym) }
-| i=ID SAMP t=typ0 BACKSLASH es=exprlist0 { LSamp(i,t,es) }
+| i=ID SAMP t=typ0 BACKSLASH es=exprlist1 { LSamp(i,t,es) }
 | i=ID SAMP t=typ0                          { LSamp(i,t,[]) }
 | e=expr0 { LGuard(e) }
 
@@ -303,8 +305,7 @@ odeflist :
 | od=odef COMMA ods=odeflist { od::ods }
 
 mexprlist0 :
-| e=expr0 COMMA es=exprlist0 { Tuple(e::es) }
-| e=expr0  { e }
+| l=exprlist1 {  match l with [e] -> e | _   -> Tuple l }
 
 gcmd :
 | LET i=ID EQUAL e=expr0 { GLet(i,e) }
@@ -316,7 +317,7 @@ gcmd :
   { GCall(is,asym,Tuple [],os) }
 | is=idlist LEFTARROW asym=ID UNIT
   { GCall(is,asym,Tuple [],[]) }
-| i=ID SAMP t=typ0 BACKSLASH es=exprlist0
+| i=ID SAMP t=typ0 BACKSLASH es=exprlist1
   { GSamp(i,t,es) }
 | i=ID SAMP t=typ0
   { GSamp(i,t,[]) }

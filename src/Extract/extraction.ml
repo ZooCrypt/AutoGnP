@@ -11,7 +11,6 @@ open CoreRules
 open File
 open Syms
 open Gsyms
-
 module Ht = Hashtbl
 
 
@@ -97,7 +96,7 @@ let rec expression file e =
   | V v -> Epv (pvar [] v)
   | H(h,e) ->  mk_eget file h (expression file e)
   | Tuple es -> Etuple (List.map (expression file) es)
-  | Proj (i,e) -> Eproj(i, expression file e) 
+  | Proj (i,e) -> Eproj(i+1, expression file e) 
   | Cnst c -> Ecnst (string_of_cnst file e.e_ty c)
   | App(Ifte,[e1;e2;e3]) -> 
     Eif(expression file e1, expression file e2, expression file e3)
@@ -224,121 +223,143 @@ let oracle file (osym,param,lc,ret) =
     f_body  = init_res (body lc); }
   }
 
+let asym_to_string a = "a"^Asym.to_string a
+
 let ginstr file adv = function
   | GLet (v,e) -> Iasgn ([pvar [] v],expression file e)
   | GSamp(v,(ty,r)) -> 
     Irnd ([pvar [] v], ty, List.map (expression file) r)
   | GCall(vs,a,e,_) -> 
     let es = destr_Tuple_nofail e in
-    Icall(List.map (pvar []) vs, (adv, "a"^Asym.to_string a),
+    Icall(List.map (pvar []) vs, (adv, asym_to_string a),
           List.map (expression file) es)
 
 let instructions file adv gdef =   
   List.map (ginstr file adv) gdef 
 
 module Ass = Assumption
-let add_assumption_dec _file _name _assum =
-  ()
-  (*
+
+let add_assumption_dec file name assum =
   let advty = top_name file ("Adv_"^name) in
-  let ngame1 = top_name file ("G_"^name^string_of_int 1) in
-  let ngame2 = top_name file ("G_"^name^string_of_int 2) in
-  let pub = assum.Ass.ad_pubvars in
-  let params = Vsym.S.elements pub in
-  let vparams = 
-    List.map (fun v -> pvar [] v, v.Vsym.ty) params in
+  let ngame1 = top_name file ("G_"^name^"1") in
+  let ngame2 = top_name file ("G_"^name^"2") in
 
-  let game name gdef = 
-    let local = 
-      Se.fold (fun e l ->
-        let v = destr_V e in
-        if Vsym.S.mem v pub then l else
-        (pvar [] v, v.Vsym.ty) :: l) (gdef_global_vars gdef) [] in 
+  let do_local v = (pvar [] v, v.Vsym.ty) in
+  let locals_end = 
+    List.fold_left (fun l (_,xs,_) -> 
+      List.fold_left (fun l x -> do_local x :: l) l xs) [] assum.Ass.ad_acalls in
+  let mA = mod_name "A" [] in
 
-    let res = ([],"_res") in
-    let init = instructions file (mod_name "A" []) gdef in
+  (* build the module type for A *)
+  let amodty = {
+    modt_name  = advty;
+    modt_param = [];
+    modt_proc  = 
+      List.map (fun (a,xs,arg) ->
+        let aty = (fst arg).e_ty in
+        let rty = mk_Prod (List.map (fun xs -> xs.Vsym.ty) xs) in
+        (asym_to_string a, [None, aty], rty, [])) assum.Ass.ad_acalls;
+  } in
+
+  let g_end i = 
+    List.map (fun (a,xs,arg) ->
+      let arg = if i = 1 then fst arg else snd arg in
+      let args = destr_Tuple_nofail arg in
+      Icall(List.map (pvar []) xs, (mA, asym_to_string  a), 
+            List.map (expression file) args)) assum.Ass.ad_acalls in
+  let vres = 
+    let (_,xs,_) = last assum.Ass.ad_acalls in
+    last xs in
+  assert (ty_equal vres.Vsym.ty mk_Bool);
+  let game name gdef i = 
+    let locals = 
+      Se.fold (fun e l -> do_local (destr_V e) :: l) 
+        (gdef_global_vars gdef) locals_end in
+    
+    let init = instructions file mA gdef in
+    let gend = g_end i in
     let main = {
       f_name = "main";
       f_def = Fbody {
-      f_param = [];
-      f_local = (res,mk_Bool) :: vparams @ local;
-      f_res = Some (res,mk_Bool);
-      f_body = 
-        init @
-          [Icall([res], (mod_name "A" [], "main"), 
-                 List.map (fun v -> Epv(pvar [] v)) params)];}
+        f_param = [];
+        f_local = locals;
+        f_res = Some (pvar [] vres,mk_Bool);
+        f_body = init @ gend;
+      }
     } in
     { mod_name = name;
       mod_param = ["A", advty];
       mod_body = Mod_def [MCfun main];
-    }, List.length init in 
+    } in 
+  let g1 = game ngame1 assum.Ass.ad_prefix1 1 in
+  let g2 = game ngame2 assum.Ass.ad_prefix2 2 in
+  
 
-  let g1, len1 = game ngame1 assum.Ass.ad_prefix1 in
-  let g2, len2 = game ngame2 assum.Ass.ad_prefix2 in
   let info = {
     ad_name  = assum.Ass.ad_name;
-    ad_priv  = assum.Ass.ad_privvars;
-    ad_param = params;
-    ad_advty = advty;
+    ad_advty = amodty;
     ad_cmd1  = g1;
-    ad_len1  = len1; 
     ad_cmd2  = g2; 
-    ad_len2  = len2;
   } in
   Ht.add file.assump_dec name info
-  *)
 
-let add_assumption_comp _file _name _assum =
-  ()
-  (*
+let add_assumption_comp file name assum =
   let advty = top_name file ("Adv_"^name) in
   let ngame = top_name file ("G_"^name) in
-  let pub = assum.Ass.ac_pubvars in
-  let params = Vsym.S.elements pub in
-  let vparams = 
-    List.map (fun v -> pvar [] v, v.Vsym.ty) params in
 
-  let game name gdef = 
-    let ares = pvar [] assum.Ass.ac_event_var in
-    let local = 
-      Se.fold (fun e l ->
-        let v = destr_V e in
-        if Vsym.S.mem v pub then l else
-        (pvar [] v, v.Vsym.ty) :: l) (gdef_global_vars gdef) 
-        [ares, assum.Ass.ac_event_var.Vsym.ty]
-    in 
+  let mA = mod_name "A" [] in
 
+  (* build the module type for A *)
+  let amodty = {
+    modt_name  = advty;
+    modt_param = [];
+    modt_proc  = 
+      List.map (fun (a,xs,arg) ->
+        let aty = arg.e_ty in
+        let rty = mk_Prod (List.map (fun xs -> xs.Vsym.ty) xs) in
+        (asym_to_string a, [None, aty], rty, [])) assum.Ass.ac_acalls;
+  } in
+
+  (* build the main module *)
+  let do_local v = (pvar [] v, v.Vsym.ty) in
+  let locals_end = 
+    List.fold_left (fun l (_,xs,_) -> 
+      List.fold_left (fun l x -> do_local x ::l) l xs) [] assum.Ass.ac_acalls in
+
+  let game = 
     let res = ([],"_res") in
-    let init = instructions file (mod_name "A" []) gdef in
+    let local = 
+      Se.fold (fun e l -> do_local (destr_V e) :: l)
+        (gdef_global_vars assum.Ass.ac_prefix) locals_end in 
+    let init = instructions file mA assum.Ass.ac_prefix in
+    let g_end = 
+      List.map (fun (a,xs,arg) ->
+        let args = destr_Tuple_nofail arg in
+        Icall(List.map (pvar []) xs, (mA, asym_to_string  a), 
+              List.map (expression file) args)) assum.Ass.ac_acalls in
+    let i_ret = [ Iasgn([res], expression file assum.Ass.ac_event)] in
     let main = {
       f_name = "main";
       f_def = Fbody {
-      f_param = [];
-      f_local = (res,mk_Bool) :: vparams @ local;
-      f_res = Some (res,mk_Bool);
-      f_body = 
-        init @
-          [Icall([ares], (mod_name "A" [], "main"), 
-                 List.map (fun v -> Epv(pvar [] v)) params);
-           Iasgn([res], expression file assum.Ass.ac_event)];}
+        f_param = [];
+        f_local = (res,mk_Bool) :: local;
+        f_res = Some (res,mk_Bool);
+        f_body = 
+          init @ g_end @ i_ret;
+      }
     } in
-    { mod_name = name;
+    { mod_name = ngame;
       mod_param = ["A", advty];
       mod_body = Mod_def [MCfun main];
-    }, List.length init in 
+    } in 
 
-  let g, len = game ngame assum.Ass.ac_prefix in
   let info = {
     ac_name  = assum.Ass.ac_name;
-    ac_priv  = assum.Ass.ac_privvars;
-    ac_param = params;
-    ac_advty = advty;
-    ac_advret = assum.Ass.ac_event_var.Vsym.ty;
-    ac_cmd   = g;
-    ac_len   = len; 
+    ac_kind  = assum.Ass.ac_type;
+    ac_advty = amodty;
+    ac_cmd   = game;
   } in
   Ht.add file.assump_comp name info
-  *)
   
 let add_assumptions file ts = 
   Mstring.iter (fun n a -> add_assumption_dec  file n a) ts.ts_assms_dec;
@@ -1092,10 +1113,14 @@ let pr_intr_rw1_app lemma1 lemma2 fmt () =
   F.fprintf fmt "intros &m; rewrite {1}(%s &m);apply (%s &m)."
     lemma1 lemma2 
 
-let extract_assum file dir subst ainfo pft pft' =
-  let g  = game file pft.pt_ju.ju_se.se_gdef in
-  let g'  = game file pft'.pt_ju.ju_se.se_gdef in
+let extract_assum _file _ranges _dir _subst _ainfo _pft _pft' = ()
+(*  let g  = game file pft.pt_ju.ju_se.se_gdef in
+  let g' = game file pft'.pt_ju.ju_se.se_gdef in
   let nvc = List.length (vc_oracles file) in
+
+
+
+
 
   let ev = pft.pt_ju.ju_se.se_ev in
   let len = if dir = LeftToRight then ainfo.ad_len1 else ainfo.ad_len2 in
@@ -1177,7 +1202,7 @@ let extract_assum file dir subst ainfo pft pft' =
       (mk_cmp pr cmp_le (f_radd abs pr'))
       (Some proof) in
   concl, pr, abs 
-
+*)
 let extract_assum_comp _file _subst _ainfo _ranges _pft =
   (*
   let g  = game file pft.pt_ju.ju_se.se_gdef in
@@ -1928,15 +1953,15 @@ let rec extract_proof file pft =
     
   | Rassm_dec (_ranges,_dir,_subst,_assum) ->
     let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 "Dec_comp" file pft pft' (pr_admit "Decisional assumption")
+    extract_proof_sb1 "Dec_comp" file pft pft' (pr_admit "Decisional assumption") 
+(*
     
-    (*
     let pft' = List.hd pft.pt_children in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
     let ainfo = 
       try Ht.find file.assump_dec assum.Ass.ad_name 
       with Not_found -> assert false in
-    let lemma2, pr, abs = extract_assum file dir subst ainfo pft pft' in
+    let lemma2, pr, abs = extract_assum file ranges dir subst ainfo pft pft' in
     let proof fmt () = 
       F.fprintf fmt "@[<v>intros &m.@ ";
       F.fprintf fmt "@[apply (real_le_trans@ %a@ %a@ %a).@]@ "
