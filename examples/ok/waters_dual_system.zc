@@ -10,13 +10,13 @@ assumption dbdh
     b <- A_dbdh(g^c1, g^c2,g^c3, e(g,g)^t); ].
 
 (* DLIN assumption *)
-adversary A_dlin : (G * G * G * G * G * G) -> Bool.
+adversary A_dlin : (G * G * G * G * G) -> Bool.
 
 assumption dlin
   [ f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq;
-    b <- A_dlin(g, f, nu,g^c1, f^c2, nu^(c1+c2)); ]
+    b <- A_dlin(f, nu,g^c1, f^c2, nu^(c1+c2)); ]
   [ f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq; t <-$ G;
-    b <- A_dlin(g, f, nu,g^c1, f^c2,t); ].
+    b <- A_dlin(f, nu,g^c1, f^c2,t); ].
     
 adversary A_dkill : () -> Bool.
 
@@ -31,7 +31,6 @@ oracle KeyGen2 : Fq -> (Fq*G*G*G*G*G*G*G*G).
 
 bound_adv
 [ (* setup *)
-  let g1 = g;
   v     <-$ G; 
   v1    <-$ G;
   v2    <-$ G;
@@ -45,12 +44,12 @@ bound_adv
   
   let tau1 = v*v1^a1;
   let tau2 = v*v2^a2;
-  let p0   = g1^b;
-  let p1   = g1^a1;
-  let p2   = g1^a2;
-  let p3   = g1^(b*a1);
-  let p4   = g1^(b*a2);
-  let p5   = e(g1,g1)^(alpha*a1*b);
+  let p0   = g^b;
+  let p1   = g^a1;
+  let p2   = g^a2;
+  let p3   = g^(b*a1);
+  let p4   = g^(b*a2);
+  let p5   = e(g,g)^(alpha*a1*b);
   (ci,m0,m1) <- A1(p0,p1,p2,p3,p4,tau1,tau2,tau1^b,tau2^b,w,u,h,p5)
     with
     KeyGen1(i) =
@@ -61,13 +60,13 @@ bound_adv
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let d1 = g1^(alpha*a1)*v^r,
-        let d2 = g1^(-alpha)*v1^r*g1^z1,
-        let d3 = (g1^b)^-z1,
-        let d4 = v2^r*g1^z2,
-        let d5 = (g1^b)^-z2,
-        let d6 = g1^(r2*b),
-        let d7 = g1^r1,
+        let d1 = g^(alpha*a1)*v^r,
+        let d2 = g^(-alpha)*v1^r*g^z1,
+        let d3 = (g^b)^-z1,
+        let d4 = v2^r*g^z2,
+        let d5 = (g^b)^-z2,
+        let d6 = g^(r2*b),
+        let d7 = g^r1,
         let k  = (u^i*w^tagk*h)^r1 ];
   
   beta <-$ Bool;  
@@ -86,7 +85,7 @@ bound_adv
   let c6 = tau1^s1*tau2^s2;
   let c7 = (tau1^b)^s1*(tau2^b)^s2*w^-t;
   let e1 = (u^ci*w^tagc*h)^t;
-  let e2 = g1^t;
+  let e2 = g^t;
   
   beta' <- A2(tagc,c0,c1,c2,c3,c4,c5,c6,c7,e1,e2)
     with
@@ -99,18 +98,17 @@ bound_adv
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let d1 = g1^(alpha*a1)*v^r,
-        let d2 = g1^(-alpha)*v1^r*g1^z1,
-        let d3 = (g1^b)^-z1,
-        let d4 = v2^r*g1^z2,
-        let d5 = (g1^b)^-z2,
-        let d6 = g1^(r2*b),
-        let d7 = g1^r1,
+        let d1 = g^(alpha*a1)*v^r,
+        let d2 = g^(-alpha)*v1^r*g^z1,
+        let d3 = (g^b)^-z1,
+        let d4 = v2^r*g^z2,
+        let d5 = (g^b)^-z2,
+        let d6 = g^(r2*b),
+        let d7 = g^r1,
         let k  = (u^i*w^tagk*h)^r1 ];
 ] : (beta = beta') /\ not (ci in Log (KeyGen1)).
 (* make ciphertext semi-functional by applying DLIN *)
 swap [a1 a2] v.
-unfold g1.
 (* should be assumption_decisional dkill <- [a1] c2'. *)
 abstract a1 arg (). abstract _ res _.
 assumption_decisional dkill <- [arg] c2'.
@@ -134,44 +132,24 @@ assumption_decisional dlin -> [v] tt.
 *)
 (* end *)
 swap [a1 a2] c1'.
-rnd v (yv -> g ^ yv) (v -> log(v)).
-rnd v1 (yv1 -> g ^ yv1) (v1 -> log(v1)).
-rnd v2 (yv2 -> g ^ yv2) (v2 -> log(v2)).
+rnd v (yv : Fq -> g ^ yv) _.
+rnd v1 (yv1 : Fq -> g ^ yv1) _.
+rnd v2 (yv2 : Fq -> g ^ yv2) _.
 unfold r3 r4 r5.
 norm_unknown a1 a2.
-subst (g_t^a1)^(b*alpha) (e(g,g^a1)^(b*alpha)).
 abstract yv f'  (g^a1).
 abstract yv nu' (g^a2).
-rnd a1 (f -> log(f)) (a1 -> g ^ a1). unfold r3 f'. subst (g^log(f)) f.
-rnd a2 (nu -> log(nu)) (a2 -> g ^ a2). unfold r3 nu'. subst (g^log(nu)) nu.
+rnd a1 (f : G -> log(f)) _. unfold r3 f'.
+rnd a2 (nu : G -> log(nu)) _. unfold r3 nu'.
 unfold tau1 tau2 p0 p1 p2 p3 p4 p5.
-rnd s2 (s2 -> s2 + c1' + c2') (s2 -> s2 - c1' - c2').
-rnd s1 (s1 -> s1 - c2')  (s1 -> s1 + c2'). unfold r3 r4.
-subst (m * (e(g,f)^(b*alpha))^(s2 + c1' + c2'))
-     ((m * e(g,f)^(s2*b*alpha)) *(e(g^c1',f)*e(g,f^c2'))^(b*alpha)).
-subst ((g^b)^(s2 + c1' + c2' + (s1 - c2'))) (g^(b*(s2 + s1)) * (g^c1')^b).
-subst (f^b)^(s1 - c2') (f^(b*s1) * (f^c2')^(-b)).
-subst f^(s1 - c2') (f^s1 * (f^c2')^(-1)).
-subst (nu^b)^(s2 + c1' + c2') (nu^(b*s2) * (nu^(c1'+c2'))^b).
-subst nu^(s2 + c2' + c1') (nu^s2 * nu^(c1'+c2')).
-subst ((g^yv * f^yv1)^(s1 - c2') * (g^yv * nu^yv2)^(s2 + c2' + c1'))
-   (g^(yv * (s1 + s2)) * f^(yv1*s1) * nu^(yv2 * s2) * (nu^(c1'+c2'))^yv2 *
-      (f^c2')^(-yv1) * (g^c1')^yv).
-subst (w^-t * (g^yv * f^yv1)^(b*(s1 - c2')) * (g^yv * nu^yv2)^(b*(s2 + c2' + c1')))
-      (w^-t * g^(yv*b*s1) * f^(yv1*b*s1) * (f^c2')^(-yv1*b) * (g^c1')^(b*yv) *
-          g^(yv*b*s2) * nu^(s2*yv2*b) * (nu^(c1'+c2'))^(yv2*b)).
-abstract yv arg (g, f, nu, g^c1', f^c2', nu^(c1'+c2')).
-subst [6] nu^(c1'+c2') arg#5.
-subst [6] f^c2' arg#4.
-subst [6] g^c1' arg#3.
-subst [6] nu arg#2.
-subst [6] f arg#1.
-subst [6] g arg#0.
+rnd s2 (s2 -> s2 + c1' + c2') _.
+rnd s1 (s1 -> s1 - c2')  _. unfold r3 r4.
+norm_unknown c1' c2'.
+abstract yv arg (f, nu, g^c1', f^c2', nu^(c1'+c2')).
 assumption_decisional dlin -> [arg] tt.
 (* make queried keys semi-functional by applying DLIN *)
 (* setup *)
 trans [
-  let g1 = g;
   v     <-$ G; 
   v1    <-$ G;
   v2    <-$ G;
@@ -185,12 +163,12 @@ trans [
   
   let tau1 = v*v1^a1;
   let tau2 = v*v2^a2;
-  let P0   = g1^b;
-  let P1   = g1^a1;
-  let P2   = g1^a2;
-  let P3   = g1^(b*a1);
-  let P4   = g1^(b*a2);
-  let P5   = e(g1,g1)^(alpha*a1*b);
+  let P0   = g^b;
+  let P1   = g^a1;
+  let P2   = g^a2;
+  let P3   = g^(b*a1);
+  let P4   = g^(b*a2);
+  let P5   = e(g,g)^(alpha*a1*b);
   (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,w,u,h,P5)
     with
     KeyGen1(i) =
@@ -201,13 +179,13 @@ trans [
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let D1 = g1^(alpha*a1)*v^r,
-        let D2 = g1^(-alpha)*v1^r*g1^z1,
-        let D3 = (g1^b)^-z1,
-        let D4 = v2^r*g1^z2,
-        let D5 = (g1^b)^-z2,
-        let D6 = g1^(r2*b),
-        let D7 = g1^r1,
+        let D1 = g^(alpha*a1)*v^r,
+        let D2 = g^(-alpha)*v1^r*g^z1,
+        let D3 = (g^b)^-z1,
+        let D4 = v2^r*g^z2,
+        let D5 = (g^b)^-z2,
+        let D6 = g^(r2*b),
+        let D7 = g^r1,
         let k  = (u^i*w^tagk*h)^r1 ];
   
   beta <-$ Bool;  
@@ -226,7 +204,7 @@ trans [
   let C6' = tau1^s1*tau2^s2;
   let C7' = (tau1^b)^s1*(tau2^b)^s2*w^-t;
   let E1 = (u^ci*w^tagc*h)^t;
-  let E2 = g1^t;
+  let E2 = g^t;
 
   (* modifications to make ciphertext semi-functional *)
   x <-$ Fq;
@@ -246,13 +224,13 @@ trans [
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let D1 = g1^(alpha*a1)*v^r,
-        let D2 = g1^(-alpha)*v1^r*g1^z1,
-        let D3 = (g1^b)^-z1,
-        let D4 = v2^r*g1^z2,
-        let D5 = (g1^b)^-z2,
-        let D6 = g1^(r2*b),
-        let D7 = g1^r1,
+        let D1 = g^(alpha*a)*v^r,
+        let D2 = g^(-alpha)*v1^r*g^z1,
+        let D3 = (g^b)^-z1,
+        let D4 = v2^r*g^z2,
+        let D5 = (g^b)^-z2,
+        let D6 = g^(r2*b),
+        let D7 = g^r1,
         let k  = (u^i*w^tagk*h)^r1 ];
 ] : (beta = beta') /\ not (ci in Log (KeyGen1)).
   norm. swap w f. swap u w. swap h u. swap alpha h. swap b alpha.
@@ -287,13 +265,13 @@ hybrid (20,1)
     tagk <-$ Fq,
     gamma <-$ Fq,
     let r = r2 + r1,
-    let D1' = g1^(a1*alpha) * v^r,
-    let D2' = g1^-alpha * v1^r * g1^z1,
-    let D3 = (g1^b)^-z1,
-    let D4' = v2^r * g1^z2,
-    let D5 = (g1^b)^-z2,
-    let D6 = g1^(b*r2),
-    let D7 = g1^r1,
+    let D1' = g^(a1*alpha) * v^r,
+    let D2' = g^-alpha * v1^r * g^z1,
+    let D3 = (g^b)^-z1,
+    let D4' = v2^r * g^z2,
+    let D5 = (g^b)^-z2,
+    let D6 = g^(b*r2),
+    let D7 = g^r1,
     let k = (h * u^i * w^tagk)^r1,
     let D1 = D1' * g^(-a1*a2*gamma),
     let D2 = D2' * g^(a2*gamma),
@@ -308,13 +286,13 @@ hybrid (42,1)
     tagk <-$ Fq,
     gamma <-$ Fq,
     let r = r2 + r1,
-    let D1' = g1^(a1*alpha) * v^r,
-    let D2' = g1^-alpha * v1^r * g1^z1,
-    let D3 = (g1^b)^-z1,
+    let D1' = g^(a1*alpha) * v^r,
+    let D2' = g^-alpha * v1^r * g1^z1,
+    let D3 = (g^b)^-z1,
     let D4' = v2^r * g1^z2,
-    let D5 = (g1^b)^-z2,
-    let D6 = g1^(b*r2),
-    let D7 = g1^r1,
+    let D5 = (g^b)^-z2,
+    let D6 = g^(b*r2),
+    let D7 = g^r1,
     let k = (h * u^i * w^tagk)^r1,
     let D1 = D1' * g^(-a1*a2*gamma),
     let D2 = D2' * g^(a2*gamma),
