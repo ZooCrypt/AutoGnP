@@ -863,21 +863,21 @@ let assm_comp_valid_ranges rn assm acalls_ju rngs =
   go rngs assm.ac_acalls
 
 let rassm_comp assm0 rngs ren ju =
-  let rn = "assumption_computational" in
+  let rname = "assumption_computational" in
   let se = ju.ju_se in
   let assm = Assumption.inst_comp ren assm0 in
-  if assm.ac_type = A_Adv then ensure_pr_Adv rn ju;
-  if assm.ac_type = A_Succ then ensure_pr_Succ_or_Adv rn ju;
+  if assm.ac_type = A_Adv then ensure_pr_Adv rname ju;
+  if assm.ac_type = A_Succ then ensure_pr_Succ_or_Adv rname ju;
   let pref = assm.ac_prefix in
   let pref_len = L.length pref in
   let pref_ju = Util.take pref_len se.se_gdef in
   let acalls_ju = Util.drop pref_len se.se_gdef in
-  ensure_ren_inj rn ren;
-  ensure_gdef_eq rn pref pref_ju;
-  ensure_event_eq rn se.se_ev assm.ac_event;
-  ensure_ranges_cover_gdef rn rngs (L.length pref_ju) se.se_gdef;
+  ensure_ren_inj rname ren;
+  ensure_gdef_eq rname pref pref_ju;
+  ensure_event_eq rname se.se_ev assm.ac_event;
+  ensure_ranges_cover_gdef rname rngs (L.length pref_ju) se.se_gdef;
   (* check that we can instantiate calls in assumption with remainder of ju *)
-  assm_comp_valid_ranges rn assm acalls_ju rngs;
+  assm_comp_valid_ranges rname assm acalls_ju rngs;
   Rassm_comp(rngs,ren,assm0), []
 
 let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
