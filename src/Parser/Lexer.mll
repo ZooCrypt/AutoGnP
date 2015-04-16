@@ -125,6 +125,9 @@ rule lex = parse
   | ","     { COMMA }
   | "^"     { CARET }
   | "/"     { SLASH }
+  | "//"     { SLASH2 }
+  | "/="     { SLASHEQ }
+  | "//="    { SLASH2EQ }
   | "/\\"   { LAND }
   | "<-"    { LEFTARROW }
   | "<>"    { NEQ }

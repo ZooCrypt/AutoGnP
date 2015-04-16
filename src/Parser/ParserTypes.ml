@@ -41,7 +41,7 @@ type parse_expr =
   | Exists of parse_expr * parse_expr * (string * string) list
   | InLog  of parse_expr * string 
 
-type parse_ctx = string * parse_expr
+type parse_ctx = string * parse_ty option * parse_expr
 
 type lcmd =
     LLet of string * parse_expr
@@ -73,6 +73,7 @@ type range = int * int
 type ranges = range_pos list
 
 type tactic =
+  | Rseq           of tactic list
   | Rnorm
   | Rdist_eq
   | Rdist_sym
@@ -85,11 +86,10 @@ type tactic =
   | Rswap          of range_pos * assgn_pos
   | Rswap_oracle   of ocmd_pos * int
   | Rswap_main     of ocmd_pos * string
-  | Rctxt_ev       of int option * (string * parse_expr) option
-  | Rrnd           of bool * assgn_pos option * (string * parse_expr) option *
-                      (string * parse_expr) option * parse_expr option
-  | Rrnd_orcl      of ocmd_pos option * (string * parse_expr) option *
-                      (string * parse_expr) option
+  | Rctxt_ev       of int option * parse_ctx option
+  | Rrnd           of bool * assgn_pos option * parse_ctx option *
+                      parse_ctx option * parse_expr option
+  | Rrnd_orcl      of ocmd_pos option * parse_ctx option * parse_ctx option
   | Rconv          of gdef * parse_expr
   | Rtrans         of gdef * parse_expr
   | Rassm_dec      of bool * string option * direction option * ranges *

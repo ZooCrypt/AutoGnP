@@ -136,222 +136,212 @@ let handle_tactic ts tac =
   let get_pos = gpos_of_apos ju in
   let parse_e se = PU.expr_of_parse_expr vmap_g ts se in
   let mk_new_var sv ty = assert (not (Ht.mem vmap_g sv)); Vsym.mk sv ty in
-  match tac with
-  (* Rules with primitive arguments *)
-  | PT.Rnorm                 -> apply (t_norm ~fail_eq:false)
-  | PT.Rnorm_nounfold        -> apply t_norm_nounfold
-  | PT.Rlet_unfold([])       -> apply (t_unfold_only)
-  | PT.Rlet_unfold(l)        -> 
-    let l = List.rev l in
-    let lt = List.map (fun i ju -> t_let_unfold (gpos_of_apos ju i) ju) l in
-    apply (Rules.t_seq_fold lt)
+  let rec interp_tac tac =
+    match tac with
+    | PT.Rnorm                 -> t_norm ~fail_eq:false
+    | PT.Rnorm_nounfold        -> t_norm_nounfold
+    | PT.Rlet_unfold([])       -> t_unfold_only
+    | PT.Rlet_unfold(l)        -> 
+      let l = List.rev l in
+      let lt = List.map (fun i ju -> t_let_unfold (gpos_of_apos ju i) ju) l in
+      Rules.t_seq_fold lt
+  
+    | PT.Rswap(i,j)            -> t_swap i j
+    | PT.Rswap_main(opos,vs)   -> CR.t_swap_main opos vs
+    | PT.Rdist_eq              -> CR.t_dist_eq
+    | PT.Rdist_sym             -> CR.t_dist_sym
+    | PT.Rremove_ev(is)        -> CR.t_remove_ev is
+    | PT.Rsplit_ev(i)          -> CR.t_split_ev (e_pos i)
+    | PT.Rrewrite_ev(i,d)      -> CR.t_rw_ev (e_pos i) d
+    | PT.Rcrush(finish,mi)     -> t_crush finish mi ts ps
+  
+      (* FIXME: all tactics interpreted wrt. the same theory state,
+                OK for tactics that do not change the theory state. *)
+    | PT.Rseq ts ->
+      t_seq_fold (L.map interp_tac ts)
 
-  | PT.Rswap(i,j)            -> apply (t_swap i j)
-  | PT.Rswap_main(opos,vs)   -> apply (CR.t_swap_main opos vs)
-  | PT.Rdist_eq              -> apply CR.t_dist_eq
-  | PT.Rdist_sym             -> apply CR.t_dist_sym
-  | PT.Rremove_ev(is)        -> apply (CR.t_remove_ev is)
-  | PT.Rsplit_ev(i)          -> apply (CR.t_split_ev (e_pos i))
-  | PT.Rrewrite_ev(i,d)      -> apply (CR.t_rw_ev (e_pos i) d)
-  | PT.Rcrush(finish,mi)     -> apply (t_crush finish mi ts ps)
-
-  | PT.Rcase_ev(Some(se)) ->
-    apply (CR.t_case_ev (parse_e se))
-
-  | PT.Rsubst(i,e1,e2,mupto) ->
-    apply (t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) 
-          (map_opt get_pos mupto))
-
-  | PT.Rrename(v1,v2) ->
-    let v1 = Ht.find vmap_g v1 in
-    let v2 = mk_new_var v2 v1.Vsym.ty in
-    apply (t_rename v1 v2)
-
-  | PT.Rcase_ev(None) ->
-    apply t_case_ev_maybe
-
-  | PT.Rexcept(Some(i),Some(ses)) ->
-    log_i (lazy (fsprintf "pos: %s"
-                   (match i with 
-                   | PT.Var s -> "var: "^s
-                   | PT.Pos i -> "pos:" ^ string_of_int i)));
+    | PT.Rcase_ev(Some(se)) ->
+      CR.t_case_ev (parse_e se)
+  
+    | PT.Rsubst(i,e1,e2,mupto) ->
+      t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) (map_opt get_pos mupto)
+  
+    | PT.Rrename(v1,v2) ->
+      let v1 = Ht.find vmap_g v1 in
+      let v2 = mk_new_var v2 v1.Vsym.ty in
+      t_rename v1 v2
+  
+    | PT.Rcase_ev(None) ->
+      t_case_ev_maybe
+  
+    | PT.Rexcept(Some(i),Some(ses)) ->
+      log_i (lazy (fsprintf "pos: %s"
+                     (match i with 
+                     | PT.Var s -> "var: "^s
+                     | PT.Pos i -> "pos:" ^ string_of_int i)));
+      
+      CR.t_except (get_pos i) (L.map (parse_e) ses)
+  
+    | PT.Rexcept(i,ses) ->
+      t_rexcept_maybe (map_opt get_pos i) ses
+  
+    | PT.Rswap_oracle(op,j)    -> CR.t_swap_oracle op j
+    | PT.Rrewrite_orcl(op,dir) -> CR.t_rewrite_oracle op dir
+  
+    | PT.Rfalse_ev             -> CR.t_false_ev
+    | PT.Rindep(exact)         -> t_random_indep exact
+  
+    | PT.Rnorm_unknown(is) ->
+      let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
+      t_norm_unknown ts vs
+  
+    | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
+      let e = parse_e se in
+      let v = mk_new_var sv e.e_ty in
+      t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm)
+  
+    | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
+      let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
+      let max = L.length ju.ju_se.se_gdef in
+      t_let_abstract max v ju.ju_se.se_ev (map_opt get_pos mupto) (not no_norm)
+  
+    | PT.Rlet_abstract(_,_,_,_,_) ->
+      tacerror "No placeholders or placeholders for both position and event"
+  
+    | PT.Rconv(sgd,sev) ->
+      let vmap2 = Hashtbl.create 134 in
+      let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
+      let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
+      CR.t_conv true { se_gdef = gd2; se_ev = ev2 }
+  
+    | PT.Rtrans(sgd,sev) ->
+      let vmap2 = Hashtbl.create 134 in
+      let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
+      let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
+      CR.t_trans { se_gdef = gd2; se_ev = ev2 }
+  
+    | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
+      t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs
+  
+    | PT.Rnorm_solve(se) ->
+      let e = parse_e se in
+      RewriteRules.t_norm_solve e
+  
+    | PT.Rexcept_orcl(op,pes) ->
+      let vmap = vmap_in_orcl ju.ju_se op in
+      let es = L.map (PU.expr_of_parse_expr vmap ts) pes in
+      CR.t_except_oracle op es
+  
+    | PT.Rctxt_ev (mj,Some(sv,_mt,e)) ->
+      let j = match mj with
+        | Some j -> j
+        | None -> tacerror "position placeholder not allowed if context is given"
+      in
+      let ev = ju.ju_se.se_ev in
+      let b =
+        match ev.e_node with
+        | Nary(Land,es) when j < L.length es ->
+          L.nth es j
+        | _ when j = 0 -> ev
+        | _ -> tacerror "rctxt_ev: bad index"
+      in
+      let ty =
+        if is_Eq b then (fst (destr_Eq b)).e_ty
+        else if is_Exists b then
+          let (e1,_,_) = destr_Exists b in e1.e_ty
+        else tacerror "rctxt_ev: bad event"
+      in
+      let vmap = vmap_of_globals ju.ju_se.se_gdef in
+      let v1 = PU.create_var vmap sv ty in
+      let e1 = PU.expr_of_parse_expr vmap ts e in
+      let c = v1, e1 in
+      CR.t_ctxt_ev j c
+  
+    | PT.Rctxt_ev (mj,None) ->
+      SimpRules.t_ctx_ev_maybe mj
+  
+    | PT.Rsimp must_finish ->
+      SimpRules.t_simp must_finish 20 ts
+  
+    | PT.Rassm_comp(exact,maname,mrngs) ->
+      t_assm_comp ts exact maname (ranges ju mrngs)
+  
+    | PT.Rrnd(exact,mi,mctxt1,mctxt2,mgen) ->
+      let mgen = map_opt parse_e mgen in
+      t_rnd_maybe ts exact (map_opt get_pos mi) mctxt1 mctxt2 mgen
+  
+    | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
+      t_rnd_oracle_maybe ts mopos mctxt1 mctxt2
+  
+    | PT.Rhybrid(_) | PT.Radd_test(_) ->
+      tacerror "hybrid and add_test not supported in sequence of tactics"
     
-    apply (CR.t_except (get_pos i) (L.map (parse_e) ses))
+    | PT.Rbad(_i,_sx) ->
+      tacerror "not implemented"
+  
+    | PT.Deduce(_pes,_pe) ->
+      tacerror "deactivated"
+  
+    | PT.FieldExprs(_pes) ->
+      tacerror "deactivated"
+ in
+ match tac with
+ | PT.Rhybrid((i,j),(lcmds,eret),aname) ->
+   let se = ju.ju_se in
+   let opos = (i,j,0) in
+   let _, seoc = get_se_octxt se opos in
+   let vmap = vmap_in_orcl se opos in
+   let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts) lcmds in
+   let eret = PU.expr_of_parse_expr vmap ts eret in
+   let oasym = seoc.seoc_asym in
+   let name_new suff = not (Mstring.mem (aname^suff) ts.ts_adecls) in
+   fail_unless (fun () -> name_new "_1" && name_new "_1" && name_new "_3")
+     "rhybrid: adversary with same name already declared";
+   let tunit = mk_Prod [] in
+   let asym1 = Asym.mk (aname^"_1") oasym.Asym.dom tunit in
+   let asym2 = Asym.mk (aname^"_2") tunit          tunit in
+   let asym3 = Asym.mk (aname^"_3") tunit          oasym.Asym.codom in
+   let adecls =
+     L.fold_left
+       (fun decls (an,asym) -> Mstring.add an asym decls)
+       ts.ts_adecls
+       [(aname^"_1",asym1); (aname^"_2",asym2); (aname^"_3",asym3)]
+   in
+   apply ~adecls (CR.t_hybrid i j lcmds eret asym1 asym2 asym3)
+     
+ | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
+   (* create symbol for new adversary *)
+   let se = ju.ju_se in
+   let _, seoc = get_se_octxt se opos in
+   let vmap = vmap_in_orcl se opos in
+   let t = PU.expr_of_parse_expr vmap ts t in
+   let oasym = seoc.seoc_asym in
+   let oty = seoc.seoc_osym.Osym.dom in
+   let destr_prod ty = match oty.ty_node with
+     | Prod(tys) -> tys
+     | _ -> [ty]
+   in
+   fail_unless (fun () -> not (Mstring.mem aname ts.ts_adecls))
+     "radd_test: adversary with same name already declared";
+   let asym = Asym.mk aname oasym.Asym.dom oty in
+   let adecls = Mstring.add aname asym ts.ts_adecls in
+   let tys = destr_prod oty in
+   (* create variables for returned values *)
+   fail_unless (fun () -> L.length fvs = L.length tys)
+     "number of given variables does not match type";
+   let fvs = L.map2 (fun v ty -> PU.create_var vmap v ty) fvs tys in
+   apply ~adecls (CR.t_add_test opos t asym fvs)
+  
+ | PT.Radd_test(None,None,None,None) ->
+   apply t_add_test_maybe
+  
+ | PT.Radd_test(_,_,_,_) ->
+   tacerror "radd_test expects either all values or only placeholders"
 
-  | PT.Rexcept(i,ses) ->
-    apply (t_rexcept_maybe (map_opt get_pos i) ses)
+   (* remaining tactics that can be nested with seq *)
+ | _ ->
+   apply (interp_tac tac)
 
-  | PT.Rswap_oracle(op,j)    -> apply (CR.t_swap_oracle op j)
-  | PT.Rrewrite_orcl(op,dir) -> apply (CR.t_rewrite_oracle op dir)
-
-  | PT.Rfalse_ev             -> apply CR.t_false_ev
-  | PT.Rindep(exact)         -> apply (t_random_indep exact)
-
-  | PT.Rnorm_unknown(is) ->
-    let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
-    apply (t_norm_unknown ts vs)
-
-  | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
-    let e = parse_e se in
-    let v = mk_new_var sv e.e_ty in
-    apply (t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm))
-
-  | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
-    let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
-    let max = L.length ju.ju_se.se_gdef in
-    apply (t_let_abstract max v ju.ju_se.se_ev (map_opt get_pos mupto) (not no_norm))
-
-  | PT.Rlet_abstract(_,_,_,_,_) ->
-    tacerror "No placeholders or placeholders for both position and event"
-
-  | PT.Rconv(sgd,sev) ->
-    let vmap2 = Hashtbl.create 134 in
-    let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-    let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
-    apply (CR.t_conv true { se_gdef = gd2; se_ev = ev2 })
-
-  | PT.Rtrans(sgd,sev) ->
-    let vmap2 = Hashtbl.create 134 in
-    let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-    let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
-    apply (CR.t_trans { se_gdef = gd2; se_ev = ev2 })
-
-  | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
-    apply (t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs)
-
-  | PT.Rnorm_solve(se) ->
-    let e = parse_e se in
-    apply (RewriteRules.t_norm_solve e)
-
-  | PT.Rexcept_orcl(op,pes) ->
-    let vmap = vmap_in_orcl ju.ju_se op in
-    let es = L.map (PU.expr_of_parse_expr vmap ts) pes in
-    apply (CR.t_except_oracle op es)
-
-  | PT.Rctxt_ev (mj,Some(sv,e)) ->
-    let j = match mj with
-      | Some j -> j
-      | None -> tacerror "position placeholder not allowed if context is given"
-    in
-    let ev = ju.ju_se.se_ev in
-    let b =
-      match ev.e_node with
-      | Nary(Land,es) when j < L.length es ->
-        L.nth es j
-      | _ when j = 0 -> ev
-      | _ -> tacerror "rctxt_ev: bad index"
-    in
-    let ty =
-      if is_Eq b then (fst (destr_Eq b)).e_ty
-      else if is_Exists b then
-        let (e1,_,_) = destr_Exists b in e1.e_ty
-      else tacerror "rctxt_ev: bad event"
-    in
-    let vmap = vmap_of_globals ju.ju_se.se_gdef in
-    let v1 = PU.create_var vmap sv ty in
-    let e1 = PU.expr_of_parse_expr vmap ts e in
-    let c = v1, e1 in
-    apply (CR.t_ctxt_ev j c)
-
-  | PT.Rctxt_ev (mj,None) ->
-    apply (SimpRules.t_ctx_ev_maybe mj)
-
-  | PT.Rsimp must_finish ->
-    apply (SimpRules.t_simp must_finish 20 ts)
-
-  | PT.Rassm_comp(exact,maname,mrngs) ->
-    apply (t_assm_comp ts exact maname (ranges ju mrngs))
-
-  | PT.Rrnd(exact,mi,mctxt1,mctxt2,mgen) ->
-    let mgen = map_opt parse_e mgen in
-    apply (t_rnd_maybe ts exact (map_opt get_pos mi) mctxt1 mctxt2 mgen)
-
-  | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
-    apply (t_rnd_oracle_maybe ts mopos mctxt1 mctxt2)
-
-  | PT.Rhybrid((i,j),(lcmds,eret),aname) ->
-    let se = ju.ju_se in
-    let opos = (i,j,0) in
-    let _, seoc = get_se_octxt se opos in
-    let vmap = vmap_in_orcl se opos in
-    let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts) lcmds in
-    let eret = PU.expr_of_parse_expr vmap ts eret in
-    let oasym = seoc.seoc_asym in
-    let name_new suff = not (Mstring.mem (aname^suff) ts.ts_adecls) in
-    fail_unless (fun () -> name_new "_1" && name_new "_1" && name_new "_3")
-      "rhybrid: adversary with same name already declared";
-    let tunit = mk_Prod [] in
-    let asym1 = Asym.mk (aname^"_1") oasym.Asym.dom tunit in
-    let asym2 = Asym.mk (aname^"_2") tunit          tunit in
-    let asym3 = Asym.mk (aname^"_3") tunit          oasym.Asym.codom in
-    let adecls =
-      L.fold_left
-        (fun decls (an,asym) -> Mstring.add an asym decls)
-        ts.ts_adecls
-        [(aname^"_1",asym1); (aname^"_2",asym2); (aname^"_3",asym3)]
-    in
-    apply ~adecls (CR.t_hybrid i j lcmds eret asym1 asym2 asym3)
-
-  | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
-    (* create symbol for new adversary *)
-    let se = ju.ju_se in
-    let _, seoc = get_se_octxt se opos in
-    let vmap = vmap_in_orcl se opos in
-    let t = PU.expr_of_parse_expr vmap ts t in
-    let oasym = seoc.seoc_asym in
-    let oty = seoc.seoc_osym.Osym.dom in
-    let destr_prod ty = match oty.ty_node with
-      | Prod(tys) -> tys
-      | _ -> [ty]
-    in
-    fail_unless (fun () -> not (Mstring.mem aname ts.ts_adecls))
-      "radd_test: adversary with same name already declared";
-    let asym = Asym.mk aname oasym.Asym.dom oty in
-    let adecls = Mstring.add aname asym ts.ts_adecls in
-    let tys = destr_prod oty in
-    (* create variables for returned values *)
-    fail_unless (fun () -> L.length fvs = L.length tys)
-      "number of given variables does not match type";
-    let fvs = L.map2 (fun v ty -> PU.create_var vmap v ty) fvs tys in
-    apply ~adecls (CR.t_add_test opos t asym fvs)
-
-  | PT.Radd_test(None,None,None,None) ->
-    apply t_add_test_maybe
-
-  | PT.Radd_test(_,_,_,_) ->
-    tacerror "radd_test expects either all values or only placeholders"
-
-  | PT.Rbad(_i,_sx) ->
-    tacerror "not implemented"
-
-  | PT.Deduce(pes,pe) ->
-    let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
-    let e = PU.expr_of_parse_expr vmap_g ts  pe in
-    log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_exp) es pp_exp e));
-    (try
-       let frame =
-         L.mapi
-           (fun i e -> (e, I (mk_V (Vsym.mk ("x"^(string_of_int i)) e.e_ty))))
-           es
-       in
-       let recipe = Deduc.invert frame e in
-       log_i (lazy (fsprintf "Found %a@\n" pp_exp recipe))
-     with
-       Not_found ->
-         tacerror "Not found@\n");
-    (ts,lazy "")
-
-  | PT.FieldExprs(pes) ->
-    let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
-    let ses = ref Se.empty in
-    Game.iter_se_exp ~iexc:true
-      (fun e' -> e_iter_ty_maximal mk_Fq
-        (fun fe -> if L.exists (fun e -> e_exists (e_equal e) fe) es then ses := Se.add fe !ses) e')
-      ju.ju_se;
-    let res = (lazy (fsprintf "field expressions with %a: @\n@[<hov 2>  %a@]"
-                       (pp_list ", " pp_exp) es (pp_list ",@\n" pp_exp) (Se.elements !ses))) in
-    log_i res;
-    (ts,res)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Instruction handling} *)
@@ -598,6 +588,13 @@ let handle_instr verbose ts instr =
     | _ ->
       tacerror "Unknown debug command."
     end
+
+let handle_instrs verbose ts instrs =
+  List.fold_left (fun (ts,s) instr ->
+    let (ts',s') = handle_instr verbose ts instr in
+    (ts',s^"\n"^s'))
+    (ts,"")
+    instrs
 
 let eval_theory s =
   let pt = Parse.theory s in

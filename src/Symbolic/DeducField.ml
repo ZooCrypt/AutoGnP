@@ -117,7 +117,7 @@ let solve_mixed_type k s =
     (v_g, e_replace (mk_V s) (mk_GLog (mk_V v_g)) ce)
 
   (* example: ga -> log(ga)*b
-     1. try to deduce log(A) from log(A)*b
+     1. try to deduce log(ga) from log(ga)*b
      2. abstract log(ga) by v: v*b |-> v ==> get v/b.
      3. translate as v -> g^(v/b) *)
   | Fq, G n1 ->
@@ -128,7 +128,7 @@ let solve_mixed_type k s =
       |> norm_expr_strong
     in
     let ce = solve_fq_vars_known k_fq v_fq in
-    (v_fq, ce)
+    (v_fq, to_gn1 ce)
 
   | _ ->
     tacerror "t_rnd_pos: cannot invert for given types, known %a, secret %a"

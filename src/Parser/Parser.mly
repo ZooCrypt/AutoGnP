@@ -35,6 +35,10 @@
 %token CARET
 
 %token SLASH
+%token SLASH2
+%token SLASHEQ
+%token SLASH2EQ
+
 
 %token TRUE
 %token FALSE
@@ -358,8 +362,11 @@ opos:
 | x=X { Some x }
 ;
 
+ty_anno :
+| COLON  t=typ0 { t }
+
 ctx :
-| LPAREN i=ID TO e=expr0 RPAREN { (i,e) }
+| LPAREN i=ID ot=option(ty_anno) TO e=expr0 RPAREN { (i,ot,e) }
 ;
 
 sym_class:
@@ -448,77 +455,80 @@ swap_pos:
 tactic :
 
 /* norm variants */
-| RNORM                { Apply(Rnorm) }
-| RNORM_NOUNFOLD       { Apply(Rnorm_nounfold) }
-| RNORM_UNKNOWN is=ID* { Apply(Rnorm_unknown(is)) }
-| RNORM_SOLVE e=expr0  { Apply(Rnorm_solve(e)) }
+| RNORM                { Rnorm }
+| SLASH2               { Rnorm }
+| RNORM_NOUNFOLD       { Rnorm_nounfold }
+| SLASHEQ              { Rnorm_nounfold }
+| RNORM_UNKNOWN is=ID* { Rnorm_unknown(is) }
+| SLASH2EQ             { Rnorm_unknown([]) }
+| RNORM_SOLVE e=expr0  { Rnorm_solve(e) }
 
 /* conversion */
-| RCONV LBRACK gd=gdef0 RBRACK e=event   { Apply(Rconv(gd,e)) }
-| RTRANS LBRACK gd=gdef0 RBRACK e=event  { Apply(Rtrans(gd,e)) }
+| RCONV LBRACK gd=gdef0 RBRACK e=event   { Rconv(gd,e) }
+| RTRANS LBRACK gd=gdef0 RBRACK e=event  { Rtrans(gd,e) }
 | RSUBST i=inter_pos? e1=expr0 e2=expr0 { 
     let i, mupto = from_opt (None,None) i in
-    Apply(Rsubst(i,e1,e2,mupto)) } 
-| RRENAME v1=ID v2=ID { Apply(Rrename(v1,v2)) }
-| RLET_UNFOLD i=assgn_pos*            { Apply(Rlet_unfold(i)) }
+    Rsubst(i,e1,e2,mupto) } 
+| RRENAME v1=ID v2=ID { Rrename(v1,v2) }
+| RLET_UNFOLD i=assgn_pos*            { Rlet_unfold(i) }
 | RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
           i1=ID e1=uopt(expr0) mupto=assgn_pos?
-  { Apply(Rlet_abstract(i,i1,e1,mupto,excl=None)) }
+  { Rlet_abstract(i,i1,e1,mupto,excl=None) }
 
 /* swapping */
-| RSWAP i=swap_pos j=assgn_pos { Apply(Rswap(i,j)) }
-| RSWAP op=opos j=int { Apply(Rswap_oracle(op,j)) }
-| RSWAP_MAIN op=opos v=ID { Apply(Rswap_main(op,v)) }
+| RSWAP i=swap_pos j=assgn_pos { Rswap(i,j) }
+| RSWAP op=opos j=int { Rswap_oracle(op,j) }
+| RSWAP_MAIN op=opos v=ID { Rswap_main(op,v) }
 
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?
-  { Apply(Rrnd(excl=None,mi,mc1,mc2,mgen)) }
-| REXCEPT i=uopt(assgn_pos) es=uopt(br_exprlist0) { Apply(Rexcept(i,es)) }
-| REXCEPT_ORACLE op=opos es=expr0*          { Apply(Rexcept_orcl(op,es)) }
+  { Rrnd(excl=None,mi,mc1,mc2,mgen) }
+| REXCEPT i=uopt(assgn_pos) es=uopt(br_exprlist0) { Rexcept(i,es) }
+| REXCEPT_ORACLE op=opos es=expr0*          { Rexcept_orcl(op,es) }
 
 /* assumptions */
 | ASSUMPTION_DECISIONAL excl=EXCL?
     s=uopt(ID) d=uopt(dir) rngs=inter_pos* xs=option(ID+)
-  { Apply (Rassm_dec(excl=None,s,d,rngs,xs))}
+  { Rassm_dec(excl=None,s,d,rngs,xs)}
 | ASSUMPTION_COMPUTATIONAL excl=EXCL? s=uopt(ID) rngs=inter_pos*
-  { Apply (Rassm_comp(excl=None,s,rngs))}
+  { Rassm_comp(excl=None,s,rngs)}
 
 /* automated rules */
-| BYSIMP               { Apply(Rsimp(true)) }
-| RSIMP                { Apply(Rsimp(false)) }
-| RCRUSH  mi=uopt(NAT) { Apply(Rcrush(false,mi)) }
-| RCRUSH               { Apply(Rcrush(false,Some(1))) }
-| BYCRUSH              { Apply(Rcrush(true,None)) }
-| BYCRUSH mi=uopt(NAT) { Apply(Rcrush(true,mi)) }
+| BYSIMP               { Rsimp(true) }
+| RSIMP                { Rsimp(false) }
+| RCRUSH  mi=uopt(NAT) { Rcrush(false,mi) }
+| RCRUSH               { Rcrush(false,Some(1)) }
+| BYCRUSH              { Rcrush(true,None) }
+| BYCRUSH mi=uopt(NAT) { Rcrush(true,mi) }
 
 /* oracles */
-| RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Apply(Rrnd_orcl(op,c1,c2)) }
-| RREWRITE_ORACLE op=opos d=dir                       { Apply(Rrewrite_orcl(op,d)) }
-| RBAD i=NAT s=ID                                     { Apply(Rbad (i-1,s)) }
+| RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Rrnd_orcl(op,c1,c2) }
+| RREWRITE_ORACLE op=opos d=dir                       { Rrewrite_orcl(op,d) }
+| RBAD i=NAT s=ID                                     { Rbad (i-1,s) }
 | RADD_TEST op=opos e=expr0 asym=ID fvs=ID*
-  { Apply(Radd_test(Some(op),Some(e),Some(asym),Some(fvs))) }
-| RADD_TEST UNDERSCORE { Apply(Radd_test(None,None,None,None)) }
+  { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
+| RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }
 | RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=lcomp asym=ID
-  { Apply(Rhybrid((i-1,j-1),lc,asym)) }
+  { Rhybrid((i-1,j-1),lc,asym) }
 
 /* events */
-| RREMOVE_EV is=gpos+         { Apply(Rremove_ev(is)) }
-| RSPLIT_EV i=gpos            { Apply(Rsplit_ev(i - 1)) }
-| RCASE_EV e=uopt(expr0)      { Apply(Rcase_ev(e)) }
-| RREWRITE_EV i=gpos d=dir?   { Apply(Rrewrite_ev(i,opt id LeftToRight d)) }
-| RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Apply(Rctxt_ev(oj,c)) }
+| RREMOVE_EV is=gpos+         { Rremove_ev(is) }
+| RSPLIT_EV i=gpos            { Rsplit_ev(i - 1) }
+| RCASE_EV e=uopt(expr0)      { Rcase_ev(e) }
+| RREWRITE_EV i=gpos d=dir?   { Rrewrite_ev(i,opt id LeftToRight d) }
+| RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Rctxt_ev(oj,c) }
 
 /* probability bounding rules */
-| RINDEP excl=EXCL? { Apply(Rindep(excl=None)) }
-| RFALSE_EV         { Apply(Rfalse_ev)}
+| RINDEP excl=EXCL? { Rindep(excl=None) }
+| RFALSE_EV         { Rfalse_ev}
 
 /* bounding distinguishing probability */
-| RDIST_EQ  { Apply(Rdist_eq)}
-| RDIST_SYM { Apply(Rdist_sym)}
+| RDIST_EQ  { Rdist_eq}
+| RDIST_SYM { Rdist_sym}
 
 /* debugging */
-| DEDUCE  LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Apply(Deduce(es,e)) }
-| LISTFE  es=expr0*                                            { Apply(FieldExprs(es)) }
+| DEDUCE  LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Deduce(es,e) }
+| LISTFE  es=expr0*                                            { FieldExprs(es) }
 
 
 /************************************************************************/
@@ -527,7 +537,8 @@ tactic :
 instr :
 | i=decl { i }
 | i=proof_command { i }
-| i=tactic { i }
+| is=separated_nonempty_list(SEMICOLON,tactic)
+  { match is with [i] -> Apply(i) | _ -> Apply(Rseq(is)) }
 
 instruction:
 | i=instr DOT EOF { i }
