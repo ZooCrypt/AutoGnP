@@ -50,6 +50,11 @@ let e_int1 = e_int 1
 let e_incr e = e_add e e_int1
 let e_lt e1 e2 = Eapp(Olt, [e1;e2])
 
+let e_tuple es = 
+  match es with
+  | [e] -> e
+  | _   -> Etuple es
+
 type lvalue = pvar list
 
 type mod_name = { mn : string;

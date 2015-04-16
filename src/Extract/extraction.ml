@@ -1105,69 +1105,92 @@ let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file =
     pp_other fmt se_o.seoc_oright;
     close_pp fmt ()
 
-
-
-  
-
 let pr_intr_rw1_app lemma1 lemma2 fmt () = 
   F.fprintf fmt "intros &m; rewrite {1}(%s &m);apply (%s &m)."
     lemma1 lemma2 
 
-let extract_assum _file _ranges _dir _subst _ainfo _pft _pft' = ()
-(*  let g  = game file pft.pt_ju.ju_se.se_gdef in
-  let g' = game file pft'.pt_ju.ju_se.se_gdef in
+let split_ranges ranges c = 
+  (* skip the initialisation of random variables *)
+  let rc, c = 
+    match ranges with
+    | [] -> assert false
+    | (i1,_) :: _ -> cut_n i1 c in
+  let rec aux r c = 
+    match r with 
+    | [] -> if (c<> []) then raise Not_found; [] 
+    | (i1,i2) :: r -> 
+      let rc1, c0 = cut_n (i2 - i1 + 1) c in
+      List.rev rc1 :: aux r c0 in
+  rc, aux ranges c
+  
+let get_asgn1 = function
+  | Iasgn ([v],e) -> v,e 
+  | _ -> assert false
+
+let get_rnd1 = function
+  | Irnd([v],_,_) -> v
+  | _ -> assert false
+
+let extract_assum file ranges dir assum pft pft' = 
+
+  let g  = game file pft.pt_ju.ju_se.se_gdef in
   let nvc = List.length (vc_oracles file) in
 
-
-
-
-
-  let ev = pft.pt_ju.ju_se.se_ev in
-  let len = if dir = LeftToRight then ainfo.ad_len1 else ainfo.ad_len2 in
-  let fadv =
-    let comp = match g.mod_body with 
-      | Mod_def cmp -> cmp 
-      | _ -> assert false in
-    let comp, f = 
-      match List.rev comp with 
-      | MCfun f :: r -> List.rev r, f
-      | _ -> assert false in
-    let subst_v (x:Vsym.t) = try Vsym.M.find x subst with Not_found -> x in
-    let priv = 
-      Vsym.S.fold (fun v p -> Sstring.add (Vsym.to_string (subst_v v)) p)
-        ainfo.ad_priv Sstring.empty in
-    (* The private variables should be remove *)
-    let tokeep = function
-      | MCvar ((_,v),_) -> not (Sstring.mem v priv) 
-      | _ -> true in
-    let comp = List.filter tokeep comp in
-    let main = 
-      let mk_param v = 
-        (([], "_" ^ Vsym.to_string v), v.Vsym.ty) in
-      let param = List.map mk_param ainfo.ad_param in
-      let glob = List.map subst_v ainfo.ad_param in
-      let assign_global = 
-        List.map2 (fun vg (v,_) -> Iasgn([pvar [] vg], Epv v)) glob param in
-      let res = ([], "_res") in
-      let dres = res, mk_Bool in
-      let ev = expression file ev in
-      let init_vc, main = Util.cut_n nvc (f_body f) in 
-      { f_name = "main";
-        f_def = Fbody {
-        f_param = param;
-        f_local = [dres];
-        f_res   = Some dres;
-        f_body  = 
-          assign_global @ 
-            (* The head should be remove *)
-            List.rev_append init_vc
-            (drop len main @ [Iasgn([res], ev)]) } }in
-    let advname = top_name file ("Fadv_"^ainfo.ad_name) in 
+  let ainfo = 
+    try Ht.find file.assump_dec assum.Ass.ad_name 
+    with Not_found -> assert false in
+ 
+  let comp = match g.mod_body with 
+    | Mod_def cmp -> cmp 
+    | _ -> assert false in
+  let comp, f = 
+    match List.rev comp with 
+    | MCfun f :: r -> List.rev r, f
+    | _ -> assert false in
+  let init_vc, c = Util.cut_n nvc (f_body f) in
+  let rc,cs = split_ranges ranges c in
+ 
+  let priv = 
+    List.fold_left (fun s i -> let (_,v) = get_rnd1 i in Sstring.add v s)
+      Sstring.empty rc in
+  (* The private variables should be remove *)
+  let tokeep = function
+    | MCvar ((_,v),_) -> not (Sstring.mem v priv) 
+    | _ -> true in
+  let comp = List.filter tokeep comp in
+  (* build the code for the adversary *)
+  let first = ref true in
+  let do_adv (asym, lr, zarg) c = 
+    let arg, _ = get_asgn1 (List.hd c) in 
+    let varg = ([],"_arg") in
+    let c = List.tl c in
+    let retc = drop (List.length c - List.length lr) c in
+    let retv = List.map (fun i -> fst (get_asgn1 i)) retc in
+    let vres = ([],"_res") in
+    let tres = mk_Prod (List.map (fun v -> v.Vsym.ty) lr) in
+    let dres = vres, tres in
+    let body = 
+      Iasgn([arg], e_pv varg) ::
+        c @ [Iasgn([vres], e_tuple (List.map e_pv retv))] in
+    let body = 
+      if !first then (first := false;List.rev_append init_vc body)
+      else body in
+     MCfun 
+       { f_name = asym_to_string asym;
+         f_def = Fbody {
+           f_param = [varg, (fst zarg).e_ty];
+           f_local = [dres];
+           f_res   = Some dres;
+           f_body  = body}
+       } in
+  let advname = top_name file ("Fadv_"^ainfo.ad_name) in 
+  let fadv = 
     { mod_name = advname;
       mod_param = g.mod_param;
-      mod_body = Mod_def (comp @ [MCfun main]) } in
+      mod_body = Mod_def (comp @ List.map2 do_adv assum.Ass.ad_acalls cs) } in
+  
   add_game file `Top fadv;
-(*  file.glob_decl <- Cmod fadv :: file.glob_decl; *)
+
   let fa = mod_name fadv.mod_name [mod_name (adv_name file) []] in
   let a1 = mod_name ainfo.ad_cmd1.mod_name [fa] in
   let a2 = mod_name ainfo.ad_cmd2.mod_name [fa] in
@@ -1176,34 +1199,106 @@ let extract_assum _file _ranges _dir _subst _ainfo _pft _pft' = ()
   let pra1 = Fpr((a1,"main"), mem, [], Fv(([],"res"),None)) in
   let pra2 = Fpr((a2,"main"), mem, [], Fv(([],"res"),None)) in
   let pra, pra' = if dir = LeftToRight then pra1, pra2 else pra2, pra1 in
-  let nA = adv_name file in
-  let proof_ass g ev = 
-    let ev = formula file [g.mod_name] (Some "1") ev in
-    fun fmt () -> 
-    F.fprintf fmt 
-      "@[<v> intros &m; byequiv (_: @[={glob %s} ==>@ %a@]) => //.@ " nA
-      Printer.pp_form (f_eq ev (Fv(([], "res"), Some "2")));
-    F.fprintf fmt
-      "by proc; inline{2} %a; wp => /=; sim;auto.@]"
-      Printer.pp_fun_name (fa,"main") in
-  let lemma = 
-    add_pr_lemma file (mk_cmp pr cmp_eq pra) 
-      (Some (proof_ass g pft.pt_ju.ju_se.se_ev)) in
-  let lemma' = 
-    add_pr_lemma file (mk_cmp pr' cmp_eq pra') 
-      (Some (proof_ass g' pft'.pt_ju.ju_se.se_ev)) in
+  let _nA = adv_name file in
+
   let abs = Fabs (f_rsub pra1 pra2) in
-  let proof fmt () = 
-    F.fprintf fmt 
-      "intros &m;rewrite (%s &m) (%s &m);apply ZooUtil.le_abs_add%i."  
-      lemma lemma' (if dir = LeftToRight then 1 else 2) in
+  let proof fmt () =
+    let pp_form = Printer.pp_form in
+    F.fprintf fmt "@[<v>(* Assumption computational *)@ ";
+    F.fprintf fmt "move=> &m.@ ";
+    F.fprintf fmt "cut -> : %a = %a.@ " pp_form pr pp_form pra;
+    F.fprintf fmt "+ byequiv (_: _ ==> _) => //;proc;inline *;sim;auto.@ ";
+    F.fprintf fmt "cut -> : %a = %a.@ " pp_form pr' pp_form pra';
+    F.fprintf fmt "+ byequiv (_: _ ==> _) => //;proc;inline *;sim;auto.@ ";
+    F.fprintf fmt " by apply ZooUtil.le_abs_add%i." 
+      (if dir = LeftToRight then 1 else 2);
+    F.fprintf fmt "@]" in
   let concl = 
     add_pr_lemma file 
       (mk_cmp pr cmp_le (f_radd abs pr'))
       (Some proof) in
   concl, pr, abs 
-*)
-let extract_assum_comp _file _subst _ainfo _ranges _pft =
+    
+let extract_assum_comp file ranges assum pft =
+  let g  = game file pft.pt_ju.ju_se.se_gdef in
+  let nvc = List.length (vc_oracles file) in
+
+  let ainfo = 
+    try Ht.find file.assump_comp assum.Ass.ac_name 
+    with Not_found -> assert false in
+ 
+  let comp = match g.mod_body with 
+    | Mod_def cmp -> cmp 
+    | _ -> assert false in
+  let comp, f = 
+    match List.rev comp with 
+    | MCfun f :: r -> List.rev r, f
+    | _ -> assert false in
+  let init_vc, c = Util.cut_n nvc (f_body f) in
+  let rc,cs = split_ranges ranges c in
+ 
+  let priv = 
+    List.fold_left (fun s i -> let (_,v) = get_rnd1 i in Sstring.add v s)
+      Sstring.empty rc in
+  (* The private variables should be remove *)
+  let tokeep = function
+    | MCvar ((_,v),_) -> not (Sstring.mem v priv) 
+    | _ -> true in
+  let comp = List.filter tokeep comp in
+  (* build the code for the adversary *)
+  let first = ref true in
+  let do_adv (asym, lr, zarg) c = 
+    let arg, _ = get_asgn1 (List.hd c) in 
+    let varg = ([],"_arg") in
+    let c = List.tl c in
+    let retc = drop (List.length c - List.length lr) c in
+    let retv = List.map (fun i -> fst (get_asgn1 i)) retc in
+    let vres = ([],"_res") in
+    let tres = mk_Prod (List.map (fun v -> v.Vsym.ty) lr) in
+    let dres = vres, tres in
+    let body = 
+      Iasgn([arg], e_pv varg) ::
+        c @ [Iasgn([vres], e_tuple (List.map e_pv retv))] in
+    let body = 
+      if !first then (first := false;List.rev_append init_vc body)
+      else body in
+     MCfun 
+       { f_name = asym_to_string asym;
+         f_def = Fbody {
+           f_param = [varg, zarg.e_ty];
+           f_local = [dres];
+           f_res   = Some dres;
+           f_body  = body}
+       } in
+  let advname = top_name file ("Fadv_"^ainfo.ac_name) in 
+  let fadv = 
+    { mod_name = advname;
+      mod_param = g.mod_param;
+      mod_body = Mod_def (comp @ List.map2 do_adv assum.Ass.ac_acalls cs) } in
+  
+  add_game file `Top fadv;
+
+  let fa = mod_name fadv.mod_name [mod_name (adv_name file) []] in
+  let a = mod_name ainfo.ac_cmd.mod_name [fa] in
+  let pr = extract_pr file mem pft.pt_ju in
+  let pra = Fpr((a,"main"), mem, [], Fv(([],"res"),None)) in
+  let nA = adv_name file in
+  let proof_ass fmt () =
+    F.fprintf fmt "(* Assumption computational *)@ ";
+    F.fprintf fmt 
+      "@[<v>intros &m; byequiv (_: @[={glob %s} ==>@ _@]) => //.@ " nA;
+    F.fprintf fmt "by proc; inline *; wp => /=; sim;auto.@]" in
+  let lemma = 
+    add_pr_lemma file (mk_cmp pr cmp_eq pra) (Some proof_ass) in
+  lemma, pr, cmp_eq, pra
+
+
+
+
+
+
+
+
   (*
   let g  = game file pft.pt_ju.ju_se.se_gdef in
   let nvc = List.length (vc_oracles file) in
@@ -1269,7 +1364,7 @@ let extract_assum_comp _file _subst _ainfo _ranges _pft =
     add_pr_lemma file (mk_cmp pr cmp_eq pra) (Some proof_ass) in
   lemma, pr, cmp_eq, pra
   *)
-  ()
+
 
 let rec skip_conv pft = 
   match pft.pt_rule with
@@ -1951,17 +2046,10 @@ let rec extract_proof file pft =
   | Rrnd_indep (side, pos) ->
     extract_rnd_indep file side pos pft.pt_ju 
     
-  | Rassm_dec (_ranges,_dir,_subst,_assum) ->
-    let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 "Dec_comp" file pft pft' (pr_admit "Decisional assumption") 
-(*
-    
+  | Rassm_dec (ranges,dir,_subst,assum) ->
     let pft' = List.hd pft.pt_children in
     let (lemma1, pr',cmp,bound) = extract_proof file pft' in
-    let ainfo = 
-      try Ht.find file.assump_dec assum.Ass.ad_name 
-      with Not_found -> assert false in
-    let lemma2, pr, abs = extract_assum file ranges dir subst ainfo pft pft' in
+    let lemma2, pr, abs = extract_assum file ranges dir assum pft pft' in
     let proof fmt () = 
       F.fprintf fmt "@[<v>intros &m.@ ";
       F.fprintf fmt "@[apply (real_le_trans@ %a@ %a@ %a).@]@ "
@@ -1976,16 +2064,9 @@ let rec extract_proof file pft =
     let lemma3 = 
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
     lemma3, pr, cmp_le, bound 
-    *)
-
-  | Rassm_comp (_ranges,_subst,_assum) ->
-    default_proof file mem "admit" pft
-    (*
-    let ainfo = 
-      try Ht.find file.assump_comp assum.Ass.ac_name 
-      with Not_found -> assert false in
-    extract_assum_comp file subst ainfo ranges pft
-    *)
+   
+  | Rassm_comp (ranges,_subst, assum) ->
+    extract_assum_comp file ranges assum pft
 
   | Rexc (pos,l)   -> 
     let pft' = List.hd pft.pt_children in
