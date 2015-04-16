@@ -38,7 +38,7 @@
 %token SLASH2
 %token SLASHEQ
 %token SLASH2EQ
-
+%token INFTHEORETIC
 
 %token TRUE
 %token FALSE
@@ -390,12 +390,12 @@ decl :
 | RANDOM ORACLE i=ID COLON t1=typ0 TO t2=typ0 { RODecl(i,true,t1,t2) }
 | OPERATOR i=ID COLON t1=typ0 TO t2=typ0 { RODecl(i,false,t1,t2) }
 | BILINEAR MAP i=ID COLON g1=TG STAR g2=TG TO g3=TG { EMDecl(i,g1,g2,g3) }
-| ASSUMPTION
+| ASSUMPTION it=delimited(LBRACK,INFTHEORETIC,RBRACK)?
     i=ID sym=option(sym_vars) LBRACK g0=gdef0 RBRACK LBRACK g1=gdef0 RBRACK
-  { AssmDec(i,g0,g1,opt id [] sym) }
-| ASSUMPTION
+  { AssmDec(i,it<>None,g0,g1,opt id [] sym) }
+| ASSUMPTION it=delimited(LBRACK,INFTHEORETIC,RBRACK)?
     i1=ID at=atype sym=option(sym_vars) LBRACK g=gdef0 RBRACK COLON e=expr0
-  { AssmComp(i1,at,g,e,opt id [] sym) }
+  { AssmComp(i1,it<>None,at,g,e,opt id [] sym) }
 | BOUNDSUCC LBRACK g=gdef0 RBRACK e=event { JudgSucc(g,e) }
 | BOUNDADV LBRACK g=gdef0 RBRACK e=event { JudgAdv(g,e) }
 | BOUNDDIST LBRACK g1=gdef0 RBRACK e1=event

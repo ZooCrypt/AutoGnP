@@ -65,6 +65,7 @@ i*)
 
 type assm_dec = {
   ad_name       : string;       (*r name of assumption *)
+  ad_inf        : bool;         (*r information-theoretic assumption *)
   ad_prefix1    : gdef;         (*r prefix for left *)
   ad_prefix2    : gdef;         (*r prefix for right *)
   ad_acalls     : (Asym.t * Vsym.t list * (expr * expr)) list;
@@ -85,7 +86,7 @@ let pp_assm_dec fmt ad =
   F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_dec) ad.ad_acalls;
   F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ad.ad_symvars
 
-let mk_assm_dec name gd1 gd2 symvars =
+let mk_assm_dec name inf gd1 gd2 symvars =
   ignore (Wf.wf_gdef Wf.NoCheckDivZero gd1);
   ignore (Wf.wf_gdef Wf.NoCheckDivZero gd2);
   let (pref1,suff1) = L.partition (function GCall _ -> false | _ -> true) gd1 in
@@ -110,6 +111,7 @@ let mk_assm_dec name gd1 gd2 symvars =
   in
   let assm = {
     ad_name    = name;
+    ad_inf     = inf;
     ad_prefix1 = pref1;
     ad_prefix2 = pref2;
     ad_acalls  = go [] suff1 suff2;
@@ -140,6 +142,7 @@ let inst_dec ren assm =
   in
   let subst_g = Game.subst_v_gdef ren_v in
   { ad_name     = assm.ad_name;
+    ad_inf      = assm.ad_inf;
     ad_prefix1  = subst_g assm.ad_prefix1;
     ad_prefix2  = subst_g assm.ad_prefix2;
     ad_acalls   = L.map ren_acall assm.ad_acalls; 
@@ -157,6 +160,7 @@ let pp_atype fmt = function
 
 type assm_comp = {
   ac_name       : string;       (*r name of assumption *)
+  ac_inf        : bool;         (*r information-theoretic assumption *)
   ac_type       : assm_type;
   ac_prefix     : gdef;         (*r prefix of assumption *)
   ac_event      : Expr.expr;    (*r event expression *)
@@ -175,7 +179,7 @@ let pp_assm_comp fmt ac =
   F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_comp) ac.ac_acalls;
   F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ac.ac_symvars
 
-let mk_assm_comp name atype gd ev sym_vars =
+let mk_assm_comp name inf atype gd ev sym_vars =
   ignore (Wf.wf_se Wf.NoCheckDivZero { se_gdef = gd; se_ev = ev});
   let (pref,suff) = L.partition (function GCall _ -> false | _ -> true) gd in
   let rec go acc acalls =
@@ -191,6 +195,7 @@ let mk_assm_comp name atype gd ev sym_vars =
   in
   let ac = {
     ac_name       = name;
+    ac_inf        = inf;
     ac_type       = atype;
     ac_prefix     = pref;
     ac_event      = ev;

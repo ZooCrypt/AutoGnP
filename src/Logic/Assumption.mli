@@ -12,6 +12,7 @@ open Gsyms
 (* \hd{Decisional assumptions.} *)
 type assm_dec = private {
   ad_name       : string;       (*r name of assumption *)
+  ad_inf        : bool;         (*r information-theoretic assumption *)
   ad_prefix1    : gdef;         (*r prefix for left *)
   ad_prefix2    : gdef;         (*r prefix for right *)
   ad_acalls     : (Asym.t * Vsym.t list * (expr * expr)) list;
@@ -22,7 +23,7 @@ type assm_dec = private {
 
 val pp_assm_dec :  F.formatter -> assm_dec -> unit
 
-val mk_assm_dec : string -> gdef -> gdef -> (Vsym.t list) list -> assm_dec
+val mk_assm_dec : string -> bool -> gdef -> gdef -> (Vsym.t list) list -> assm_dec
 
 val needed_vars_dec : direction  -> assm_dec -> Vsym.t list
 
@@ -38,6 +39,7 @@ val pp_atype : F.formatter -> assm_type -> unit
 
 type assm_comp = private {
   ac_name       : string;       (*r name of assumption *)
+  ac_inf        : bool;         (*r information-theoretic assumption *)
   ac_type       : assm_type;    (* type of assumption *)
   ac_prefix     : gdef;         (*r prefix of assumption *)
   ac_event      : Expr.expr;    (*r event expression *)
@@ -48,7 +50,7 @@ type assm_comp = private {
 
 val pp_assm_comp :  F.formatter -> assm_comp -> unit
 
-val mk_assm_comp : string -> assm_type -> gdef -> expr -> vs list list -> assm_comp
+val mk_assm_comp : string -> bool -> assm_type -> gdef -> expr -> vs list list -> assm_comp
 
 val private_vars_comp : assm_comp -> Se.t
 

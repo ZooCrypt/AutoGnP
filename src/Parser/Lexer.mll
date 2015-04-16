@@ -75,6 +75,7 @@ rule lex = parse
   | "abstract"  { RLET_ABSTRACT }
   | "unfold"  { RLET_UNFOLD }
   | "subst" { RSUBST }
+  | "inf" { INFTHEORETIC }
   | "rename" { RRENAME }
   | "rewrite_oracle"  { RREWRITE_ORACLE }
   | "rewrite_ev" { RREWRITE_EV }

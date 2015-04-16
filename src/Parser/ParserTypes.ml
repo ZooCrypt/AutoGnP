@@ -121,8 +121,8 @@ type instr =
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
-  | AssmDec    of string * gdef * gdef * (string list) list
-  | AssmComp   of string * assm_type * gdef * parse_expr * string list list
+  | AssmDec    of string * bool * gdef * gdef * (string list) list
+  | AssmComp   of string * bool * assm_type * gdef * parse_expr * string list list
   | JudgSucc   of gdef * parse_expr 
   | JudgAdv    of gdef * parse_expr
   | JudgDist   of gdef * parse_expr * gdef * parse_expr

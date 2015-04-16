@@ -848,7 +848,7 @@ let assm_comp_valid_ranges rn assm acalls_ju rngs =
       let c_res  = Util.take len_res (Util.drop (1 + len_body) acalls_ju) in
       let read = read_gcmds (c_body@c_res) in
       ensure_not_use rn read priv_vars (c_body@c_res);
-      ensure_ppt rn (c_body@c_res);
+      if not assm.ac_inf then ensure_ppt rn (c_body@c_res);
       ensure_res_lets rn vres c_res;
       (* check and replace argument for adversary call *)
       (match c_arg with
@@ -909,6 +909,7 @@ let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
       let read = read_gcmds (c_body@c_res) in
       ensure_not_use rn read priv_vars (c_body@c_res);
       ensure_ppt rn (c_body@c_res);
+      if not assm.ad_inf then ensure_ppt rn (c_body@c_res);
       ensure_res_lets rn vres c_res;
       let v_arg = 
         match c_arg with
