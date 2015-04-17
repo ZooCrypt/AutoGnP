@@ -3,6 +3,12 @@ require import Bool.
 require import Distr.
 require import FSet.
 
+lemma abs_minus_xx (x:real): `|x - x| = 0%r
+by [].
+
+lemma abs_minusC (x y:real): `|x - y| = `|y - x|
+by [].
+
 lemma le_abs_add1 : forall (x x0 : real), x <= `|x - x0| + x0
 by [].
 
@@ -41,3 +47,30 @@ import FSet.Dexcepted.
 
 lemma in_excepted_diff (d:'a distr) a1 a2:
    in_supp a1 (d \ single a2) => a1 <> a2 by [].
+
+lemma nosmt dist_le_trans r1 r2 r3 p1 p2 : 
+   `|r1 - r2| <= p1 => 
+   `|r2 - r3| <= p2 => 
+   `|r1 - r3| <= p1 + p2
+by [].
+
+lemma nosmt dist_eq_trans r1 r2 r3 p2 : 
+   `|r1 - r2| = 0%r => 
+   `|r2 - r3| = p2 => 
+   `|r1 - r3| = p2
+by [].
+
+lemma nosmt bound_le_trans r1 r2 p1 p2 : 
+   `|r1 - r2| <= p1 => r2 <= p2 => 
+   r1 <= p1 + p2
+by [].
+
+lemma nosmt bound_eq_trans r1 r2 p2 : 
+   `|r1 - r2| <= 0%r => r2 = p2 => 
+   r1 = p2
+by [].
+
+lemma nosmt real_eq_le (r1 r2:real): r1 = r2 => r1 <= r2
+by [].
+
+

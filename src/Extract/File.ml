@@ -536,7 +536,19 @@ let init_adv_info file gdef =
 
 let find_game file g = 
   let s = get_section file in
-  snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
+  try  snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
+  with Not_found ->
+    let gdef_equal g g' = 
+      try 
+        let ren = Game.unif_gdef g g' in
+        if Vsym.M.is_empty ren then Game.gdef_equal g g'
+        else 
+          let g = 
+            subst_v_gdef 
+              (fun vs -> try Vsym.M.find vs ren with Not_found -> vs) g in
+          Game.gdef_equal g g' && ren_injective ren
+      with Not_found -> false in
+    snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
 
 let add_restr file modu =
   let ai = adv_info file in

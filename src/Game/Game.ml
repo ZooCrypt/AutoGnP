@@ -593,7 +593,7 @@ let vht_to_map ht =
 
 (** We only support an outermost exists binder *)
 let unif_se se1 se2 =
-  try
+  try 
     let ren = Vsym.H.create 134 in
     unif_gdef ren se1.se_gdef se2.se_gdef;
     unif_expr ren se1.se_ev se2.se_ev;
@@ -601,8 +601,13 @@ let unif_se se1 se2 =
   with
     Not_found ->
       F.printf "no unifier found!\n%!";
-      raise Not_found
+      raise Not_found 
 
+let unif_gdef g1 g2 = 
+  let ren = Vsym.H.create 134 in
+  unif_gdef ren g1 g2;
+  vht_to_map ren
+  
 let ren_injective sigma =
   try
     let inv = Vsym.H.create 134 in

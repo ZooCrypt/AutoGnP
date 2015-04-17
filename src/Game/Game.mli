@@ -243,7 +243,8 @@ type renaming = vs Vsym.M.t
 
 val id_renaming : renaming
 
-val unif_se : sec_exp -> sec_exp -> renaming
+val unif_se   : sec_exp -> sec_exp -> renaming
+val unif_gdef : gdef    -> gdef    -> renaming
 
 val ren_injective : renaming -> bool
 
