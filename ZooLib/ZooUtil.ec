@@ -73,4 +73,28 @@ by [].
 lemma nosmt real_eq_le (r1 r2:real): r1 = r2 => r1 <= r2
 by [].
 
+lemma nosmt bound_eq_eq_trans (r1 r2 p2:real): 
+   r1 = r2 => r2 = p2 => r1 = p2
+by [].
+
+lemma nosmt bound_eq_le_trans (r1 r2 p2:real): 
+   r1 = r2 => r2 <= p2 => r1 <= p2
+by [].
+
+lemma nosmt dist_eq_eq_trans (r1 r2 r3 p2:real): 
+   r1 = r2 => `|r2 - r3| = p2 => `|r1 - r3| = p2
+by [].
+
+lemma nosmt dist_eq_le_trans (r1 r2 r3 p2:real): 
+   r1 = r2 => `|r2 - r3| <= p2 => `|r1 - r3| <= p2
+by [].
+
+lemma nosmt bound_split_eq (r1 r2 r3 p2 p3:real): 
+  r1 = r2 + r3 => r2 = p2 => r3 = p3 => r1 = p2 + p3
+by [].
+
+
+
+
+
 

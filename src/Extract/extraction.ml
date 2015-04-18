@@ -2177,13 +2177,13 @@ let rec extract_proof file pft =
         let aux fmt (cmp,lemma) =
           if cmp = cmp_eq then
             F.fprintf fmt 
-              "by cut H1 := %s &m; cut H := Real.eq_le _ H1;" lemma
+              "by cut H1 := %s &m; cut H := Real.eq_le _ _ H1;" lemma
           else
             F.fprintf fmt "by cut H:= %s &m;" lemma;
           F.fprintf fmt 
             "apply (real_le_trans _ _ _ _ H);rewrite Pr [mu_sub]." in
         F.fprintf fmt "apply Real.addleM.@ ";
-        F.fprintf fmt "  %a@ " aux (cmp1,lemma1);
+        F.fprintf fmt "+ %a@ " aux (cmp1,lemma1);
         F.fprintf fmt "%a" aux (cmp2,lemma2)
       else 
         F.fprintf fmt "by rewrite (%s &m) (%s &m)." lemma1 lemma2 in
@@ -2201,22 +2201,23 @@ let rec extract_proof file pft =
   | Rrw_ev (i, dir) -> 
     (* FIXME: should use = instead of <= *)
     let pft' = List.hd pft.pt_children in
-    let proof _file fmt () = 
+    let pp_branch pft fmt dir = 
       let ev = pft.pt_ju.ju_se.se_ev in
       let evs = destr_Land_nofail ev in
       let his = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
       let hi = Format.sprintf "H%i" i in
       let his' = List.filter (fun s -> s <> hi) his in
-      F.fprintf fmt "rewrite Pr [mu_sub];last by done.@ ";
-      F.fprintf fmt "by move=> &m %a;move: %a;rewrite %sH%i." 
+      F.fprintf fmt "by move=> %a;move: %a;rewrite %sH%i." 
         pp_cintros his 
         (pp_list " " (fun fmt -> F.fprintf fmt "%s")) his'
-        (if dir = LeftToRight then "-" else "")
+        dir
         i in
-
-
-                         
-    extract_proof_sb1_le "Rw_ev" file pft pft' proof
+    let proof _file fmt () =
+      let dir1, dir2 = if dir = LeftToRight then "-","" else "","-" in
+      F.fprintf fmt "@[<v>rewrite Pr [mu_eq];[move=> &hr;split | by done].@ ";
+      F.fprintf fmt "+ %a@ " (pp_branch pft) dir1;
+      F.fprintf fmt "%a@]" (pp_branch pft') dir2 in
+    extract_proof_sb1 "Rw_ev" file pft pft' proof
 
 and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in
@@ -2226,25 +2227,26 @@ and extract_conv file pft sw1 pft1 =
 
 (* 
   We have pft' proved by lemma1 :  pr' <= bound  or |pr' - pr1| < bound
-  We have lemma2 : pr = pr'  proved by proof
+  We have lemma2 : pr = pr'  proved by proof2
   We build a proof of pft : pr <= bound  or |pr - pr1| < bound
 *)
 
-and extract_proof_sb1 msg file pft pft' proof = 
-  let (lemma1, pr',cmp,bound) = extract_proof file pft' in
-  let pr,full,_ = extract_full_pr file mem pft.pt_ju in
-  let proof = proof file in
-
+and extract_proof_sb1 msg file pft pft' proof2 = 
+  let (lemma1, _pr',cmp,bound) = extract_proof file pft' in
+  let pr,full,kind = extract_full_pr file mem pft.pt_ju in
+  let proof2 = proof2 file in
+  let proof3 fmt () = 
+    F.fprintf fmt "@[<v>";
+    F.fprintf fmt "(* %s *)@ " msg;
+    F.fprintf fmt "move=> &m.@ ";
+    F.fprintf fmt "cut H := %s &m.@ " lemma1;
+    let s1, s3 = if kind = `ABS then "dist", " _ " else "bound", " " in
+    let s2 = if cmp = cmp_eq then "eq" else "le" in
+    F.fprintf fmt "apply (%s_eq_%s_trans _ _ _%s_ H);move=> {H}.@ " s1 s2 s3;
+    proof2 fmt ();
+    F.fprintf fmt "@]" in
   let lemma3 = 
-    add_pr_lemma file (mk_cmp full cmp bound) 
-      (Some (fun fmt () -> 
-        F.fprintf fmt "@[<v>";
-        F.fprintf fmt "(* %s *)@ " msg;
-        F.fprintf fmt "move=> &m.@ ";
-        F.fprintf fmt "cut -> : %a; last by apply (%s &m).@ " 
-          Printer.pp_form (mk_cmp pr cmp_eq pr') lemma1;
-        proof fmt ();
-        F.fprintf fmt "@]")) in
+    add_pr_lemma file (mk_cmp full cmp bound) (Some proof3) in
   lemma3, pr, cmp, bound
 
 
