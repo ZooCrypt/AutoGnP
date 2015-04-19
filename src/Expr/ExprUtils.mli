@@ -22,6 +22,7 @@ val is_FZ : expr -> bool
 val is_True : expr -> bool
 val is_False : expr -> bool
 val is_GGen : expr -> bool
+val is_GOne : expr -> bool
 val is_GLog : expr -> bool
 val is_GLog_gv : Groupvar.id -> expr -> bool
 val is_some_App : expr -> bool
@@ -81,7 +82,7 @@ val pp_cnst : F.formatter -> cnst -> Type.ty -> unit
 val pp_exp  : F.formatter -> expr -> unit
 val pp_op   : F.formatter -> op * expr list -> unit
 val pp_nop  : F.formatter -> nop * expr list -> unit
-val pp_exp_tnp  : F.formatter -> expr -> unit
+val pp_exp_tnp : F.formatter -> expr -> unit
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Useful functions on [expr]} *)
@@ -97,9 +98,13 @@ val is_ppt : expr -> bool
 
 val se_of_list : expr list -> Se.t
 
+val he_keys : 'a He.t -> Se.t
+
 val se_disjoint : Se.t -> Se.t -> bool
 
 val me_of_list : (Me.key * 'a) list -> 'a Me.t
+
+val he_to_list : 'a He.t -> (expr * 'a) list
 
 type ctxt = Vsym.t * expr
 
@@ -124,3 +129,5 @@ val catch_TypeError : (unit -> 'a) -> 'a
 type inverter = I of expr
 
 val expr_of_inverter : inverter -> expr
+
+val pp_inverter : F.formatter -> inverter -> unit

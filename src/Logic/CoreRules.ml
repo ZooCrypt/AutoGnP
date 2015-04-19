@@ -8,7 +8,7 @@ open Syms
 open Type
 open Expr
 open ExprUtils
-open Gsyms
+(* open Gsyms *)
 open Game
 open Wf
 open Assumption
@@ -583,7 +583,9 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
 (*i ----------------------------------------------------------------------- i*)
 (* {\bf Swap sampling from once-oracle to main.} *)
 
-let rswap_main opos vname ju =
+let rswap_main _opos _vname _ju =
+  assert false
+  (*
   let se = ju.ju_se in
   let lcmd,seoc = get_se_octxt se opos in
   match lcmd with
@@ -607,6 +609,7 @@ let rswap_main opos vname ju =
     Rswap_main opos, [ ju ]
   | _ ->
     assert false
+  *)
 
 let t_swap_main opos vname =
   prove_by (rswap_main opos vname)
@@ -1005,7 +1008,8 @@ let t_trans new_se =
 (*i ----------------------------------------------------------------------- i*)
 (** {\bf Hybrid argument.} *)
 
-let rhybrid gpos oidx new_lcmds new_eret asym1 asym2 asym3 ju =
+let rhybrid _gpos _oidx _new_lcmds _new_eret _asym1 _asym2 _asym3 _ju =
+  assert false (*
   let se = ju.ju_se in
   (* replace oracle definition in second judgment *)
   let _lcmd, seoc =  get_se_octxt se (gpos,oidx,0) in
@@ -1044,6 +1048,7 @@ let rhybrid gpos oidx new_lcmds new_eret asym1 asym2 asym3 ju =
   let se1_right = set_se_ctxt [cmd1; cmd2_right; cmd3] ctx in
   let ju1 = { ju_se = se1_left; ju_pr = Pr_Dist se1_right } in
   Rhybrid, [ ju1; ju2 ]
+  *)
 
 let t_hybrid gpos oidx lcmds eret asym1 asym2 asym3 =
   prove_by (rhybrid gpos oidx lcmds eret asym1 asym2 asym3)

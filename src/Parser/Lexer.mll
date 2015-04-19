@@ -76,6 +76,7 @@ rule lex = parse
   | "unfold"  { RLET_UNFOLD }
   | "subst" { RSUBST }
   | "inf" { INFTHEORETIC }
+  | "ppt" { PPT }
   | "rename" { RRENAME }
   | "rewrite_oracle"  { RREWRITE_ORACLE }
   | "rewrite_ev" { RREWRITE_EV }

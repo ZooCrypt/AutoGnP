@@ -73,7 +73,7 @@ let init_inverters test =
   let l = aux 0 ts in
   !bds, l
 
-let t_last_random_indep ju = 
+let t_last_random_indep ts ju =
   let se = ju.ju_se in
   match List.rev se.se_gdef with
   | Game.GSamp (r,_) :: _ ->
@@ -88,7 +88,7 @@ let t_last_random_indep ju =
     log_t (lazy (fsprintf ">>>>> trying to deduce %a from %a@\n"
                    pp_exp er (pp_list "," (pp_pair pp_exp pp_exp))
                    (L.map (fun (a,b) -> (a,expr_of_inverter b)) known)));
-    begin match exc_to_opt (fun () -> Deduc.invert known er) with
+    begin match exc_to_opt (fun () -> Deduc.invert ts known er) with
     | None -> CR.t_fail "cannot find inverter" ju
     | Some inv ->
       let used = e_vars inv in
@@ -126,7 +126,7 @@ let t_last_random_indep ju =
 let t_random_indep_exact ju =
   CoreRules.t_random_indep ju
 
-let t_random_indep_no_exact ju =
+let t_random_indep_no_exact emaps ju =
   let se = ju.ju_se in
   log_t (lazy "###############################");
   log_t (lazy "t_random_indep\n%!");
@@ -136,7 +136,7 @@ let t_random_indep_no_exact ju =
     | Game.GSamp(v,_) :: rc ->
       if Se.mem (mk_V v) ev_vars then (
         log_t (lazy (fsprintf "trying variable %a" Vsym.pp v));
-        (CR.t_swap (L.length rc) i @> (CR.t_random_indep @|| t_last_random_indep)) @||
+        (CR.t_swap (L.length rc) i @> (CR.t_random_indep @|| t_last_random_indep emaps)) @||
         (aux (i+1) rc)
       ) else (
         aux (i+1) rc
@@ -147,7 +147,7 @@ let t_random_indep_no_exact ju =
   in
   (CR.t_random_indep @|| aux 0 (L.rev se.se_gdef)) ju
 
-let t_random_indep exact ju =
+let t_random_indep ts exact ju =
   if exact
   then t_random_indep_exact ju
-  else t_random_indep_no_exact ju
+  else t_random_indep_no_exact ts ju

@@ -56,8 +56,8 @@ let compare_uc uc1 uc2 =
 
 let pp_useful_cases fmt uc =
   match uc with
-  | AppAddTest((g_idx,oi,o_idx),e,_,_) ->
-    F.fprintf fmt "app(raddtest (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e
+  | AppAddTest((g_idx,oi,o_idx,ootype),e,_,_) ->
+    F.fprintf fmt "app(raddtest (%i,%i,%i,%a)) %a)" g_idx oi o_idx (pp_opt pp_otype) ootype pp_exp e
   | AppExcept(g_idx,e) ->
     F.fprintf fmt "app(rexcept (%i) %a)" g_idx pp_exp e
   | AppCaseEv(e) ->
@@ -124,10 +124,10 @@ let compute_case gdef mhidden _fbuf ctx e =
       match ctx.ic_pos with
       | InEv                  ->
         cases := AppCaseEv(e) :: !cases
-      | InOrcl((gpos,oi,opos),aty,oty) ->
-        cases := AppAddTest((gpos,oi,opos),e,aty,oty) :: !cases
-      | InOrclReturn((gpos,oi,opos),aty,oty) ->
-        cases := AppAddTest((gpos,oi,opos),e,aty,oty) :: !cases
+      | InOrcl(opos,aty,oty) ->
+        cases := AppAddTest(opos,e,aty,oty) :: !cases
+      | InOrclReturn(opos,aty,oty) ->
+        cases := AppAddTest(opos,e,aty,oty) :: !cases
       | InMain(_gpos)         -> ()
         (* can we do anything above? rexcept is already handled above if possible *)
     )

@@ -2,6 +2,7 @@
 
 (*i*)
 open CoreRules
+open TheoryTypes
 (*i*)
 
-val t_random_indep : bool -> tactic
+val t_random_indep : theory_state -> bool -> tactic

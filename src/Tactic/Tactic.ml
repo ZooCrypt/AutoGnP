@@ -189,7 +189,7 @@ let handle_tactic ts tac =
     | PT.Rrewrite_orcl(op,dir) -> CR.t_rewrite_oracle op dir
   
     | PT.Rfalse_ev             -> CR.t_false_ev
-    | PT.Rindep(exact)         -> t_random_indep exact
+    | PT.Rindep(exact)         -> t_random_indep ts exact
   
     | PT.Rnorm_unknown(is) ->
       let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
@@ -273,22 +273,16 @@ let handle_tactic ts tac =
     | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
       t_rnd_oracle_maybe ts mopos mctxt1 mctxt2
   
-    | PT.Rhybrid(_) | PT.Radd_test(_) ->
-      tacerror "hybrid and add_test not supported in sequence of tactics"
+    | PT.Rhybrid(_) | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) ->
+      tacerror "hybrid, add_test and debugging tactics and ';' cannot be combined"
     
     | PT.Rbad(_i,_sx) ->
       tacerror "not implemented"
-  
-    | PT.Deduce(_pes,_pe) ->
-      tacerror "deactivated"
-  
-    | PT.FieldExprs(_pes) ->
-      tacerror "deactivated"
  in
  match tac with
  | PT.Rhybrid((i,j),(lcmds,eret),aname) ->
    let se = ju.ju_se in
-   let opos = (i,j,0) in
+   let opos = (i,j,0,None) in
    let _, seoc = get_se_octxt se opos in
    let vmap = vmap_in_orcl se opos in
    let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts) lcmds in
@@ -337,6 +331,44 @@ let handle_tactic ts tac =
   
  | PT.Radd_test(_,_,_,_) ->
    tacerror "radd_test expects either all values or only placeholders"
+
+ | PT.Deduce(ppt,pes,pe) ->
+   let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
+   let e = PU.expr_of_parse_expr vmap_g ts  pe in
+   (*
+   let vars_es  = L.fold_left (fun s e -> Se.union s (e_vars e)) Se.empty es in
+   let vars_e   = e_vars e in
+   let vars_known = Se.diff vars_e vars_es in
+   let es = es @ Se.elements vars_known in *)
+   log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_exp) es pp_exp e));
+   (try
+      let frame =
+        L.mapi
+          (fun i e -> (e, I (mk_V (Vsym.mk ("x"^(string_of_int i)) e.e_ty))))
+          es
+      in
+      let recipe = Deduc.invert ~ppt_inverter:ppt ts frame e in
+      log_i (lazy (fsprintf "Found %a@\n" pp_exp recipe))
+    with
+      Not_found ->
+        tacerror "Not found@\n");
+   (ts,lazy "")
+
+  
+ | PT.FieldExprs(pes) ->
+   let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
+   let ses = ref Se.empty in
+     Game.iter_se_exp ~iexc:true
+       (fun e' -> e_iter_ty_maximal mk_Fq
+          (fun fe -> if L.exists (fun e -> e_exists (e_equal e) fe) es
+                     then ses := Se.add fe !ses) e')
+       ju.ju_se;
+   let res = (lazy (fsprintf "field expressions with %a: @\n@[<hov 2>  %a@]"
+                      (pp_list ", " pp_exp) es
+                      (pp_list ",@\n" pp_exp) (Se.elements !ses)))
+   in
+   log_i res;
+   (ts,res)
 
    (* remaining tactics that can be nested with seq *)
  | _ ->

@@ -62,8 +62,8 @@ let t_guard f ju =
 let pp_samp fmt (i,(vs,d)) =
   F.fprintf fmt "%i: %a from %a" i Vsym.pp vs pp_distr d
 
-let pp_osamp fmt ((i,j,k),(vs,d)) =
-  F.fprintf fmt "(%i,%i,%i): %a from %a" i j k Vsym.pp vs pp_distr d
+let pp_osamp fmt ((i,j,k,ootype),(vs,d)) =
+  F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k Vsym.pp vs pp_distr d (pp_opt pp_otype) ootype
 
 let pp_let fmt (i,(vs,e)) =
   F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_exp e
@@ -77,31 +77,53 @@ let samplings gd =
   cat_Some (L.mapi samp gd)
 
 let osamplings gd =
-  let lcmds_samplings gpos opos lcmds =
+  let lcmds_samplings gpos opos otype lcmds =
     let samp i = function
-    | LSamp(vs,(t,e)) -> Some ((gpos,opos,i),(vs,(t,e)))
+    | LSamp(vs,(t,e)) -> Some ((gpos,opos,i,otype),(vs,(t,e)))
     | _              -> None
     in
     cat_Some (L.mapi samp lcmds)
   in
+  let obody_samplings i opos otype (lcmds,_) =
+    lcmds_samplings i opos otype lcmds
+  in
+  let odecl_samplings i opos od =
+    match od with
+    | Odef ob -> obody_samplings i opos None ob
+    | Ohybrid oh ->
+      obody_samplings i opos (Some OHless) oh.odef_less
+      @ obody_samplings i opos (Some OHeq) oh.odef_eq
+      @ obody_samplings i opos (Some OHgreater) oh.odef_greater
+  in
   let samp i = function
     | GCall(_,_,_,odefs) ->
-      L.concat (L.mapi (fun opos (_,_,lcmds,_,_) -> lcmds_samplings i opos lcmds) odefs)
+      L.concat (L.mapi (fun opos (_,_,od) -> odecl_samplings i opos od) odefs)
     | _ -> []
   in
   L.concat (L.mapi samp gd)
 
 let oguards gd =
-  let lcmds_guards gpos opos lcmds =
+  let lcmds_guards gpos opos otype lcmds =
     let samp i = function
-    | LGuard(e) -> Some ((gpos,opos,i),e)
+    | LGuard(e) -> Some ((gpos,opos,i,otype),e)
     | _              -> None
     in
     cat_Some (L.mapi samp lcmds)
   in
+  let obody_guards i opos otype (lcmds,_) =
+    lcmds_guards i opos otype lcmds
+  in
+  let odecl_guards i opos od =
+    match od with
+    | Odef ob -> obody_guards i opos None ob
+    | Ohybrid oh ->
+      obody_guards i opos (Some OHless) oh.odef_less
+      @ obody_guards i opos (Some OHeq) oh.odef_eq
+      @ obody_guards i opos (Some OHgreater) oh.odef_greater
+  in
   let samp i = function
     | GCall(_,_,_,odefs) ->
-      L.concat (L.mapi (fun opos (_,_,lcmds,_,_) -> lcmds_guards i opos lcmds) odefs)
+      L.concat (L.mapi (fun opos (_,_,odecl) -> odecl_guards i opos odecl) odefs)
     | _ -> []
   in
   L.concat (L.mapi samp gd)
@@ -195,6 +217,7 @@ let t_swap_others_max dir i ju =
 
 (*i*)
 let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
+  let open Game in
   match ru with
   | Rconv ->
     F.fprintf fmt "rconv"
@@ -214,16 +237,16 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "except %i %a" pos (pp_list "," pp_exp) es
   | Rrnd(pos,vs,_,(v2,c2)) ->
     F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_exp c2
-  | Rrw_orcl((i,j,k),_dir) ->
-    F.fprintf fmt "rw_orcl (%i,%i,%i)" i j k
-  | Rswap_orcl((i,j,k),_i) ->
-    F.fprintf fmt "swap_orcl (%i,%i,%i)" i j k
-  | Rrnd_orcl((i,j,k),_c1,_c2)      ->
-    F.fprintf fmt "rnd_orcl (%i,%i,%i)" i j k
-  | Rexc_orcl((i,j,k),_es)          ->
-    F.fprintf fmt "exc_orcl (%i,%i,%i)" i j k
-  | Radd_test((i,j,k),e,_ads,_vss) ->
-    F.fprintf fmt "add_test (%i,%i,%i) (%a)" i j k pp_exp e
+  | Rrw_orcl((i,j,k,ootype),_dir) ->
+    F.fprintf fmt "rw_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
+  | Rswap_orcl((i,j,k,ootype),_i) ->
+    F.fprintf fmt "swap_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
+  | Rrnd_orcl((i,j,k,ootype),_c1,_c2)      ->
+    F.fprintf fmt "rnd_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
+  | Rexc_orcl((i,j,k,ootype),_es)          ->
+    F.fprintf fmt "exc_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
+  | Radd_test((i,j,k,ootype),e,_ads,_vss) ->
+    F.fprintf fmt "add_test (%i,%i,%i,%a) (%a)" i j k pp_exp e (pp_opt pp_otype) ootype
   | Rcase_ev(_,e)   ->
     F.fprintf fmt "case @[<v 2>%a@]" pp_exp e
   | Rbad(_pos,_vs) ->

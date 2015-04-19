@@ -113,7 +113,7 @@ type tactic =
   | Rremove_ev     of int list
   | Rrewrite_ev    of int * direction
   | Rsplit_ev      of int
-  | Deduce         of parse_expr list * parse_expr
+  | Deduce         of bool * parse_expr list * parse_expr
   | FieldExprs     of parse_expr list
 
 type instr =

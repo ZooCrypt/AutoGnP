@@ -59,31 +59,31 @@ let c_free_coeffs = foreign "wrap_free_coeffs" (ccoeffs @-> returning void)
 let c_gcd = foreign "wrap_gcd"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
    int @-> int @-> cexpvecs @-> ccoeffs @->
-   returning  distr_poly)
+   returning distr_poly)
 
 let c_reduce = foreign "wrap_reduce"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
    int @-> int @-> cexpvecs @-> ccoeffs @->
-   returning  distr_poly)
+   returning distr_poly)
 
 let c_reduce_zero = foreign "wrap_reduce_zero"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
    int @-> int @-> cexpvecs @-> ccoeffs @->
-   returning  int)
+   returning int)
 
 let c_div = foreign "wrap_div"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
    int @-> int @-> cexpvecs @-> ccoeffs @->
-   returning  distr_poly)
+   returning distr_poly)
 
 let c_gcd_div = foreign "wrap_gcd_div"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
    int @-> int @-> cexpvecs @-> ccoeffs @->
-   returning  (ptr dpoly_list))
+   returning (ptr dpoly_list))
 
 let c_factor = foreign "wrap_factor"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
-   returning  (ptr dpoly_list))
+   returning (ptr dpoly_list))
 
 (*i ------------------------------------------------------------------------ i*)
 (* \hd{Conversions} *)

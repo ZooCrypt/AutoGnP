@@ -24,7 +24,19 @@ type lcmd =
   | LSamp of vs * distr
   | LGuard of expr
 
-type odef = os * vs list * lcmd list * expr * bool
+type obody = lcmd list * Expr.expr
+
+type ohybrid = { odef_less : obody; odef_eq : obody; odef_greater : obody }
+
+type odecl =
+  | Odef of obody
+  | Ohybrid of ohybrid
+
+(** Oracle definition. *)
+type odef = os * vs list * odecl (*r
+  $(o,\vec{x}, \vec{m},e): o(x_1,..,x_l) = [e | m_1, .., m_k]$ *)
+
+type ohybrid_otype = OHless | OHeq | OHgreater
 
 type gcmd =
     GLet of vs * expr
@@ -53,6 +65,8 @@ val pp_ilcmd : F.formatter -> int * lcmd -> unit
 val pp_lcomp : F.formatter -> expr * lcmd list -> unit
 
 val pp_odef : F.formatter -> odef -> unit
+
+val pp_otype : F.formatter -> ohybrid_otype -> unit
 
 val pp_gcmd : F.formatter -> gcmd -> unit
 
@@ -104,7 +118,7 @@ type gcmd_pos = int
 
 type odef_pos = int * int
 
-type ocmd_pos = int * int * int
+type ocmd_pos = int * int * int * ohybrid_otype option
 
 val get_se_gcmd : sec_exp -> gcmd_pos -> gcmd
 
@@ -117,7 +131,7 @@ val set_se_ctxt : gcmd list -> se_ctxt -> sec_exp
 val set_se_gcmd : sec_exp -> gcmd_pos -> gcmd list -> sec_exp
 
 val get_se_lcmd :
-  sec_exp -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr * bool
+  sec_exp -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr
 
 type se_octxt = {
   seoc_asym : ads;
@@ -125,13 +139,15 @@ type se_octxt = {
   seoc_aarg : expr;
   seoc_oleft : odef list;
   seoc_oright : odef list;
+  seoc_obless : obody option;
+  seoc_obeq : obody option;
+  seoc_obgreater : obody option;
   seoc_osym : os;
-  seoc_oargs : vs list;
+  seoc_oargs: vs list;
   seoc_return : expr;
-  seoc_oonce : bool;
   seoc_cleft : lcmd list;
   seoc_cright : lcmd list;
-  seoc_sec : se_ctxt;
+  seoc_sec : se_ctxt
 }
 
 val get_se_octxt : sec_exp -> ocmd_pos -> lcmd * se_octxt
@@ -285,7 +301,9 @@ val has_log_lcmd : lcmd -> bool
 
 val has_log_lcmds : lcmd list -> bool
 
-val has_log_o : odef -> bool
+val has_log_odef : odef -> bool
+
+val has_log_odecl : odecl -> bool
 
 val has_log_gcmd : gcmd -> bool
 
@@ -297,7 +315,9 @@ val is_ppt_lcmd : lcmd -> bool
 
 val is_ppt_lcmds : lcmd list -> bool
 
-val is_ppt_o : odef -> bool
+val is_ppt_odef : odef -> bool
+
+val is_ppt_odecl : odecl -> bool
 
 val is_ppt_gcmd : gcmd -> bool
 

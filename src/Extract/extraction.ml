@@ -392,7 +392,8 @@ let game ?(local=`Local) file g =
   try find_game file g 
   with Not_found ->
     let oinfo = Osym.H.create 7 in
-    let add_oinfo (o,params,body,e,_) = 
+    let add_oinfo (o,params,od) = 
+      let (body,e) = match od with Odef b -> b | _ -> assert false in
       Osym.H.add oinfo o (params,body,e) in
     let mk_info i = 
       match i with
@@ -766,7 +767,9 @@ let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 =
     add_let_info file g2 v2 e2 false loc info in
   let add_rnd v1 v2 l1 l2 loc info = 
     add_rnd_info file g1 g2 v1 v2 l1 l2 loc info in
-  let prove_orcl info (o1,p1,lc1,_,_) (o2,p2,lc2,_,_) =
+  let prove_orcl info (o1,p1,od1) (o2,p2,od2) =
+    let (lc1,_) = match od1 with Odef b -> b | _ -> assert false (* FIXME *) in
+    let (lc2,_) = match od2 with Odef b -> b | _ -> assert false (* FIXME *) in
     let rec aux lc1 lc2 info = 
       match lc1, lc2 with
       | [], [] -> add_wp info.pos1 info.pos2 info.tacs
@@ -994,8 +997,9 @@ let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
     close_pp fmt ()
   
   
-let pr_rw_orcl ((i,_oi,_j) as op,dir) ju1 ju2 file = 
+let pr_rw_orcl ((i,_oi,_j,_ootype) as op,dir) ju1 ju2 file = 
   let g1, g2, open_pp, close_pp = init_same false file ju1 ju2 in
+
   let vcs = vc_oracles file in
   let eqvc = mk_eq_vcs g1 g2 vcs in
   let nvc = List.length vcs in
@@ -1705,7 +1709,7 @@ let proof_OrclTestM file osym ju gadv tOT tests =
       invs = f_and info.invs (f_eq e1 e2) } in
   let add_call vs odefs info =
     let prove_orcl o =
-      let (o,p,_,_,_) = o in
+      let (o,p,_) = o in
       if Osym.equal o osym then 
         let local = List.fold_left (fun s v -> Vsym.S.add v s) Vsym.S.empty p in
         let inv = 
@@ -1871,8 +1875,8 @@ let proof_OrclB file infob tOT advOT mb aAUX jucb seoc etuple et2 =
     F.fprintf fmt "   rewrite (Hi Hn) oget_some;progress [-split];smt.@ ";
     F.fprintf fmt "call (_: @[<hov>%a@]).@ "
       Printer.pp_form invcall;
-    let ol  = List.map (fun (o,_,_,_,_) -> o) seoc.seoc_oleft in
-    let or_ = List.map (fun (o,_,_,_,_) -> o) seoc.seoc_oright in
+    let ol  = List.map (fun (o,_,_) -> o) seoc.seoc_oleft in
+    let or_ = List.map (fun (o,_,_) -> o) seoc.seoc_oright in
     F.fprintf fmt "  @[<v>%a@]@ "
       (pp_list "@ " pr_oracle) (List.rev_append ol (seoc.seoc_osym :: or_));
     F.fprintf fmt "swap{1} [1..3] %i;swap{2} 1 %i.@ " len1 len2;

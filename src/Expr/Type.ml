@@ -120,11 +120,15 @@ let size_of t =
   s
 *)
 
-
-
 (*i ----------------------------------------------------------------------- i*)
 
 (*i*)
+
+let pp_group fmt gv =
+  if Groupvar.name gv = ""
+  then F.fprintf fmt "G"
+  else F.fprintf fmt "G_%s" (Groupvar.name gv)
+
 let rec pp_ty fmt ty =
   match ty.ty_node with
   | BS lv   -> F.fprintf fmt "BS_%s" (Lenvar.name lv)

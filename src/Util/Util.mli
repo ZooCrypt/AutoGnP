@@ -49,6 +49,9 @@ module Mstring : Map.S with type key = string
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Misc functions} *)
 
+(* placeholder for incomplete code *)
+val fixme: string -> 'a
+
 (** Returns a unique (in a program execution) [int]. *)
 val unique_int : unit -> int
 

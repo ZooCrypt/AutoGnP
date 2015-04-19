@@ -204,7 +204,7 @@ module MakePoly (V : Var) (C : Ring) = struct
 
   let from_mon m = from_terms [(m, C.one)]
 
-  let is_const = function [([],_c)] -> true | _ -> false
+  let is_const = function ([([],_)] | []) -> true | _ -> false
 
   let is_var = function [([_x],c)] when C.equal c C.one -> true | _ -> false
 

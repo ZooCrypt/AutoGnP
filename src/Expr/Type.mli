@@ -44,4 +44,5 @@ val destr_G : ty -> Groupvar.id
 val destr_BS : ty -> Lenvar.id
 val destr_Prod : ty -> ty list
 
+val pp_group : F.formatter -> Groupvar.id -> unit
 val pp_ty : F.formatter -> ty -> unit

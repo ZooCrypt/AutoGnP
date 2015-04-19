@@ -120,7 +120,7 @@ and wf_exp ctype wfs e0 =
     | Cnst _ -> ()
     | V vs -> 
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
-        (fun () -> raise (Wf_var_undef(vs,e)))
+        (fun () -> raise (Wf_var_undef(vs,e0)))
     | Exists(e1,e2,(vhs)) ->
       let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
       wf_exp ctype wfs e2;
@@ -208,12 +208,21 @@ let wf_lcmds ctype wfs0 odef0 =
   in
   go wfs0 odef0
 
-let wf_odef ctype wfs (osym,vs,lcmds,e,_) =
+let wf_obody ctype wfs osym vs (lcmds,e) =
    assert (ty_equal osym.Osym.dom (ty_prod vs) &&
              ty_equal osym.Osym.codom e.e_ty);
    let wfs = ensure_varnames_fresh wfs vs in
    let wfs = wf_lcmds ctype wfs lcmds in
    wf_exp ctype wfs e
+
+let wf_odecl ctype wfs osym vs od =
+  match od with
+  | Odef ob    -> wf_obody ctype wfs osym vs ob
+  | Ohybrid oh ->
+    L.iter (wf_obody ctype wfs osym vs) [oh.odef_less; oh.odef_eq; oh.odef_greater]
+
+let wf_odef ctype wfs (osym,vs,od) =
+  wf_odecl ctype wfs osym vs od
 
 let wf_gdef ctype gdef0 =
   let rec go wfs gdef = match gdef with
@@ -231,7 +240,7 @@ let wf_gdef ctype gdef0 =
                 ty_equal asym.Asym.dom e.e_ty);
       let wfs =
         ensure_names_fresh wfs
-          (List.map (fun (osym,_,_,_,_) -> Id.name osym.Osym.id) os)
+          (List.map (fun (osym,_,_) -> Id.name osym.Osym.id) os)
       in
       List.iter (wf_odef ctype wfs) os;
       go wfs gcmds

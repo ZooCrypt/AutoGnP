@@ -6,3 +6,5 @@ bound_adv [
 
 rnd a (v -> v + 1) _; //.
 rnd a (A : G -> log(A)) _; //.
+admit.
+qed.

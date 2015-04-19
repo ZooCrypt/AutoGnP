@@ -232,7 +232,7 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   (match mopos with
   | Some opos -> ret opos
   | None      -> mconcat (L.map fst osamps)
-  ) >>= fun ((i,j,k) as op) ->
+  ) >>= fun ((i,j,k,ootype) as op) ->
   let (rv,(ty,_)) = L.assoc op osamps in
   guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
   log_t (lazy (fsprintf "###############################\n%!"));
@@ -251,4 +251,4 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
     ret (v2, DeducField.solve_fq_vars_known e2 v2)
   | None -> mempty
   ) >>= fun (v1,e1) ->
-  CR.t_rnd_oracle (i,j,k) (v1,e1) (v2,e2) ju
+  CR.t_rnd_oracle (i,j,k,ootype) (v1,e1) (v2,e2) ju

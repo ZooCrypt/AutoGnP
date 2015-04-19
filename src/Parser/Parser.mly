@@ -38,6 +38,7 @@
 %token SLASH2
 %token SLASHEQ
 %token SLASH2EQ
+%token PPT
 %token INFTHEORETIC
 
 %token TRUE
@@ -354,7 +355,7 @@ dir:
 ;
 
 opos:
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1) }
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1,None) }
 ;
 
 %public uopt(X):
@@ -460,7 +461,7 @@ tactic :
 | RNORM_NOUNFOLD       { Rnorm_nounfold }
 | SLASHEQ              { Rnorm_nounfold }
 | RNORM_UNKNOWN is=ID* { Rnorm_unknown(is) }
-| SLASH2EQ             { Rnorm_unknown([]) }
+| SLASH2EQ is=ID*      { Rnorm_unknown(is) }
 | RNORM_SOLVE e=expr0  { Rnorm_solve(e) }
 
 /* conversion */
@@ -527,7 +528,8 @@ tactic :
 | RDIST_SYM { Rdist_sym}
 
 /* debugging */
-| DEDUCE  LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Deduce(es,e) }
+| DEDUCE  ppt=PPT?
+    LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Deduce(ppt<>None,es,e) }
 | LISTFE  es=expr0*                                            { FieldExprs(es) }
 
 

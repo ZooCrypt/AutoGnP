@@ -36,6 +36,8 @@ let is_False e = is_Cnst (B false) e
 
 let is_GGen e = is_Cnst GGen e
 
+let is_GOne e = is_G e.e_ty && e_equal e (mk_GOne (destr_G e.e_ty))
+
 let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
 let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
@@ -384,9 +386,13 @@ let catch_TypeError f =
 
 let se_of_list = L.fold_left (fun s e -> Se.add e s) Se.empty
 
+let he_keys he = He.fold (fun k _ s -> Se.add k s) he Se.empty
+
 let se_disjoint s1 s2 = Se.is_empty (Se.inter s1 s2)
 
 let me_of_list es = L.fold_left (fun s (k,v) -> Me.add k v s) Me.empty es
+
+let he_to_list he = He.fold (fun k v l -> (k,v)::l) he []
 
 type ctxt = Vsym.t * expr
 
@@ -428,3 +434,5 @@ let rec is_Zero e =
 type inverter = I of expr
 
 let expr_of_inverter (I e) = e
+
+let pp_inverter fmt i = pp_exp fmt (expr_of_inverter i)

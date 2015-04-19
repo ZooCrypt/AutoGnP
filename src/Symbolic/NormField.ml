@@ -23,6 +23,12 @@ module EP = MakePoly(
     let compare = compare
   end) (IntRing)
 
+(** Create Map, Set, and HashTable modules. *)
+module Hep = Hashtbl.Make (struct
+  type t = EP.t
+  let equal = EP.equal
+  let hash = Hashtbl.hash
+end)
 
 module Ht = Hashtbl
 
@@ -175,20 +181,23 @@ let exp_of_polyl p =
   let e = if s = [] then mk_FZ else mk_FPlus (L.sort e_compare s) in
   e
 
-let import_ipoly (caller : string) poly (hv : (int, expr) Ht.t) =
+let import_ipoly_aux (caller : string) poly (hv : (int, expr) Ht.t) =
   let ts = IP.to_terms poly in
   let inst i =
     try Ht.find hv i
     with Not_found ->
       failwith ("invalid variable "^(string_of_int i)^" returned by "^caller)
   in
-  let tes =
-    let conv_term (m,c) = 
-      (L.map (fun (v,e) -> (inst v,e)) m, c)
-    in
-    L.map conv_term ts
+  let conv_term (m,c) = 
+    (L.map (fun (v,e) -> (inst v,e)) m, c)
   in
-  exp_of_polyl tes
+  L.map conv_term ts
+
+let import_ipoly (caller : string) poly (hv : (int, expr) Ht.t) =
+  import_ipoly_aux caller poly hv |> exp_of_polyl
+
+let import_ipoly_EP (caller : string) poly (hv : (int, expr) Ht.t) =
+  import_ipoly_aux caller poly hv |> EP.from_terms
 
 let exp_of_poly p = EP.to_terms p |> exp_of_polyl
 
@@ -263,7 +272,6 @@ let abstract_non_field before e =
   | ([e],c,hv) -> (e,c,hv)
   | _ -> assert false
 
-
 let div pe1 pe2 =
   match ep_to_ip [pe1; pe2] with
   | [p1;p2], hr ->
@@ -316,4 +324,11 @@ let div_reduce pe1 pe2 =
     let p3 = Factory.div p1 p2 in
     let p4 = Factory.reduce p1 p2 in
     (import_ipoly "div" p3 hr,import_ipoly "reduce" p4 hr)
+  | _ -> assert false
+
+let div_EP pe1 pe2 =
+  match ep_to_ip [pe1; pe2] with
+  | [p1;p2], hr ->
+    let p3 = Factory.div p1 p2 in
+    import_ipoly_EP "div" p3 hr
   | _ -> assert false

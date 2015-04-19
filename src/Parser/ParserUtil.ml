@@ -176,7 +176,7 @@ let odef_of_parse_odef vmap ts (oname, vs, (m,e)) =
   in
   let m = L.map (lcmd_of_parse_lcmd vmap ts) m in
   let e = expr_of_parse_expr vmap ts e in
-  (osym, vs, m, e, false)
+  (osym, vs, Game.Odef (m, e))
 
 let gcmd_of_parse_gcmd vmap ts gc =
   match gc with

@@ -53,6 +53,8 @@ module Sstring = Set.Make(String)
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Misc functions} *)
 
+let fixme s = failwith ("FIXME: "^s)
+
 let unique_int () = Oo.id (object end)
 
 let exc_to_opt f = try Some (f ()) with _ -> None

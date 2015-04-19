@@ -79,6 +79,7 @@ val mk_Proj   : int -> expr -> expr
 val mk_InLog  : expr -> Osym.t -> expr
 val mk_Exists : expr -> expr -> (Vsym.t * Hsym.t) list -> expr
 val mk_GGen   : Groupvar.id -> expr
+val mk_GOne   : Groupvar.id -> expr
 val mk_FNat   : int -> expr
 val mk_FOne   : expr
 val mk_FZ     : expr

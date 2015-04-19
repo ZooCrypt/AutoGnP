@@ -235,6 +235,9 @@ let mk_GExp a b =
   ensure_ty_equal b.e_ty ty_Fq b None "mk_GExp";
   mk_App (GExp gv) [a;b] a.e_ty
 
+let mk_GOne gn =
+  mk_GExp (mk_GGen gn) mk_FZ
+
 let mk_GLog a =
   let gv = ensure_ty_G a.e_ty "mk_GLog" in
   mk_App (GLog gv) [a] ty_Fq

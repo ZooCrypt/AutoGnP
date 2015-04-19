@@ -3,6 +3,8 @@
 (*i*)
 open Abbrevs
 open Util
+open Syms
+open Type
 open Expr
 open ExprUtils
 open NormField
@@ -14,7 +16,9 @@ open Norm
 let solve_fq_vars_known e v =
   let ev = mk_V v in
   let v_occurs p =
-    L.exists (fun (m,_) -> L.exists (fun (e,_) -> Se.mem ev (e_vars e)) m) (EP.to_terms p)
+    L.exists (fun (m,_) ->
+      L.exists (fun (e,_) -> Se.mem ev (e_vars e)) m)
+      (EP.to_terms p)
   in
   let (num,mdenom) = polys_of_field_expr (CAS.norm id e) in
   let (g,h) = factor_out ev num in
@@ -70,12 +74,13 @@ let solve_fq_poly (ecs : (expr * inverter) list) e =
   in
   let res = e_subst subst e
   in res
-  
-  
+
 let solve_fq (ecs : (expr * inverter) list) e =
   let vars = e_vars e in
   let known_vars = se_of_list (L.filter is_V (L.map fst ecs)) in
-  let known_occ_vars = L.fold_right (fun e s -> Se.union s (e_vars (fst e))) ecs Se.empty in
+  let known_occ_vars =
+    L.fold_right (fun e s -> Se.union s (e_vars (fst e))) ecs Se.empty
+  in
   if Se.subset vars known_vars then (
     I (solve_fq_poly ecs e)
   ) else if not (Se.is_empty (Se.diff vars known_occ_vars)) then (
@@ -85,8 +90,6 @@ let solve_fq (ecs : (expr * inverter) list) e =
   )
 
 let solve_mixed_type k s =
-  let open Type in
-  let open Syms in
   let ty_k, ty_s = k.e_ty, s.Vsym.ty in
   match ty_k.ty_node, ty_s.ty_node with
   | Fq, Fq ->

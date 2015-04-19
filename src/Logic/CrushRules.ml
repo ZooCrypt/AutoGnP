@@ -128,7 +128,7 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
         @> (t_norm ~fail_eq:true @|| CR.t_id))
   in
   let t_close ju =
-    ( (t_random_indep false @> t_log "random_indep")
+    ( (t_random_indep ts false @> t_log "random_indep")
       @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp")) ju
   in
   let t_progress = 
