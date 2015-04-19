@@ -20,7 +20,7 @@ assumption dlin
     
 adversary A_dkill : () -> Bool.
 
-assumption dkill
+assumption [inf] dkill
   [ k <-$ Fq; b <- A_dkill(); ]
   [ b <- A_dkill(); ].
   
@@ -44,29 +44,29 @@ bound_adv
   
   let tau1 = v*v1^a1;
   let tau2 = v*v2^a2;
-  let p0   = g^b;
-  let p1   = g^a1;
-  let p2   = g^a2;
-  let p3   = g^(b*a1);
-  let p4   = g^(b*a2);
-  let p5   = e(g,g)^(alpha*a1*b);
-  (ci,m0,m1) <- A1(p0,p1,p2,p3,p4,tau1,tau2,tau1^b,tau2^b,w,u,h,p5)
+  let P0   = g^b;
+  let P1   = g^a1;
+  let P2   = g^a2;
+  let P3   = g^(b*a1);
+  let P4   = g^(b*a2);
+  let P5   = e(g,g)^(alpha*a1*b);
+  (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,w,u,h,P5)
     with
     KeyGen1(i) =
-      [ (tagk,d1,d2,d3,d4,d5,d6,d7,k)
+      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
       | r1   <-$ Fq,
         r2   <-$ Fq,
         z1   <-$ Fq,
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let d1 = g^(alpha*a1)*v^r,
-        let d2 = g^(-alpha)*v1^r*g^z1,
-        let d3 = (g^b)^-z1,
-        let d4 = v2^r*g^z2,
-        let d5 = (g^b)^-z2,
-        let d6 = g^(r2*b),
-        let d7 = g^r1,
+        let D1 = g^(alpha*a1)*v^r,
+        let D2 = g^(-alpha)*v1^r*g^z1,
+        let D3 = (g^b)^-z1,
+        let D4 = v2^r*g^z2,
+        let D5 = (g^b)^-z2,
+        let D6 = g^(r2*b),
+        let D7 = g^r1,
         let k  = (u^i*w^tagk*h)^r1 ];
   
   beta <-$ Bool;  
@@ -76,21 +76,21 @@ bound_adv
   s2   <-$ Fq;
   t    <-$ Fq;
   tagc <-$ Fq;
-  let c0 = m*p5^s2;
-  let c1 = p0^(s1+s2);
-  let c2 = p3^s1;
-  let c3 = p1^s1;
-  let c4 = p4^s2;
-  let c5 = p2^s2;
-  let c6 = tau1^s1*tau2^s2;
-  let c7 = (tau1^b)^s1*(tau2^b)^s2*w^-t;
-  let e1 = (u^ci*w^tagc*h)^t;
-  let e2 = g^t;
+  let C0 = m*P5^s2;
+  let C1 = P0^(s1+s2);
+  let C2 = P3^s1;
+  let C3 = P1^s1;
+  let C4 = P4^s2;
+  let C5 = P2^s2;
+  let C6 = tau1^s1*tau2^s2;
+  let C7 = (tau1^b)^s1*(tau2^b)^s2*w^-t;
+  let E1 = (u^ci*w^tagc*h)^t;
+  let E2 = g^t;
   
-  beta' <- A2(tagc,c0,c1,c2,c3,c4,c5,c6,c7,e1,e2)
+  beta' <- A2(tagc,C0,C1,C2,C3,C4,C5,C6,C7,C1,C2)
     with
     KeyGen2(i) =
-      [ (tagk,d1,d2,d3,d4,d5,d6,d7,k)
+      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
       | i <> ci,
         r1   <-$ Fq,
         r2   <-$ Fq,
@@ -98,54 +98,45 @@ bound_adv
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let d1 = g^(alpha*a1)*v^r,
-        let d2 = g^(-alpha)*v1^r*g^z1,
-        let d3 = (g^b)^-z1,
-        let d4 = v2^r*g^z2,
-        let d5 = (g^b)^-z2,
-        let d6 = g^(r2*b),
-        let d7 = g^r1,
+        let D1 = g^(alpha*a1)*v^r,
+        let D2 = g^(-alpha)*v1^r*g^z1,
+        let D3 = (g^b)^-z1,
+        let D4 = v2^r*g^z2,
+        let D5 = (g^b)^-z2,
+        let D6 = g^(r2*b),
+        let D7 = g^r1,
         let k  = (u^i*w^tagk*h)^r1 ];
 ] : (beta = beta') /\ not (ci in Log (KeyGen1)).
+
+(* ================================================ *)
 (* make ciphertext semi-functional by applying DLIN *)
-swap [a1 a2] v.
-(* should be assumption_decisional dkill <- [a1] c2'. *)
-abstract a1 arg (). abstract _ res _.
-assumption_decisional dkill <- [arg] c2'.
-(* end *)
-(* should be assumption_decisional dkill <- [c2'] c1'. *)
-swap arg -1. assumption_decisional dkill <- [arg] c1'.
-unfold arg. 
-(* end *)
-(* should be *)
-(* rnd pos c1 c2. rnd pos c1 _. rnd pos _ c2. rnd pos c1 *)
-(* 
-swap [a1 a2] c1'.
-rnd v (yv -> g ^ yv). 
-rnd v1 (yv1 -> g ^ yv1).
-rnd v2 (yv2 -> g ^ yv2).
-rnd a1 (f -> log(f)). unfold r3 f'. subst (g^log(f)) f.
-rnd a2 (nu -> log(nu)). unfold r3 nu'. subst (g^log(nu)) nu.
-rnd s2 (s2 -> s2 + c1' + c2').
-rnd s1 (s1 -> s1 - c2').
-assumption_decisional dlin -> [v] tt.
-*)
-(* end *)
-swap [a1 a2] c1'.
-rnd v (yv : Fq -> g ^ yv) _.
+
+swap [a1 a2] v. abstract a1 arg (). abstract _ res _.
+  assumption_decisional dkill <- [arg] c1.
+swap arg -1. assumption_decisional dkill <- [arg] c2. unfold arg.
+
+(* sample exponents instead of group elements for unrelated variables *)
+rnd v  (yv : Fq -> g ^ yv) _.
 rnd v1 (yv1 : Fq -> g ^ yv1) _.
 rnd v2 (yv2 : Fq -> g ^ yv2) _.
 unfold r3 r4 r5.
-norm_unknown a1 a2.
-abstract yv f'  (g^a1).
-abstract yv nu' (g^a2).
-rnd a1 (f : G -> log(f)) _. unfold r3 f'.
-rnd a2 (nu : G -> log(nu)) _. unfold r3 nu'.
-unfold tau1 tau2 p0 p1 p2 p3 p4 p5.
-rnd s2 (s2 -> s2 + c1' + c2') _.
-rnd s1 (s1 -> s1 - c2')  _. unfold r3 r4.
-norm_unknown c1' c2'.
-abstract yv arg (f, nu, g^c1', f^c2', nu^(c1'+c2')).
+
+(* we will use the challenges f and nu for g^a1 and g^a2 *)
+rnd a1 (f : G -> log(f)) _. unfold r3.
+rnd a2 (nu : G -> log(nu)) _. unfold r3.
+unfold tau1 tau2 P0 P1 P2 P3 P4 P5.
+
+(* *)
+rnd s2 (s2 -> s2 + c1 + c2) _.
+rnd s1 (s1 -> s1 - c2)  _. unfold r3 r4; //= c1 c2. 
+field_exprs c1 c2.
+
+deduce [f, nu, g^c1, f^c2, nu^(c1+c2)] (nu^(s2 + c1 + c2)).
+  
+deduce [f, nu, g^c1, f^c2, nu^(c1+c2)] (g_t^c1).
+deduce g_t^c1
+abstract yv arg (f, nu, g^c1, f^c2, nu^(c1+c2)).
+
 assumption_decisional dlin -> [arg] tt.
 (* make queried keys semi-functional by applying DLIN *)
 (* setup *)
@@ -208,7 +199,7 @@ trans [
 
   (* modifications to make ciphertext semi-functional *)
   x <-$ Fq;
-  let C4 = C4' *  g^(b*a2*x);
+  let C4 = C4' * g^(b*a2*x);
   let C5 = C5' * g^(a2*x);
   let C6 = C6' * v2^(a2*x);
   let C7 = C7' * v2^(b*a2*x);

@@ -75,7 +75,7 @@ bound_adv
     bycrush.
 
   (* rnd to x2 and y2 *)
-  simp. norm. (* swap x2 b. *)
+  rewrite_oracle (10,1,1) <-. simp. norm. (* swap x2 b. *)
   rnd! x2 _ _. norm.
   rnd! z2 _ _. norm.
   

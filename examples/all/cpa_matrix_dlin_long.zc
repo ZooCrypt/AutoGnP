@@ -31,9 +31,9 @@ bound_adv
   norm.
   swap 5 -2. swap 6 -2.
   norm_unknown.
-  let_abstract! 5 arg (g^a1,g^a2,g^(a1*r1),g^(a2*r2),g^(r1+r2)).
-  let_abstract _ res _.
-  assumption_decisional dlin -> (5-9) t.
+  abstract! 5 arg (g^a1,g^a2,g^(a1*r1),g^(a2*r2),g^(r1+r2)).
+  abstract _ res _.
+  assumption_decisional dlin -> [arg] t.
   bycrush.
 qed.
 print_proof.

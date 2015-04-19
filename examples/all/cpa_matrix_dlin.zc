@@ -2,21 +2,18 @@
 adversary A1 : (G * G) -> (G * G).
 adversary A2 : (G * G * G) -> Bool.
 
-assumption_decisional dlin
+adversary A_dlin : G^5 -> Bool.
+
+assumption dlin ([a1,a2])
   [ a1 <-$ Fq; a2 <-$ Fq; r1 <-$ Fq; r2 <-$ Fq;
-    let e1 = g^a1;        let e2 = g ^ a2;
-    let e3 = g ^ (a1*r1); let e4 = g^ (a2*r2);
-    let e5 = g^(r1+r2);
+    b <- A_dlin(g^a1, g^a2, g^(a1*r1), g^(a2*r2), g^(r1+r2));
   ]
   [ a1 <-$ Fq; a2 <-$ Fq; r1 <-$ Fq; r2 <-$ Fq;
     t <-$ Fq;
-    let e1 = g^a1;        let e2 = g ^ a2;
-    let e3 = g ^ (a1*r1); let e4 = g^ (a2*r2);
-    let e5 = g^t;
-  ]
-  (a1 a2 r1 r2 t) ([a1,a2]).
+    b <- A_dlin(g^a1, g^a2, g^(a1*r1), g^(a2*r2), g^t);
+  ].
 
-prove
+bound_adv
   [ (* secret key a1,a2 *)
     a1 <-$ Fq;
     a2 <-$ Fq;
@@ -33,9 +30,9 @@ prove
     let k = g^(r1+r2);
     b' <- A2(p1^r1,p2^r2,mb*k);
   ] : b = b'.
-  rnorm.
-  rswap 5 -2. rswap 6 -2.
-  rconv [
+  norm.
+  swap 5 -2. swap 6 -2.
+  conv [
     a1 <-$ Fq;
     a2 <-$ Fq;
     r1 <-$ Fq;
@@ -44,12 +41,9 @@ prove
     b <-$ Bool;
     b' <- A2(g ^ (a1*r1),g ^ (a2*r2), (b?m0:m1)*g^(r1+r2));
   ] : b = b'.
-  rlet_abstract 5 e1 g^a1.
-  rlet_abstract 6 e2 g^a2.
-  rlet_abstract 7 e3 g^(a1*r1).
-  rlet_abstract 8 e4 g^(a2*r2).
-  rlet_abstract 9 e5 g^(r1+r2).
-  assumption_decisional! dlin -> t.
+  abstract 5 arg (g^a1, g^a2, g^(a1*r1), g^(a2*r2), g^(r1+r2)).
+  abstract _ ret _.
+  assumption_decisional dlin -> [arg] t.
   bycrush.
   qed.
   print_proof.
