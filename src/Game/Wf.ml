@@ -8,7 +8,6 @@ open ExprUtils
 open Type
 open Game
 open Syms
-open Gsyms
 open Norm
 
 let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls

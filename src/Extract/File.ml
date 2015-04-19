@@ -3,7 +3,6 @@ open Util
 open Type
 open Game
 open Syms
-open Gsyms
 open TheoryTypes
 
 module Ht = Hashtbl

@@ -2,7 +2,6 @@
 open Util
 open Nondet
 open Syms
-open Gsyms
 open Type
 open Assumption
 open CoreRules

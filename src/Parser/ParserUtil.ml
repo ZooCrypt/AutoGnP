@@ -6,7 +6,6 @@ open Util
 open TheoryTypes
 open TheoryState
 open Syms
-open Gsyms
 open ParserTypes
 
 module E = Expr

@@ -6,7 +6,6 @@ open Util
 open Syms
 open Expr
 open Game
-open Gsyms
 (*i*)
 
 (* \hd{Decisional assumptions.} *)

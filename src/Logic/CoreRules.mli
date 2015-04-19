@@ -3,12 +3,12 @@
 (*i*)
 open Nondet
 open Game
+open Syms
 open Expr
 open ExprUtils
 open Assumption
 open Util
 open Abbrevs
-open Gsyms
 open CoreTypes
 (*i*)
 

@@ -8,7 +8,6 @@ open Type
 open Util
 open Nondet
 open Syms
-open Gsyms
 open TheoryTypes
 open TheoryState
 open Rules

@@ -10,7 +10,6 @@ open CoreTypes
 open CoreRules
 open File
 open Syms
-open Gsyms
 module Ht = Hashtbl
 
 

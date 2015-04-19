@@ -5,7 +5,6 @@ open Abbrevs
 open Util
 open Type
 open Syms
-open Gsyms
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)

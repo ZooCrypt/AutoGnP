@@ -4,7 +4,6 @@
 open Expr
 open Type
 open Syms
-open Gsyms
 open Abbrevs
 open Util
 (*i*)

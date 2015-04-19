@@ -7,7 +7,6 @@ open Game
 open Expr
 open ExprUtils
 open Syms
-open Gsyms
 
 let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "Assumption" ls
 let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
