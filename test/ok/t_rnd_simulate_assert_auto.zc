@@ -1,1 +1,12 @@
-../all/t_rnd_simulate_assert_auto.zc
+adversary A : () -> Fq.
+
+bound_succ
+  [ s <- A();
+    w <-$ Fq \ 0;
+    r <-$ Fq;
+  ] : (r * s * w + s = 1) /\ (s <> 0).
+
+  rnd! r _ _. norm.
+  indep.
+qed.
+extract "extraction/t_rnd_simulate_assert_auto.ec".

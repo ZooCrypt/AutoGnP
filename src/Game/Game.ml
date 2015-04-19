@@ -103,22 +103,24 @@ let string_of_otype = function
 
 let pp_otype fmt ot = pp_string fmt (string_of_otype ot)
 
-let pp_obody fmt (ms,e) =
-  F.fprintf fmt "[@\n  @[<v>%a@]@,]" pp_lcomp (e,ms)
+let pp_obody ootype fmt (ms,e) =
+  F.fprintf fmt "[ %s@\n  @[<v>%a@]@,]"
+    (match ootype with None -> "" | Some ot -> "(* for "^string_of_otype ot^" *)")
+    pp_lcomp (e,ms)
 
 let pp_ohybrid fmt oh =
-  F.fprintf fmt "[@\n%a@\n%a@\n%a@.]"
-    pp_obody oh.odef_less
-    pp_obody oh.odef_eq
-    pp_obody oh.odef_greater
+  F.fprintf fmt "[@\n  @[<v>%a@]@,@[<v>%a@]@,@[%a@]@.]"
+    (pp_obody (Some OHless))    oh.odef_less
+    (pp_obody (Some OHeq))      oh.odef_eq
+    (pp_obody (Some OHgreater)) oh.odef_greater
 
 let pp_odecl fmt od =
   match od with
-  | Odef od    -> pp_obody fmt od
+  | Odef od    -> pp_obody None fmt od
   | Ohybrid oh -> pp_ohybrid fmt oh
 
 let pp_odef fmt (o, vs, od) =
-  F.fprintf fmt "@[<v>%a %a= %a@]" 
+  F.fprintf fmt "@[<v>%a%a = %a@]" 
     Osym.pp o pp_binder vs
     pp_odecl od
 
@@ -258,6 +260,8 @@ type gcmd_pos = int
 type odef_pos = (int * int)
 
 type ocmd_pos = (int * int * int * ohybrid_otype option)
+
+type ocmd_pos_eq = (int * int * int)
 
 let get_se_gcmd se p = L.nth se.se_gdef p
 

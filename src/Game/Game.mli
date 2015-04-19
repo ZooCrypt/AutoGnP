@@ -120,6 +120,9 @@ type odef_pos = int * int
 
 type ocmd_pos = int * int * int * ohybrid_otype option
 
+(* position that points to Eq hybrid oracle, i.e., fourth value is fixed *)
+type ocmd_pos_eq = (int * int * int)
+
 val get_se_gcmd : sec_exp -> gcmd_pos -> gcmd
 
 type se_ctxt = { sec_left : gdef; sec_right : gdef; sec_ev : ev; }

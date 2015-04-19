@@ -583,14 +583,11 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
 (*i ----------------------------------------------------------------------- i*)
 (* {\bf Swap sampling from once-oracle to main.} *)
 
-let rswap_main _opos _vname _ju =
-  assert false
-  (*
+let rswap_main ((i,j,k) as opos_eq) vname ju =
   let se = ju.ju_se in
-  let lcmd,seoc = get_se_octxt se opos in
+  let lcmd,seoc = get_se_octxt se (i,j,k,Some OHeq) in
   match lcmd with
   | LSamp(vs,d) ->
-    assert seoc.seoc_oonce;
     let vs_new = Vsym.mk vname vs.Vsym.ty in
     let subst e = e_replace (mk_V vs) (mk_V vs_new) e in
     let samp = GSamp(vs_new,d) in
@@ -605,11 +602,9 @@ let rswap_main _opos _vname _ju =
     let se = set_se_octxt [] seoc in
     wf_se NoCheckDivZero se;
     let ju = { ju with ju_se = set_se_octxt [] seoc } in
-
-    Rswap_main opos, [ ju ]
+    Rswap_main opos_eq, [ ju ]
   | _ ->
     assert false
-  *)
 
 let t_swap_main opos vname =
   prove_by (rswap_main opos vname)
@@ -1008,47 +1003,36 @@ let t_trans new_se =
 (*i ----------------------------------------------------------------------- i*)
 (** {\bf Hybrid argument.} *)
 
-let rhybrid _gpos _oidx _new_lcmds _new_eret _asym1 _asym2 _asym3 _ju =
-  assert false (*
+let rhybrid gpos oidx new_lcmds new_eret ju =
   let se = ju.ju_se in
+  let lcmd, seoc =  get_se_octxt se (gpos,oidx,0,None) in
+  let old_lcmd = lcmd::seoc.seoc_cright in
+  let old_ret = seoc.seoc_return in
   (* replace oracle definition in second judgment *)
-  let _lcmd, seoc =  get_se_octxt se (gpos,oidx,0) in
   let seoc = { seoc with seoc_cright = new_lcmds; seoc_return = new_eret } in
   let ju2 = { ju with ju_se = set_se_octxt [] seoc } in
-  (* split adversary into three in first judgment *)
-  let cmd,ctx = get_se_ctxt se gpos in
-  let (cmd1,cmd2_left,cmd2_right,cmd3) =
-    match cmd with
-    | GCall(vs,_ads,e,odefs) ->
-      let odefs_before,od,odefs_after = split_n oidx odefs in
-      let (os,ovs,lcmds,eret,b) = od in
-      assert (not b);
-      let osym2 =
-        Osym.mk (Id.name os.Osym.id ^ "_2") os.Osym.dom os.Osym.codom
-      in 
-      let osym3 =
-        Osym.mk (Id.name os.Osym.id ^ "_3") os.Osym.dom os.Osym.codom
-      in 
-      let od_new osym once = (osym,ovs,new_lcmds,new_eret,once) in
-      let middle_odefs_left =
-        odefs_before@[osym2,ovs,lcmds,eret,true]@odefs_after
-      in
-      let middle_odefs_right =
-        odefs_before@[od_new osym2 true]@odefs_after
-      in
-      let new_odefs = odefs_before@[od_new osym3 false]@odefs_after in
-      ( GCall([],asym1,e,odefs)
-      , GCall([],asym2,mk_Tuple [],middle_odefs_left)
-      , GCall([],asym2,mk_Tuple [],middle_odefs_right)
-      , GCall(vs,asym3,mk_Tuple [],new_odefs)
-      )
-    | _ -> assert false
+  (* use hybrid oracles in first judgment *)
+  let seoc_left1 =
+    { seoc with
+      seoc_cright    = old_lcmd;
+      seoc_return    = old_ret;
+      seoc_obless    = Some (new_lcmds,new_eret);
+      seoc_obeq      = None; (* (cright,creturn) used for obeq *)
+      seoc_obgreater = Some (old_lcmd, old_ret);
+    }
   in
-  let se1_left  = set_se_ctxt [cmd1; cmd2_left;  cmd3] ctx in
-  let se1_right = set_se_ctxt [cmd1; cmd2_right; cmd3] ctx in
-  let ju1 = { ju_se = se1_left; ju_pr = Pr_Dist se1_right } in
+  let seoc_left2 =
+    { seoc_left1 with
+      seoc_cright    = new_lcmds;
+      seoc_return    = new_eret;
+    }
+  in
+  let ju1 =
+    { ju_se = set_se_octxt [] seoc_left1;
+      ju_pr = Pr_Dist (set_se_octxt [] seoc_left2);
+    }
+  in
   Rhybrid, [ ju1; ju2 ]
-  *)
 
-let t_hybrid gpos oidx lcmds eret asym1 asym2 asym3 =
-  prove_by (rhybrid gpos oidx lcmds eret asym1 asym2 asym3)
+let t_hybrid gpos oidx lcmds eret =
+  prove_by (rhybrid gpos oidx lcmds eret)

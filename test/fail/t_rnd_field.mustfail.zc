@@ -1,10 +1,12 @@
 adversary A : Fq -> Fq.
 
-prove
+bound_succ
   [ a <-$ Fq;
     b <-$ Fq;
     a' <- A(b + a);
   ] : a + b = a'.
-  bycrush. print_proof.
+  bycrush.
+(*
+ERROR: tactic failed
+*)
 qed.
-extract "extraction/t_rnd_field.ec".

@@ -358,6 +358,10 @@ opos:
 | LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1,None) }
 ;
 
+opos_partial:
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1) }
+;
+
 %public uopt(X):
 | UNDERSCORE { None }
 | x=X { Some x }
@@ -479,7 +483,7 @@ tactic :
 /* swapping */
 | RSWAP i=swap_pos j=assgn_pos { Rswap(i,j) }
 | RSWAP op=opos j=int { Rswap_oracle(op,j) }
-| RSWAP_MAIN op=opos v=ID { Rswap_main(op,v) }
+| RSWAP_MAIN op=opos_partial v=ID { Rswap_main(op,v) }
 
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?
@@ -509,8 +513,8 @@ tactic :
 | RADD_TEST op=opos e=expr0 asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
 | RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }
-| RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=lcomp asym=ID
-  { Rhybrid((i-1,j-1),lc,asym) }
+| RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=lcomp
+  { Rhybrid((i-1,j-1),lc) }
 
 /* events */
 | RREMOVE_EV is=gpos+         { Rremove_ev(is) }

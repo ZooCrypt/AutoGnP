@@ -147,7 +147,7 @@ let handle_tactic ts tac =
       Rules.t_seq_fold lt
   
     | PT.Rswap(i,j)            -> t_swap i j
-    | PT.Rswap_main(opos,vs)   -> CR.t_swap_main opos vs
+    | PT.Rswap_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs
     | PT.Rdist_eq              -> CR.t_dist_eq
     | PT.Rdist_sym             -> CR.t_dist_sym
     | PT.Rremove_ev(is)        -> CR.t_remove_ev is
@@ -273,36 +273,21 @@ let handle_tactic ts tac =
     | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
       t_rnd_oracle_maybe ts mopos mctxt1 mctxt2
   
-    | PT.Rhybrid(_) | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) ->
-      tacerror "hybrid, add_test and debugging tactics and ';' cannot be combined"
+    | PT.Rhybrid((i,j),(lcmds,eret)) ->
+      let se = ju.ju_se in
+      let opos = (i,j,0,None) in
+      let vmap = vmap_in_orcl se opos in
+      let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts) lcmds in
+      let eret = PU.expr_of_parse_expr vmap ts eret in
+      CR.t_hybrid i j lcmds eret
+
+    | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) ->
+      tacerror "add_test and debugging tactics and ';' cannot be combined"
     
     | PT.Rbad(_i,_sx) ->
       tacerror "not implemented"
  in
- match tac with
- | PT.Rhybrid((i,j),(lcmds,eret),aname) ->
-   let se = ju.ju_se in
-   let opos = (i,j,0,None) in
-   let _, seoc = get_se_octxt se opos in
-   let vmap = vmap_in_orcl se opos in
-   let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts) lcmds in
-   let eret = PU.expr_of_parse_expr vmap ts eret in
-   let oasym = seoc.seoc_asym in
-   let name_new suff = not (Mstring.mem (aname^suff) ts.ts_adecls) in
-   fail_unless (fun () -> name_new "_1" && name_new "_1" && name_new "_3")
-     "rhybrid: adversary with same name already declared";
-   let tunit = mk_Prod [] in
-   let asym1 = Asym.mk (aname^"_1") oasym.Asym.dom tunit in
-   let asym2 = Asym.mk (aname^"_2") tunit          tunit in
-   let asym3 = Asym.mk (aname^"_3") tunit          oasym.Asym.codom in
-   let adecls =
-     L.fold_left
-       (fun decls (an,asym) -> Mstring.add an asym decls)
-       ts.ts_adecls
-       [(aname^"_1",asym1); (aname^"_2",asym2); (aname^"_3",asym3)]
-   in
-   apply ~adecls (CR.t_hybrid i j lcmds eret asym1 asym2 asym3)
-     
+ match tac with     
  | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
    (* create symbol for new adversary *)
    let se = ju.ju_se in

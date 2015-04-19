@@ -21,37 +21,37 @@ bound_adv
         [ (g^x,g^y,g^(b?x*y:z)) | x <-$ Fq, y <-$ Fq, z <-$ Fq ];
   ] : b = b'.
   
-  hybrid (3,1) [ (g^x,g^y,g^z) | x <-$ Fq, y <-$ Fq, z <-$ Fq ] B.
+  hybrid (3,1) [ (g^x,g^y,g^z) | x <-$ Fq, y <-$ Fq, z <-$ Fq ].
     last. indep!.
   (* move sampling from "once-oracle" to main *)
-  swap_main (4,1,1) mx.
-  swap_main (5,1,1) my.
-  swap_main (6,1,1) mz.
+  swap_main (3,1,1) mx.
+  swap_main (4,1,1) my.
+  swap_main (5,1,1) mz.
   (* apply DDH assumption *)
-  swap 4 -3.
-  swap 5 -3.
-  swap 6 -3.
-  subst 5 (g^(b?(mx*my):mz)) (b?g^(mx*my):g^mz).
-  let_abstract 3 arg (g^mx,g^my,g^(mx*my)).
-  let_abstract _ res _.
-  assumption_decisional ddh -> (3-10) zz.
+  swap mz b.
+  swap my mz.
+  swap mx my.
+  subst [5] (g^(b?(mx*my):mz)) (b?g^(mx*my):g^mz).
+  abstract 3 arg (g^mx,g^my,g^(mx*my)).
+  abstract _ res _.
+  assumption_decisional ddh -> [arg] zz.
   (* apply trivial assumption *)
   norm.
-  swap 4 -3.
-  swap 4 -3.
-  swap 5 -4.
-  let_abstract 4 arg (b,b?zz:mz).
-  let_abstract _ res _.
-  assumption_decisional trivial -> (4-11).
+  swap mz mx.
+  swap zz mz.
+  swap b zz.
+  abstract 4 arg (b,b?zz:mz).
+  abstract _ res _.
+  assumption_decisional trivial -> [arg].
   (* make the two games equal *)
   norm.
   dist_sym.
-  swap_main (4,1,1) mx.
-  swap_main (5,1,1) my.
-  swap_main (6,1,1) zz.
-  swap 6 -4.
-  swap 5 -2.
-  swap 6 -2.
+  swap_main (3,1,1) mx.
+  swap_main (4,1,1) my.
+  swap_main (5,1,1) zz.
+  swap zz u.
+  swap mx u.
+  swap my u.
   norm.
   dist_eq.
 qed.

@@ -139,4 +139,4 @@ type rule_name =
 
   | Rhybrid (* FIXME: add arguments *)
 
-  | Rswap_main of ocmd_pos
+  | Rswap_main of ocmd_pos_eq

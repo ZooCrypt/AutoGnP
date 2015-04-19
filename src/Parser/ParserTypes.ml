@@ -85,7 +85,7 @@ type tactic =
   | Rnorm_solve    of parse_expr
   | Rswap          of range_pos * assgn_pos
   | Rswap_oracle   of ocmd_pos * int
-  | Rswap_main     of ocmd_pos * string
+  | Rswap_main     of ocmd_pos_eq * string
   | Rctxt_ev       of int option * parse_ctx option
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
@@ -107,7 +107,7 @@ type tactic =
   | Rexcept_orcl   of ocmd_pos * parse_expr list
   | Radd_test      of ocmd_pos option * parse_expr option * string option *
                       (string list) option
-  | Rhybrid        of (int * int) * lcomp * string
+  | Rhybrid        of (int * int) * lcomp
   | Rrewrite_orcl  of ocmd_pos * direction
   | Rcase_ev       of parse_expr option
   | Rremove_ev     of int list

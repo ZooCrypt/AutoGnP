@@ -160,10 +160,8 @@ val t_except_oracle : ocmd_pos -> expr list -> tactic
 val radd_test  : ocmd_pos -> expr -> Asym.t -> vs list -> rule 
 val t_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> tactic
 
-val rhybrid :
-  gcmd_pos -> int -> lcmd list -> expr -> Asym.t -> Asym.t -> Asym.t -> rule
-val t_hybrid :
-  gcmd_pos -> int -> lcmd list -> expr -> Asym.t -> Asym.t -> Asym.t -> tactic
+val rhybrid : gcmd_pos -> int -> lcmd list -> expr -> rule
+val t_hybrid : gcmd_pos -> int -> lcmd list -> expr -> tactic
 
 (** [rrewrite_oracle p d j] returns the judgment resulting from rewriting
     commands after oracle position [p] with the equality at position [p]
@@ -176,8 +174,8 @@ val t_rewrite_oracle : ocmd_pos -> direction -> tactic
 val rswap_oracle  : ocmd_pos -> int -> rule 
 val t_swap_oracle : ocmd_pos -> int -> tactic
 
-val rswap_main : ocmd_pos -> string -> rule
-val t_swap_main : ocmd_pos -> string -> tactic
+val rswap_main : ocmd_pos_eq -> string -> rule
+val t_swap_main : ocmd_pos_eq -> string -> tactic
 
 (** [rrandom_indep ju] completes the proof of judgments of the
      form [(G; r <- d) : E] where [E = /\_i ci] and
