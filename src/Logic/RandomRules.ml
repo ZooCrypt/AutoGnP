@@ -28,10 +28,10 @@ let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "RandomRules" ls
 
 (** Parse given context: bound name overshadows name in game *)
 let parse_ctxt ts sec ty (sv,se) =
-  let vmap = vmap_of_globals sec.se_gdef in
+  let vmap = vmap_of_all sec.se_gdef in
   let v = Vsym.mk sv ty in
   Hashtbl.add vmap (Unqual,sv) v;
-  (v,expr_of_parse_expr vmap ts se)
+  (v,expr_of_parse_expr vmap ts Unqual se)
 
 
 (** find subexpressions of [e] that might yield useful contexts *)
@@ -215,12 +215,14 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
 (* \hd{Random rule in oracle} *)
 
 (** Parse given context: bound name overshadows name in game *)
-let parse_ctxt_oracle ts opos ju ty (sv,se) =
-  let vmap = vmap_in_orcl ju opos in
+let parse_ctxt_oracle ts opos sec ty (sv,se) =
+  let vmap = vmap_in_orcl sec opos in
+  let _, seoc = get_se_octxt sec opos in
+  let oname = Id.name seoc.seoc_osym.Osym.id in
   (* bound name overshadows names in game *)
   let v = Vsym.mk sv ty in
   Hashtbl.add vmap (Unqual,sv) v;
-  (v,expr_of_parse_expr vmap ts se)
+  (v,expr_of_parse_expr vmap ts (Qual oname) se)
 
 
 (** rnd\_oracle tactic that tries all useful contexts if none are given *)

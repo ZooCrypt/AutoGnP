@@ -52,7 +52,7 @@ type lcmd =
 
 type lcomp = lcmd list * parse_expr
 
-type odec = Odef of lcomp | Ohyb of (lcomp * lcomp * lcomp)
+type odec = Odef of lcomp | Ohybrid of (lcomp * lcomp * lcomp)
 
 type odef = string * string list * odec
 

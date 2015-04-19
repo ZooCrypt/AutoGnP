@@ -11,11 +11,11 @@ bound_dist
   [ j <- A1() with
         O(i) =
           [ (* for < *)
-            [ t1 | t1 <-$ Fq ]
+            [ 0 ]
             (* for = *)
             [ t1 | t1 <-$ Fq ]
             (* for > *)
-            [ t1 | t1 <-$ Fq ] ];
+            [ 0 ] ];
     t2 <-$ Fq;
     beta <- A2(t2);
   ] : beta /\ (O`i<>j)
@@ -24,19 +24,19 @@ bound_dist
     j <- A1() with
         O(i) =
           [ (* for < *)
-            [ t1 | t1 <-$ Fq ]
+            [ 0 ]
             (* for = *)
             [ a*i + b ]
             (* for > *)
-            [ t1 | t1 <-$ Fq ] ];
+            [ 0 ] ];
     beta <- A2(a*j + b);
   ] : beta /\ (O`i<>j).
-  rename t2 b.
-  (*
-  rnd b (b -> b + O`t1*(O`i - j)) _.
+  rename t2 a.
+  rnd a (a -> O`t1 + a*(((j - O`i)=0)?1:(j - O`i))) _; //.
+  swap a -1.
   rnd_oracle (2,1,1,=) (t1 -> t1 + a*i) _; //.
-  *)
-  admit.
+  swap_main (2,1,1) b.
+  admit. (* we need assert here *)
 qed.
 
 (* for the second adversary call *)
@@ -47,14 +47,14 @@ bound_dist
       with
         O(i) =
           [ (* for < *)
-            [ t | t <-$ Fq ]
+            [ 0 ]
             (* for = *)
             [ t
             | i <> j,
               t <-$ Fq
             ]
             (* for > *)
-            [ t | t <-$ Fq ] ];
+            [ 0 ] ];
   ] : beta
   [ a <-$ Fq;
     b <-$ Fq;
@@ -63,13 +63,11 @@ bound_dist
       with
         O(i) =
           [ (* for < *)
-            [ t | t <-$ Fq ]
+            [ 0 ]
             (* for = *)
-            [ a*i + b
-            | i<>j
-            ]
+            [ a*i + b | i<>j ]
             (* for > *)
-            [ t | t <-$ Fq ] ];
+            [ 0 ] ];
   ] : beta.
   
   swap t1 -1.

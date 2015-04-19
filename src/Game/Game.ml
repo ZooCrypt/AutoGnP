@@ -37,11 +37,14 @@ type odecl =
   | Odef of obody
   | Ohybrid of ohybrid
 
+let is_hybrid = function Odef _ -> false | Ohybrid _ -> true
+
+type ohtype = OHless | OHeq | OHgreater
+type otype = Onohyb | Ohyb of ohtype
+
 (** Oracle definition. *)
 type odef = os * vs list * odecl (*r
   $(o,\vec{x}, \vec{m},e): o(x_1,..,x_l) = [e | m_1, .., m_k]$ *)
-
-type ohybrid_otype = OHless | OHeq | OHgreater
 
 (** Game command. *)
 type gcmd =
@@ -100,7 +103,12 @@ let string_of_otype = function
   | OHeq      -> "="
   | OHgreater -> ">"
 
-let pp_otype fmt ot = pp_string fmt (string_of_otype ot)
+let pp_ohtype fmt oht = pp_string fmt (string_of_otype oht)
+
+let pp_otype fmt ot =
+  match ot with
+  | Onohyb   -> pp_string fmt "no hybrid"
+  | Ohyb oht -> pp_ohtype fmt oht
 
 let pp_obody ootype fmt (ms,e) =
   F.fprintf fmt "[ %s@\n  @[<v>%a@] ]"
@@ -258,7 +266,7 @@ type gcmd_pos = int
 
 type odef_pos = (int * int)
 
-type ocmd_pos = (int * int * int * ohybrid_otype option)
+type ocmd_pos = (int * int * int * otype)
 
 type ocmd_pos_eq = (int * int * int)
 
@@ -283,19 +291,19 @@ let set_se_gcmd se p cmds =
   let _, ctxt = get_se_ctxt se p in
   set_se_ctxt cmds ctxt
 
-let get_obody od ootype =
-  match ootype, od with
-  | None,           Odef ob    -> ob
-  | Some OHless,    Ohybrid oh -> oh.odef_less
-  | Some OHeq,      Ohybrid oh -> oh.odef_eq
-  | Some OHgreater, Ohybrid oh -> oh.odef_greater
+let get_obody od otype =
+  match otype, od with
+  | Onohyb,         Odef ob    -> ob
+  | Ohyb OHless,    Ohybrid oh -> oh.odef_less
+  | Ohyb OHeq,      Ohybrid oh -> oh.odef_eq
+  | Ohyb OHgreater, Ohybrid oh -> oh.odef_greater
   | _ -> assert false
 
-let get_se_lcmd se (i,j,k,ootype) = 
+let get_se_lcmd se (i,j,k,otype) = 
   match get_se_gcmd se i with
   | GCall(_,_,_,ods) ->
     let (o,vs,od) = L.nth ods j in
-    let (ms,e) = get_obody od ootype in
+    let (ms,e) = get_obody od otype in
     o,vs,split_n k ms, e
   | _ -> assert false
 
@@ -323,15 +331,15 @@ let get_se_octxt se (i,j,k,ootype) =
     let (ms,oe) = get_obody od ootype in
     let rhd, i, tl = split_n k ms in
     let obless = match ootype with
-      | (Some OHeq | Some OHgreater) -> Some (get_obody od (Some OHless))
+      | Ohyb (OHeq |  OHgreater) -> Some (get_obody od (Ohyb OHless))
       | _ -> None
     in
     let obeq = match ootype with
-      | (Some OHless | Some OHgreater) -> Some (get_obody od (Some OHeq))
+      | Ohyb (OHless | OHgreater) -> Some (get_obody od (Ohyb OHeq))
       | _ -> None
     in
     let obgreater = match ootype with
-      | (Some OHless | Some OHeq) -> Some (get_obody od (Some OHgreater))
+      | Ohyb (OHless | OHeq) -> Some (get_obody od (Ohyb OHgreater))
       | _ -> None
     in
     i, { seoc_asym = asym;
@@ -384,8 +392,8 @@ let pp_iter_pos fmt ip =
   match ip with
   | InEv                                  -> F.fprintf fmt "inEv"
   | InMain(i)                             -> F.fprintf fmt "inMain(%i)" i
-  | InOrcl((gpos,o_idx,opos,ootype),_,_)  -> 
-    F.fprintf fmt "inOrcl(%i,%i,%i,%a)" gpos o_idx opos (pp_opt pp_otype) ootype
+  | InOrcl((gpos,o_idx,opos,otype),_,_)  -> 
+    F.fprintf fmt "inOrcl(%i,%i,%i,%a)" gpos o_idx opos pp_otype otype
   | InOrclReturn((gpos,o_idx,_,_),_,_) -> F.fprintf fmt "inOreturn(%i,%i)" gpos o_idx
 
 type iter_ctx = {
@@ -438,11 +446,11 @@ let iter_ctx_obody_exp argtype gpos o_idx nz ?iexc:(iexc=false) f o ootype (ms,e
 
 let iter_ctx_odecl_exp argtype gpos o_idx nz ?iexc:(iexc=false) f os od =
   match od with
-  | Odef ob -> iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os None ob
+  | Odef ob -> iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os Onohyb ob
   | Ohybrid oh ->
-    iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Some OHless) oh.odef_less;
-    iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Some OHeq) oh.odef_eq;
-    iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Some OHgreater) oh.odef_greater
+    iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Ohyb OHless) oh.odef_less;
+    iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Ohyb OHeq) oh.odef_eq;
+    iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Ohyb OHgreater) oh.odef_greater
 
 let iter_ctx_odef_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (os,_vs,od) =
   iter_ctx_odecl_exp argtype gpos o_idx nz ~iexc f os od
@@ -908,34 +916,42 @@ let vmap_in_orcl se op =
 let norm_distr ?norm:(nf=(Norm.norm_expr_nice)) s (ty,es) = 
   (ty, L.map (fun e -> nf (e_subst s e)) es)
 
-let norm_obody ?norm:(nf=Norm.norm_expr_nice) s (lc,e) =
-  let rec aux s rc lc = 
+let norm_obody ?norm:(nf=Norm.norm_expr_nice) s exported_defs (lc,e) =
+  let do_export, add_export =
+    match exported_defs with
+    | None -> false, fun _ _ -> ()
+    | Some map_r -> true, fun v e -> map_r := Me.add v e !map_r
+  in
+  let rec aux s rc ~do_export lc = 
     match lc with
     | [] -> (L.rev rc, nf (e_subst s e))
     | LLet (v, e) :: lc' ->
       let e = nf (e_subst s e) in
       let v = mk_V v in
       let s = Me.add v e s in
-      aux s rc lc' 
+      add_export v e;
+      aux s rc ~do_export lc' 
     | (LBind (vs,_) as i)::lc' -> 
       let s = L.fold_left (fun s v -> Me.remove (mk_V v) s) s vs in
-      aux s (i::rc) lc'
+      aux s (i::rc) ~do_export:false lc'
     | LSamp(v,d)::lc' ->
       let d = norm_distr ~norm:nf s d in
       let s = Me.remove (mk_V v) s in
-      aux s (LSamp(v,d)::rc) lc'
+      aux s (LSamp(v,d)::rc) ~do_export lc'
     | LGuard e::lc' ->
-      aux s (LGuard (nf (e_subst s e)) :: rc) lc' in
-  aux s [] lc
+      aux s (LGuard (nf (e_subst s e)) :: rc) ~do_export:false lc' in
+  aux s [] ~do_export lc
 
-let norm_odecl ?norm:(nf=Norm.norm_expr_nice) s od =
-  match od with
-  | Odef ob -> Odef (norm_obody ~norm:nf s ob)
-  | Ohybrid oh ->
-    Ohybrid (map_ohybrid (norm_obody ~norm:nf s) oh)
-
-let norm_odef ?norm:(nf=Norm.norm_expr_nice) s (o,vs,od) =
-  let od = norm_odecl ~norm:nf s od in
+let norm_odef ?norm:(nf=Norm.norm_expr_nice) s exported_defs (o,vs,od) =
+  let od =
+    match od with
+    | Odef ob -> Odef (norm_obody ~norm:nf s None ob)
+    | Ohybrid oh ->
+      Ohybrid
+        { odef_less    = norm_obody ~norm:nf s None          oh.odef_less;
+          odef_eq      = norm_obody ~norm:nf s exported_defs oh.odef_eq;
+          odef_greater = norm_obody ~norm:nf s None          oh.odef_greater }
+  in
   (o,vs,od)
 
 let norm_gdef ?norm:(nf=Norm.norm_expr_nice) g =
@@ -953,7 +969,9 @@ let norm_gdef ?norm:(nf=Norm.norm_expr_nice) g =
       aux s (GSamp(v,d) :: rc) lc'
     | GCall(vs, asym, e, odefs) :: lc'->
       let e = nf (e_subst s e) in
-      let odefs = L.map (norm_odef ~norm:nf s) odefs in
+      let exported_defs = ref Me.empty in
+      let odefs = L.map (norm_odef ~norm:nf s (Some exported_defs)) odefs in
+      let s = Me.fold (fun k v s -> Me.add k v s) !exported_defs s in
       let s = L.fold_left (fun s v -> Me.remove (mk_V v) s) s vs in
       aux s (GCall(vs, asym, e, odefs)::rc) lc'
   in

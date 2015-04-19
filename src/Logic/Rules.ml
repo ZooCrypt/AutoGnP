@@ -73,8 +73,8 @@ let t_dist_eq ju =
 let pp_samp fmt (i,(vs,d)) =
   F.fprintf fmt "%i: %a from %a" i Vsym.pp vs pp_distr d
 
-let pp_osamp fmt ((i,j,k,ootype),(vs,d)) =
-  F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k Vsym.pp vs pp_distr d (pp_opt pp_otype) ootype
+let pp_osamp fmt ((i,j,k,otype),(vs,d)) =
+  F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k Vsym.pp vs pp_distr d pp_otype otype
 
 let pp_let fmt (i,(vs,e)) =
   F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_exp e
@@ -91,7 +91,7 @@ let osamplings gd =
   let lcmds_samplings gpos opos otype lcmds =
     let samp i = function
     | LSamp(vs,(t,e)) -> Some ((gpos,opos,i,otype),(vs,(t,e)))
-    | _              -> None
+    | _               -> None
     in
     cat_Some (L.mapi samp lcmds)
   in
@@ -100,11 +100,11 @@ let osamplings gd =
   in
   let odecl_samplings i opos od =
     match od with
-    | Odef ob -> obody_samplings i opos None ob
+    | Odef ob -> obody_samplings i opos Onohyb ob
     | Ohybrid oh ->
-      obody_samplings i opos (Some OHless) oh.odef_less
-      @ obody_samplings i opos (Some OHeq) oh.odef_eq
-      @ obody_samplings i opos (Some OHgreater) oh.odef_greater
+      obody_samplings i opos (Ohyb OHless) oh.odef_less
+      @ obody_samplings i opos (Ohyb OHeq) oh.odef_eq
+      @ obody_samplings i opos (Ohyb OHgreater) oh.odef_greater
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
@@ -126,11 +126,11 @@ let oguards gd =
   in
   let odecl_guards i opos od =
     match od with
-    | Odef ob -> obody_guards i opos None ob
+    | Odef ob -> obody_guards i opos Onohyb ob
     | Ohybrid oh ->
-      obody_guards i opos (Some OHless) oh.odef_less
-      @ obody_guards i opos (Some OHeq) oh.odef_eq
-      @ obody_guards i opos (Some OHgreater) oh.odef_greater
+      obody_guards i opos (Ohyb OHless) oh.odef_less
+      @ obody_guards i opos (Ohyb OHeq) oh.odef_eq
+      @ obody_guards i opos (Ohyb OHgreater) oh.odef_greater
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
@@ -248,16 +248,16 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "except %i %a" pos (pp_list "," pp_exp) es
   | Rrnd(pos,vs,_,(v2,c2)) ->
     F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_exp c2
-  | Rrw_orcl((i,j,k,ootype),_dir) ->
-    F.fprintf fmt "rw_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
-  | Rswap_orcl((i,j,k,ootype),_i) ->
-    F.fprintf fmt "swap_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
-  | Rrnd_orcl((i,j,k,ootype),_c1,_c2)      ->
-    F.fprintf fmt "rnd_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
-  | Rexc_orcl((i,j,k,ootype),_es)          ->
-    F.fprintf fmt "exc_orcl (%i,%i,%i,%a)" i j k (pp_opt pp_otype) ootype
-  | Radd_test((i,j,k,ootype),e,_ads,_vss) ->
-    F.fprintf fmt "add_test (%i,%i,%i,%a) (%a)" i j k pp_exp e (pp_opt pp_otype) ootype
+  | Rrw_orcl((i,j,k,otype),_dir) ->
+    F.fprintf fmt "rw_orcl (%i,%i,%i,%a)" i j k pp_otype otype
+  | Rswap_orcl((i,j,k,otype),_i) ->
+    F.fprintf fmt "swap_orcl (%i,%i,%i,%a)" i j k pp_otype otype
+  | Rrnd_orcl((i,j,k,otype),_c1,_c2)      ->
+    F.fprintf fmt "rnd_orcl (%i,%i,%i,%a)" i j k pp_otype otype
+  | Rexc_orcl((i,j,k,otype),_es)          ->
+    F.fprintf fmt "exc_orcl (%i,%i,%i,%a)" i j k pp_otype otype
+  | Radd_test((i,j,k,otype),e,_ads,_vss) ->
+    F.fprintf fmt "add_test (%i,%i,%i,%a) (%a)" i j k pp_exp e pp_otype otype
   | Rcase_ev(_,e)   ->
     F.fprintf fmt "case @[<v 2>%a@]" pp_exp e
   | Rbad(_pos,_vs) ->

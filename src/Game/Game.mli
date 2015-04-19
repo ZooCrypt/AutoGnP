@@ -31,11 +31,14 @@ type odecl =
   | Odef of obody
   | Ohybrid of ohybrid
 
+val is_hybrid : odecl -> bool
+
+type ohtype = OHless | OHeq | OHgreater
+type otype = Onohyb | Ohyb of ohtype
+
 (** Oracle definition. *)
 type odef = os * vs list * odecl (*r
   $(o,\vec{x}, \vec{m},e): o(x_1,..,x_l) = [e | m_1, .., m_k]$ *)
-
-type ohybrid_otype = OHless | OHeq | OHgreater
 
 type gcmd =
     GLet of vs * expr
@@ -65,7 +68,9 @@ val pp_lcomp : F.formatter -> expr * lcmd list -> unit
 
 val pp_odef : F.formatter -> odef -> unit
 
-val pp_otype : F.formatter -> ohybrid_otype -> unit
+val pp_ohtype : F.formatter -> ohtype -> unit
+
+val pp_otype : F.formatter -> otype -> unit
 
 val pp_gcmd : F.formatter -> gcmd -> unit
 
@@ -117,7 +122,7 @@ type gcmd_pos = int
 
 type odef_pos = int * int
 
-type ocmd_pos = int * int * int * ohybrid_otype option
+type ocmd_pos = int * int * int * otype
 
 (* position that points to Eq hybrid oracle, i.e., fourth value is fixed *)
 type ocmd_pos_eq = (int * int * int)
@@ -288,7 +293,7 @@ val vmap_in_orcl : sec_exp -> ocmd_pos -> vmap
 
 val norm_distr : ?norm:(expr -> expr) -> expr Me.t -> distr -> distr
 
-val norm_odef : ?norm:(expr -> expr) -> expr Me.t -> odef -> odef
+val norm_odef : ?norm:(expr -> expr) -> expr Me.t -> expr Expr.Me.t ref option -> odef -> odef
 
 val norm_gdef : ?norm:(expr -> expr) -> gdef -> gdef * expr Me.t
 

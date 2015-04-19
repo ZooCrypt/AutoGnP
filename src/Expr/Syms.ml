@@ -79,7 +79,7 @@ module Vsym = struct
 
   type t = { 
     id : id;
-    qual : Osym.t qual; (*r we allows qualified variables for eq-Hybrid-oracles *)
+    qual : Osym.t qual; (*r we allow qualified variables for eq-Hybrid-oracles *)
     ty : ty;
   }
 
@@ -101,6 +101,7 @@ module Vsym = struct
   let mk name ty = { id = Id.mk name; qual = Unqual; ty = ty; }
   let mk_qual name qual ty = { id = Id.mk name; qual = qual; ty = ty; }
 
+  (* FIXME: add different versions *)
   let pp fmt vs =
     match vs.qual with
     | Unqual -> F.fprintf fmt "%s" (Id.name vs.id)

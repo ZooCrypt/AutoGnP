@@ -130,10 +130,10 @@ let handle_tactic ts tac =
     | Wf.Wf_var_undef(v,e) ->
       tacerror "Wf: Var %a undefined in %a" Vsym.pp v pp_exp e
   in
-  let vmap_g = vmap_of_globals ju.ju_se.se_gdef in
+  let vmap_g = vmap_of_all ju.ju_se.se_gdef in
   let e_pos = epos_of_offset ju in
   let get_pos = gpos_of_apos ju in
-  let parse_e se = PU.expr_of_parse_expr vmap_g ts se in
+  let parse_e se = PU.expr_of_parse_expr vmap_g ts Unqual se in
   let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); Vsym.mk sv ty in
   let rec interp_tac tac =
     match tac with
@@ -210,13 +210,13 @@ let handle_tactic ts tac =
     | PT.Rconv(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-      let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
+      let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
       CR.t_conv true { se_gdef = gd2; se_ev = ev2 }
   
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-      let ev2 = PU.expr_of_parse_expr vmap2 ts sev in
+      let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
       CR.t_trans { se_gdef = gd2; se_ev = ev2 }
   
     | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
@@ -228,7 +228,7 @@ let handle_tactic ts tac =
   
     | PT.Rexcept_orcl(op,pes) ->
       let vmap = vmap_in_orcl ju.ju_se op in
-      let es = L.map (PU.expr_of_parse_expr vmap ts) pes in
+      let es = L.map (PU.expr_of_parse_expr vmap ts Unqual) pes in
       CR.t_except_oracle op es
   
     | PT.Rctxt_ev (mj,Some(sv,_mt,e)) ->
@@ -252,7 +252,7 @@ let handle_tactic ts tac =
       in
       let vmap = vmap_of_globals ju.ju_se.se_gdef in
       let v1 = PU.create_var vmap ts Unqual sv ty in
-      let e1 = PU.expr_of_parse_expr vmap ts e in
+      let e1 = PU.expr_of_parse_expr vmap ts Unqual e in
       let c = v1, e1 in
       CR.t_ctxt_ev j c
   
@@ -274,10 +274,12 @@ let handle_tactic ts tac =
   
     | PT.Rhybrid((i,j),(lcmds,eret)) ->
       let se = ju.ju_se in
-      let opos = (i,j,0,None) in
+      let opos = (i,j,0,Onohyb) in
       let vmap = vmap_in_orcl se opos in
-      let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts) lcmds in
-      let eret = PU.expr_of_parse_expr vmap ts eret in
+      let _, seoc = get_se_octxt se opos in
+      let oname = Id.name seoc.seoc_osym.Osym.id in
+      let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts ~oname) lcmds in
+      let eret = PU.expr_of_parse_expr vmap ts (Qual oname) eret in
       CR.t_hybrid i j lcmds eret
 
     | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) ->
@@ -292,8 +294,9 @@ let handle_tactic ts tac =
    let se = ju.ju_se in
    let _, seoc = get_se_octxt se opos in
    let vmap = vmap_in_orcl se opos in
-   let t = PU.expr_of_parse_expr vmap ts t in
    let oasym = seoc.seoc_asym in
+   let oname = Id.name seoc.seoc_osym.Osym.id in
+   let t = PU.expr_of_parse_expr vmap ts (Qual oname) t in
    let oty = seoc.seoc_osym.Osym.dom in
    let destr_prod ty = match oty.ty_node with
      | Prod(tys) -> tys
@@ -317,8 +320,8 @@ let handle_tactic ts tac =
    tacerror "radd_test expects either all values or only placeholders"
 
  | PT.Deduce(ppt,pes,pe) ->
-   let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
-   let e = PU.expr_of_parse_expr vmap_g ts  pe in
+   let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
+   let e = PU.expr_of_parse_expr vmap_g ts Unqual pe in
    (*
    let vars_es  = L.fold_left (fun s e -> Se.union s (e_vars e)) Se.empty es in
    let vars_e   = e_vars e in
@@ -340,7 +343,7 @@ let handle_tactic ts tac =
 
   
  | PT.FieldExprs(pes) ->
-   let es = L.map (PU.expr_of_parse_expr vmap_g ts) pes in
+   let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
    let ses = ref Se.empty in
      Game.iter_se_exp ~iexc:true
        (fun e' -> e_iter_ty_maximal mk_Fq
@@ -423,7 +426,7 @@ let handle_instr verbose ts instr =
       with Not_found -> tacerror "unknown variable %s" s
     in
     let symvs = L.map (L.map parse_var) symvs in
-    let ev = PU.expr_of_parse_expr vmap ts ev in
+    let ev = PU.expr_of_parse_expr vmap ts Unqual ev in
     let assm = Assumption.mk_assm_comp s inf at g ev symvs in
     if Mstring.mem s ts.ts_assms_comp then
       tacerror "assumption with the same name already exists";

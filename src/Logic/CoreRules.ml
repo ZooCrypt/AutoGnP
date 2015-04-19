@@ -456,20 +456,29 @@ let rrnd_oracle p c1 c2 ju =
     (* check second context first such that divZero does not clobber undef *)
     let wfs = wf_gdef CheckDivZero (L.rev seoc.seoc_sec.sec_left) in
     let wfs = ensure_varnames_fresh wfs seoc.seoc_oargs in
-    let wfs = wf_lcmds CheckDivZero wfs (L.rev seoc.seoc_cleft) in
+    let wfs = wf_lcmds CheckDivZero wfs None (L.rev seoc.seoc_cleft) in
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     wf_exp CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     let rv = mk_V rvs in
+    let qual = Qual seoc.seoc_osym in
     let nrvs = 
       if ty_equal rvs.Vsym.ty new_ty then rvs 
-      else Vsym.mk (mk_name ~name:(Id.name (fst c1).Vsym.id) se) new_ty in
+      else Vsym.mk_qual (mk_name ~name:(Id.name (fst c1).Vsym.id) se) qual new_ty
+    in
     let nrv = mk_V nrvs in
-    let vslet = Vsym.mk (mk_name se) rv.e_ty in
+    let vslet = Vsym.mk_qual (mk_name se) qual rv.e_ty in
     let cmds = [ LSamp(nrvs,(new_ty, [])); LLet(vslet, inst_ctxt c1 nrv) ] in
     let subst e = e_replace rv (mk_V vslet) e in
-    let seoc = { seoc with
-                 seoc_return = subst seoc.seoc_return;
-                 seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright }
+    let sec =
+      { seoc.seoc_sec with
+        sec_right = map_gdef_exp subst seoc.seoc_sec.sec_right;
+        sec_ev    = subst seoc.seoc_sec.sec_ev }
+    in
+    let seoc =
+      { seoc with
+        seoc_return = subst seoc.seoc_return;
+        seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright;
+        seoc_sec = sec }
     in
     Rrnd_orcl(p,c1,c2), [ { ju with ju_se = set_se_octxt cmds seoc } ]
   | _ -> tacerror "rnd_oracle: position given is not a sampling"
@@ -585,13 +594,18 @@ let t_rw_ev i d = prove_by (rrw_ev i d)
 
 let rswap_main ((i,j,k) as opos_eq) vname ju =
   let se = ju.ju_se in
-  let lcmd,seoc = get_se_octxt se (i,j,k,Some OHeq) in
+  let lcmd,seoc = get_se_octxt se (i,j,k,Ohyb OHeq) in
   match lcmd with
   | LSamp(vs,d) ->
     let vs_new = Vsym.mk vname vs.Vsym.ty in
     let subst e = e_replace (mk_V vs) (mk_V vs_new) e in
     let samp = GSamp(vs_new,d) in
-    let sec = { seoc.seoc_sec with sec_left = samp::seoc.seoc_sec.sec_left } in
+    let sec =
+      { sec_left  = samp::seoc.seoc_sec.sec_left;
+        sec_right = map_gdef_exp subst seoc.seoc_sec.sec_right;
+        sec_ev    = subst seoc.seoc_sec.sec_ev;
+      }
+    in
     let seoc =
       { seoc with
           seoc_sec = sec;
@@ -1005,7 +1019,7 @@ let t_trans new_se =
 
 let rhybrid gpos oidx new_lcmds new_eret ju =
   let se = ju.ju_se in
-  let lcmd, seoc =  get_se_octxt se (gpos,oidx,0,None) in
+  let lcmd, seoc = get_se_octxt se (gpos,oidx,0,Onohyb) in
   let old_lcmd = lcmd::seoc.seoc_cright in
   let old_ret = seoc.seoc_return in
   (* replace oracle definition in second judgment *)

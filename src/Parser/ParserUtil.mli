@@ -25,9 +25,9 @@ val mk_Tuple : expr list -> expr
 val bind_of_parse_bind :
   vmap -> theory_state -> (string * string) list -> (Vsym.t * Hsym.t) list
 
-val expr_of_parse_expr : vmap -> theory_state -> parse_expr -> expr
+val expr_of_parse_expr : vmap -> theory_state -> string qual -> parse_expr -> expr
 
-val lcmd_of_parse_lcmd : vmap -> theory_state -> lcmd -> Game.lcmd
+val lcmd_of_parse_lcmd : vmap -> theory_state -> oname:string -> lcmd -> Game.lcmd
 
 val odef_of_parse_odef :
   vmap -> theory_state -> string * string list * odec -> Game.odef

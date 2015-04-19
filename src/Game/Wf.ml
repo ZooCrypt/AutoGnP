@@ -25,7 +25,8 @@ type wf_check_type = CheckDivZero | NoCheckDivZero
 
 type wf_state = {
   wf_names : Sstring.t;  (*r used names for variables, adversaries, and oracles *)
-  wf_bvars : Vsym.S.t;   (*r bound variables, never two vsyms with the same name *)
+  wf_bvars : Vsym.S.t;   (*r bound variables.
+                               roughly: never two vsyms with the same name. *)
   wf_nzero : expr option (*r product of all nonzero-assumptions for field-expressions *)
 }
 
@@ -117,7 +118,6 @@ and wf_exp ctype wfs e0 =
   let rec go e =
     match e.e_node with
     | Cnst _ -> ()
-    | V vs when vs.Vsym.qual<>Unqual -> () (* FIXME: check this *)
     | V vs ->
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
         (fun () -> raise (Wf_var_undef(vs,e0)))
@@ -181,18 +181,26 @@ let wf_let ctype wfs v e =
   wf_exp ctype wfs e;
   wfs
 
-let wf_lcmds ctype wfs0 odef0 =
-  let rec go wfs odef = match odef with
+let wf_lcmds ctype wfs0 exported_vsyms odef0 =
+  let do_export,export_vs =
+    match exported_vsyms with
+    | None         -> false, fun _ -> ()
+    | Some vsyms_r -> true, fun vs -> vsyms_r := Vsym.S.add vs !vsyms_r
+  in
+  let rec go wfs ~do_export odef =
+    match odef with
     | [] -> wfs
     | LLet(v,e)::lcmds ->
+      if do_export then export_vs v;
       let wfs = wf_let ctype wfs v e in
-      go wfs lcmds
+      go wfs ~do_export lcmds
     | LSamp(v,(t,es))::lcmds ->
+      if do_export then export_vs v;
       let wfs = wf_samp ctype wfs v t es in
-      go wfs lcmds
+      go wfs ~do_export lcmds
     | LBind (vs,hsym)::lcmds -> 
       assert (ty_equal (ty_prod vs) hsym.Hsym.dom);
-      go wfs lcmds
+      go wfs ~do_export:false lcmds
     | LGuard e::lcmds ->
       assert (ty_equal e.e_ty mk_Bool);
       wf_exp ctype wfs e;
@@ -204,26 +212,29 @@ let wf_lcmds ctype wfs0 odef0 =
              | _ -> wfs)
         | _ -> wfs
       in
-      go wfs lcmds
+      go wfs ~do_export:false lcmds
   in
-  go wfs0 odef0
+  go wfs0 ~do_export odef0
 
-let wf_obody ctype wfs osym vs (lcmds,e) =
+let wf_obody ctype wfs osym vs exported_vsyms (lcmds,e) =
    assert (ty_equal osym.Osym.dom (ty_prod vs) &&
              ty_equal osym.Osym.codom e.e_ty);
    let wfs = ensure_varnames_fresh wfs vs in
-   let wfs = wf_lcmds ctype wfs lcmds in
+   begin match exported_vsyms with
+   | None -> ()
+   | Some vsyms_r ->
+     L.iter (fun v -> vsyms_r := Vsym.S.add v !vsyms_r) vs;
+   end;
+   let wfs = wf_lcmds ctype wfs exported_vsyms lcmds in
    wf_exp ctype wfs e
 
-let wf_odecl ctype wfs osym vs od =
+let wf_odef ctype wfs exported_vsyms (osym,vs,od) =
   match od with
-  | Odef ob    -> wf_obody ctype wfs osym vs ob
+  | Odef ob    -> wf_obody ctype wfs osym vs None ob
   | Ohybrid oh ->
-    L.iter (wf_obody ctype wfs osym vs) [oh.odef_less; oh.odef_eq; oh.odef_greater]
-
-let wf_odef ctype wfs (osym,vs,od) =
-  
-  wf_odecl ctype wfs osym vs od
+    wf_obody ctype wfs osym vs None           oh.odef_less;
+    wf_obody ctype wfs osym vs exported_vsyms oh.odef_eq;
+    wf_obody ctype wfs osym vs None           oh.odef_greater
 
 let wf_gdef ctype gdef0 =
   let rec go wfs gdef = match gdef with
@@ -242,8 +253,10 @@ let wf_gdef ctype gdef0 =
       let wfs =
         ensure_names_fresh wfs
           (List.map (fun (osym,_,_) -> Id.name osym.Osym.id) os)
-      in  
-      List.iter (wf_odef ctype wfs) os;
+      in
+      let exported_vsyms = ref Vsym.S.empty in
+      List.iter (wf_odef ctype wfs (Some exported_vsyms)) os;
+      let wfs = { wfs with wf_bvars = Vsym.S.union wfs.wf_bvars !exported_vsyms } in
       go wfs gcmds
   in
   go (mk_wfs ()) gdef0

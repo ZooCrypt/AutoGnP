@@ -308,7 +308,7 @@ lcomp :
 
 odecl :
 | lc=lcomp { Odef lc}
-| LBRACK lc1=lcomp lc2=lcomp lc3=lcomp RBRACK { Ohyb (lc1,lc2,lc3) }
+| LBRACK lc1=lcomp lc2=lcomp lc3=lcomp RBRACK { Ohybrid (lc1,lc2,lc3) }
 
 odef :
 | oname=ID UNIT EQUAL od=odecl { (oname,[],od) }
@@ -373,8 +373,8 @@ otype:
 ;
 
 opos:
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1,None) }
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT COMMA ot=otype RPAREN { (i-1,j-1,k-1,Some ot) }
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1,G.Onohyb) }
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT COMMA ot=otype RPAREN { (i-1,j-1,k-1,G.Ohyb ot) }
 ;
 
 opos_partial:

@@ -26,9 +26,10 @@ val check_nonzero : wf_check_type -> wf_state -> Expr.expr -> bool
 
 val wf_exp : wf_check_type -> wf_state -> Expr.expr -> unit
 
-val wf_lcmds : wf_check_type -> wf_state -> Game.lcmd list -> wf_state
+val wf_lcmds :
+  wf_check_type -> wf_state -> (Vsym.S.t ref) option -> Game.lcmd list -> wf_state
 
-val wf_odef : wf_check_type -> wf_state -> Game.odef -> unit
+val wf_odef : wf_check_type -> wf_state -> (Vsym.S.t ref) option-> Game.odef -> unit
 
 val wf_gdef : wf_check_type -> Game.gcmd list -> wf_state
 
