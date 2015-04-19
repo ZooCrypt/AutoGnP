@@ -4,6 +4,8 @@
   open Assumption
   open Util
 
+  module G = Game
+
 %}
 
 %token EOF
@@ -50,6 +52,8 @@
 %left  LAND
 
 %token EQUAL
+%token GREATER
+%token LESS
 
 %token COMMA
 %token NEQ
@@ -358,8 +362,15 @@ dir:
 | TO        { Util.LeftToRight }
 ;
 
+otype:
+| LESS    { G.OHless}
+| EQUAL   { G.OHeq }
+| GREATER { G.OHgreater }
+;
+
 opos:
 | LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1,None) }
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT COMMA ot=otype RPAREN { (i-1,j-1,k-1,Some ot) }
 ;
 
 opos_partial:

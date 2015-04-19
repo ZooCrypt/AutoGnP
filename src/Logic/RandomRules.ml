@@ -96,33 +96,33 @@ let contexts se rv mgen =
   (* find useful subexpressions of e (in the right order) *)
   useful_subexprs se rv mgen e
 
+let check_tannot ts ty mty =
+  match mty with
+  | None -> ()
+  | Some pty ->
+    let ety = ty_of_parse_ty ts pty in
+    if not (ty_equal ty ety) then
+      tacerror "wrong type annotation: expected %a, got %a" pp_ty ty pp_ty ety
+
+
 (** rnd tactic that tries out useful contexts for given random variable *)
-let t_rnd_pos ts (mctxt1 : PT.parse_ctx option) (mctxt2 : PT.parse_ctx option)
-      rv mgen i ju =
+let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
   let se = ju.ju_se in
   let rv_ty = rv.Vsym.ty in
   let deduc = DeducField.solve_mixed_type in
-  let check_tannot ty mty =
-    match mty with
-    | None -> ()
-    | Some pty ->
-      let ety = ty_of_parse_ty ts pty in
-      if not (ty_equal ty ety) then
-        tacerror "wrong type annotation: expected %a, got %a" pp_ty ty pp_ty ety
-  in
   let parse v_ty (sv,se') = parse_ctxt ts se v_ty (sv,se') in
   (match mctxt1, mctxt2 with
   | Some (sv1,mt1,se1), Some (sv2,mt2,se2) ->
     let v2_ty = rv_ty in
-    check_tannot v2_ty mt2;
+    check_tannot ts v2_ty mt2;
     let (v2,e2) = parse v2_ty (sv2,se2) in
     let v1_ty = e2.e_ty in
-    check_tannot v1_ty mt1;
+    check_tannot ts v1_ty mt1;
     let (v1,e1) = parse v1_ty (sv1,se1) in
     ret ((v1,e1),(v2,e2))
   | None, Some (sv2,mt2,se2) ->
     let v2_ty = rv_ty in
-    check_tannot v2_ty mt2;
+    check_tannot ts v2_ty mt2;
     let (v2,e2) = parse v2_ty (sv2,se2) in
     ret (deduc e2 v2,(v2,e2))
   | Some (sv1,mt1,se1), None ->
@@ -224,31 +224,43 @@ let parse_ctxt_oracle ts opos ju ty (sv,se) =
 
 
 (** rnd\_oracle tactic that tries all useful contexts if none are given *)
-(* FIXME: adapt this tactic to behave more like t_rnd_maybe, i.e., deal
-   with ctxt1 given, but ctxt2 placeholder better *)
 let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   let se = ju.ju_se in
   let osamps = osamplings se.se_gdef in
+  let deduc = DeducField.solve_mixed_type in
   (match mopos with
   | Some opos -> ret opos
   | None      -> mconcat (L.map fst osamps)
   ) >>= fun ((i,j,k,ootype) as op) ->
-  let (rv,(ty,_)) = L.assoc op osamps in
+  let (rv,(rv_ty,_)) = L.assoc op osamps in
+  let parse v_ty (sv,se') = parse_ctxt_oracle ts op se v_ty (sv,se') in
   guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
   log_t (lazy (fsprintf "###############################\n%!"));
   log_t (lazy (fsprintf "t_rnd_oracle_maybe (%i,%i,%i)\n%!" i j k));
-  (match mctxt2 with
-  | Some (sv2,_,se2) -> ret (parse_ctxt_oracle ts op se ty (sv2,se2))
-  | None           ->
-    let e2s = run (-1) (contexts se rv None) in
-    mconcat (sorted_nub e_compare (L.map Norm.norm_expr_nice e2s)) >>= fun e2 ->
-    ret (rv,e2)
-  ) >>= fun ((v2,e2)) ->
-  log_t (lazy (fsprintf "trying %a -> %a@\n%!" Vsym.pp v2 pp_exp e2));
-  (match mctxt1 with
-  | Some(sv1,_,e1) -> ret (parse_ctxt_oracle ts op se ty (sv1,e1))
-  | None when ty_equal ty mk_Fq ->
-    ret (v2, DeducField.solve_fq_vars_known e2 v2)
-  | None -> mempty
-  ) >>= fun (v1,e1) ->
+  (match mctxt1, mctxt2 with
+  | Some (sv1,mt1,se1), Some (sv2,mt2,se2) ->
+    let v2_ty = rv_ty in
+    check_tannot ts v2_ty mt2;
+    let (v2,e2) = parse v2_ty (sv2,se2) in
+    let v1_ty = e2.e_ty in
+    check_tannot ts v1_ty mt1;
+    let (v1,e1) = parse v1_ty (sv1,se1) in
+    ret ((v1,e1),(v2,e2))
+  | None, Some (sv2,mt2,se2) ->
+    let v2_ty = rv_ty in
+    check_tannot ts v2_ty mt2;
+    let (v2,e2) = parse v2_ty (sv2,se2) in
+    ret (deduc e2 v2,(v2,e2))
+  | Some (sv1,mt1,se1), None ->
+    let v1_ty = opt (ty_of_parse_ty ts) rv_ty mt1  in
+    let (v1,e1) = parse v1_ty (sv1,se1) in
+    ret ((v1,e1), deduc e1 v1)
+  | None, None ->
+    let e2s =
+      run (-1) (contexts se rv None) |> L.map Norm.norm_expr_nice |> nub e_equal
+    in
+    mconcat (L.map (fun e2 -> (rv,e2)) e2s) >>= fun (v2,e2) ->
+    ret (deduc e2 v2, (v2,e2))
+    (* FIXME: for CS bycrush, we excluded contexts rv -> - rv *)
+  ) >>= fun ((v1,e1),(v2,e2)) ->
   CR.t_rnd_oracle (i,j,k,ootype) (v1,e1) (v2,e2) ju

@@ -117,9 +117,6 @@ rule lex = parse
   | ['a'-'z' 'A'-'Z' ]
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
     as s { ID s }
-(*  | ['A'-'Z']
-    ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
-    as s { AID s } *)
   | ":"     { COLON }
   | ";"     { SEMICOLON }
   | "()"    { UNIT }
@@ -141,16 +138,10 @@ rule lex = parse
   | "="     { EQUAL }
   | "|"     { MID }
   | "->"    { TO }
+  | "<"     { LESS }
+  | ">"     { GREATER }
   | "."     { DOT }
   | "_"     { UNDERSCORE }
-
-(*  | "{"     { LBRACE } *)
-(*  | "}"     { RBRACE } *)
-(*  | "^-1"   { INV } *)
-(*  | ":"     { COLON } *)
-
-(*  | "."     { DOT }   *)
-(*  | ['0'-'9']+ as s {INT (int_of_string s)} *)
 
 and comment = parse
   | "*)"        { () }
