@@ -148,7 +148,7 @@ let handle_tactic ts tac =
   
     | PT.Rswap(i,j)            -> t_swap i j
     | PT.Rswap_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs
-    | PT.Rdist_eq              -> CR.t_dist_eq
+    | PT.Rdist_eq              -> Rules.t_dist_eq
     | PT.Rdist_sym             -> CR.t_dist_sym
     | PT.Rremove_ev(is)        -> CR.t_remove_ev is
     | PT.Rsplit_ev(i)          -> CR.t_split_ev (e_pos i)

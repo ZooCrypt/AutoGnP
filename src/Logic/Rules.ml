@@ -55,6 +55,17 @@ let t_debug log s g =
 let t_guard f ju =
   if f ju then t_id ju else mempty
 
+let t_dist_eq ju =
+  match ju.ju_pr with
+  | Pr_Dist se' ->
+    let se = ju.ju_se in
+    if se_equal se se' then
+      CoreRules.t_dist_eq ju
+    else
+      (CoreRules.t_conv true se' @> CoreRules.t_dist_eq) ju
+  | _ ->
+    tacerror "dist_eq: Dist judgment expected"
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Extracting samplings, lets, and guards from game} *)
 

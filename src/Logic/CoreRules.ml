@@ -739,13 +739,13 @@ let t_dist_sym = prove_by rdist_sym
 (** {\bf Equal experiments cannot be distinguished} *)
 
 let rdist_eq ju =
+  let rn = "rdist_eq" in
   match ju.ju_pr with
   | Pr_Dist se' ->
-    let se = rename_if_required "dist_eq" ju.ju_se se' in
-    if se_equal se' se then
-      Rdist_eq, []
-    else
-      tacerror "dist_eq: judgments not equal"
+    let se = ju.ju_se in
+    ensure_gdef_eq  rn se.se_gdef se'.se_gdef;
+    ensure_event_eq rn se.se_ev   se'.se_ev;
+    Rdist_eq, []
   | _ ->
     tacerror "dist_eq: Dist judgment expected"
 

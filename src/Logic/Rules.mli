@@ -30,6 +30,8 @@ val t_debug : (string lazy_t -> unit) -> string -> tactic
 
 val t_guard : (goal -> bool) -> tactic
 
+val t_dist_eq : tactic
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Extracting samplings, lets, and guards from game} *)
 
