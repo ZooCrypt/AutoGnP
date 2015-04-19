@@ -298,9 +298,13 @@ lcmdlist :
 lcomp :
 | LBRACK e=expr0 MID cmds=lcmdlist RBRACK { (cmds, e) }
 
+odecl :
+| lc=lcomp { Odef lc}
+| LBRACK lc1=lcomp lc2=lcomp lc3=lcomp RBRACK { Ohyb (lc1,lc2,lc3) }
+
 odef :
-| oname=ID UNIT EQUAL lc=lcomp { (oname,[],lc) }
-| oname=ID LPAREN args=idlist RPAREN EQUAL lc=lcomp { (oname, args, lc) }
+| oname=ID UNIT EQUAL od=odecl { (oname,[],od) }
+| oname=ID LPAREN args=idlist RPAREN EQUAL od=odecl { (oname, args, od) }
 
 /************************************************************************/
 /* games */

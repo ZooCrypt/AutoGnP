@@ -1,0 +1,35 @@
+(* extracted from use of pairwise independent hash function in Waters scheme *)
+
+adversary A1 : () -> Fq.
+adversary A2 : Fq -> Bool.
+
+oracle O : Fq -> Fq.
+
+bound_dist
+  [ j <- A1() with
+        O(i) =
+          [ (* for < *)
+            [ t1 | t1 <-$ Fq ]
+            (* for = *)
+            [ t1 | t1 <-$ Fq ]
+            (* for > *)
+            [ t1 | t1 <-$ Fq ] ];
+    t2 <-$ Fq;
+    beta <- A2(t2);
+  ] : beta
+  [ a <-$ Fq;
+    b <-$ Fq;
+    j <- A1() with
+        O(i) =
+          [ (* for < *)
+            [ t1 | t1 <-$ Fq ]
+            (* for = *)
+            [ a*i + b | t1 <-$ Fq ]
+            (* for > *)
+            [ t1 | t1 <-$ Fq ] ];
+    beta <- A2(a*j + b);
+  ] : beta.
+  admit.
+  qed.
+  
+  

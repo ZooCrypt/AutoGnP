@@ -156,7 +156,21 @@ let lcmd_of_parse_lcmd vmap ts lcmd =
   | LBind(_) ->
     assert false (* not implemented yet *)
 
-let odef_of_parse_odef vmap ts (oname, vs, (m,e)) =
+let obody_of_parse_obody vmap ts (m,e) =
+  let vmap = Ht.copy vmap in
+  let m = L.map (lcmd_of_parse_lcmd vmap ts) m in
+  let e = expr_of_parse_expr vmap ts e in
+  (m,e)
+
+let odec_of_parse_odec vmap ts od =
+  match od with
+  | Odef ob -> G.Odef (obody_of_parse_obody vmap ts ob)
+  | Ohyb (ob1,ob2,ob3) ->
+    G.Ohybrid { G.odef_less = obody_of_parse_obody vmap ts ob1;
+                G.odef_eq = obody_of_parse_obody vmap ts ob2;
+                G.odef_greater = obody_of_parse_obody vmap ts ob3; }
+
+let odef_of_parse_odef vmap ts (oname, vs, odec) =
   (*c variables declared in oracle are local *)
   let vmap = Ht.copy vmap in
   let osym =
@@ -174,9 +188,8 @@ let odef_of_parse_odef vmap ts (oname, vs, (m,e)) =
     | _ ->
       tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
   in
-  let m = L.map (lcmd_of_parse_lcmd vmap ts) m in
-  let e = expr_of_parse_expr vmap ts e in
-  (osym, vs, Game.Odef (m, e))
+  let od = odec_of_parse_odec vmap ts odec in
+  (osym, vs, od)
 
 let gcmd_of_parse_gcmd vmap ts gc =
   match gc with

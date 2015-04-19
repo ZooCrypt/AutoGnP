@@ -51,7 +51,9 @@ type lcmd =
 
 type lcomp = lcmd list * parse_expr
 
-type odef = string * string list * lcomp
+type odec = Odef of lcomp | Ohyb of (lcomp * lcomp * lcomp)
+
+type odef = string * string list * odec
 
 type gcmd =
     GLet of string * parse_expr
