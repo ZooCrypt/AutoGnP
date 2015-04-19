@@ -133,6 +133,7 @@ rule lex = parse
   | "<-$"   { SAMP }
   | "\\"     { BACKSLASH }
   | "#"     { SHARP }
+  | "`"     { BACKTICK }
   | "["     { LBRACK }
   | "]"     { RBRACK }
   | "="     { EQUAL }

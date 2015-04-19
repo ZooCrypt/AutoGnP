@@ -2,6 +2,7 @@
 
 (*i*)
 open Game
+open Syms
 open Assumption
 open Util
 (*i*)
@@ -17,7 +18,7 @@ type parse_ty =
   | Prod of parse_ty list
 
 type parse_expr =
-    V of string
+  | V of string qual * string
   | SApp of string * parse_expr list
   | Tuple of parse_expr list
   | Proj of int * parse_expr

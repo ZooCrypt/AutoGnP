@@ -134,7 +134,7 @@ let handle_tactic ts tac =
   let e_pos = epos_of_offset ju in
   let get_pos = gpos_of_apos ju in
   let parse_e se = PU.expr_of_parse_expr vmap_g ts se in
-  let mk_new_var sv ty = assert (not (Ht.mem vmap_g sv)); Vsym.mk sv ty in
+  let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); Vsym.mk sv ty in
   let rec interp_tac tac =
     match tac with
     | PT.Rnorm                 -> t_norm ~fail_eq:false
@@ -166,7 +166,7 @@ let handle_tactic ts tac =
       t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) (map_opt get_pos mupto)
   
     | PT.Rrename(v1,v2) ->
-      let v1 = Ht.find vmap_g v1 in
+      let v1 = Ht.find vmap_g (Unqual,v1) in
       let v2 = mk_new_var v2 v1.Vsym.ty in
       t_rename v1 v2
   
@@ -191,7 +191,7 @@ let handle_tactic ts tac =
     | PT.Rindep(exact)         -> t_random_indep ts exact
   
     | PT.Rnorm_unknown(is) ->
-      let vs = L.map (fun s -> mk_V (Ht.find vmap_g s)) is in
+      let vs = L.map (fun s -> mk_V (Ht.find vmap_g (Unqual,s))) is in
       t_norm_unknown ts vs
   
     | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
@@ -251,7 +251,7 @@ let handle_tactic ts tac =
         else tacerror "rctxt_ev: bad event"
       in
       let vmap = vmap_of_globals ju.ju_se.se_gdef in
-      let v1 = PU.create_var vmap sv ty in
+      let v1 = PU.create_var vmap ts Unqual sv ty in
       let e1 = PU.expr_of_parse_expr vmap ts e in
       let c = v1, e1 in
       CR.t_ctxt_ev j c
@@ -307,7 +307,7 @@ let handle_tactic ts tac =
    (* create variables for returned values *)
    fail_unless (fun () -> L.length fvs = L.length tys)
      "number of given variables does not match type";
-   let fvs = L.map2 (fun v ty -> PU.create_var vmap v ty) fvs tys in
+   let fvs = L.map2 (fun v ty -> PU.create_var vmap ts Unqual v ty) fvs tys in
    apply ~adecls (CR.t_add_test opos t asym fvs)
   
  | PT.Radd_test(None,None,None,None) ->
@@ -401,7 +401,7 @@ let handle_instr verbose ts instr =
     let vmap, sigma = merge_vmap vmap1 vmap2 in
     let g1 = subst_v_gdef sigma g1 in
     let parse_var s =
-      try  Ht.find vmap s
+      try  Ht.find vmap (Unqual,s)
       with Not_found -> tacerror "unknown variable %s" s
     in
     let symvs = L.map (L.map parse_var) symvs in
@@ -419,7 +419,7 @@ let handle_instr verbose ts instr =
     let vmap = Ht.create 137 in
     let g = PU.gdef_of_parse_gdef vmap ts g in
     let parse_var s =
-      try  Ht.find vmap s
+      try  Ht.find vmap (Unqual,s)
       with Not_found -> tacerror "unknown variable %s" s
     in
     let symvs = L.map (L.map parse_var) symvs in

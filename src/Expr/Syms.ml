@@ -69,9 +69,17 @@ module Osym = struct
   let to_string os = Id.name os.id
 end
 
+type 'a qual = Unqual | Qual of 'a
+
+let map_qual f = function
+  | Unqual -> Unqual
+  | Qual x -> Qual (f x)
+
 module Vsym = struct
+
   type t = { 
     id : id;
+    qual : Osym.t qual; (*r we allows qualified variables for eq-Hybrid-oracles *)
     ty : ty;
   }
 
@@ -90,9 +98,14 @@ module Vsym = struct
   module S = Ps.S
   module H = Ps.H
 
-  let mk name ty = { id = Id.mk name; ty = ty; }
+  let mk name ty = { id = Id.mk name; qual = Unqual; ty = ty; }
+  let mk_qual name qual ty = { id = Id.mk name; qual = qual; ty = ty; }
 
-  let pp fmt ps = F.fprintf fmt "%s" (Id.name ps.id)
+  let pp fmt vs =
+    match vs.qual with
+    | Unqual -> F.fprintf fmt "%s" (Id.name vs.id)
+    | Qual q -> F.fprintf fmt "%s`%s" (Id.name q.Osym.id) (Id.name vs.id)
+
   let to_string ps = Id.name ps.id
   let set_of_list l =
     L.fold_right

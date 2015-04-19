@@ -13,7 +13,7 @@ exception ParseError of string
 
 val fail_parse : string -> 'a
 
-val create_var : vmap -> string -> ty -> Vsym.t
+val create_var : vmap -> theory_state -> string qual -> string -> ty -> Vsym.t
 
 (*c functions that take a [theory_state] extend the state
     with lenvars and groupvars *)

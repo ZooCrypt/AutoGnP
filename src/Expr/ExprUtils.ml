@@ -414,7 +414,7 @@ let sub t =
           (L.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
       mk_Tuple es, mk_Tuple zs
     | Int -> assert false in
-  let x1 =  Vsym.mk "x"  t in
+  let x1 = Vsym.mk "x" t in
   let x2 = Vsym.mk "x" t in
   let e, z = aux (mk_V x1) (mk_V x2) in
   (x1,(x2,e)), z

@@ -5,6 +5,7 @@ adversary A2 : Fq -> Bool.
 
 oracle O : Fq -> Fq.
 
+
 (* For the first adversary call *)
 bound_dist
   [ j <- A1() with
@@ -17,7 +18,7 @@ bound_dist
             [ t1 | t1 <-$ Fq ] ];
     t2 <-$ Fq;
     beta <- A2(t2);
-  ] : beta
+  ] : beta /\ (O`i<>j)
   [ a <-$ Fq;
     b <-$ Fq;
     j <- A1() with
@@ -25,11 +26,16 @@ bound_dist
           [ (* for < *)
             [ t1 | t1 <-$ Fq ]
             (* for = *)
-            [ a*i + b | t1 <-$ Fq ]
+            [ a*i + b ]
             (* for > *)
             [ t1 | t1 <-$ Fq ] ];
     beta <- A2(a*j + b);
-  ] : beta.
+  ] : beta /\ (O`i<>j).
+  rename t2 b.
+  (*
+  rnd b (b -> b + O`t1*(O`i - j)) _.
+  rnd_oracle (2,1,1,=) (t1 -> t1 + a*i) _; //.
+  *)
   admit.
 qed.
 
@@ -78,4 +84,4 @@ bound_dist
   swap b j.
   swap a b.
   dist_eq.
-  qed.
+qed.

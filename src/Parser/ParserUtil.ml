@@ -20,19 +20,20 @@ module S = String
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Utility functions} *)
 
-
 (** Parser error with explanation. *)
 exception ParseError of string
 
 let fail_parse s = raise (ParseError s)
 
-let create_var vmap s ty =
-  if Ht.mem vmap s then
+let create_var (vmap : G.vmap) ts qual s ty =
+  if Ht.mem vmap (qual,s) then (
     tacerror "create_var: variable %s already defined" s
-  else
-    let v = Vsym.mk s ty in
-    Ht.add vmap s v;
+  ) else (
+    let os = map_qual (fun s -> Mstring.find s ts.ts_odecls) qual in
+    let v = Vsym.mk_qual s os ty in
+    Ht.add vmap (qual,s) v;
     v
+  )
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Conversion functions for parser-types} *)
@@ -53,7 +54,7 @@ let mk_Tuple es =
   | [e] -> e
   | _ -> E.mk_Tuple es
 
-let bind_of_parse_bind vmap ts lH =
+let bind_of_parse_bind (vmap : G.vmap) ts lH =
   List.map
     (fun (s,h) ->
        let h =
@@ -61,21 +62,26 @@ let bind_of_parse_bind vmap ts lH =
          with Not_found ->
            fail_parse (F.sprintf "undefined random oracle %s" h)
        in
-       let x = create_var vmap s h.Hsym.dom in
+       let x = create_var vmap ts Unqual s h.Hsym.dom in
        (x, h))
     lH
 
-let expr_of_parse_expr vmap ts pe0 =
+let string_of_qvar (qual,s) =
+  match qual with
+  | Unqual -> s
+  | Qual q -> q^"`"^s
+
+let expr_of_parse_expr (vmap : G.vmap) ts pe0 =
   let rec go pe =
     match pe with
-    | V(s) ->
+    | V(qual,s) ->
       let v =
-        try Ht.find vmap s
+        try Ht.find vmap (qual,s)
         with Not_found ->
           fail_parse (F.sprintf "undefined variable %s (not in %s)"
-                        s
+                        (string_of_qvar (qual,s))
                         (S.concat ","
-                           (Ht.fold (fun v _ acc -> v::acc) vmap [])))
+                           (Ht.fold (fun qv _ acc -> (string_of_qvar qv)::acc) vmap [])))
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (List.map go es)
@@ -138,16 +144,16 @@ let expr_of_parse_expr vmap ts pe0 =
   in
   go pe0
 
-let lcmd_of_parse_lcmd vmap ts lcmd =
+let lcmd_of_parse_lcmd (vmap : G.vmap) ts lcmd =
   match lcmd with
   | LLet(s,e) ->
     let e = expr_of_parse_expr vmap ts e in
-    let v = create_var vmap s e.E.e_ty in
+    let v = create_var vmap ts Unqual s e.E.e_ty in
     G.LLet(v,e)
   | LSamp(s,t,es) ->
     let t = ty_of_parse_ty ts t in
     let es = L.map (expr_of_parse_expr vmap ts) es in
-    let v = create_var vmap s t in
+    let v = create_var vmap ts Unqual s t in
     G.LSamp(v,(t,es))
   | LGuard(e) ->
     let e = expr_of_parse_expr vmap ts e in
@@ -169,37 +175,45 @@ let odec_of_parse_odec vmap ts od =
                 G.odef_eq = obody_of_parse_obody vmap ts ob2;
                 G.odef_greater = obody_of_parse_obody vmap ts ob3; }
 
-let odef_of_parse_odef vmap ts (oname, vs, odec) =
-  (*c variables declared in oracle are local *)
-  let vmap = Ht.copy vmap in
+let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
   let osym =
     try Mstring.find oname ts.ts_odecls
     with Not_found -> fail_parse "oracle name not declared"
   in
+  (*c otherwise, variables declared in oracle are local *)
+  let vmap = Ht.copy vmap_g in
   let vs =
     match osym.Osym.dom.Type.ty_node, vs with
     | Type.Prod([]), [] -> []
     | Type.Prod(tys), vs when List.length tys = List.length vs ->
       let vts = List.combine vs tys in
-      let vs = List.map (fun (v,t) -> create_var vmap v t) vts in
+      let vs = List.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       vs
-    | _, [v] -> [create_var vmap v osym.Osym.dom]
+    | _, [v] -> [create_var vmap ts Unqual v osym.Osym.dom]
     | _ ->
       tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
+  in
+  (* extend global vmap with oracle arguments for eq-hybrid-oracle *)
+  (* FIXME: should the variables inside the oracle be qualified? *)
+  let () = 
+    match odec with
+    | Odef _ -> ()
+    | Ohyb _ ->
+      L.iter (fun v -> ignore (create_var vmap_g ts (Qual oname) (Vsym.to_string v) v.Vsym.ty)) vs
   in
   let od = odec_of_parse_odec vmap ts odec in
   (osym, vs, od)
 
-let gcmd_of_parse_gcmd vmap ts gc =
+let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
   match gc with
   | GLet(s,e) ->
     let e = expr_of_parse_expr vmap ts e in
-    let v = create_var vmap s e.E.e_ty in
+    let v = create_var vmap ts Unqual s e.E.e_ty in
     G.GLet(v,e)
   | GSamp(s,t,es) ->
     let t = ty_of_parse_ty ts t in
     let es = L.map (expr_of_parse_expr vmap ts) es in
-    let v = create_var vmap s t in
+    let v = create_var vmap ts Unqual s t in
     G.GSamp(v,(t,es))
   | GCall(vs,aname,e,os) ->
     let asym =
@@ -215,18 +229,18 @@ let gcmd_of_parse_gcmd vmap ts gc =
       G.GCall([], asym, e, os)
     | Type.Prod(tys), vs when List.length tys = List.length vs ->
       let vts = List.combine vs tys in
-      let vs = List.map (fun (v,t) -> create_var vmap v t) vts in
+      let vs = List.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
     | _, [v] ->
-      let v = create_var vmap v asym.Asym.codom in
+      let v = create_var vmap ts Unqual v asym.Asym.codom in
       G.GCall([v], asym, e, os)
     | _ -> assert false
     end
 
-let gdef_of_parse_gdef vmap ts gd =
+let gdef_of_parse_gdef (vmap : G.vmap) ts gd =
   L.map (fun gc -> gcmd_of_parse_gcmd vmap ts gc) gd
 
-let se_of_parse_se vmap ts gd e =
+let se_of_parse_se (vmap : G.vmap) ts gd e =
   let gd = gdef_of_parse_gdef vmap ts gd in
   let e  = expr_of_parse_expr vmap ts e in
   let se = { G.se_gdef = gd; G.se_ev = e } in

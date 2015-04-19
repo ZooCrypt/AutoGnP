@@ -32,7 +32,7 @@ type wf_state = {
 let mk_wfs () = {
   wf_names = Sstring.empty;
   wf_bvars = Vsym.S.empty;
-  wf_nzero = None
+  wf_nzero = None;
 }
 
 let ensure_name_fresh wfs name =
@@ -117,7 +117,8 @@ and wf_exp ctype wfs e0 =
   let rec go e =
     match e.e_node with
     | Cnst _ -> ()
-    | V vs -> 
+    | V vs when vs.Vsym.qual<>Unqual -> () (* FIXME: check this *)
+    | V vs ->
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
         (fun () -> raise (Wf_var_undef(vs,e0)))
     | Exists(e1,e2,(vhs)) ->
@@ -221,6 +222,7 @@ let wf_odecl ctype wfs osym vs od =
     L.iter (wf_obody ctype wfs osym vs) [oh.odef_less; oh.odef_eq; oh.odef_greater]
 
 let wf_odef ctype wfs (osym,vs,od) =
+  
   wf_odecl ctype wfs osym vs od
 
 let wf_gdef ctype gdef0 =
@@ -240,7 +242,7 @@ let wf_gdef ctype gdef0 =
       let wfs =
         ensure_names_fresh wfs
           (List.map (fun (osym,_,_) -> Id.name osym.Osym.id) os)
-      in
+      in  
       List.iter (wf_odef ctype wfs) os;
       go wfs gcmds
   in

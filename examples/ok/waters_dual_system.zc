@@ -129,12 +129,6 @@ unfold tau1 tau2 P0 P1 P2 P3 P4 P5.
 (* *)
 rnd s2 (s2 -> s2 + c1 + c2) _.
 rnd s1 (s1 -> s1 - c2)  _. unfold r3 r4; //= c1 c2. 
-field_exprs c1 c2.
-
-deduce [f, nu, g^c1, f^c2, nu^(c1+c2)] (nu^(s2 + c1 + c2)).
-  
-deduce [f, nu, g^c1, f^c2, nu^(c1+c2)] (g_t^c1).
-deduce g_t^c1
 abstract yv arg (f, nu, g^c1, f^c2, nu^(c1+c2)).
 
 assumption_decisional dlin -> [arg] tt.

@@ -96,19 +96,19 @@ let pp_lcomp fmt (e,m) =
             (pp_list ";@\n" pp_ilcmd) (num_list m) (L.length m + 1) pp_exp e
 
 let string_of_otype = function
-  | OHless -> "[<]"
-  | OHeq -> "[=]"
-  | OHgreater -> "[>]"
+  | OHless    -> "<"
+  | OHeq      -> "="
+  | OHgreater -> ">"
 
 let pp_otype fmt ot = pp_string fmt (string_of_otype ot)
 
 let pp_obody ootype fmt (ms,e) =
-  F.fprintf fmt "[ %s@\n  @[<v>%a@]@,]"
-    (match ootype with None -> "" | Some ot -> "(* for "^string_of_otype ot^" *)")
+  F.fprintf fmt "[ %s@\n  @[<v>%a@] ]"
+    (match ootype with None -> "" | Some ot -> "(* "^string_of_otype ot^" *)")
     pp_lcomp (e,ms)
 
 let pp_ohybrid fmt oh =
-  F.fprintf fmt "[@\n  @[<v>%a@]@,@[<v>%a@]@,@[%a@]@.]"
+  F.fprintf fmt "[@\n  @[<v>%a@]@\n  @[<v>%a@]@\n  @[<v>%a@]@\n]"
     (pp_obody (Some OHless))    oh.odef_less
     (pp_obody (Some OHeq))      oh.odef_eq
     (pp_obody (Some OHgreater)) oh.odef_greater
@@ -119,7 +119,7 @@ let pp_odecl fmt od =
   | Ohybrid oh -> pp_ohybrid fmt oh
 
 let pp_odef fmt (o, vs, od) =
-  F.fprintf fmt "@[<v>%a%a = %a@]" 
+  F.fprintf fmt "@[<v>%a(%a) = %a@]" 
     Osym.pp o pp_binder vs
     pp_odecl od
 
@@ -839,7 +839,7 @@ let pp_ren fmt ren =
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Mappings from strings to variables} *) 
 
-type vmap = (string,Vsym.t) Hashtbl.t
+type vmap = (string qual * string,Vsym.t) Hashtbl.t
 
 (** Given two variable maps $vm_1$ and $vm_2$, return a new map $vm$ and
     a variable renaming $\sigma$ such that:
@@ -863,7 +863,10 @@ let merge_vmap vm1 vm2 =
 let vmap_of_vss vss =
   let vm = Hashtbl.create 134 in
   Vsym.S.iter
-    (fun vs -> Hashtbl.add vm (Vsym.to_string vs) vs)
+    (fun vs ->
+       Hashtbl.add vm
+         (map_qual (fun os -> Id.name os.Osym.id) vs.Vsym.qual, Vsym.to_string vs)
+         vs)
     vss;
   vm
 
@@ -872,7 +875,9 @@ let vmap_of_ves ves =
   Se.iter
     (fun v ->
       let vs = destr_V v in
-      Hashtbl.add vm (Vsym.to_string vs) vs)
+      Hashtbl.add vm
+        (map_qual (fun os -> Id.name os.Osym.id) vs.Vsym.qual, Vsym.to_string vs)
+        vs)
     ves;
   vm
 

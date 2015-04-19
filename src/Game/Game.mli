@@ -271,7 +271,7 @@ val pp_ren : F.formatter -> Vsym.t Vsym.M.t -> unit
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Mappings from strings to variables} *) 
 
-type vmap = (string,Vsym.t) Hashtbl.t
+type vmap = (string qual * string,Vsym.t) Hashtbl.t
 
 val merge_vmap : vmap -> vmap -> vmap * (vs -> vs)
 

@@ -1,6 +1,7 @@
 %{
   (** Parser for expressions, games, judgments, and tactic command. *)
   open ParserTypes
+  open Syms
   open Assumption
   open Util
 
@@ -71,6 +72,7 @@
 %token LET
 %token SAMP
 %token SHARP
+%token BACKTICK
 %token BACKSLASH
 %token LBRACK
 %token RBRACK
@@ -214,7 +216,7 @@ expr :
 
 expr0 :
 | EXISTS bd=hbindings COLON e1=expr1 EQUAL e2=expr1
-     { Exists(e1,e2,bd) }
+  { Exists(e1,e2,bd) }
 | e1=expr0 SHARP i=NAT { Proj(i,e1) }
 | e1=expr1 EQUAL e2=expr1 { Eq(e1,e2) }
 | e1=expr1 NEQ e2=expr1 { Not(Eq(e1,e2)) }
@@ -252,7 +254,8 @@ exprlist0 :
 | l=exprlist1? { from_opt [] l }
 
 expr6 :
-| s=ID  { V(s) }
+| s=ID                 { V(Unqual,s) }
+| s1=ID BACKTICK s2=ID { V(Qual s1, s2) }
 | UNIT    { Tuple [] }
 | i=NAT { CFNat i }
 | i=GEN { CGen(i) }

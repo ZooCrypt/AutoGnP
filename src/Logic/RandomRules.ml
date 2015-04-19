@@ -30,7 +30,7 @@ let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "RandomRules" ls
 let parse_ctxt ts sec ty (sv,se) =
   let vmap = vmap_of_globals sec.se_gdef in
   let v = Vsym.mk sv ty in
-  Hashtbl.add vmap sv v;
+  Hashtbl.add vmap (Unqual,sv) v;
   (v,expr_of_parse_expr vmap ts se)
 
 
@@ -219,7 +219,7 @@ let parse_ctxt_oracle ts opos ju ty (sv,se) =
   let vmap = vmap_in_orcl ju opos in
   (* bound name overshadows names in game *)
   let v = Vsym.mk sv ty in
-  Hashtbl.add vmap sv v;
+  Hashtbl.add vmap (Unqual,sv) v;
   (v,expr_of_parse_expr vmap ts se)
 
 

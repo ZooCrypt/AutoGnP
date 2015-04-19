@@ -35,14 +35,17 @@ module Osym : sig
   module H : Hashtbl.S with type key = t
 end
 
+type 'a qual = Unqual | Qual of 'a
+val map_qual : ('a -> 'b) -> 'a qual -> 'b qual
 
 module Vsym : sig
-  type t = private { id : Id.id; ty : ty; }
+  type t = private { id : Id.id; qual : Osym.t qual; ty : ty; }
 
   val hash : t -> int
   val equal : t -> t -> bool
   val compare : t -> t -> int
   val mk : string -> ty -> t
+  val mk_qual : string -> Osym.t qual -> ty -> t
   val pp : F.formatter -> t -> unit
   val to_string : t -> string
 
