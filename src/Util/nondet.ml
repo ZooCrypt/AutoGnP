@@ -33,7 +33,8 @@ let sforce x =
     failwith s
   | e ->
     let err = Printexc.to_string e in
-    log_i (lazy (F.sprintf "sforce: exception %s\n%!" err));
+    let bt = Printexc.get_backtrace () in
+    log_i (lazy (F.sprintf "sforce: exception %s\n%s%!" err bt));
     Nil None
 
 let rec mplus a b = from_fun (fun () ->
