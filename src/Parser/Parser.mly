@@ -301,6 +301,7 @@ lcmdlist :
 
 lcomp :
 | LBRACK e=expr0 MID cmds=lcmdlist RBRACK { (cmds, e) }
+| LBRACK e=expr0  RBRACK { ([], e) }
 
 odecl :
 | lc=lcomp { Odef lc}
