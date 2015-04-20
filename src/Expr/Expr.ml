@@ -473,13 +473,8 @@ let e_map_top f =
   in
   aux 
 
-let check_subst e1 e2 = 
-  assert (ty_equal e1.e_ty e2.e_ty)
-
 let e_replace e1 e2 = 
-  check_subst e1 e2;
   e_map_top (fun e -> if e_equal e e1 then e2 else raise Not_found)
 
 let e_subst s = 
-  Me.iter check_subst s;
   e_map_top (fun e -> Me.find e s)
