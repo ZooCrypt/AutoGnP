@@ -154,11 +154,10 @@ type se_octxt = {
   seoc_oargs: vs list;
   seoc_return : expr;
   seoc_cleft : lcmd list;
-  seoc_cright : lcmd list;
   seoc_sec : se_ctxt
 }
 
-val get_se_octxt : sec_exp -> ocmd_pos -> lcmd * se_octxt
+val get_se_octxt : sec_exp -> ocmd_pos -> lcmd list * se_octxt
 
 val set_se_octxt : lcmd list -> se_octxt -> sec_exp
 

@@ -364,21 +364,25 @@ let swap_oracle i delta ju =
   if delta = 0 then ju
   else (
     let se = ju.ju_se in
-    let i,seoc = get_se_octxt se i in
+    let i,cright,seoc =
+      match get_se_octxt se i with
+      | i::cright,seoc -> i,cright,seoc
+      | _ -> assert false
+    in
     let c1_rev,c2,c3 =
       if delta < 0 then
         let hhd,thd = cut_n (-delta) seoc.seoc_cleft in
-        thd,hhd,seoc.seoc_cright
+        thd,hhd,cright
       else
-        let htl, ttl = cut_n delta seoc.seoc_cright in
+        let htl, ttl = cut_n delta cright in
         seoc.seoc_cleft, L.rev htl, ttl
     in
     ensure_disjoint "swap_oracle" read_lcmds write_lcmds i c2;
     let c2, c3 =
       if delta > 0 then c2, i::c3 else i::c2, c3
     in
-    let seoc = { seoc with seoc_cleft = c1_rev; seoc_cright = c3 } in
-    { ju with ju_se = set_se_octxt c2 seoc }
+    let seoc = { seoc with seoc_cleft = c1_rev; } in
+    { ju with ju_se = set_se_octxt (c2@c3) seoc }
   )
 
 let rswap_oracle i delta ju =
@@ -449,7 +453,7 @@ let t_rnd p c1 c2 = prove_by (rrnd p c1 c2)
 let rrnd_oracle p c1 c2 ju =
   let se = ju.ju_se in
   match get_se_octxt se p with
-  | LSamp(rvs,(_,exc)), seoc ->
+  | LSamp(rvs,(_,exc))::cright, seoc ->
     if exc <> [] then tacerror "rnd_oracle: excepted distribution not allowed";
     let new_ty = (fst c1).Vsym.ty in
     ensure_bijection se c1 c2 rvs;
@@ -474,10 +478,10 @@ let rrnd_oracle p c1 c2 ju =
         sec_right = map_gdef_exp subst seoc.seoc_sec.sec_right;
         sec_ev    = subst seoc.seoc_sec.sec_ev }
     in
+    let cmds = cmds@(L.map (map_lcmd_exp subst) cright) in
     let seoc =
       { seoc with
         seoc_return = subst seoc.seoc_return;
-        seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright;
         seoc_sec = sec }
     in
     Rrnd_orcl(p,c1,c2), [ { ju with ju_se = set_se_octxt cmds seoc } ]
@@ -512,18 +516,19 @@ let t_assert p e = prove_by (rassert p e)
 let rrewrite_oracle op dir ju =
   let se = ju.ju_se in
   match get_se_octxt se op with
-  | LGuard(t) as lc, seoc ->
+  | LGuard(t) as lc::cright, seoc ->
     let (a,b) =
       match t.e_node with
       | App(Eq,[u;v]) -> if dir = LeftToRight then (u,v) else (v,u)
       | _ -> tacerror "rewrite_oracle: can only rewrite equalities"
     in
     let subst e = e_replace a b e in
-    let seoc = { seoc with
-                 seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright;
-                 seoc_return = subst seoc.seoc_return }
+    let cright = L.map (map_lcmd_exp subst) cright in
+    let seoc =
+      { seoc with
+        seoc_return = subst seoc.seoc_return }
     in
-    Rrw_orcl(op,dir), [ { ju with ju_se = set_se_octxt [lc] seoc } ]
+    Rrw_orcl(op,dir), [ { ju with ju_se = set_se_octxt (lc::cright) seoc } ]
   | _ ->
     tacerror "rewrite_oracle: invalid position"
 
@@ -617,7 +622,7 @@ let rswap_main ((i,j,k) as opos_eq) vname ju =
   let se = ju.ju_se in
   let lcmd,seoc = get_se_octxt se (i,j,k,Ohyb OHeq) in
   match lcmd with
-  | LSamp(vs,d) ->
+  | LSamp(vs,d)::cright ->
     let vs_new = Vsym.mk vname vs.Vsym.ty in
     let subst e = e_replace (mk_V vs) (mk_V vs_new) e in
     let samp = GSamp(vs_new,d) in
@@ -627,17 +632,16 @@ let rswap_main ((i,j,k) as opos_eq) vname ju =
         sec_ev    = subst seoc.seoc_sec.sec_ev;
       }
     in
+    let cright = L.map (map_lcmd_exp subst) cright in
     let seoc =
       { seoc with
           seoc_sec = sec;
           seoc_cleft = L.map (map_lcmd_exp subst) seoc.seoc_cleft;
-          seoc_cright = L.map (map_lcmd_exp subst) seoc.seoc_cright;
           seoc_return = subst seoc.seoc_return }
     in
-    let se = set_se_octxt [] seoc in
+    let se = set_se_octxt cright seoc in
     wf_se NoCheckDivZero se;
-    let ju = { ju with ju_se = set_se_octxt [] seoc } in
-    Rswap_main opos_eq, [ ju ]
+    Rswap_main opos_eq, [ { ju with ju_se = se } ]
   | _ ->
     assert false
 
@@ -674,10 +678,10 @@ let t_except p es = prove_by (rexcept p es)
 let rexcept_oracle p es ju =
   let se = ju.ju_se in
   match get_se_octxt se p with
-  | LSamp(_,(_,es')), _ when list_equal e_equal es' es ->
+  | LSamp(_,(_,es'))::_, _ when list_equal e_equal es' es ->
     tacerror "except_oracle: identical exceptions already present"    
-  | LSamp(vs,(t,_)), seoc ->
-    let se = set_se_octxt [ LSamp(vs,(t,es)) ] seoc in
+  | LSamp(vs,(t,_))::cright, seoc ->
+    let se = set_se_octxt (LSamp(vs,(t,es))::cright) seoc in
     Rexc_orcl(p,es), [ { ju with ju_se = se } ]
   | _ -> tacerror "except_oracle: position given is not a sampling"
 
@@ -991,7 +995,7 @@ let t_assm_dec dir ren rngs assm = prove_by (rassm_dec dir ren rngs assm)
 let radd_test opos tnew asym fvs ju =
   let se = ju.ju_se in
   match get_se_octxt se opos with
-  | LGuard(t), seoc ->
+  | LGuard(t)::cright, seoc ->
     assert (ty_equal tnew.e_ty mk_Bool);
     let destr_guard lcmd =
       match lcmd with
@@ -1015,8 +1019,8 @@ let radd_test opos tnew asym fvs ju =
             sec_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
             sec_right = [] } }
     in
-    let ju1 = {ju_se = set_se_octxt [ LGuard(t) ] seoc_bad; ju_pr = Pr_Succ } in
-    let ju2 = { ju with ju_se =  set_se_octxt [ LGuard(t) ] seoc } in
+    let ju1 = {ju_se = set_se_octxt (LGuard(t)::cright) seoc_bad; ju_pr = Pr_Succ } in
+    let ju2 = { ju with ju_se =  set_se_octxt (LGuard(t)::cright) seoc } in
     Radd_test(opos, tnew, asym, fvs), [ ju1; ju2 ]
   | _ -> tacerror "add_test: given position is not a test"
 
@@ -1040,31 +1044,28 @@ let t_trans new_se =
 
 let rhybrid gpos oidx new_lcmds new_eret ju =
   let se = ju.ju_se in
-  let lcmd, seoc = get_se_octxt se (gpos,oidx,0,Onohyb) in
-  let old_lcmd = lcmd::seoc.seoc_cright in
+  let old_lcmds, seoc = get_se_octxt se (gpos,oidx,0,Onohyb) in
   let old_ret = seoc.seoc_return in
   (* replace oracle definition in second judgment *)
-  let seoc = { seoc with seoc_cright = new_lcmds; seoc_return = new_eret } in
-  let ju2 = { ju with ju_se = set_se_octxt [] seoc } in
+  let seoc = { seoc with seoc_return = new_eret } in
+  let ju2 = { ju with ju_se = set_se_octxt new_lcmds seoc } in
   (* use hybrid oracles in first judgment *)
   let seoc_left1 =
     { seoc with
-      seoc_cright    = old_lcmd;
       seoc_return    = old_ret;
       seoc_obless    = Some (new_lcmds,new_eret);
       seoc_obeq      = None; (* (cright,creturn) used for obeq *)
-      seoc_obgreater = Some (old_lcmd, old_ret);
+      seoc_obgreater = Some (old_lcmds, old_ret);
     }
   in
   let seoc_left2 =
     { seoc_left1 with
-      seoc_cright    = new_lcmds;
-      seoc_return    = new_eret;
+      seoc_return = new_eret;
     }
   in
   let ju1 =
-    { ju_se = set_se_octxt [] seoc_left1;
-      ju_pr = Pr_Dist (set_se_octxt [] seoc_left2);
+    { ju_se = set_se_octxt old_lcmds seoc_left1;
+      ju_pr = Pr_Dist (set_se_octxt new_lcmds seoc_left2);
     }
   in
   Rhybrid, [ ju1; ju2 ]

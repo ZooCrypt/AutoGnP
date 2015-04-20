@@ -328,7 +328,6 @@ type se_octxt = {
   seoc_oargs: vs list;
   seoc_return : expr;
   seoc_cleft : lcmd list;
-  seoc_cright : lcmd list;
   seoc_sec : se_ctxt
 }
 
@@ -337,7 +336,7 @@ let get_se_octxt se (i,j,k,ootype) =
   | GCall(vsa,asym,e,os), sec ->
     let rohd, (o,vs,od), otl = split_n j os in
     let (ms,oe) = get_obody od ootype in
-    let rhd, i, tl = split_n k ms in
+    let rhd, tl = cut_n k ms in
     let obless = match ootype with
       | Ohyb (OHeq |  OHgreater) -> Some (get_obody od (Ohyb OHless))
       | _ -> None
@@ -350,24 +349,23 @@ let get_se_octxt se (i,j,k,ootype) =
       | Ohyb (OHless | OHeq) -> Some (get_obody od (Ohyb OHgreater))
       | _ -> None
     in
-    i, { seoc_asym = asym;
-         seoc_avars = vsa;
-         seoc_aarg = e;
-         seoc_oright = rohd;
-         seoc_oleft = otl;
-         seoc_obless = obless;
-         seoc_obeq = obeq;
-         seoc_obgreater = obgreater;
-         seoc_osym = o;
-         seoc_oargs = vs;
-         seoc_return = oe;
-         seoc_cleft = rhd;
-         seoc_cright = tl;
-         seoc_sec = sec }
+    tl, { seoc_asym = asym;
+          seoc_avars = vsa;
+          seoc_aarg = e;
+          seoc_oright = rohd;
+          seoc_oleft = otl;
+          seoc_obless = obless;
+          seoc_obeq = obeq;
+          seoc_obgreater = obgreater;
+          seoc_osym = o;
+          seoc_oargs = vs;
+          seoc_return = oe;
+          seoc_cleft = rhd;
+          seoc_sec = sec }
   | _ -> assert false
 
 let set_se_octxt lcmds c =
-  let ms = L.rev_append c.seoc_cleft (lcmds @ c.seoc_cright) in
+  let ms = L.rev_append c.seoc_cleft lcmds in
   let ob = (ms,c.seoc_return) in
   let odecl =
     match c.seoc_obless, c.seoc_obeq,  c.seoc_obgreater with
@@ -383,8 +381,10 @@ let set_se_octxt lcmds c =
   set_se_ctxt i c.seoc_sec
 
 let set_se_lcmd se p cmds = 
-  let _, ctxt = get_se_octxt se p in
-  set_se_octxt cmds ctxt
+  match get_se_octxt se p with
+  | _::right, ctxt ->
+    set_se_octxt (cmds@right) ctxt
+  | _ -> assert false
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Iterate with context} *)
