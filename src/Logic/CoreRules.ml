@@ -486,6 +486,27 @@ let rrnd_oracle p c1 c2 ju =
 let t_rnd_oracle p c1 c2 = prove_by (rrnd_oracle p c1 c2)
 
 (*i ----------------------------------------------------------------------- i*)
+(** {\bf Copy condition implied by event to assert.} *)
+
+let rassert p e ju =
+  let se = ju.ju_se in
+  let cmd, sec = get_se_ctxt se p in
+  assert (ty_equal e.e_ty mk_Bool);
+  (* check that e well-defined at desired position, exploits
+     uniqueness of variables, i.e., v defined => v remains unchanged *)
+  let wfs = wf_gdef NoCheckDivZero (L.rev sec.sec_left) in
+  wf_exp CheckDivZero wfs e;
+  let cmds = [ GAssert(e); cmd ] in
+  let ju1 =
+    { ju_pr = Pr_Succ;
+      ju_se = { se with se_ev = mk_Land [se.se_ev; mk_Not e]; } }
+  in
+  let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
+  Rassert(p,e), [ ju1; ju2 ]
+
+let t_assert p e = prove_by (rassert p e)
+
+(*i ----------------------------------------------------------------------- i*)
 (** {\bf Rewrite oracle using test.} *)
 
 let rrewrite_oracle op dir ju =

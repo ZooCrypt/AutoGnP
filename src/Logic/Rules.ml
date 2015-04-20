@@ -232,6 +232,8 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   match ru with
   | Rconv ->
     F.fprintf fmt "rconv"
+  | Rassert(p,e) ->
+    F.fprintf fmt "rassert %i %a" p pp_exp e
   | Rtrans ->
     F.fprintf fmt "rtrans"
   | Rdist_eq ->

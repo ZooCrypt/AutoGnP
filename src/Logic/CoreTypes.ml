@@ -119,6 +119,10 @@ type rule_name =
      If the conjunct is an inequality [a <> b], rewrite witb [(a=b) = false]. *)
   | Rrw_ev     of int * direction
 
+  (* $Rassert(e)$: add assert(e) at position e after proving that G : ev /\ not
+                   e negl. Requires that evaluating e is stable after position p. *)
+  | Rassert of gcmd_pos * expr
+
   (* \hd{Apply assumption} *)
 
   | Rassm_dec  of (int * int) list * direction * renaming * assm_dec

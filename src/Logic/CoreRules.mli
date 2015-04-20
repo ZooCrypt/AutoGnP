@@ -93,6 +93,9 @@ val t_swap : gcmd_pos -> int -> tactic
 val rrnd  : gcmd_pos -> ctxt -> ctxt -> rule
 val t_rnd : gcmd_pos -> ctxt -> ctxt -> tactic
 
+val rassert : gcmd_pos -> expr -> rule
+val t_assert : gcmd_pos -> expr -> tactic
+
 (** [rctxt_ev ctx i ju] returns the judgment resulting from
     replacing the [i]-th conjunct in the event of [ju]
     with (a) [ctx(a) = ctx(b)] if it is equal to [a = b]

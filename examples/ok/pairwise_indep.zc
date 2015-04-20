@@ -16,7 +16,6 @@ bound_dist
             [ t1 | t1 <-$ Fq ]
             (* for > *)
             [ 0 ] ];
-    assert(j<>O`i);
     t2 <-$ Fq;
     beta <- A2(t2);
   ] : beta /\ (O`i<>j)
@@ -30,14 +29,17 @@ bound_dist
             [ a*i + b ]
             (* for > *)
             [ 0 ] ];
-    assert(j<>O`i);
     beta <- A2(a*j + b);
   ] : beta /\ (O`i<>j).
   rename t2 a.
+  assert a (O`i<>j). (* add assert to enable rnd rule *)
+    bycrush.
   rnd a (a -> O`t1 + a*(j - O`i)) _; //.
   swap a -2.
   rnd_oracle (2,1,1,=) (t1 -> t1 + a*i) _; //.
   swap_main (2,1,1) b.
+  assert 4. (* remove assert again *)
+    bycrush.
   dist_eq.
 qed.
 

@@ -342,7 +342,6 @@ gcmd :
 | ASSERT LPAREN e=expr0 RPAREN
   { GAssert(e) }
 
-
 gcmdlist0 :
 | c=gcmd SEMICOLON { [c] }
 | c=gcmd SEMICOLON cs=gcmdlist0 { c::cs }
@@ -502,11 +501,14 @@ tactic :
 | RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
           i1=ID e1=uopt(expr0) mupto=assgn_pos?
   { Rlet_abstract(i,i1,e1,mupto,excl=None) }
+| ASSERT i=assgn_pos e=expr0?
+  { Rassert(i,e) }
 
 /* swapping */
 | RSWAP i=swap_pos j=assgn_pos { Rswap(i,j) }
 | RSWAP op=opos j=int { Rswap_oracle(op,j) }
-| RSWAP_MAIN op=opos_partial v=ID { Rswap_main(op,v) }
+| RSWAP_MAIN op=opos_partial v=ID { Rswap_to_main(op,v) }
+| RSWAP_MAIN i=assgn_pos op=opos_partial v=ID { Rswap_to_orcl(i,op,v) }
 
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?

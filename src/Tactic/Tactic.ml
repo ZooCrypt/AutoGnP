@@ -147,7 +147,6 @@ let handle_tactic ts tac =
       Rules.t_seq_fold lt
   
     | PT.Rswap(i,j)            -> t_swap i j
-    | PT.Rswap_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs
     | PT.Rdist_eq              -> Rules.t_dist_eq
     | PT.Rdist_sym             -> CR.t_dist_sym
     | PT.Rremove_ev(is)        -> CR.t_remove_ev is
@@ -199,6 +198,30 @@ let handle_tactic ts tac =
       let e = parse_e se in
       let v = mk_new_var sv e.e_ty in
       t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm)
+
+    | PT.Rassert(i,Some se) ->
+      let e = parse_e se in
+      CR.t_assert (get_pos i) e
+
+    | PT.Rassert(i,None) ->
+      let t_remove_assert ju =
+        let se = ju.ju_se in
+        match get_se_ctxt se (get_pos i) with
+        | GAssert(e), sec ->
+          let se_new = set_se_ctxt [] sec in
+          (CR.t_trans se_new
+           @>> [ CR.t_dist_sym @> CR.t_assert (get_pos i) e
+                 @>> [ CR.t_id; Rules.t_dist_eq]
+               ; CR.t_id ]) ju
+        | _ ->
+          tacerror "no assert at given position %i" (get_pos i)
+      in
+      t_remove_assert
+
+    | PT.Rswap_to_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs
+
+    | PT.Rswap_to_orcl(_p,(_i,_j,_k),_vs) ->
+      tacerror "not implemented yet"
   
     | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
       let v = mk_new_var sv ju.ju_se.se_ev.e_ty in

@@ -89,7 +89,8 @@ type tactic =
   | Rnorm_solve    of parse_expr
   | Rswap          of range_pos * assgn_pos
   | Rswap_oracle   of ocmd_pos * int
-  | Rswap_main     of ocmd_pos_eq * string
+  | Rswap_to_main  of ocmd_pos_eq * string
+  | Rswap_to_orcl  of assgn_pos * ocmd_pos_eq * string
   | Rctxt_ev       of int option * parse_ctx option
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
@@ -101,6 +102,7 @@ type tactic =
   | Rassm_comp     of bool * string option * ranges
   | Rlet_abstract  of assgn_pos option * string * parse_expr option * 
                       assgn_pos option * bool
+  | Rassert        of assgn_pos * parse_expr option
   | Rsubst         of assgn_pos option * parse_expr * parse_expr * 
                       assgn_pos option
   | Rlet_unfold    of assgn_pos list
