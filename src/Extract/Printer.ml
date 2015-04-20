@@ -134,11 +134,9 @@ let rec pp_form_lvl outer fmt = function
     in
     maybe_paren outer inner pp fmt ()
   | Fif(e1,e2,e3) ->
-    let pp fmt () = 
-      F.fprintf fmt "@[<hov 2>(%a)?@ %a :@ %a@]" 
-        (pp_form_lvl if_lvl) e1 (pp_form_lvl if_lvl) e2
-        (pp_form_lvl if_lvl) e3 in
-    maybe_paren outer if_lvl pp fmt () 
+    F.fprintf fmt "(@[<hov 2>(%a)?@ (%a) :@ (%a)@])" 
+      (pp_form_lvl if_lvl) e1 (pp_form_lvl if_lvl) e2
+      (pp_form_lvl if_lvl) e3 
   | Fabs e -> F.fprintf fmt "`|%a|" pp_form e
 (*  | Fexists of (lvar * hvar) list * form *)
   | Fforall_mem(m,e) ->
@@ -204,10 +202,8 @@ let rec pp_exp_lvl outer fmt = function
     maybe_paren outer inner pp fmt ()
 
   | Eif(e1,e2,e3) ->
-    let pp fmt () = 
-      F.fprintf fmt "@[<hov 2>%a ?@ %a :@ %a@]" 
-        (pp_exp_lvl if_lvl) e1 (pp_exp_lvl if_lvl) e2 (pp_exp_lvl if_lvl) e3 in
-    maybe_paren outer if_lvl pp fmt () 
+      F.fprintf fmt "(@[<hov 2>(%a)?@ (%a) :@ (%a)@])" 
+        (pp_exp_lvl if_lvl) e1 (pp_exp_lvl if_lvl) e2 (pp_exp_lvl if_lvl) e3 
 
 and pp_exp fmt e = pp_exp_lvl max_lvl fmt e
 

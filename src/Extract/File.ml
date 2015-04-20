@@ -548,7 +548,7 @@ let find_game file g =
             subst_v_gdef 
               (fun vs -> try Vsym.M.find vs ren with Not_found -> vs) g in
           Game.gdef_equal g g' && ren_injective ren
-      with Not_found -> false in
+      with Not_found | Expr.TypeError _ -> false in
     snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
 
 let add_restr file modu =
