@@ -55,6 +55,7 @@
 %token EQUAL
 %token GREATER
 %token LESS
+%token ASSERT
 
 %token COMMA
 %token NEQ
@@ -338,6 +339,9 @@ gcmd :
   { GSamp(i,t,es) }
 | i=ID SAMP t=typ0
   { GSamp(i,t,[]) }
+| ASSERT LPAREN e=expr0 RPAREN
+  { GAssert(e) }
+
 
 gcmdlist0 :
 | c=gcmd SEMICOLON { [c] }

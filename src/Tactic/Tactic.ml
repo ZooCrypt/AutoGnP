@@ -68,6 +68,7 @@ let epos_of_offset ju i =
 let find_gvar ju s = 
   let test = function
     | GLet(vs,_) | GSamp(vs,_) -> s = Id.name vs.Vsym.id 
+    | GAssert _ -> false
     | GCall(vss,_,_,_) -> List.exists (fun vs -> s = Id.name vs.Vsym.id) vss in
   try find_at test ju.ju_se.se_gdef
   with Not_found -> tacerror "variable not found in game %s" s

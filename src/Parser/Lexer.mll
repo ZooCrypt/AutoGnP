@@ -78,6 +78,7 @@ rule lex = parse
   | "inf" { INFTHEORETIC }
   | "ppt" { PPT }
   | "rename" { RRENAME }
+  | "assert" { ASSERT }
   | "rewrite_oracle"  { RREWRITE_ORACLE }
   | "rewrite_ev" { RREWRITE_EV }
   | "crush" { RCRUSH }

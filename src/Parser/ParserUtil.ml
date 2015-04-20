@@ -210,6 +210,9 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
     let e = expr_of_parse_expr vmap ts Unqual e in
     let v = create_var vmap ts Unqual s e.E.e_ty in
     G.GLet(v,e)
+  | GAssert(e) ->
+    let e = expr_of_parse_expr vmap ts Unqual e in
+    G.GAssert(e)
   | GSamp(s,t,es) ->
     let t = ty_of_parse_ty ts t in
     let es = L.map (expr_of_parse_expr vmap ts Unqual) es in

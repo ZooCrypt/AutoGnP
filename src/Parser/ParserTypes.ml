@@ -57,9 +57,10 @@ type odec = Odef of lcomp | Ohybrid of (lcomp * lcomp * lcomp)
 type odef = string * string list * odec
 
 type gcmd =
-    GLet of string * parse_expr
-  | GSamp of string * parse_ty * parse_expr list
-  | GCall of string list * string * parse_expr * odef list
+    GLet    of string * parse_expr
+  | GAssert of parse_expr
+  | GSamp   of string * parse_ty * parse_expr list
+  | GCall   of string list * string * parse_expr * odef list
 
 type gdef = gcmd list
 

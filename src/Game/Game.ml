@@ -48,9 +48,10 @@ type odef = os * vs list * odecl (*r
 
 (** Game command. *)
 type gcmd =
-  | GLet  of vs * expr (*r $GLet(\vec{x},e): let (x_1,..,x_k) = e$ *)
-  | GSamp of vs * distr     (*r $GSamp(x,d): x \leftarrow_{\$} d$ *)
-  | GCall of vs list * ads * expr * odef list (*r
+  | GLet    of vs * expr (*r $GLet(\vec{x},e): let (x_1,..,x_k) = e$ *)
+  | GAssert of expr      (*r $GAssert(e): assert (e)$ *)
+  | GSamp   of vs * distr (*r $GSamp(x,d): x \leftarrow_{\$} d$ *)
+  | GCall   of vs list * ads * expr * odef list (*r
       $GCall(\vec{x}, e, \vec{o}): (x_1,..,x_k) \leftarrow A(e) \text{ with }o_1,..,o_l$ *)
 
 (** Game definition. *)
@@ -132,9 +133,11 @@ let pp_odef fmt (o, vs, od) =
     pp_odecl od
 
 let pp_gcmd fmt gc = match gc with
-  | GLet(vs,e)      -> 
+  | GLet(vs,e) -> 
     F.fprintf fmt "@[<hov 2>let %a =@ %a@]" pp_binder [vs] pp_exp e
-  | GSamp(v,d)      -> 
+  | GAssert(e) -> 
+    F.fprintf fmt "@[<hov 2>assert(%a)@]" pp_exp e
+  | GSamp(v,d) -> 
     F.fprintf fmt "@[<hov 2>%a <-$@ %a@]" pp_binder [v] pp_distr d
   | GCall(vs,asym,e,[]) -> 
     F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@])@]" 
@@ -202,8 +205,9 @@ let map_odef_exp f (o,vs,od) =
 
 
 let map_gcmd_exp f gcmd = match gcmd with
-  | GLet(vs,e)     -> GLet(vs, f e)
-  | GSamp(v,d)     -> GSamp(v, map_distr_exp f d)
+  | GLet(vs,e)          -> GLet(vs, f e)
+  | GAssert(e)          -> GAssert(f e)
+  | GSamp(v,d)          -> GSamp(v, map_distr_exp f d)
   | GCall(vs,asym,e,os) -> GCall(vs, asym, f e, L.map (map_odef_exp f) os)
 
 let map_gdef_exp f gdef = L.map (map_gcmd_exp f) gdef
@@ -237,18 +241,22 @@ let iter_odecl_exp ?iexc:(iexc=false) f od =
 let iter_odef_exp ?iexc:(iexc=false) f (_o,_vs,od) =
   iter_odecl_exp ~iexc f od
 
-let iter_gcmd_exp ?iexc:(iexc=false) f gcmd = match gcmd with
+let iter_gcmd_exp ?iexc:(iexc=false) f gcmd =
+  match gcmd with
   | GLet(_,e)       -> f e
+  | GAssert(e)      -> f e
   | GSamp(_,d)      -> iter_distr_exp ~iexc f d
   | GCall(_,_,e,od) -> f e; L.iter (iter_odef_exp ~iexc f) od
 
 let iter_gcmd_exp_orcl ?iexc:(iexc=false) f gcmd = match gcmd with
   | GLet(_,_)     -> ()
+  | GAssert(_)    -> ()
   | GSamp(_,_)    -> ()
   | GCall(_,_,_,od) -> L.iter (iter_odef_exp ~iexc f) od
 
 let iter_gcmd_exp_no_orcl ?iexc:(iexc=false) f gcmd = match gcmd with
   | GLet(_,e)     -> f e
+  | GAssert(e)    -> f e
   | GSamp(_,d)    -> iter_distr_exp ~iexc f d
   | GCall(_,_,e,_) -> f e
 
@@ -462,6 +470,8 @@ let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
     match gcmd with
     | GLet(_,e) ->
       f ctx e
+    | GAssert(e) ->
+      f ctx e
     | GCall(_,_,e,ods) ->
       f ctx e;
       L.iteri
@@ -543,6 +553,8 @@ let gcmd_equal i1 i2 =
   match i1, i2 with
   | GLet(x1,e1), GLet(x2,e2) ->
     Vsym.equal x1 x2 && e_equal e1 e2
+  | GAssert(e1), GAssert(e2) ->
+    e_equal e1 e2
   | GSamp(x1,d1), GSamp(x2,d2) ->
     Vsym.equal x1 x2 && distr_equal d1 d2
   | GCall(xs1,as1,e1,od1), GCall(xs2,as2,e2,od2) ->
@@ -550,9 +562,10 @@ let gcmd_equal i1 i2 =
       e_equal e1 e2 &&
       list_eq_for_all2 odef_equal od1 od2 &&
       Asym.equal as1 as2
-  | GLet _, (GSamp _ | GCall _) 
-  | GSamp _, (GLet _ | GCall _) 
-  | GCall _, (GLet _ | GSamp _) -> false
+  | GLet _, (GSamp _ | GCall _ | GAssert _)  
+  | GAssert _, (GLet _ | GCall _ | GSamp _) 
+  | GSamp _, (GLet _ | GCall _ | GAssert _) 
+  | GCall _, (GLet _ | GSamp _ | GAssert _) -> false
 
 let gdef_equal c1 c2 = list_eq_for_all2 gcmd_equal c1 c2
 
@@ -614,6 +627,7 @@ let read_odef (_,xs,odecl) =
 
 let read_gcmd = function
   | GLet(_,e)         -> e_vars e 
+  | GAssert(e)        -> e_vars e
   | GSamp(_,d)        -> read_distr d
   | GCall(_,_,e,odefs) -> Se.union (e_vars e) (fold_union read_odef odefs)
 
@@ -621,6 +635,7 @@ let read_gcmds c = fold_union read_gcmd c
 
 let write_gcmd = function
   | GLet (x,_) | GSamp (x,_) -> Se.singleton (mk_V x)
+  | GAssert(_)               -> Se.empty
   | GCall (xs,_,_,_)         -> add_binding xs
 
 let write_gcmds c = fold_union write_gcmd c
@@ -675,7 +690,8 @@ let odef_vars (_,vs,odecl) =
   Vsym.S.union (set_of_list vs) (odecl_vars odecl)
 
 let gcmd_all_vars = function
-  | GLet(v,e) -> Vsym.S.add v (expr_vars e)
+  | GLet(v,e)  -> Vsym.S.add v (expr_vars e)
+  | GAssert(e) -> expr_vars e
   | GSamp(v,d) -> Vsym.S.add v (exprs_vars (snd d))
   | GCall(vs,_,e,odefs) ->
     Vsym.S.union
@@ -739,6 +755,7 @@ let unif_gcmd ren gcmd1 gcmd2 =
   match gcmd1, gcmd2 with
   | GLet(v1,_), GLet(v2,_)
   | GSamp(v1,_), GSamp(v2,_) -> unif_vs ren v1 v2
+  | GAssert(_), GAssert(_) -> ()
   | GCall(vs1,_,_,odefs1), GCall(vs2,_,_,odefs2) ->
     ensure_same_length vs1 vs2;
     ensure_same_length odefs1 odefs2;
@@ -826,6 +843,7 @@ let subst_v_odef tov (o,vs,od) =
 
 let subst_v_gc tov = function
   | GLet(v,e) -> GLet(tov v, subst_v_e tov e)
+  | GAssert(e) -> GAssert(subst_v_e tov e)
   | GSamp(v, d) -> GSamp(tov v, map_distr_exp (subst_v_e tov) d)
   | GCall(vs, asym, e, odefs) ->
     GCall(L.map tov vs, asym, subst_v_e tov e,
@@ -963,6 +981,9 @@ let norm_gdef ?norm:(nf=Norm.norm_expr_nice) g =
       let v = mk_V v in
       let s = Me.add v e s in
       aux s rc lc'
+    | GAssert(e) :: lc' ->
+      let e = nf (e_subst s e) in
+      aux s (GAssert(e) :: rc) lc'
     | GSamp(v, d) :: lc' ->
       let d = norm_distr ~norm:nf s d in
       let s = Me.remove (mk_V v) s in
@@ -1004,8 +1025,8 @@ let has_log_odecl od =
 let has_log_odef (_,_,od) = has_log_odecl od
 
 let has_log_gcmd = function
-  | GLet(_,e)       -> has_log e
-  | GSamp(_,d)      -> has_log_distr d
+  | GLet(_,e) | GAssert(e) -> has_log e
+  | GSamp(_,d) -> has_log_distr d
   | GCall(_,_,e,ods) -> has_log e || L.exists has_log_odef ods
 
 let has_log_gcmds c = L.exists has_log_gcmd c
@@ -1029,8 +1050,8 @@ let is_ppt_odecl od =
 let is_ppt_odef (_,_,od) = is_ppt_odecl od
 
 let is_ppt_gcmd = function
-  | GLet(_,e)       -> is_ppt e
-  | GSamp(_,d)      -> is_ppt_distr d
+  | GLet(_,e) | GAssert(e) -> is_ppt e
+  | GSamp(_,d) -> is_ppt_distr d
   | GCall(_,_,e,od) -> is_ppt e || L.for_all is_ppt_odef od
 
 let is_ppt_gcmds c = L.for_all is_ppt_gcmd c

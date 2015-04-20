@@ -41,9 +41,10 @@ type odef = os * vs list * odecl (*r
   $(o,\vec{x}, \vec{m},e): o(x_1,..,x_l) = [e | m_1, .., m_k]$ *)
 
 type gcmd =
-    GLet of vs * expr
-  | GSamp of vs * distr
-  | GCall of vs list * ads * expr * odef list
+  | GLet    of vs * expr
+  | GAssert of expr
+  | GSamp   of vs * distr
+  | GCall   of vs list * ads * expr * odef list
 
 type gdef = gcmd list
 

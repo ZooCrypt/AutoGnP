@@ -239,6 +239,18 @@ let wf_odef ctype wfs exported_vsyms (osym,vs,od) =
 let wf_gdef ctype gdef0 =
   let rec go wfs gdef = match gdef with
     | [] -> wfs
+    | GAssert(e)::gcmds ->
+      assert (ty_equal e.e_ty mk_Bool);
+      wf_exp ctype wfs e;
+      let wfs =
+        match e.e_node with
+        | App(Not,[eeq]) ->
+          (match eeq.e_node with
+          | App(Eq,[e1;e2]) -> add_ineq ctype wfs e1 e2
+          | _ -> wfs)
+        | _ -> wfs
+      in
+      go wfs gcmds
     | GLet(v,e)::gcmds ->
       let wfs = wf_let ctype wfs v e in
       go wfs gcmds
