@@ -151,25 +151,25 @@ let rec take i l =
   | x::xs when i > 0 -> x::(take (i - 1) xs)
   | _ -> []
 
-let split_n i l = 
-  assert (i >= 0);
+let split_n i0 l = 
+  assert (i0 >= 0);
   let rec aux i r l = 
     match l with 
-    | [] -> assert false
+    | [] -> failwith (Printf.sprintf "split_n: invalid index %i" i0)
     | x::xs ->
       if i = 0 then r,x,xs
       else aux (i-1) (x::r) xs
   in
-  aux i [] l
+  aux i0 [] l
 
-let cut_n i l = 
+let cut_n i0 l = 
   let rec aux i r l = 
     match  l with
     | _ when i <= 0 -> r, l
-    | [] -> assert false 
+    | [] -> failwith (Printf.sprintf "cut_n: invalid index %i" i0)
     | a::l -> aux (i-1) (a::r) l
   in
-  aux i [] l
+  aux i0 [] l
 
 let rec filter_map f l = 
   match l with
