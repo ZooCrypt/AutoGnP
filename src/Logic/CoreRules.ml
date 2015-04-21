@@ -1030,6 +1030,7 @@ let t_add_test p tnew asym fvs = prove_by (radd_test p tnew asym fvs)
 (** {\bf Transitivity: bound distance to given intermediate game.} *)
 
 let rtrans new_se ju =
+  wf_se NoCheckDivZero new_se;
   let se = ju.ju_se in
   let ju1 = { ju_se = se; ju_pr = Pr_Dist new_se } in
   let ju2 = { ju_se = new_se; ju_pr = ju.ju_pr } in

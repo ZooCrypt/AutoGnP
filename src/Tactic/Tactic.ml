@@ -220,8 +220,36 @@ let handle_tactic ts tac =
 
     | PT.Rswap_to_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs
 
-    | PT.Rswap_to_orcl(_p,(_i,_j,_k),_vs) ->
-      tacerror "not implemented yet"
+    | PT.Rswap_to_orcl(p,(i,j,k),sv) ->
+      let t_swap_to_orcl ju =
+        let se = ju.ju_se in
+        let ci = get_pos p in
+        assert (ci < i);
+        let op = (i,j,k,Ohyb OHeq) in
+        let lcright, seoc =  get_se_octxt se op in
+        let oname = Id.name seoc.seoc_osym.Osym.id in
+        match split_n ci (L.rev seoc.seoc_sec.sec_left) with
+        | cleft, GSamp(vsm,d), cright ->
+          log_i (lazy (fsprintf "cleft=%a cright=%a" pp_gdef cleft pp_gdef cright));
+          let vmap = vmap_in_orcl ju.ju_se op in
+          let vso = PU.create_var vmap ts (Qual oname) sv vsm.Vsym.ty in
+          let subst e = e_replace (mk_V vsm) (mk_V vso) e in
+          let seoc =
+            { seoc with
+              seoc_return = subst seoc.seoc_return;
+              seoc_sec =
+                { sec_left = L.rev (L.rev_append cleft cright);
+                  sec_right = L.map (map_gcmd_exp subst) seoc.seoc_sec.sec_right;
+                  sec_ev = subst seoc.seoc_sec.sec_ev; } }
+          in
+          let lcright = L.map (map_lcmd_exp subst) lcright in
+          let se = set_se_octxt (LSamp(vso,d)::lcright) seoc in
+          (CR.t_trans se @>> [ CR.t_dist_sym
+                               @> CR.t_swap_main (i-1,j,k) "rr" @> t_dist_eq
+                             ; CR.t_id]) ju
+        | _ -> tacerror "nai"
+      in
+      t_swap_to_orcl
   
     | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
       let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
