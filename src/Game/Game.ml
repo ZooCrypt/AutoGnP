@@ -286,17 +286,24 @@ type se_ctxt = {
   sec_ev : ev
 }
   
-let get_se_ctxt se p =
-  let rhd,i,tl =  split_n p se.se_gdef in
-  i, { sec_left = rhd; sec_right = tl; sec_ev = se.se_ev}
+let get_se_ctxt_len se ~pos ~len =
+  let rhd,tl =  cut_n pos se.se_gdef in
+  let cmds, cright = cut_n len tl in
+  L.rev cmds, { sec_left = rhd; sec_right = cright; sec_ev = se.se_ev}
+
+let get_se_ctxt se pos =
+  match get_se_ctxt_len se ~pos ~len:1 with
+  | [cmd], ctxt ->
+    cmd, ctxt
+  | _ -> assert false
 
 let set_se_ctxt cmds {sec_left; sec_right; sec_ev} =
   { se_gdef = L.rev_append sec_left (cmds @ sec_right);
     se_ev   = sec_ev }
 
-let set_se_gcmd se p cmds =
-  assert (p >= 0 && p < L.length se.se_gdef);
-  let _, ctxt = get_se_ctxt se p in
+let set_se_gcmd se pos cmds =
+  assert (pos >= 0 && pos < L.length se.se_gdef);
+  let _, ctxt = get_se_ctxt se pos in
   set_se_ctxt cmds ctxt
 
 let get_obody od otype =
@@ -328,15 +335,17 @@ type se_octxt = {
   seoc_oargs: vs list;
   seoc_return : expr;
   seoc_cleft : lcmd list;
+  seoc_cright : lcmd list;
   seoc_sec : se_ctxt
 }
 
-let get_se_octxt se (i,j,k,ootype) = 
+let get_se_octxt_len se (i,j,k,ootype) len = 
   match get_se_ctxt se i with
   | GCall(vsa,asym,e,os), sec ->
     let rohd, (o,vs,od), otl = split_n j os in
     let (ms,oe) = get_obody od ootype in
     let rhd, tl = cut_n k ms in
+    let cmds,cright = cut_n len tl in
     let obless = match ootype with
       | Ohyb (OHeq |  OHgreater) -> Some (get_obody od (Ohyb OHless))
       | _ -> None
@@ -349,23 +358,27 @@ let get_se_octxt se (i,j,k,ootype) =
       | Ohyb (OHless | OHeq) -> Some (get_obody od (Ohyb OHgreater))
       | _ -> None
     in
-    tl, { seoc_asym = asym;
-          seoc_avars = vsa;
-          seoc_aarg = e;
-          seoc_oright = rohd;
-          seoc_oleft = otl;
-          seoc_obless = obless;
-          seoc_obeq = obeq;
-          seoc_obgreater = obgreater;
-          seoc_osym = o;
-          seoc_oargs = vs;
-          seoc_return = oe;
-          seoc_cleft = rhd;
-          seoc_sec = sec }
+    let ctx =
+      { seoc_asym = asym;
+        seoc_avars = vsa;
+        seoc_aarg = e;
+        seoc_oright = rohd;
+        seoc_oleft = otl;
+        seoc_obless = obless;
+        seoc_obeq = obeq;
+        seoc_obgreater = obgreater;
+        seoc_osym = o;
+        seoc_oargs = vs;
+        seoc_return = oe;
+        seoc_cleft = rhd;
+        seoc_cright = cright;
+        seoc_sec = sec }
+    in
+    L.rev cmds, ctx
   | _ -> assert false
 
 let set_se_octxt lcmds c =
-  let ms = L.rev_append c.seoc_cleft lcmds in
+  let ms = L.rev_append c.seoc_cleft (lcmds@c.seoc_cright) in
   let ob = (ms,c.seoc_return) in
   let odecl =
     match c.seoc_obless, c.seoc_obeq,  c.seoc_obgreater with
@@ -380,11 +393,14 @@ let set_se_octxt lcmds c =
   let i = [GCall(c.seoc_avars, c.seoc_asym, c.seoc_aarg, os)] in
   set_se_ctxt i c.seoc_sec
 
+let get_se_octxt se p = 
+  match get_se_octxt_len se p 1 with
+  | [cmd], ctxt -> cmd, ctxt
+  | _           -> assert false
+
 let set_se_lcmd se p cmds = 
-  match get_se_octxt se p with
-  | _::right, ctxt ->
-    set_se_octxt (cmds@right) ctxt
-  | _ -> assert false
+  let _, ctxt = get_se_octxt se p in
+  set_se_octxt cmds ctxt
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Iterate with context} *)

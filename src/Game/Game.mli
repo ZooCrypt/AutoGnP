@@ -132,6 +132,8 @@ val get_se_gcmd : sec_exp -> gcmd_pos -> gcmd
 
 type se_ctxt = { sec_left : gdef; sec_right : gdef; sec_ev : ev; }
 
+val get_se_ctxt_len : sec_exp -> pos:gcmd_pos -> len:int -> gcmd list * se_ctxt
+
 val get_se_ctxt : sec_exp -> gcmd_pos -> gcmd * se_ctxt
 
 val set_se_ctxt : gcmd list -> se_ctxt -> sec_exp
@@ -154,10 +156,13 @@ type se_octxt = {
   seoc_oargs: vs list;
   seoc_return : expr;
   seoc_cleft : lcmd list;
+  seoc_cright : lcmd list;
   seoc_sec : se_ctxt
 }
 
-val get_se_octxt : sec_exp -> ocmd_pos -> lcmd list * se_octxt
+val get_se_octxt : sec_exp -> ocmd_pos -> lcmd * se_octxt
+
+val get_se_octxt_len : sec_exp -> ocmd_pos -> int -> lcmd list * se_octxt
 
 val set_se_octxt : lcmd list -> se_octxt -> sec_exp
 

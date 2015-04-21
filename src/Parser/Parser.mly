@@ -134,6 +134,7 @@
 %token RSPLIT_EV
 %token RREMOVE_EV
 %token RLET_ABSTRACT
+%token RLET_ABSTRACT_DEDUCE
 %token RLET_UNFOLD
 %token RSUBST
 %token RRENAME
@@ -501,6 +502,9 @@ tactic :
 | RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
           i1=ID e1=uopt(expr0) mupto=assgn_pos?
   { Rlet_abstract(i,i1,e1,mupto,excl=None) }
+| RLET_ABSTRACT_DEDUCE i=assgn_pos
+          i1=ID e1=expr0 mupto=assgn_pos?
+  { Rlet_abstract_deduce(i,i1,e1,mupto) }
 | ASSERT i=assgn_pos e=expr0?
   { Rassert(i,e) }
 

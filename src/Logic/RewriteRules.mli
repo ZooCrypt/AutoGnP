@@ -26,3 +26,5 @@ val t_let_unfold : int -> tactic
 val t_norm_tuple_proj : tactic
 
 val t_subst : int -> expr -> expr -> int option -> tactic
+
+val t_abstract_deduce : theory_state -> int -> Vsym.t -> expr -> int option -> tactic

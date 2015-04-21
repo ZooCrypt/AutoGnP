@@ -287,3 +287,17 @@ let t_let_unfold p ju =
     in
     t_conv false (set_se_ctxt [] sec) ju
   | _ -> tacerror "rlet_unfold: no let at given position"
+
+let t_abstract_deduce _ts _gpos _v _e _mupto _ju =
+  tacerror "abstract_deduce: not implemented yet"
+(*
+  let se = ju.ju_se in
+  let ve = mk_V v in
+  let frame = [(e,I ve)] in
+  let deduce e =
+    let recipe = Deduc.invert ~ppt_inverter:true ts frame e in
+    log_i (lazy (fsprintf "Found %a@\n" pp_exp recipe))=
+  in
+  match get_se_ctxt gpos se.se_gdef with
+  | 
+*)

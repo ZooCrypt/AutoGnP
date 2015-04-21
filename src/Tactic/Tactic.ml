@@ -199,6 +199,11 @@ let handle_tactic ts tac =
       let v = mk_new_var sv e.e_ty in
       t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm)
 
+    | PT.Rlet_abstract_deduce(i,sv,se,mupto) ->
+      let e = parse_e se in
+      let v = mk_new_var sv e.e_ty in
+      t_abstract_deduce ts (get_pos i) v e (map_opt get_pos mupto)
+      
     | PT.Rassert(i,Some se) ->
       let e = parse_e se in
       CR.t_assert (get_pos i) e
@@ -221,17 +226,22 @@ let handle_tactic ts tac =
     | PT.Rswap_to_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs
 
     | PT.Rswap_to_orcl(p,(i,j,k),sv) ->
+      let ci = get_pos p in
+      if (ci + 1<>i) then
+        tacerror "swap_to_main: variable in main must directly precede oracle";
+      if (k<>0) then
+        tacerror "swap_to_main: can only swap variable to start of oracle";
       let t_swap_to_orcl ju =
+        log_i (lazy (fsprintf "i=%i j=%i k=%i" i j k));
         let se = ju.ju_se in
-        let ci = get_pos p in
         assert (ci < i);
         let op = (i,j,k,Ohyb OHeq) in
-        let lcright, seoc =  get_se_octxt se op in
+        let _, seoc =  get_se_octxt_len se op 0 in
         let oname = Id.name seoc.seoc_osym.Osym.id in
         match split_n ci (L.rev seoc.seoc_sec.sec_left) with
         | cleft, GSamp(vsm,d), cright ->
           log_i (lazy (fsprintf "cleft=%a cright=%a" pp_gdef cleft pp_gdef cright));
-          let vmap = vmap_in_orcl ju.ju_se op in
+          let vmap = Hashtbl.create 17 in
           let vso = PU.create_var vmap ts (Qual oname) sv vsm.Vsym.ty in
           let subst e = e_replace (mk_V vsm) (mk_V vso) e in
           let seoc =
@@ -242,12 +252,12 @@ let handle_tactic ts tac =
                   sec_right = L.map (map_gcmd_exp subst) seoc.seoc_sec.sec_right;
                   sec_ev = subst seoc.seoc_sec.sec_ev; } }
           in
-          let lcright = L.map (map_lcmd_exp subst) lcright in
-          let se = set_se_octxt (LSamp(vso,d)::lcright) seoc in
+          let lcright = L.map (map_lcmd_exp subst) seoc.seoc_cright in
+          let se = set_se_octxt [LSamp(vso,d)] { seoc with seoc_cright = lcright } in
           (CR.t_trans se @>> [ CR.t_dist_sym
                                @> CR.t_swap_main (i-1,j,k) "rr" @> t_dist_eq
                              ; CR.t_id]) ju
-        | _ -> tacerror "nai"
+        | _ -> tacerror "cannot swap sampling to oracle, given position not a sampling"
       in
       t_swap_to_orcl
   

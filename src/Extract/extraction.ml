@@ -1028,7 +1028,7 @@ let pr_rw_orcl ((i,_oi,_j,_ootype) as op,dir) ju1 ju2 file =
   let nvc = List.length vcs in
 
   let se1 = ju1.ju_se in
-  let lg::cright, se_o = Game.get_se_octxt se1 op in
+  let lg, se_o = Game.get_se_octxt se1 op in
   let n1 = nvc + List.length se_o.seoc_sec.sec_left in
   let w1 = Game.write_gcmds (List.rev se_o.seoc_sec.sec_left) in
   let ev1 = f_and eqvc (mk_eq_exprs file g1 g2 w1) in
@@ -1118,7 +1118,7 @@ let pr_rw_orcl ((i,_oi,_j,_ootype) as op,dir) ju1 ju2 file =
 
   let cond = match lg with LGuard t -> t | _ -> assert false in
   let info2 = add_guard file g1 g2 cond cond info1 [] in
-  let tac_end = aux2 0 0 cright info2 in 
+  let tac_end = aux2 0 0 se_o.seoc_cright info2 in 
   fun fmt () ->
     open_pp fmt ();
     F.fprintf fmt "(* Rewrite oracle *)@ ";
@@ -2040,11 +2040,7 @@ let rec extract_proof file pft =
     end_section file;
     (* End theory bad event *)
     let info = adv_info file in
-    let t1,_, seoc =
-      match get_se_octxt pft.pt_ju.ju_se opos with
-      | t1::cright,seoc -> t1,cright,seoc
-      | _ -> assert false
-    in 
+    let t1, seoc = get_se_octxt pft.pt_ju.ju_se opos in
     let t1 = destr_guard t1 in
     let t2 = tnew in
     let ctests = List.map destr_guard seoc.seoc_cleft in

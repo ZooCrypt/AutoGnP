@@ -102,6 +102,7 @@ type tactic =
   | Rassm_comp     of bool * string option * ranges
   | Rlet_abstract  of assgn_pos option * string * parse_expr option * 
                       assgn_pos option * bool
+  | Rlet_abstract_deduce of assgn_pos * string * parse_expr * assgn_pos option
   | Rassert        of assgn_pos * parse_expr option
   | Rsubst         of assgn_pos option * parse_expr * parse_expr * 
                       assgn_pos option

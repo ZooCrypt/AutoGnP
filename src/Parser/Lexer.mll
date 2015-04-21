@@ -72,6 +72,7 @@ rule lex = parse
   | "dist_sym" { RDIST_SYM }
   | "dist_eq" { RDIST_EQ }
   | "norm_nounfold" { RNORM_NOUNFOLD }
+  | "abstract*"  { RLET_ABSTRACT_DEDUCE }
   | "abstract"  { RLET_ABSTRACT }
   | "unfold"  { RLET_UNFOLD }
   | "subst" { RSUBST }
