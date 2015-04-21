@@ -88,6 +88,8 @@ let is_field_exp e = match e.e_node with
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Pretty printing} *)
 
+let pp_sort_expensive = ref false
+
 (** The term $*(+(a,b),c)$ can be printed as $(a + b) * c$
     or $a + b * c$.
     We pass enough information to the function call
@@ -134,46 +136,58 @@ let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 
 (** Pretty-prints expression assuming that
     the expression above is of given type. *)
-let rec pp_exp_p above fmt e =
+let rec pp_exp_p ~qual above fmt e =
   match e.e_node with
   | V(v)       -> 
     (* F.fprintf fmt "%a.%i" Vsym.pp v (Vsym.hash v) *)
-    F.fprintf fmt "%a" Vsym.pp v
+    F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
   | H(h,e)     -> 
-    F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p PrefixApp) e
+    F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p ~qual PrefixApp) e
   | Tuple(es)  -> 
-    let pp fmt = F.fprintf fmt "@[<hov>%a@]" (pp_list ",@," (pp_exp_p Tup)) in
+    let pp fmt = F.fprintf fmt "@[<hov>%a@]" (pp_list ",@," (pp_exp_p ~qual Tup)) in
     pp_maybe_paren false (above <> PrefixApp) pp fmt es
   | Proj(i,e)  -> 
-    F.fprintf fmt "%a%s%i" (pp_exp_p Tup) e "#" i
+    F.fprintf fmt "%a%s%i" (pp_exp_p ~qual Tup) e "#" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
-  | App(o,es)  -> pp_op_p above fmt (o,es) 
-  | Nary(o,es) -> pp_nop_p above fmt (o,es)
+  | App(o,es)  -> pp_op_p ~qual above fmt (o,es) 
+  | Nary(o,es) ->
+    let es =
+      if !pp_sort_expensive then (
+        L.map (fun e -> (e, fsprintf "%a" (pp_exp_p ~qual Top) e)) es
+        |> L.sort (fun (e1,s1) (e2,s2) ->
+             let cmp = compare s1 s2 in
+             if cmp<>0 then cmp else e_compare e1 e2)
+        |> L.map fst
+      ) else (
+        es
+      )
+    in
+    pp_nop_p ~qual above fmt (o,es)
   | InLog(e,orc) -> 
     let pp fmt () = 
       F.fprintf fmt "@[<hov>%a in@ Log(%a)@]"
-        (pp_exp_p Top) e Osym.pp orc in
+        (pp_exp_p ~qual Top) e Osym.pp orc in
     pp_maybe_paren true true pp fmt ()
   | Exists(e1,e2,h) ->
     let pp fmt () = 
       F.fprintf fmt "@[<hv 2>exists %a:@ %a =@ %a@]"
         (pp_list ",@ " (fun fmt (v,h) ->
-          F.fprintf fmt "%a <- L_%a" Vsym.pp v Hsym.pp h)) h 
-        (pp_exp_p Top) e1 (pp_exp_p Top) e2 in
+          F.fprintf fmt "%a <- L_%a" (Vsym.pp_qual ~qual) v Hsym.pp h)) h 
+        (pp_exp_p ~qual Top) e1 (pp_exp_p ~qual Top) e2 in
     pp_maybe_paren true (notsep above && above<>NInfix(Land)) pp fmt ()
 
 (** Pretty-prints operator assuming that
     the expression above is of given type. *)
-and pp_op_p above fmt (op, es) =
+and pp_op_p ~qual above fmt (op, es) =
   let pp_bin p op ops a b =
     let pp fmt () = 
       F.fprintf fmt ("@[<hv>%a"^^ops^^"%a@]")
-        (pp_exp_p (Infix(op,0))) a
-        (pp_exp_p (Infix(op,1))) b in
+        (pp_exp_p ~qual (Infix(op,0))) a
+        (pp_exp_p ~qual (Infix(op,1))) b in
     pp_maybe_paren true p pp fmt ()
   in
   let pp_prefix op before after a =
-    F.fprintf fmt "%s%a%s" before (pp_exp_p (Infix(op,0))) a after
+    F.fprintf fmt "%s%a%s" before (pp_exp_p ~qual (Infix(op,0))) a after
   in
   match op, es with
   | GExp _,   [a;b] -> 
@@ -187,7 +201,7 @@ and pp_op_p above fmt (op, es) =
   | Eq,     [a;b] -> 
     pp_bin (notsep above && above<>NInfix(Land)) Eq "@ = " a b
   | GLog _, [a]   ->
-    F.fprintf fmt "@[<hov>log(%a)@]" (pp_exp_p PrefixApp) a
+    F.fprintf fmt "@[<hov>log(%a)@]" (pp_exp_p ~qual PrefixApp) a
   | FOpp,   [a]   ->
     pp_prefix FOpp  "-"     ""    a
   | FInv,   [a]   -> 
@@ -200,10 +214,10 @@ and pp_op_p above fmt (op, es) =
       pp_prefix Not   "not "  ""    a
     end
   | EMap es,[a;b] ->
-    let ppe i = pp_exp_p (Infix(EMap es,i)) in
+    let ppe i = pp_exp_p ~qual (Infix(EMap es,i)) in
     F.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
   | Ifte, [a;b;d] ->
-    let ppe i = pp_exp_p (Infix(Ifte,i)) in
+    let ppe i = pp_exp_p ~qual (Infix(Ifte,i)) in
     let pp fmt () =
       F.fprintf fmt "@[<hv>%a?%a:%a@]" (ppe 0) a (ppe 1) b (ppe 2) d
     in
@@ -214,9 +228,9 @@ and pp_op_p above fmt (op, es) =
 
 (** Pretty-prints n-ary operator assuming that
     the expression above is of given type. *)
-and pp_nop_p above fmt (op,es) =
+and pp_nop_p ~qual above fmt (op,es) =
   let pp_nary hv op ops p =
-    pp_maybe_paren hv p (pp_list ops (pp_exp_p (NInfix(op)))) fmt es
+    pp_maybe_paren hv p (pp_list ops (pp_exp_p ~qual (NInfix(op)))) fmt es
   in
   match op with
   | GMult  -> pp_nary true GMult  "@ * "   (notsep above)
@@ -231,12 +245,13 @@ and pp_nop_p above fmt (op,es) =
     pp_nary false FMult "@,*" p
 
 (** Pretty-print expressions/operators assuming they are topmost. *)
-let pp_exp fmt e = pp_exp_p Top fmt e
-let pp_op  fmt x = pp_op_p  Top fmt x
-let pp_nop fmt x = pp_nop_p Top fmt x
+let pp_exp fmt e = pp_exp_p ~qual:Unqual Top fmt e
+let pp_exp_qual ~qual fmt e = pp_exp_p ~qual Top fmt e
+let pp_op  fmt x = pp_op_p ~qual:Unqual Top fmt x
+let pp_nop fmt x = pp_nop_p ~qual:Unqual Top fmt x
 
 (** Pretty-printing without parens around tuples. *)
-let pp_exp_tnp fmt e = pp_exp_p PrefixApp fmt e
+let pp_exp_tnp fmt e = pp_exp_p ~qual:Unqual PrefixApp fmt e
 
 let pp_ctxt fmt (v,e) = 
   F.fprintf fmt "@[<hov>(%a ->@ %a)@]" Vsym.pp v pp_exp e 
@@ -287,7 +302,7 @@ let destr_GMult  e = destr_Nary "GMult"  GMult e
 let destr_GExp   e = 
   match e.e_node with 
   | App(GExp _,[e1;e2]) -> e1,e2
-  | _ -> raise (Destr_failure "GExpr")
+  | _ -> raise (Destr_failure "GExp")
 
 let destr_GLog   e =
   match e.e_node with 

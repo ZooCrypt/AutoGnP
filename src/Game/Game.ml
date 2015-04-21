@@ -67,37 +67,44 @@ type sec_exp = { se_gdef : gdef; se_ev : ev }
 (* ----------------------------------------------------------------------- *)
 (* \hd{Pretty printing} *)
 
-let pp_distr fmt (ty,es) = 
+let pp_distr ~qual fmt (ty,es) = 
   match es with
   | [] -> pp_ty fmt ty
   | _  -> F.fprintf fmt "@[<hov 2>%a \\ {@[<hov 0>%a}@]@]" pp_ty ty
-            (pp_list "," pp_exp) es
+            (pp_list "," (pp_exp_qual ~qual)) es
 
 (* let pp_v fmt v = F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
 let pp_v fmt v = Vsym.pp fmt v 
 
-let pp_binder fmt vs = match vs with
-  | [v] -> pp_v fmt v
-  | _   -> F.fprintf fmt "(@[<hov 0>%a@])" (pp_list "," pp_v) vs
+let pp_binder ~qual fmt vs = match vs with
+  | [v] -> Vsym.pp_qual ~qual fmt v
+  | _   -> F.fprintf fmt "(@[<hov 0>%a@])" (pp_list "," (Vsym.pp_qual ~qual)) vs
 
-let pp_lcmd fmt lc = 
+let pp_lcmd ~qual fmt lc = 
   match lc with
   | LLet(vs,e)  -> 
-    F.fprintf fmt "@[<hov 2>let %a =@ %a@]" pp_binder [vs] pp_exp e
+    F.fprintf fmt "@[<hov 2>let %a =@ %a@]"
+      (pp_binder ~qual) [vs]
+      (pp_exp_qual ~qual) e
   | LBind(vs,h) -> 
-    F.fprintf fmt "@[<hov 2>%a <-@ L_%a@]" pp_binder vs Hsym.pp h
+    F.fprintf fmt "@[<hov 2>%a <-@ L_%a@]" (pp_binder ~qual) vs Hsym.pp h
   | LSamp(v,d)  -> 
-    F.fprintf fmt "@[<hov 2>%a <-$@ %a@]" pp_binder [v] pp_distr d
-  | LGuard(e)   -> pp_exp fmt e
+    F.fprintf fmt "@[<hov 2>%a <-$@ %a@]"
+      (pp_binder ~qual) [v]
+      (pp_distr ~qual) d
+  | LGuard(e)   -> pp_exp_qual ~qual fmt e
 
-let pp_ilcmd fmt (i,lc) =
-  F.fprintf fmt "%i: %a" i pp_lcmd lc
+let pp_ilcmd ~qual fmt (i,lc) =
+  F.fprintf fmt "%i: %a" i (pp_lcmd ~qual) lc
 
-let pp_lcomp fmt (e,m) =
+let pp_lcomp ~qual fmt (e,m) =
   match m with
-  | [] -> F.fprintf fmt "1: return %a;" pp_exp e
-  | _  -> F.fprintf fmt "@[%a;@\n%i: return %a;@]"
-            (pp_list ";@\n" pp_ilcmd) (num_list m) (L.length m + 1) pp_exp e
+  | [] ->
+    F.fprintf fmt "1: return %a;" (pp_exp_qual ~qual) e
+  | _  ->
+    F.fprintf fmt "@[%a;@\n%i: return %a;@]"
+      (pp_list ";@\n" (pp_ilcmd ~qual)) (num_list m) (L.length m + 1)
+      (pp_exp_qual ~qual) e
 
 let string_of_otype = function
   | OHless    -> "<"
@@ -111,40 +118,42 @@ let pp_otype fmt ot =
   | Onohyb   -> pp_string fmt "no hybrid"
   | Ohyb oht -> pp_ohtype fmt oht
 
-let pp_obody ootype fmt (ms,e) =
+let pp_obody osym ootype fmt (ms,e) =
   F.fprintf fmt "[ %s@\n  @[<v>%a@] ]"
     (match ootype with None -> "" | Some ot -> "(* "^string_of_otype ot^" *)")
-    pp_lcomp (e,ms)
+    (pp_lcomp ~qual:(Qual osym)) (e,ms)
 
-let pp_ohybrid fmt oh =
+let pp_ohybrid osym fmt oh =
   F.fprintf fmt "[@\n  @[<v>%a@]@\n  @[<v>%a@]@\n  @[<v>%a@]@\n]"
-    (pp_obody (Some OHless))    oh.odef_less
-    (pp_obody (Some OHeq))      oh.odef_eq
-    (pp_obody (Some OHgreater)) oh.odef_greater
+    (pp_obody osym (Some OHless))    oh.odef_less
+    (pp_obody osym (Some OHeq))      oh.odef_eq
+    (pp_obody osym (Some OHgreater)) oh.odef_greater
 
-let pp_odecl fmt od =
+let pp_odecl osym fmt od =
   match od with
-  | Odef od    -> pp_obody None fmt od
-  | Ohybrid oh -> pp_ohybrid fmt oh
+  | Odef od    -> pp_obody osym None fmt od
+  | Ohybrid oh -> pp_ohybrid osym fmt oh
 
 let pp_odef fmt (o, vs, od) =
   F.fprintf fmt "@[<v>%a(%a) = %a@]" 
-    Osym.pp o pp_binder vs
-    pp_odecl od
+    Osym.pp o (pp_binder ~qual:(Qual o)) vs
+    (pp_odecl o) od
 
 let pp_gcmd fmt gc = match gc with
   | GLet(vs,e) -> 
-    F.fprintf fmt "@[<hov 2>let %a =@ %a@]" pp_binder [vs] pp_exp e
+    F.fprintf fmt "@[<hov 2>let %a =@ %a@]" (pp_binder ~qual:Unqual) [vs] pp_exp e
   | GAssert(e) -> 
     F.fprintf fmt "@[<hov 2>assert(%a)@]" pp_exp e
   | GSamp(v,d) -> 
-    F.fprintf fmt "@[<hov 2>%a <-$@ %a@]" pp_binder [v] pp_distr d
+    F.fprintf fmt "@[<hov 2>%a <-$@ %a@]"
+      (pp_binder ~qual:Unqual) [v]
+      (pp_distr ~qual:Unqual) d
   | GCall(vs,asym,e,[]) -> 
     F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@])@]" 
-      pp_binder vs Asym.pp asym pp_exp_tnp e 
+      (pp_binder ~qual:Unqual) vs Asym.pp asym pp_exp_tnp e 
   | GCall(vs,asym,e,od) -> 
     F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@]) with@\n%a@]"
-      pp_binder vs Asym.pp asym 
+      (pp_binder ~qual:Unqual) vs Asym.pp asym 
       pp_exp_tnp e
       (pp_list ",@;" pp_odef) od
 

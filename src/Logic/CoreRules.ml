@@ -997,7 +997,7 @@ let radd_test opos tnew asym fvs ju =
       match lcmd with
       | LGuard(e) -> e
       | _ -> tacerror "add_test: new test cannot be inserted after %a, %s"
-               pp_lcmd lcmd "preceeding commands must be tests"
+               (pp_lcmd ~qual:Unqual) lcmd "preceeding commands must be tests"
     in
     let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
     let subst =

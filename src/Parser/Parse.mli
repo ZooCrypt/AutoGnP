@@ -10,6 +10,6 @@ val odef : string -> odef
 
 val gdef : string -> gdef
 
-val instruction : string -> instr
+val instruction : string -> instr list
 
 val theory : string -> theory

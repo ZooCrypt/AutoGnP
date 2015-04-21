@@ -71,10 +71,10 @@ let t_dist_eq ju =
 
 (*i*)
 let pp_samp fmt (i,(vs,d)) =
-  F.fprintf fmt "%i: %a from %a" i Vsym.pp vs pp_distr d
+  F.fprintf fmt "%i: %a from %a" i Vsym.pp vs (pp_distr ~qual:Unqual) d
 
 let pp_osamp fmt ((i,j,k,otype),(vs,d)) =
-  F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k Vsym.pp vs pp_distr d pp_otype otype
+  F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k Vsym.pp vs (pp_distr ~qual:Unqual) d pp_otype otype
 
 let pp_let fmt (i,(vs,e)) =
   F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_exp e

@@ -68,8 +68,16 @@ type gdef = gcmd list
 (* \hd{Types for parsed proof scripts and tactics} *)
 
 type assgn_pos =
-  | Pos of int
-  | Var of string
+  | Pos    of int
+  | Var    of string
+  | AbsPos of int
+
+type diff_cmd =
+  | Drename of string * string * assgn_pos option
+  | Dinsert of assgn_pos * gcmd list
+  | Dsubst  of assgn_pos * parse_expr * parse_expr
+
+type selector = InRight | InBoth (* Left is default *)
 
 type range_pos = assgn_pos option * assgn_pos option
 
@@ -97,6 +105,7 @@ type tactic =
   | Rrnd_orcl      of ocmd_pos option * parse_ctx option * parse_ctx option
   | Rconv          of gdef * parse_expr
   | Rtrans         of gdef * parse_expr
+  | Rtrans_diff    of diff_cmd list
   | Rassm_dec      of bool * string option * direction option * ranges *
                       (string list) option
   | Rassm_comp     of bool * string option * ranges

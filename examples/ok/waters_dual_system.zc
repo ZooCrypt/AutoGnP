@@ -13,10 +13,10 @@ assumption dbdh
 adversary A_dlin : (G * G * G * G * G) -> Bool.
 
 assumption dlin
-  [ f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq;
-    b <- A_dlin(f, nu,g^c1, f^c2, nu^(c1+c2)); ]
-  [ f <-$ G; nu <-$ G; c1 <-$ Fq; c2 <-$ Fq; t <-$ G;
-    b <- A_dlin(f, nu,g^c1, f^c2,t); ].
+  [ b1 <-$ Fq; b2 <-$ Fq; c1 <-$ Fq; c2 <-$ Fq;
+    b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))); ]
+  [ b1 <-$ Fq; b2 <-$ Fq; c1 <-$ Fq; c2 <-$ Fq; t <-$ Fq;
+    b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^t); ].
     
 adversary A_dkill : () -> Bool.
 
@@ -31,26 +31,26 @@ oracle KeyGen2 : Fq -> (Fq*G*G*G*G*G*G*G*G).
 
 bound_adv
 [ (* setup *)
-  v     <-$ G; 
-  v1    <-$ G;
-  v2    <-$ G;
-  w     <-$ G;
-  u     <-$ G;
-  h     <-$ G;
+  V     <-$ G;
+  V1    <-$ G;
+  V2    <-$ G;
+  W     <-$ G;
+  U     <-$ G;
+  H     <-$ G;
   a1    <-$ Fq;
   a2    <-$ Fq;
   b     <-$ Fq;
   alpha <-$ Fq;
   
-  let tau1 = v*v1^a1;
-  let tau2 = v*v2^a2;
+  let tau1 = V*V1^a1;
+  let tau2 = V*V2^a2;
   let P0   = g^b;
   let P1   = g^a1;
   let P2   = g^a2;
   let P3   = g^(b*a1);
   let P4   = g^(b*a2);
   let P5   = e(g,g)^(alpha*a1*b);
-  (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,w,u,h,P5)
+  (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,W,U,H,P5)
     with
     KeyGen1(i) =
       [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
@@ -60,14 +60,14 @@ bound_adv
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let D1 = g^(alpha*a1)*v^r,
-        let D2 = g^(-alpha)*v1^r*g^z1,
+        let D1 = g^(alpha*a1)*V^r,
+        let D2 = g^(-alpha)*V1^r*g^z1,
         let D3 = (g^b)^-z1,
-        let D4 = v2^r*g^z2,
+        let D4 = V2^r*g^z2,
         let D5 = (g^b)^-z2,
         let D6 = g^(r2*b),
         let D7 = g^r1,
-        let k  = (u^i*w^tagk*h)^r1 ];
+        let k  = (U^i*W^tagk*H)^r1 ];
   
   beta <-$ Bool;  
   let m = beta?m0:m1;
@@ -83,120 +83,9 @@ bound_adv
   let C4 = P4^s2;
   let C5 = P2^s2;
   let C6 = tau1^s1*tau2^s2;
-  let C7 = (tau1^b)^s1*(tau2^b)^s2*w^-t;
-  let E1 = (u^ci*w^tagc*h)^t;
+  let C7 = (tau1^b)^s1*(tau2^b)^s2*W^-t;
+  let E1 = (U^ci*W^tagc*H)^t;
   let E2 = g^t;
-  
-  beta' <- A2(tagc,C0,C1,C2,C3,C4,C5,C6,C7,C1,C2)
-    with
-    KeyGen2(i) =
-      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
-      | i <> ci,
-        r1   <-$ Fq,
-        r2   <-$ Fq,
-        z1   <-$ Fq,
-        z2   <-$ Fq,
-        tagk <-$ Fq,
-        let r  = r1 + r2,
-        let D1 = g^(alpha*a1)*v^r,
-        let D2 = g^(-alpha)*v1^r*g^z1,
-        let D3 = (g^b)^-z1,
-        let D4 = v2^r*g^z2,
-        let D5 = (g^b)^-z2,
-        let D6 = g^(r2*b),
-        let D7 = g^r1,
-        let k  = (u^i*w^tagk*h)^r1 ];
-] : (beta = beta') /\ not (ci in Log (KeyGen1)).
-
-(* ================================================ *)
-(* make ciphertext semi-functional by applying DLIN *)
-
-swap [a1 a2] v. abstract a1 arg (). abstract _ res _.
-  assumption_decisional dkill <- [arg] c1.
-swap arg -1. assumption_decisional dkill <- [arg] c2. unfold arg.
-
-(* sample exponents instead of group elements for unrelated variables *)
-rnd v  (yv : Fq -> g ^ yv) _.
-rnd v1 (yv1 : Fq -> g ^ yv1) _.
-rnd v2 (yv2 : Fq -> g ^ yv2) _.
-unfold r3 r4 r5.
-
-(* we will use the challenges f and nu for g^a1 and g^a2 *)
-rnd a1 (f : G -> log(f)) _. unfold r3.
-rnd a2 (nu : G -> log(nu)) _. unfold r3.
-unfold tau1 tau2 P0 P1 P2 P3 P4 P5.
-
-(* *)
-rnd s2 (s2 -> s2 + c1 + c2) _.
-rnd s1 (s1 -> s1 - c2)  _. unfold r3 r4; //= c1 c2. 
-abstract yv arg (f, nu, g^c1, f^c2, nu^(c1+c2)).
-
-assumption_decisional dlin -> [arg] tt.
-(* make queried keys semi-functional by applying DLIN *)
-(* setup *)
-trans [
-  v     <-$ G; 
-  v1    <-$ G;
-  v2    <-$ G;
-  w     <-$ G;
-  u     <-$ G;
-  h     <-$ G;
-  a1    <-$ Fq;
-  a2    <-$ Fq;
-  b     <-$ Fq;
-  alpha <-$ Fq;
-  
-  let tau1 = v*v1^a1;
-  let tau2 = v*v2^a2;
-  let P0   = g^b;
-  let P1   = g^a1;
-  let P2   = g^a2;
-  let P3   = g^(b*a1);
-  let P4   = g^(b*a2);
-  let P5   = e(g,g)^(alpha*a1*b);
-  (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,w,u,h,P5)
-    with
-    KeyGen1(i) =
-      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
-      | r1   <-$ Fq,
-        r2   <-$ Fq,
-        z1   <-$ Fq,
-        z2   <-$ Fq,
-        tagk <-$ Fq,
-        let r  = r1 + r2,
-        let D1 = g^(alpha*a1)*v^r,
-        let D2 = g^(-alpha)*v1^r*g^z1,
-        let D3 = (g^b)^-z1,
-        let D4 = v2^r*g^z2,
-        let D5 = (g^b)^-z2,
-        let D6 = g^(r2*b),
-        let D7 = g^r1,
-        let k  = (u^i*w^tagk*h)^r1 ];
-  
-  beta <-$ Bool;  
-  let m = beta?m0:m1;
-  (* encryption of Enc(PK,i,m) *)
-  s1   <-$ Fq;
-  s2   <-$ Fq;
-  t    <-$ Fq;
-  tagc <-$ Fq;
-  let C0 = m*P5^s2;
-  let C1 = P0^(s1+s2);
-  let C2 = P3^s1;
-  let C3 = P1^s1;
-  let C4' = P4^s2;
-  let C5' = P2^s2;
-  let C6' = tau1^s1*tau2^s2;
-  let C7' = (tau1^b)^s1*(tau2^b)^s2*w^-t;
-  let E1 = (u^ci*w^tagc*h)^t;
-  let E2 = g^t;
-
-  (* modifications to make ciphertext semi-functional *)
-  x <-$ Fq;
-  let C4 = C4' * g^(b*a2*x);
-  let C5 = C5' * g^(a2*x);
-  let C6 = C6' * v2^(a2*x);
-  let C7 = C7' * v2^(b*a2*x);
   
   beta' <- A2(tagc,C0,C1,C2,C3,C4,C5,C6,C7,E1,E2)
     with
@@ -209,39 +98,67 @@ trans [
         z2   <-$ Fq,
         tagk <-$ Fq,
         let r  = r1 + r2,
-        let D1 = g^(alpha*a)*v^r,
-        let D2 = g^(-alpha)*v1^r*g^z1,
+        let D1 = g^(alpha*a1)*V^r,
+        let D2 = g^(-alpha)*V1^r*g^z1,
         let D3 = (g^b)^-z1,
-        let D4 = v2^r*g^z2,
+        let D4 = V2^r*g^z2,
         let D5 = (g^b)^-z2,
         let D6 = g^(r2*b),
         let D7 = g^r1,
-        let k  = (u^i*w^tagk*h)^r1 ];
+        let k  = (U^i*W^tagk*H)^r1 ];
 ] : (beta = beta') /\ not (ci in Log (KeyGen1)).
-  norm. swap w f. swap u w. swap h u. swap alpha h. swap b alpha.
-    rnd f (a1 -> g^a1) (f -> log(f)). norm. swap a1 b.
-    rnd nu (a2 -> g^a2) (nu -> log(nu)). norm. swap a2 a1.
-    rnd yv1 (v1 -> log(v1)) (yv1 -> g^yv1). norm. swap v1 a2.
-    rnd yv2 (v2 -> log(v2)) (yv2 -> g^yv2). norm. swap v2 v1.
-    rnd yv  (v -> log(v)) (yv -> g^yv). norm. swap v v2.
-    rnd s2 _ (s2 -> s2 + c1' + c2'). norm.
-    rnd s1 _ (s1 -> s1 - c2'). norm.
-    except a2 [0].
-    rnd tt (x -> g^(x*a2)) _. except a2 []. norm.
-    rnd x (x -> x + c1' + c2') _. norm.
-    swap c1' tagc. swap c2' tagc. swap x tagc.
-    swap c2' -17. swap c1' -17.
-    abstract 2 arg (). abstract _ res _. norm_unknown.
-    assumption_decisional dkill -> [arg].
-    swap arg 1. assumption_decisional dkill -> [arg].
-    norm.
-  dist_sym.
-  norm. swap w v. swap u w. swap h u. swap alpha h. swap b alpha.
-    swap a1 b. swap a2 a1. swap v1 a2. swap v2 v1. swap v v2.
-print_games "g2" "g1".
-dist_eq.
+
+(* ================================================ *)
 (* make ciphertext semi-functional by applying DLIN *)
-hybrid (20,1)
+
+(* This is the game with semi-functional challenge ciphertext as given in the paper *)
+trans*
+  [ insert beta'
+    [ (* modifications to make ciphertext semi-functional *)
+      x <-$ Fq;
+      let C4' = g^(b*a2*x);
+      let C5' = g^(a2*x);
+      let C6' = V2^(a2*x);
+      let C7' = V2^(b*a2*x); ]
+  , subst E2 (C4) (C4*C4')
+  , subst E2 (C5) (C5*C5')
+  , subst E2 (C6) (C6*C6')
+  , subst E2 (C7) (C7*C7')
+  ].
+  _: norm.
+  (* sample exponents instead of group elements to maximize deducibility for reduction *)
+  _: rnd V  (v :  Fq -> g ^ v) _.  _: rnd V1 (v1 : Fq -> g ^ v1) _.
+  _: rnd V2 (v2 : Fq -> g ^ v2) _. _: rnd W  (w :  Fq -> g^w) _.
+  _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _.
+  _: //; //=.
+  
+  (* match p variables from assumption *)
+  _: rename a1 b1. _: rename a2 b2. _: swap b1 (1). _: swap b2 (2).
+  (* introduce remaining variables c1 and c2 from assumption. *)
+  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c2. _: //; //=.
+  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c1. _: //; //=.
+  swap [c1 c2] b2.
+
+  (* we could use DLIN now, but it would be useless since the expression
+     b2*(c1+c2)) does not occur anywhere.
+     So we perform the right opt. samplings to "mix in" c1 and c2. *)
+  rnd s2 (s2 -> s2 + c1 + c2) _. rnd s1 (s1 -> s1 - c2)  _. _: //; //=.
+  abstract* 5 arg (g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))).
+  abstract _ res _.
+  assumption_decisional dlin -> [arg] x. _: //; //=.
+  swap x tagc.
+  (* check differences, substitute some variable by polynomial to obtain additional terms existing on other side *)
+  2: rnd s2 (s2 -> s2 + c1 + c2) _; //; //=.
+  2: rnd! s1 (s1 -> s1 - c2) _. _: //; //.
+  2: rnd! x _ (x -> x + c1 + c2). _: //; //; //.
+  2: except b2 [0]. 2: rnd x _ (x -> x*b2). _: //; //=.
+  2: swap s1 s2. 2: swap [c1 c2] b2. 2: except b2 [].
+  dist_eq.
+  
+(* ================================================== *)
+(* make first oracle semi-functional by applying DLIN *)
+
+hybrid (19,1)
   [ (tagk,D1,D2,D3,D4,D5,D6,D7,k) |
     r1 <-$ Fq,
     r2 <-$ Fq,
@@ -250,19 +167,35 @@ hybrid (20,1)
     tagk <-$ Fq,
     gamma <-$ Fq,
     let r = r2 + r1,
-    let D1' = g^(a1*alpha) * v^r,
-    let D2' = g^-alpha * v1^r * g^z1,
+    let D1' = g^(a1*alpha) * V^r,
+    let D2' = g^-alpha * V1^r * g^z1,
     let D3 = (g^b)^-z1,
-    let D4' = v2^r * g^z2,
+    let D4' = V2^r * g^z2,
     let D5 = (g^b)^-z2,
     let D6 = g^(b*r2),
     let D7 = g^r1,
-    let k = (h * u^i * w^tagk)^r1,
+    let k = (H * U^i * W^tagk)^r1,
     let D1 = D1' * g^(-a1*a2*gamma),
     let D2 = D2' * g^(a2*gamma),
-    let D4 = D4' * g^(a1*gamma) ] B.
+    let D4 = D4' * g^(a1*gamma) ].
+  (* sample exponents instead of group elements to maximize deducibility for reduction *)
+  _: rnd V  (v :  Fq -> g ^ v) _.  _: rnd V1 (v1 : Fq -> g ^ v1) _.
+  _: rnd V2 (v2 : Fq -> g ^ v2) _. _: rnd W  (w :  Fq -> g^w) _.
+  _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _.
+  _: //; //=.
+  (* b = b1 in DLIN *)
+  _: rename b b1. _: swap b1 (1).
+  rename v b2.
+  except a1 [0]. except a2 [0].
+  rnd! b2 (b2 -> b2*-a1*a2) _. _: //; //=.
+  
+  (* introduce remaining variables c1 and c2 from assumption. *)
+  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c2. _: //; //=.
+  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c1. _: //; //=.
+  _: swap [c1 c2] b1.
+
   admit. (* proof for first hybrid argument *)
-hybrid (42,1)
+hybrid (41,1)
   [ (tagk,D1,D2,D3,D4,D5,D6,D7,k) |
     r1 <-$ Fq,
     r2 <-$ Fq,
@@ -271,34 +204,32 @@ hybrid (42,1)
     tagk <-$ Fq,
     gamma <-$ Fq,
     let r = r2 + r1,
-    let D1' = g^(a1*alpha) * v^r,
-    let D2' = g^-alpha * v1^r * g1^z1,
+    let D1' = g^(a1*alpha) * V^r,
+    let D2' = g^-alpha * V1^r * g^z1,
     let D3 = (g^b)^-z1,
-    let D4' = v2^r * g1^z2,
+    let D4' = V2^r * g^z2,
     let D5 = (g^b)^-z2,
     let D6 = g^(b*r2),
     let D7 = g^r1,
-    let k = (h * u^i * w^tagk)^r1,
+    let k = (H * U^i * W^tagk)^r1,
     let D1 = D1' * g^(-a1*a2*gamma),
     let D2 = D2' * g^(a2*gamma),
-    let D4 = D4' * g^(a1*gamma) ] C.
+    let D4 = D4' * g^(a1*gamma) ].
   admit. (* proof for second hybrid argument *)
 (* make ciphertext one-time-pad by applying DBDH *)
 rename a2 c2.
 rename alpha c1.
 except c2 [0]. rnd c1 (c1 -> c1 * c2) (c1 -> c1 / c2). except c2 []. unfold r3.
-rnd v (yv -> g^yv) _. rnd v1 (yv1 -> g^yv1) _.
-rnd v2 (yv2 -> g^yv2) _. rnd w (w -> g^w) _.
-rnd h (h -> g^h) _. rnd u (u -> g^u) _. norm.
+rnd V (v : Fq -> g^v) _. rnd V1 (v1 : Fq -> g^v1) _.
+rnd V2 (v2 : Fq -> g^v2) _. rnd W (w : Fq -> g^w) _.
+rnd H (h : Fq -> g^h) _. rnd U (u : Fq -> g^u) _. norm.
 rnd_oracle (11,1,6) (gamma -> gamma + c1) (gamma -> gamma - c1). norm.
 rnd_oracle (18,1,6) (gamma -> gamma + c1) (gamma -> gamma - c1). norm.
 rename s2 c3. rename x x'. rnd x' (x' -> x' - c3) _. norm.
-swap c1 yv. swap c2 yv. swap c3 yv.
+swap c1 v. swap c2 v. swap c3 v.
 norm_unknown c1 c2 c3.
-abstract 4 args (g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)).
+abstract* 4 args (g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)).
 abstract _ res _.
-subst (g_t^(c2*c1)) (e(args#0,args#1)).
-subst (g_t^(c2*c1*c3)) (args#3).
 assumption_decisional dbdh -> [args] tt. norm.
 except a1 [0]. except b [0]. rnd! tt _ _. norm. swap 13 beta'. indep!.
 qed.

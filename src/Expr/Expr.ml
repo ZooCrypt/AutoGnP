@@ -102,7 +102,7 @@ and expr_node =
 (** Equality hashing, and comparison for expressions. *)
 let e_equal : expr -> expr -> bool = (==) 
 let e_hash e = e.e_tag
-let e_compare e1 e2 = e1.e_tag - e2.e_tag 
+let e_compare e1 e2 = e1.e_tag - e2.e_tag
 
 (** Hashcons expressions. *)
 module Hse = Hashcons.Make (struct

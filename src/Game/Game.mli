@@ -55,17 +55,17 @@ type sec_exp = { se_gdef : gdef; se_ev : ev; }
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Pretty printing} *)
 
-val pp_distr : F.formatter -> Type.ty * expr list -> unit
+val pp_distr : qual: Osym.t qual -> F.formatter -> Type.ty * expr list -> unit
 
 val pp_v : F.formatter -> Vsym.t -> unit
 
-val pp_binder : F.formatter -> Vsym.t list -> unit
+val pp_binder : qual: Osym.t qual -> F.formatter -> Vsym.t list -> unit
 
-val pp_lcmd : F.formatter -> lcmd -> unit
+val pp_lcmd : qual: Osym.t qual -> F.formatter -> lcmd -> unit
 
-val pp_ilcmd : F.formatter -> int * lcmd -> unit
+val pp_ilcmd : qual: Osym.t qual -> F.formatter -> int * lcmd -> unit
 
-val pp_lcomp : F.formatter -> expr * lcmd list -> unit
+val pp_lcomp : qual: Osym.t qual -> F.formatter -> expr * lcmd list -> unit
 
 val pp_odef : F.formatter -> odef -> unit
 

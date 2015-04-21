@@ -139,7 +139,7 @@ and wf_exp ctype wfs e0 =
           (fun ie -> try go ie; true with _ -> false)
           ineqs
       in
-      log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_exp) ineqs));
+      (* log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_exp) ineqs)); *)
       let wfs =
         List.fold_left
           (fun wfs e ->

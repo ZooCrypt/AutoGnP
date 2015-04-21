@@ -104,7 +104,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
         if ppt then add_sub_solver e
         else add_sub e; List.iter (register_subexprs false) es
       | Eq | Not | Ifte ->
-        add_sub e; List.iter (register_subexprs false) es
+        add_sub_constr e; List.iter (register_subexprs false) es
       | GInv | FDiv -> failwith "GInv and FDiv cannot occur in normal-form"
       end
     | Nary(op,es) ->
@@ -118,7 +118,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       (* normal form is g^log(v) and must have been already added *)
     | V _ when is_G e.e_ty -> ()
     | V _                  -> add_sub_solver e
-    | Cnst _ | Exists _ | InLog _ -> ()
+    | InLog(e1,_) -> add_sub_constr e; register_subexprs false e1
+    | Cnst _ | Exists _ -> ()
   in
 
   (** Try to construct unknown useful expressions *)
@@ -151,6 +152,11 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     )
     i*)
   in
+  let construct_inLog e e1 os =
+    if not (is_in e) && is_in e1 then (
+      reg_constr e (mk_InLog (get e1) os)
+    )
+  in
   let construct_app e op es =
     match op, es with
     | (FOpp | FMinus), _ -> assert false
@@ -171,6 +177,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Proj(i, e1) -> construct1 e e1 (mk_Proj i)
     | H(h,e1)     -> construct1 e e1 (mk_H h)
     | Tuple es    -> constructn e es mk_Tuple
+    | InLog(e1,os)  -> construct_inLog e e1 os
     | App(op,es)  -> construct_app e op es
     | Nary(op,es) ->
       begin match op with
@@ -178,7 +185,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
       end
-    | V _ | Cnst _ | Exists _ | InLog _ -> ()
+    | V _ | Cnst _ | Exists _ -> ()
   in
  
   (* Try do deduce interesting subterms for the given type using solvers *)

@@ -34,6 +34,8 @@ rule lex = parse
   | "in"    { IN }
   | "Log"   { QUERIES }
   | "let"   { LET }
+  | "2:" { INRIGHT }
+  | "_:"  { INBOTH }
   | "undo_back"  { UNDOBACK }
   | "undo_back!"  { UNDOBACK_EXCL }
   | "adversary" { ADVERSARY }
@@ -97,6 +99,8 @@ rule lex = parse
   | "swap" { RSWAP }
   | "swap_main" { RSWAP_MAIN }
   | "conv" { RCONV }
+  | "insert" { RINSERT }
+  | "trans*" { RTRANSSTAR }
   | "trans" { RTRANS }
   | "indep" { RINDEP }
   | "rnd_oracle" { RRND_ORACLE }

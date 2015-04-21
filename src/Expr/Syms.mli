@@ -46,6 +46,7 @@ module Vsym : sig
   val compare : t -> t -> int
   val mk : string -> ty -> t
   val mk_qual : string -> Osym.t qual -> ty -> t
+  val pp_qual : ?qual:Osym.t qual -> F.formatter -> t -> unit
   val pp : F.formatter -> t -> unit
   val to_string : t -> string
 

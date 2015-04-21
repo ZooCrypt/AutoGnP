@@ -75,8 +75,9 @@ let find_gvar ju s =
 
 let gpos_of_apos ju ap =
   match ap with
-  | PT.Var s -> find_gvar ju s
-  | PT.Pos i -> (gpos_of_offset ju i) - 1
+  | PT.AbsPos i -> i
+  | PT.Var s    -> find_gvar ju s
+  | PT.Pos i    -> (gpos_of_offset ju i) - 1
 
 let interval ju (i1,i2) = 
   let i1 = opt (gpos_of_apos ju) 0 i1 in
@@ -89,12 +90,17 @@ let t_swap inter delta ju =
   if i2 < i1 then tacerror "swap: empty interval [%i .. %i]" i1 i2;
   let delta = 
     match delta with
+    | PT.Pos i -> i
     | PT.Var s -> 
       let p = find_gvar ju s in
       if p <= i1 then p - i1
       else if p >= i2 then p - i2
       else tacerror "swap: invalid position %s" s
-    | PT.Pos i -> i in
+    | PT.AbsPos p ->
+      if p <= i1 then p - i1
+      else if p >= i2 then p - i2
+      else tacerror "swap: invalid position %i" p
+  in  
   let li = list_from_to i1 (i2+1) in
   let lt = List.map (fun i -> CR.t_swap i delta) li in
   if delta < 0 then Rules.t_seq_fold lt ju
@@ -174,11 +180,6 @@ let handle_tactic ts tac =
       t_case_ev_maybe
   
     | PT.Rexcept(Some(i),Some(ses)) ->
-      log_i (lazy (fsprintf "pos: %s"
-                     (match i with 
-                     | PT.Var s -> "var: "^s
-                     | PT.Pos i -> "pos:" ^ string_of_int i)));
-      
       CR.t_except (get_pos i) (L.map (parse_e) ses)
   
     | PT.Rexcept(i,ses) ->
@@ -280,6 +281,45 @@ let handle_tactic ts tac =
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
       let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
       CR.t_trans { se_gdef = gd2; se_ev = ev2 }
+
+    | PT.Rtrans_diff(dcmds) ->
+      let vmap = Hashtbl.copy vmap_g in
+      let rec app_diff dcmds ju =
+        let get_pos = gpos_of_apos ju in
+        let se = ju.ju_se in        
+        match dcmds with
+        | [] -> ju.ju_se
+        | PT.Drename(v1,v2,mupto)::dcmds ->
+          let v1 = Ht.find vmap (Unqual,v1) in
+          let v2 = mk_new_var v2 v1.Vsym.ty in
+          let maxlen = L.length se.se_gdef in
+          let mupto = map_opt (fun p -> succ (get_pos p)) mupto in
+          let rn_len = from_opt maxlen mupto in
+          let a_cmds, sec = get_se_ctxt_len se ~pos:0 ~len:rn_len in
+          let sigma v = if Vsym.equal v v1 then v2 else v in
+          let a_cmds = subst_v_gdef sigma a_cmds in
+          let ev = if mupto=None then subst_v_e sigma sec.sec_ev else sec.sec_ev in
+          app_diff dcmds { ju with ju_se = (set_se_ctxt a_cmds { sec with sec_ev = ev }) }
+        | PT.Dsubst(p,e1,e2)::dcmds ->
+          let p = get_pos p in
+          let e1 = PU.expr_of_parse_expr vmap ts Unqual e1 in
+          let e2 = PU.expr_of_parse_expr vmap ts Unqual e2 in
+          let subst a = e_replace e1 e2 a in
+          let l,r = cut_n p se.se_gdef in
+          let new_se = 
+            { se_gdef = L.rev_append l (map_gdef_exp subst r); se_ev   = subst se.se_ev }
+          in
+          app_diff dcmds { ju with ju_se = new_se }
+        | PT.Dinsert(p,gcmds)::dcmds ->
+          let i = get_pos p in
+          let _, sec = get_se_ctxt_len se ~pos:i ~len:0 in
+          let gcmds = PU.gdef_of_parse_gdef vmap ts gcmds in
+          app_diff dcmds { ju with ju_se = (set_se_ctxt gcmds sec) }
+      in
+      let t_diff ju =
+        CR.t_trans (app_diff dcmds ju) ju
+      in
+      t_diff
   
     | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
       t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs
@@ -516,6 +556,22 @@ let handle_instr verbose ts instr =
 
   | PT.Apply(tac) ->
     let (ts,s) = handle_tactic ts tac in
+
+    (* FIXME: we always print games for dist judgments currently *)
+    let ps = get_proof_state ts in
+    let () = match ps.CR.subgoals with
+      | ju::_ ->
+        begin match ju.ju_pr with
+        | Pr_Dist se2 ->
+          let se1, se2 = ju.ju_se,se2 in
+          ExprUtils.pp_sort_expensive := true;
+          output_file "g_left" (fsprintf "%a" pp_se_nonum se1);
+          output_file "g_right" (fsprintf "%a" pp_se_nonum se2);
+          ExprUtils.pp_sort_expensive := false
+        | _ -> ()
+        end
+      | [] -> ()
+    in
     (ts, "Applied tactic"^(if verbose then ": "^Lazy.force s else "."))
 
   | PT.Back ->
@@ -650,8 +706,10 @@ let handle_instr verbose ts instr =
         end
       | [] -> tacerror "cannot print games: there is no goal"
     in
+    ExprUtils.pp_sort_expensive := true;
     output_file fn1 (fsprintf "%a" pp_se_nonum se1);
     output_file fn2 (fsprintf "%a" pp_se_nonum se2);
+    ExprUtils.pp_sort_expensive := false;
     (ts, F.sprintf "Current games printed into files: %s and %s" fn1 fn2)
 
   | PT.Debug cmd ->

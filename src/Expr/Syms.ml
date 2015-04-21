@@ -102,10 +102,21 @@ module Vsym = struct
   let mk_qual name qual ty = { id = Id.mk name; qual = qual; ty = ty; }
 
   (* FIXME: add different versions *)
-  let pp fmt vs =
+  let pp_qual ?qual:(qual=Unqual) fmt vs =
+    let qual_eq o =
+      match qual with
+      | Unqual  -> false
+      | Qual o' -> Osym.equal o o'
+    in
     match vs.qual with
-    | Unqual -> F.fprintf fmt "%s" (Id.name vs.id)
-    | Qual q -> F.fprintf fmt "%s`%s" (Id.name q.Osym.id) (Id.name vs.id)
+    | Unqual ->
+      F.fprintf fmt "%s" (Id.name vs.id)
+    | Qual o when qual_eq o ->
+      F.fprintf fmt "%s" (Id.name vs.id)
+    | Qual q ->
+      F.fprintf fmt "%s`%s" (Id.name q.Osym.id) (Id.name vs.id)
+  
+  let pp fmt = pp_qual ~qual:Unqual fmt
 
   let to_string ps = Id.name ps.id
   let set_of_list l =

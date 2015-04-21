@@ -153,7 +153,10 @@ let process_eval fname proofscript =
           (fun cmd ->
              last_cmd := cmd; decr n_rem_cmds;
              let verb = !n_rem_cmds = 0 in
-             let (ts, msg) = handle_instr verb !rts (Parse.instruction (cmd ^ ".")) in
+             let (ts, msg) = L.fold_left (fun (ts,msg0) i ->
+               let (ts,msg) = handle_instr verb ts i in
+               (ts,msg0^msg)) (!rts,"") (Parse.instruction (cmd ^ "."))
+             in
              rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
 
              insert_ts_cache fname !rhandled (ts,!rmsgs))

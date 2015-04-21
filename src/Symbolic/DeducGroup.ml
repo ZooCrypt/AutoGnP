@@ -56,7 +56,8 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   in
   (* returns polynomial and inverter transformer *)
   let group_to_poly_simp subtract e gn k_Fq =
-    let f = poly_of_expr (snd (destr_GExp e)) in
+    let exp = if is_GExp e then (snd (destr_GExp e)) else mk_GLog e in
+    let f = poly_of_expr exp in
     (* NOTE: for now, we don't perform divide_known since this requires non-zero constraints *)
     let (f,i_poly) = subtract_known f k_Fq in
     if is_FNat i_poly

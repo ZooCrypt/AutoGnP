@@ -78,8 +78,11 @@ val destr_Tuple_nofail : expr -> expr list
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Pretty printing} *)
 
+val pp_sort_expensive : bool ref
+
 val pp_cnst : F.formatter -> cnst -> Type.ty -> unit
 val pp_exp  : F.formatter -> expr -> unit
+val pp_exp_qual  : qual:Osym.t qual -> F.formatter -> expr -> unit
 val pp_op   : F.formatter -> op * expr list -> unit
 val pp_nop  : F.formatter -> nop * expr list -> unit
 val pp_exp_tnp : F.formatter -> expr -> unit

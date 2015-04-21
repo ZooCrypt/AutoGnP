@@ -43,7 +43,8 @@
 %token SLASH2EQ
 %token PPT
 %token INFTHEORETIC
-
+%token INRIGHT
+%token INBOTH
 %token TRUE
 %token FALSE
 %token NOT
@@ -120,6 +121,8 @@
 %token RSWAP
 %token RCONV
 %token RTRANS
+%token RTRANSSTAR
+%token RINSERT
 %token RDIST_SYM
 %token RDIST_EQ
 %token RINDEP
@@ -173,7 +176,7 @@
 
 %type <ParserTypes.theory> theory
 
-%type <ParserTypes.instr> instruction
+%type <ParserTypes.instr list> instruction
 
 /************************************************************************/
 /* Start productions */
@@ -467,6 +470,7 @@ gpos:
 assgn_pos:
 | n=int            { Pos(n) }
 | i=ID             { Var(i) } 
+| LPAREN n=int RPAREN  { AbsPos(n-1) }
 (*| i=ID PLUS  n=NAT { Var(i,Some n)   }
 | i=ID MINUS n=NAT { Var(i,Some (-n))} *)
 ;
@@ -479,6 +483,14 @@ swap_pos:
 | i=inter_pos  { i } 
 | i1=assgn_pos { Some i1 , Some i1 }
 ; 
+
+diff_cmd:
+| RRENAME i1=ID i2=ID mupto=assgn_pos?
+  { Drename(i1,i2,mupto) }
+| RINSERT p=assgn_pos LBRACK gd=gdef0 RBRACK
+  { Dinsert(p,gd) }
+| RSUBST p=assgn_pos e1=expr0 e2=expr0
+  { Dsubst(p,e1,e2) }
 
 tactic :
 
@@ -494,6 +506,8 @@ tactic :
 /* conversion */
 | RCONV LBRACK gd=gdef0 RBRACK e=event   { Rconv(gd,e) }
 | RTRANS LBRACK gd=gdef0 RBRACK e=event  { Rtrans(gd,e) }
+| RTRANSSTAR LBRACK dcmds=separated_nonempty_list(COMMA,diff_cmd) RBRACK
+  { Rtrans_diff(dcmds) }
 | RSUBST i=inter_pos? e1=expr0 e2=expr0 { 
     let i, mupto = from_opt (None,None) i in
     Rsubst(i,e1,e2,mupto) } 
@@ -557,8 +571,8 @@ tactic :
 | RFALSE_EV         { Rfalse_ev}
 
 /* bounding distinguishing probability */
-| RDIST_EQ  { Rdist_eq}
-| RDIST_SYM { Rdist_sym}
+| RDIST_EQ  { Rdist_eq }
+| RDIST_SYM { Rdist_sym }
 
 /* debugging */
 | DEDUCE  ppt=PPT?
@@ -569,15 +583,28 @@ tactic :
 /************************************************************************/
 /* instructions and theories */
 
+selector:
+| INRIGHT { InRight }
+| INBOTH { InBoth }
+
 instr :
-| i=decl { i }
-| i=proof_command { i }
-| is=separated_nonempty_list(SEMICOLON,tactic)
-  { match is with [i] -> Apply(i) | _ -> Apply(Rseq(is)) }
+| i=decl { [i] }
+| i=proof_command { [i] }
+| ir=selector? is=separated_nonempty_list(SEMICOLON,tactic) 
+  { let tacs =
+      match is with
+      | [i] -> [Apply(i)]
+      | _ -> [Apply(Rseq(is))]
+    in
+    match ir with
+    | None -> tacs
+    | Some InBoth -> tacs@[Apply(Rdist_sym)]@tacs@[Apply(Rdist_sym)]
+    | Some InRight -> [Apply(Rdist_sym)]@tacs@[Apply(Rdist_sym)]
+  }
 
 instruction:
 | i=instr DOT EOF { i }
 
 theory :
-| i=instr DOT EOF { [i] }
-| i=instr DOT t=theory { i::t }
+| i=instr DOT EOF { i }
+| i=instr DOT t=theory { i@t }
