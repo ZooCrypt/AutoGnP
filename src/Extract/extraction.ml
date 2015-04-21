@@ -875,9 +875,14 @@ let pr_conv sw1 ju1 ju ju' ju2 sw2 file =
   let eqvc = mk_eq_vcs g1 g2 vcs in
   let nvc = List.length vcs in
   let info = build_conv_proof nvc eqvc file g1 g2 ju.ju_se.se_gdef ju'.ju_se.se_gdef in 
-  (* FIXME *)
+  let forpost = 
+    if ExprUtils.is_False ju1.ju_se.se_ev 
+       || ExprUtils.is_False ju2.ju_se.se_ev then
+      "progress[not];algebra*;elimIF;algebra*"
+    else
+      "progress;algebra*;elimIF;algebra*" in
   let open_pp, close_pp = 
-    init_same_ev false file (Some info.invs) "progress;algebra*" in
+    init_same_ev false file (Some info.invs) forpost in
   fun fmt () -> 
     open_pp fmt (); 
     F.fprintf fmt "(* conv rule *)@ ";
@@ -907,10 +912,10 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
       Printer.pp_form (f_and info.invs eqvc) nA;
     let ty = (fst inv1).Vsym.ty in 
     F.fprintf fmt "  progress.@ ";
-    F.fprintf fmt "    by algebra *.@ ";
+    F.fprintf fmt "    by algebra *;elimIF;algebra *.@ ";
     F.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
     F.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
-    F.fprintf fmt "    by algebra *.@ ";
+    F.fprintf fmt "    by algebra *;elimIF;algebra *.@ ";
     pp_cmds fmt info.tacs;
     close_pp fmt ()
 
@@ -1229,12 +1234,12 @@ let extract_assum file ranges dir assum pft pft' =
 
   let proof fmt () =
     let pp_form = Printer.pp_form in
-    F.fprintf fmt "@[<v>(* Assumption computational *)@ ";
+    F.fprintf fmt "@[<v>(* Assumption decitional *)@ ";
     F.fprintf fmt "move=> &m.@ ";
     F.fprintf fmt "cut -> : %a = %a.@ " pp_form pr pp_form pra;
-    F.fprintf fmt "+ byequiv (_: _ ==> _) => //;proc;inline *;sim;auto.@ ";
+    F.fprintf fmt "+ byequiv (_: _ ==> _) => //;proc;inline *;do!(sim;auto).@ ";
     F.fprintf fmt "cut -> : %a = %a.@ " pp_form pr' pp_form pra';
-    F.fprintf fmt "+ byequiv (_: _ ==> _) => //;proc;inline *;sim;auto.@ ";
+    F.fprintf fmt "+ byequiv (_: _ ==> _) => //;proc;inline *;do!(sim;auto).@ ";
     F.fprintf fmt "by %s.@]" 
       (if dir = LeftToRight then "done" else "rewrite ZooUtil.abs_minusC") in 
   let lemma = 
@@ -1311,7 +1316,7 @@ let extract_assum_comp file ranges assum pft =
     F.fprintf fmt "(* Assumption computational *)@ ";
     F.fprintf fmt 
       "@[<v>intros &m; byequiv (_: @[={glob %s} ==>@ _@]) => //.@ " nA;
-    F.fprintf fmt "by proc; inline *; wp => /=; sim;auto.@]" in
+    F.fprintf fmt "by proc; inline *; wp => /=; do !(sim;auto).@]" in
   let lemma = 
     add_pr_lemma file (mk_cmp pr cmp_eq pra) (Some proof_ass) in
   lemma, pr, cmp_eq, pra
@@ -1430,11 +1435,10 @@ let extract_except file pos _l pft pft' =
   } in
   add_local file (Cclone clone_info);
   let eps = f_rinv (Frofi f_Fq) in
-  let bound = f_radd pr' (f_rinv (Frofi f_Fq)) in
-  let pr1, pr2 = if side = `LeftToRight then pr, pr' else pr', pr in
+  let bound = f_rinv (Frofi f_Fq) in
   let g2 = if side = `LeftToRight then g' else g in
 
-  let ev = formula file [adv.mod_name] None ju.ju_se.se_ev in 
+
   let mk_eqs g fv = 
     let mk_eq e = 
       f_eq (formula file [g] (Some "1") e) 
@@ -1447,25 +1451,6 @@ let extract_except file pos _l pft pft' =
   let eqvc = mk_eq_vcs g2 adv vcs in
   let proof fmt () = 
     F.fprintf fmt "intros &m.@ ";
-      F.fprintf fmt 
-      "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, S).main() @@ &m :@ %a]@].@ " 
-      Printer.pp_form pr1 adv.mod_name Printer.pp_form ev;
-    F.fprintf fmt 
-      "  byequiv (_ : ={glob %s} ==> _);[ proc;inline *;sim | by [] | by [] ]. @ "
-      nA;
-    
-    F.fprintf fmt 
-      "cut -> : @[%a =@ Pr[SDF.SD1query.SD1(%s, SE).main() @@ &m :@ %a]@].@ " 
-      Printer.pp_form pr2 adv.mod_name Printer.pp_form ev;
-    F.fprintf fmt 
-      "  byequiv (_ : ={glob %s} ==> _);[ proc;inline *;sim | by [] | by [] ]. @ "
-      nA;
-    F.fprintf fmt "  rnd; wp %i %i => /=.@ " npos (npos + 1);
-    F.fprintf fmt "  conseq (_ : _ ==> ={glob %s} /\\ %a) => //;sim.@ " nA
-      Printer.pp_form 
-        (f_and eqvc (mk_eqs g2.mod_name 
-                       (write_gcmds (Util.take pos ju.ju_se.se_gdef))));
-
     F.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
     List.iter (fun e -> 
       let v = destr_V e in
@@ -1474,14 +1459,30 @@ let extract_except file pos _l pft pft' =
         s adv.mod_name s) (Se.elements fv);
     F.fprintf fmt "  @[%a@].@ "
       Printer.pp_form (formula file [] None ju.ju_se.se_ev);
-    F.fprintf fmt "apply (%s.%s %s &m EV)." 
-      clone_info.ci_as
-      (if side = `LeftToRight then "SD1_conseq_add" else "SD1_conseq_add_E")
-      adv.mod_name
+    F.fprintf fmt "cut H1 := %s.SD1_conseq_abs %s &m EV.@ " 
+      clone_info.ci_as adv.mod_name;
+    F.fprintf fmt "apply (real_le_trans _ _ _ _ H1)=>{H1}.@ ";
+    F.fprintf fmt "apply real_eq_le%s.@ "
+      (if side = `LeftToRight then "" 
+       else ";rewrite ZooUtil.abs_minusC");
+    F.fprintf fmt "congr;congr;simplify EV.@ ";
+    F.fprintf fmt 
+      "+ byequiv (_ : ={glob %s} ==> _);[ proc;inline *;sim | by [] | by [] ].@ "
+      nA;
+    F.fprintf fmt 
+      "byequiv (_ : ={glob %s} ==> _);[ proc;inline * | by [] | by [] ].@ "
+      nA;
+    F.fprintf fmt "seq %i %i :(={glob %s} /\\ %a);sim;auto." 
+      npos (npos + 1) nA
+      Printer.pp_form 
+        (f_and eqvc (mk_eqs g2.mod_name 
+                       (write_gcmds (Util.take pos ju.ju_se.se_gdef))))
   in
+  let concl = mk_cmp (Fabs (f_rsub pr pr')) cmp_le bound in
+    
   
-  let lemma = add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
-  lemma, pr, cmp_le, eps
+  let lemma = add_pr_lemma file concl (Some proof) in
+  lemma, eps
 
 
 (* Add test *)
@@ -2019,22 +2020,8 @@ let rec extract_proof file pft =
   | Rexc (pos,l)   -> 
     pp_debug "except@.";
     let pft' = List.hd pft.pt_children in
-    let (lemma1, pr', cmp, bound) = extract_proof file pft' in
-    (* pr' cmp bound *)
-    let (lemma2, pr, _, eps) = extract_except file pos l pft pft' in
-    (* pr <= pr' + eps *)
-    let bound = f_radd bound eps in
-    let proof fmt () = 
-      F.fprintf fmt "@[<v>intros &m.@ ";
-      F.fprintf fmt "@[apply (real_le_trans@ _@ %a@ _).@]@ "
-        (Printer.pp_form_lvl Printer.min_lvl) (f_radd pr' eps);
-      F.fprintf fmt "apply (%s &m).@ " lemma2;
-      F.fprintf fmt "apply Real.addleM; last by [].@ ";
-      F.fprintf fmt "by %s (%s &m).@]"
-        (if cmp = cmp_eq then "rewrite" else "apply") lemma1 in
-    let lemma3 = 
-      add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in
-    lemma3, pr, cmp_le, bound 
+    let lemma2, eps = extract_except file pos l pft pft' in
+    extract_proof_trans "Excepted" file lemma2 cmp_le eps pft pft' 
 
   | Radd_test (opos, tnew, asym, _fvs) -> 
     pp_debug "add test@.";

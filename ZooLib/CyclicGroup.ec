@@ -81,16 +81,21 @@ proof.
   rewrite inv_def -{1}(gpow_log x) mul_pow;smt. 
 qed.
 
+(*
 lemma log_oif b (x y : group) :
   log (oif b x y) = oif b (log x) (log y) by case b.
 hint rewrite Ring.rw_algebra : log_oif.
+*)
+lemma log_if b (x y : group) :
+  log (if b then x else y) = if b then (log x) else (log y) by case b.
+hint rewrite Ring.rw_algebra : log_if.
 
 require Ring. 
 
 lemma inj_gpow_log (a:group): a = g ^ (log a) by smt.
 
 hint rewrite Ring.inj_algebra : inj_gpow_log.
-hint rewrite Ring.rw_algebra : log_oif log_g log_pow log_mul log_bij.
+hint rewrite Ring.rw_algebra : log_g log_pow log_mul log_bij.
 
 theory Distr.
   op dt : group distr.

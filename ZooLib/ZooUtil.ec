@@ -38,10 +38,10 @@ lemma iff_neq (x1 x2 x1' x2' : 'a) :
   ((x1 <> x2) <=> (x1' <> x2')).
 proof. trivial. qed. 
 
-op oif b (x1 x2:'a) = if b then x1 else x2.
+(*op oif b (x1 x2:'a) = if b then x1 else x2.
 
 lemma if_oif b (x1 x2:'a) : (if b then x1 else x2) = oif b x1 x2 by trivial.
-hint rewrite Ring.rw_algebra : if_oif.
+hint rewrite Ring.rw_algebra : if_oif. *)
 
 import FSet.Dexcepted.
 
@@ -92,6 +92,7 @@ by [].
 lemma nosmt bound_split_eq (r1 r2 r3 p2 p3:real): 
   r1 = r2 + r3 => r2 = p2 => r3 = p3 => r1 = p2 + p3
 by [].
+
 
 
 
