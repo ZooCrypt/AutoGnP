@@ -5,7 +5,6 @@ adversary A2 : Fq -> Bool.
 
 oracle O : Fq -> Fq.
 
-
 (* For the first adversary call *)
 bound_dist
   [ j <- A1() with

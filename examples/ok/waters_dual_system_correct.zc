@@ -68,7 +68,7 @@ bound_succ
   let aa4 = (e(e1,d7)/e(e2,k))^(1/(tagc - tagk));
   
 ] : (m <> c0 /(aa3/aa4)).
-let_unfold.
+unfold.
 case_ev (tagc = tagk).
   indep!.
 norm.

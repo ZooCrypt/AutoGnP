@@ -183,6 +183,38 @@ hybrid (19,1)
   _: rnd V2 (v2 : Fq -> g ^ v2) _. _: rnd W  (w :  Fq -> g^w) _.
   _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _.
   _: //; //=.
+  
+  (* side-step incomplete handling of Log(KeyGen1) *)
+  trans* [ subst 1 (not (ci in Log(KeyGen1))) (not (ci in Log(KeyGen1)) /\ (KeyGen1`i<>ci)) ]. admit.
+  dist_sym. trans* [ subst 1 (not (ci in Log(KeyGen1))) (not (ci in Log(KeyGen1)) /\ (KeyGen1`i<>ci)) ]. admit.  _: // ; //=.
+  
+  (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
+  assert beta (KeyGen1`i<>ci). bycrush.
+  dist_sym. assert beta (KeyGen1`i<>ci). bycrush. dist_sym.
+  _: rename tagc A.
+  rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _. _: //; //=.
+  swap A (1).
+  rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _. _: //; //=.
+  swap_main (12,1,5) B. swap B (2).
+
+  dist_sym.
+  rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _. _: //; //=.
+  swap A (1).
+  rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _. _: //; //=.
+  swap_main (12,1,5) B. swap B (2).
+  
+  
+  (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _. _: //; //=.
+  
+  dist_sym. rnd! tagc (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _. _: //; //=.
+assert beta (KeyGen1`i<>ci). bycrush. dist_sym.
+
+
+  
+  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] B. _: //; //=.
+  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] A. _: //; //=.
+  _: swap [c1 c2] b1.
+
   (* b = b1 in DLIN *)
   _: rename b b1. _: swap b1 (1).
   rename v b2.
@@ -228,8 +260,7 @@ rnd_oracle (18,1,6) (gamma -> gamma + c1) (gamma -> gamma - c1). norm.
 rename s2 c3. rename x x'. rnd x' (x' -> x' - c3) _. norm.
 swap c1 v. swap c2 v. swap c3 v.
 norm_unknown c1 c2 c3.
-abstract* 4 args (g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)).
-abstract _ res _.
+abstract* 4 args (g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)). abstract _ res _.
 assumption_decisional dbdh -> [args] tt. norm.
 except a1 [0]. except b [0]. rnd! tt _ _. norm. swap 13 beta'. indep!.
 qed.
