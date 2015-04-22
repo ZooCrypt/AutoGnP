@@ -26,10 +26,13 @@ let ec_keyword =
 
 let reloc_tbl = Hashtbl.create 0
 
+let check_cap s = s.[0] <> Char.lowercase s.[0]
+
 let exclude_private s = 
   try Hashtbl.find reloc_tbl s
   with Not_found ->
-    let s' = if List.mem s ec_keyword then "__"^s else s in
+    let s' = 
+      if List.mem s ec_keyword || check_cap s then "__"^s else s in
     Hashtbl.add reloc_tbl s s';
     s' 
        
@@ -761,7 +764,7 @@ let mu_x_def file fmt ty =
     F.fprintf fmt "%a.Dword.mu_x_def" Printer.pp_mod_name (mod_lvar file lv)
   | Bool ->
     F.fprintf fmt "Bool.Dbool.mu_x_def"
-  | G _gv -> assert false (* FIXME *)
+  | G gv -> F.fprintf fmt "%s.Distr.mu_x_def_in" (get_gvar file gv).tvar_mod
   | Fq    -> F.fprintf fmt "FDistr.mu_x_def_in"
   | Prod _ -> assert false (* FIXME *) 
   | Int -> assert false
@@ -772,7 +775,7 @@ let supp_def file fmt ty =
     F.fprintf fmt "%a.Dword.in_supp_def" Printer.pp_mod_name (mod_lvar file lv)
   | Bool ->
     F.fprintf fmt "Bool.Dbool.supp_def"
-  | G _gv -> assert false (* FIXME *)
+  | G gv ->  F.fprintf fmt "%s.Distr.supp_def" (get_gvar file gv).tvar_mod
   | Fq    -> F.fprintf fmt "FDistr.supp_def"
   | Prod _ -> assert false (* FIXME *) 
   | Int -> assert false
@@ -911,11 +914,13 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
     F.fprintf fmt "@[<hov 2>conseq (_: _ ==>@ %a /\\ ={glob %s}).@]@ " 
       Printer.pp_form (f_and info.invs eqvc) nA;
     let ty = (fst inv1).Vsym.ty in 
-    F.fprintf fmt "  progress.@ ";
-    F.fprintf fmt "    by algebra *;elimIF;algebra *.@ ";
-    F.fprintf fmt "    by rewrite !%a.@ " (mu_x_def file) ty;
-    F.fprintf fmt "    by apply %a.@ " (supp_def file) ty;
-    F.fprintf fmt "    by algebra *;elimIF;algebra *.@ ";
+    let ty' = (fst inv2).Vsym.ty in
+    let mu_x_def fmt () = 
+      if ty_equal ty ty' then F.fprintf fmt "!%a" (mu_x_def file) ty
+      else F.fprintf fmt "%a %a" (mu_x_def file) ty (mu_x_def file) ty' in
+    F.fprintf fmt "  progress; (by rewrite %a ||@ " mu_x_def ();
+    F.fprintf fmt "             by apply %a ||@ " (supp_def file) ty;
+    F.fprintf fmt "             by algebra *;elimIF;algebra *).@ ";
     pp_cmds fmt info.tacs;
     close_pp fmt ()
 
@@ -1948,7 +1953,10 @@ let rec extract_proof file pft =
     let lemma = add_pr_lemma file (mk_cmp full cmp_eq f_r0) (Some proof) in
     lemma, pr, cmp_eq, f_r0
 
-  | Rhybrid   -> default_proof file mem "hybrid" pft
+  | Rhybrid   -> 
+    let pft' = List.hd pft.pt_children in
+    let _pr = extract_full_pr file mem pft'.pt_ju in
+    default_proof file mem "hybrid" pft
   | Rswap_main _ -> default_proof file mem "swap_main" pft
 
   | Rassm_dec (ranges,dir,_subst,assum) ->

@@ -50,3 +50,4 @@ bound_adv
   swap mx 1; swap_main 3 (4,1,1) x.
   dist_eq.
 qed.
+extract "extraction/t_list_ddh.ec".

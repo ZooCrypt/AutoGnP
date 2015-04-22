@@ -28,3 +28,4 @@ deduce ppt [g^a, g^b] (g_tt^(a*b)).
 deduce ppt [a + h(b + c + d),b + c,d] (g^a).
 admit.
 qed.
+extract "extraction/t_deduc.ec".

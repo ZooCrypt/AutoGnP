@@ -171,6 +171,9 @@ test-examples: zoocrypt
 	sh scripts/run_tests.sh
 
 test-examples-ec: zoocrypt
+	sh scripts/run_examples_ec.sh
+
+test-tests-ec: zoocrypt
 	sh scripts/run_tests_ec.sh
 
 Test_Type :

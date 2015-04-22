@@ -3,6 +3,8 @@ require import Bool.
 require import Distr.
 require import FSet.
 
+
+
 lemma abs_minus_xx (x:real): `|x - x| = 0%r
 by [].
 
@@ -94,7 +96,7 @@ lemma nosmt bound_split_eq (r1 r2 r3 p2 p3:real):
 by [].
 
 
-
+hint rewrite Ring.rw_algebra : Logic.eqT Logic.neqF.
 
 
 

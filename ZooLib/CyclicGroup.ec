@@ -99,6 +99,16 @@ hint rewrite Ring.rw_algebra : log_g log_pow log_mul log_bij.
 
 theory Distr.
   op dt : group distr.
+
+  import Real.
+
+  axiom supp_def: forall (s:group),
+    in_supp s dt.
+
+  axiom mu_x_def_in: forall (s:group),
+    mu_x dt s = (1%r/q%r).
+
+  axiom lossless: weight dt = 1%r.
 end Distr.
 
 end CG.
