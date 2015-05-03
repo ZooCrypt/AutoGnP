@@ -119,7 +119,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | V _ when is_G e.e_ty -> ()
     | V _                  -> add_sub_solver e
     | InLog(e1,_) -> add_sub_constr e; register_subexprs false e1
-    | Cnst _ | Exists _ -> ()
+    | Cnst _ -> add_sub_constr e
+    | Exists _ -> ()
   in
 
   (** Try to construct unknown useful expressions *)
@@ -185,7 +186,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
       end
-    | V _ | Cnst _ | Exists _ -> ()
+    | V _
+    | Cnst _ -> reg_constr e e
+    | Exists _ -> ()
   in
  
   (* Try do deduce interesting subterms for the given type using solvers *)

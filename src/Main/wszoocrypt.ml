@@ -70,6 +70,13 @@ let process_list_files () =
           (`Assoc [("cmd", `String "setFiles");
                    ("arg", `List (List.map (fun s -> `String s) !ps_files))])))
 
+let process_get_debug () =
+  Lwt.return
+    (frame_of_string
+       (YS.to_string
+          (`Assoc [("cmd", `String "setDebug");
+                   ("arg", `String (input_file "zoocrypt.log"))])))
+
 let process_save filename content =
   F.printf "Save %s: %s\n%!" filename content;
   Lwt.return (
@@ -144,6 +151,17 @@ let process_eval fname proofscript =
   let ok_upto () =
     List.fold_left (fun acc l -> acc + 1 + String.length l) 0 !rhandled
   in
+  let print_games ts =
+    let ps = get_proof_state ts in
+    match ps.CoreRules.subgoals with
+    | ju::_ ->
+      begin match ju.CoreTypes.ju_pr with
+      | CoreTypes.Pr_Dist _ -> 
+        ignore (handle_instr false ts (ParserTypes.PrintGames("g_left","g_right")))
+      | _ -> ()
+      end
+    | _ -> ()
+  in
   let res =
     let error =
       let n_rem_cmds = ref (L.length rem_cmds) in
@@ -152,16 +170,17 @@ let process_eval fname proofscript =
         List.iter
           (fun cmd ->
              last_cmd := cmd; decr n_rem_cmds;
-             let verb = !n_rem_cmds = 0 in
-             let (ts, msg) = L.fold_left (fun (ts,msg0) i ->
-               let (ts,msg) = handle_instr verb ts i in
-               (ts,msg0^msg)) (!rts,"") (Parse.instruction (cmd ^ "."))
+             let is_last_cmd = !n_rem_cmds = 0 in
+             let (ts, msg) =
+               L.fold_left
+                 (fun (ts,msg0) i -> let (ts,msg) = handle_instr is_last_cmd ts i in (ts,msg0^msg))
+                 (!rts,"")
+                 (Parse.instruction (cmd ^ "."))
              in
              rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
-
              insert_ts_cache fname !rhandled (ts,!rmsgs))
           rem_cmds;
-          `Null
+        `Null
       with
         | PU.ParseError s ->
           `String (F.sprintf "parse error %s in ``%s''" s !last_cmd)
@@ -193,6 +212,7 @@ let process_eval fname proofscript =
                 ("msgs", `List (List.map (fun s -> `String s) !rmsgs));
                 ("arg", `String g) ]
   in
+  (try print_games !rts with Invalid_rule _ -> ());
   Lwt.return (frame_of_string (YS.to_string res))
 
 (*i ----------------------------------------------------------------------- i*)
@@ -219,9 +239,10 @@ let process_frame frame =
              end
            | _ -> process_unknown inp
            end
-         | `String "load", `String fname   -> process_load fname
-         | `String "listFiles", _          -> process_list_files ()
-         | _                               -> process_unknown inp)
+         | `String "load", `String fname -> process_load fname
+         | `String "listFiles", _        -> process_list_files ()
+         | `String "getDebug", _         -> process_get_debug ()
+         | _                             -> process_unknown inp)
       with Not_found -> process_unknown inp)
   | _ -> process_unknown inp
 

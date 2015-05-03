@@ -28,7 +28,7 @@ let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "RandomRules" ls
 
 (** Parse given context: bound name overshadows name in game *)
 let parse_ctxt ts sec ty (sv,se) =
-  let vmap = vmap_of_all sec.se_gdef in
+  let vmap = vmap_of_globals sec.se_gdef in
   let v = Vsym.mk sv ty in
   Hashtbl.add vmap (Unqual,sv) v;
   (v,expr_of_parse_expr vmap ts Unqual se)
@@ -146,8 +146,10 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
    (* try different strategies to prevent failures by applying other tactics beforehand *)
    | Invalid_rule s -> 
      mfail (lazy s)
-   | Wf.Wf_var_undef(vs,e) ->
-     let ls = lazy (fsprintf "t_rnd_pos: variable %a undefined in %a" Vsym.pp vs pp_exp e) in
+   | Wf.Wf_var_undef(vs,e,def_vars) ->
+     let ls = lazy (fsprintf "t_rnd_pos: variable %a undefined in %a, not in %a"
+                      Vsym.pp vs pp_exp e
+                      (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
      log_i ls;
      mfail ls
    | Wf.Wf_div_zero (ze::_ as es) ->

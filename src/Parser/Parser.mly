@@ -116,6 +116,7 @@
 %token RNORM_SOLVE
 %token RNORM_NOUNFOLD
 %token RRND
+%token RRND_EXP
 %token RRND_ORACLE
 %token RSWAP_MAIN
 %token RSWAP
@@ -471,8 +472,6 @@ assgn_pos:
 | n=int            { Pos(n) }
 | i=ID             { Var(i) } 
 | LPAREN n=int RPAREN  { AbsPos(n-1) }
-(*| i=ID PLUS  n=NAT { Var(i,Some n)   }
-| i=ID MINUS n=NAT { Var(i,Some (-n))} *)
 ;
 
 inter_pos:
@@ -531,6 +530,9 @@ tactic :
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?
   { Rrnd(excl=None,mi,mc1,mc2,mgen) }
+| RRND_EXP excl=EXCL? ids=ID+
+  { Rrnd_exp(excl=None,ids) }
+
 | REXCEPT i=uopt(assgn_pos) es=uopt(br_exprlist0) { Rexcept(i,es) }
 | REXCEPT_ORACLE op=opos es=expr0*          { Rexcept_orcl(op,es) }
 

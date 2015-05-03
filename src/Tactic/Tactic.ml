@@ -33,9 +33,7 @@ let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Utility functions} *)
 
-let fail_unless c s =
-  if not (c ()) then tacerror s
-
+(* compute diff between the two given proof-trees *)
 let diff_step ops nps =
   match ops with
   | Some ops ->
@@ -45,6 +43,7 @@ let diff_step ops nps =
       (diff_proof_tree (get_pt ops,get_pt nps))
   | None -> ""
 
+(* pretty-print judgment *)
 let pp_jus i fmt jus =
   match jus with
   | [] -> F.printf "No remaining goals, proof completed.@\n"
@@ -55,6 +54,7 @@ let pp_jus i fmt jus =
       F.fprintf fmt "goal %i%s: %a@\n@\n" (i + 1) goal_num pp_ju ju
     in
     L.iteri pp_goal (Util.take i jus)
+
 
 let gpos_of_offset ju i =
   if i < 0 then L.length ju.ju_se.se_gdef + i + 1 else i
@@ -69,7 +69,8 @@ let find_gvar ju s =
   let test = function
     | GLet(vs,_) | GSamp(vs,_) -> s = Id.name vs.Vsym.id 
     | GAssert _ -> false
-    | GCall(vss,_,_,_) -> List.exists (fun vs -> s = Id.name vs.Vsym.id) vss in
+    | GCall(vss,_,_,_) -> L.exists (fun vs -> s = Id.name vs.Vsym.id) vss
+  in
   try find_at test ju.ju_se.se_gdef
   with Not_found -> tacerror "variable not found in game %s" s
 
@@ -82,7 +83,8 @@ let gpos_of_apos ju ap =
 let interval ju (i1,i2) = 
   let i1 = opt (gpos_of_apos ju) 0 i1 in
   let i2 = 
-    opt_f (gpos_of_apos ju) (fun _ -> List.length ju.ju_se.se_gdef - 1) i2 in
+    opt_f (gpos_of_apos ju) (fun _ -> L.length ju.ju_se.se_gdef - 1) i2
+  in
   i1, i2
 
 let t_swap inter delta ju = 
@@ -102,12 +104,12 @@ let t_swap inter delta ju =
       else tacerror "swap: invalid position %i" p
   in  
   let li = list_from_to i1 (i2+1) in
-  let lt = List.map (fun i -> CR.t_swap i delta) li in
+  let lt = L.map (fun i -> CR.t_swap i delta) li in
   if delta < 0 then Rules.t_seq_fold lt ju
-  else Rules.t_seq_fold (List.rev lt) ju
+  else Rules.t_seq_fold (L.rev lt) ju
 
 let ranges ju l = 
-  let l = List.map (interval ju) l in
+  let l = L.map (interval ju) l in
   if l = [] then None else Some l
 
 (*i ----------------------------------------------------------------------- i*)
@@ -134,80 +136,82 @@ let handle_tactic ts tac =
     with
     | Wf.Wf_div_zero es ->
       tacerror "Wf: Cannot prove that %a nonzero" (pp_list "," pp_exp) es
-    | Wf.Wf_var_undef(v,e) ->
-      tacerror "Wf: Var %a undefined in %a" Vsym.pp v pp_exp e
+    | Wf.Wf_var_undef(v,e,def_vars) ->
+      tacerror "Wf: Var %a undefined in %a, not in %a"
+        Vsym.pp v pp_exp e
+        (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)
   in
-  let vmap_g = vmap_of_all ju.ju_se.se_gdef in
-  let e_pos = epos_of_offset ju in
-  let get_pos = gpos_of_apos ju in
-  let parse_e se = PU.expr_of_parse_expr vmap_g ts Unqual se in
-  let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); Vsym.mk sv ty in
-  let rec interp_tac tac =
+  let rec interp_tac tac ju =
+    let vmap_g = vmap_of_globals ju.ju_se.se_gdef in
+    let e_pos = epos_of_offset ju in
+    let get_pos = gpos_of_apos ju in
+    let parse_e se = PU.expr_of_parse_expr vmap_g ts Unqual se in
+    let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); Vsym.mk sv ty in
     match tac with
-    | PT.Rnorm                 -> t_norm ~fail_eq:false
-    | PT.Rnorm_nounfold        -> t_norm_nounfold
-    | PT.Rlet_unfold([])       -> t_unfold_only
+    | PT.Rnorm                 -> t_norm ~fail_eq:false ju
+    | PT.Rnorm_nounfold        -> t_norm_nounfold ju
+    | PT.Rlet_unfold([])       -> t_unfold_only ju
     | PT.Rlet_unfold(l)        -> 
-      let l = List.rev l in
-      let lt = List.map (fun i ju -> t_let_unfold (gpos_of_apos ju i) ju) l in
-      Rules.t_seq_fold lt
+      let l = L.rev l in
+      let lt = L.map (fun i ju -> t_let_unfold (gpos_of_apos ju i) ju) l in
+      Rules.t_seq_fold lt ju
   
-    | PT.Rswap(i,j)            -> t_swap i j
-    | PT.Rdist_eq              -> Rules.t_dist_eq
-    | PT.Rdist_sym             -> CR.t_dist_sym
-    | PT.Rremove_ev(is)        -> CR.t_remove_ev is
-    | PT.Rsplit_ev(i)          -> CR.t_split_ev (e_pos i)
-    | PT.Rrewrite_ev(i,d)      -> CR.t_rw_ev (e_pos i) d
-    | PT.Rcrush(finish,mi)     -> t_crush finish mi ts ps
+    | PT.Rswap(i,j)            -> t_swap i j ju
+    | PT.Rdist_eq              -> Rules.t_dist_eq ju
+    | PT.Rdist_sym             -> CR.t_dist_sym ju
+    | PT.Rremove_ev(is)        -> CR.t_remove_ev is ju
+    | PT.Rsplit_ev(i)          -> CR.t_split_ev (e_pos i) ju
+    | PT.Rrewrite_ev(i,d)      -> CR.t_rw_ev (e_pos i) d ju
+    | PT.Rcrush(finish,mi)     -> t_crush finish mi ts ps ju
   
       (* FIXME: all tactics interpreted wrt. the same theory state,
                 OK for tactics that do not change the theory state. *)
-    | PT.Rseq ts ->
-      t_seq_fold (L.map interp_tac ts)
+    | PT.Rseq tacs ->
+      t_seq_fold (L.map interp_tac tacs) ju
 
     | PT.Rcase_ev(Some(se)) ->
-      CR.t_case_ev (parse_e se)
+      CR.t_case_ev (parse_e se) ju
   
     | PT.Rsubst(i,e1,e2,mupto) ->
-      t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) (map_opt get_pos mupto)
+      t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) (map_opt get_pos mupto) ju
   
     | PT.Rrename(v1,v2) ->
       let v1 = Ht.find vmap_g (Unqual,v1) in
       let v2 = mk_new_var v2 v1.Vsym.ty in
-      t_rename v1 v2
+      t_rename v1 v2 ju
   
     | PT.Rcase_ev(None) ->
-      t_case_ev_maybe
+      t_case_ev_maybe ju
   
     | PT.Rexcept(Some(i),Some(ses)) ->
-      CR.t_except (get_pos i) (L.map (parse_e) ses)
+      CR.t_except (get_pos i) (L.map (parse_e) ses) ju
   
     | PT.Rexcept(i,ses) ->
-      t_rexcept_maybe (map_opt get_pos i) ses
+      t_rexcept_maybe (map_opt get_pos i) ses ju
   
-    | PT.Rswap_oracle(op,j)    -> CR.t_swap_oracle op j
-    | PT.Rrewrite_orcl(op,dir) -> CR.t_rewrite_oracle op dir
+    | PT.Rswap_oracle(op,j)    -> CR.t_swap_oracle op j ju
+    | PT.Rrewrite_orcl(op,dir) -> CR.t_rewrite_oracle op dir ju
   
-    | PT.Rfalse_ev             -> CR.t_false_ev
-    | PT.Rindep(exact)         -> t_random_indep ts exact
+    | PT.Rfalse_ev             -> CR.t_false_ev ju
+    | PT.Rindep(exact)         -> t_random_indep ts exact ju
   
     | PT.Rnorm_unknown(is) ->
       let vs = L.map (fun s -> mk_V (Ht.find vmap_g (Unqual,s))) is in
-      t_norm_unknown ts vs
+      t_norm_unknown ts vs ju
   
     | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
       let e = parse_e se in
       let v = mk_new_var sv e.e_ty in
-      t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm)
+      t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm) ju
 
     | PT.Rlet_abstract_deduce(i,sv,se,mupto) ->
       let e = parse_e se in
       let v = mk_new_var sv e.e_ty in
-      t_abstract_deduce ts (get_pos i) v e (map_opt get_pos mupto)
+      t_abstract_deduce ts (get_pos i) v e (map_opt get_pos mupto) ju
       
     | PT.Rassert(i,Some se) ->
       let e = parse_e se in
-      CR.t_assert (get_pos i) e
+      CR.t_assert (get_pos i) e ju
 
     | PT.Rassert(i,None) ->
       let t_remove_assert ju =
@@ -222,9 +226,9 @@ let handle_tactic ts tac =
         | _ ->
           tacerror "no assert at given position %i" (get_pos i)
       in
-      t_remove_assert
+      t_remove_assert ju
 
-    | PT.Rswap_to_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs
+    | PT.Rswap_to_main(i_j_k,vs)  -> CR.t_swap_main i_j_k vs ju
 
     | PT.Rswap_to_orcl(p,(i,j,k),sv) ->
       let ci = get_pos p in
@@ -241,7 +245,8 @@ let handle_tactic ts tac =
         let oname = Id.name seoc.seoc_osym.Osym.id in
         match split_n ci (L.rev seoc.seoc_sec.sec_left) with
         | cleft, GSamp(vsm,d), cright ->
-          log_i (lazy (fsprintf "cleft=%a cright=%a" pp_gdef cleft pp_gdef cright));
+          log_i (lazy (fsprintf "cleft=%a cright=%a"
+                         (pp_gdef ~nonum:false) cleft (pp_gdef ~nonum:false) cright));
           let vmap = Hashtbl.create 17 in
           let vso = PU.create_var vmap ts (Qual oname) sv vsm.Vsym.ty in
           let subst e = e_replace (mk_V vsm) (mk_V vso) e in
@@ -260,12 +265,12 @@ let handle_tactic ts tac =
                              ; CR.t_id]) ju
         | _ -> tacerror "cannot swap sampling to oracle, given position not a sampling"
       in
-      t_swap_to_orcl
+      t_swap_to_orcl ju
   
     | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
       let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
       let max = L.length ju.ju_se.se_gdef in
-      t_let_abstract max v ju.ju_se.se_ev (map_opt get_pos mupto) (not no_norm)
+      t_let_abstract max v ju.ju_se.se_ev (map_opt get_pos mupto) (not no_norm) ju
   
     | PT.Rlet_abstract(_,_,_,_,_) ->
       tacerror "No placeholders or placeholders for both position and event"
@@ -274,13 +279,13 @@ let handle_tactic ts tac =
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
       let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
-      CR.t_conv true { se_gdef = gd2; se_ev = ev2 }
+      CR.t_conv true { se_gdef = gd2; se_ev = ev2 } ju
   
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
       let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
-      CR.t_trans { se_gdef = gd2; se_ev = ev2 }
+      CR.t_trans { se_gdef = gd2; se_ev = ev2 } ju
 
     | PT.Rtrans_diff(dcmds) ->
       let vmap = Hashtbl.copy vmap_g in
@@ -319,19 +324,19 @@ let handle_tactic ts tac =
       let t_diff ju =
         CR.t_trans (app_diff dcmds ju) ju
       in
-      t_diff
+      t_diff ju
   
     | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
-      t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs
+      t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs ju
   
     | PT.Rnorm_solve(se) ->
       let e = parse_e se in
-      RewriteRules.t_norm_solve e
+      RewriteRules.t_norm_solve e ju
   
     | PT.Rexcept_orcl(op,pes) ->
       let vmap = vmap_in_orcl ju.ju_se op in
       let es = L.map (PU.expr_of_parse_expr vmap ts Unqual) pes in
-      CR.t_except_oracle op es
+      CR.t_except_oracle op es ju
   
     | PT.Rctxt_ev (mj,Some(sv,_mt,e)) ->
       let j = match mj with
@@ -356,23 +361,26 @@ let handle_tactic ts tac =
       let v1 = PU.create_var vmap ts Unqual sv ty in
       let e1 = PU.expr_of_parse_expr vmap ts Unqual e in
       let c = v1, e1 in
-      CR.t_ctxt_ev j c
+      CR.t_ctxt_ev j c ju
   
     | PT.Rctxt_ev (mj,None) ->
-      SimpRules.t_ctx_ev_maybe mj
+      SimpRules.t_ctx_ev_maybe mj ju
   
     | PT.Rsimp must_finish ->
-      SimpRules.t_simp must_finish 20 ts
+      SimpRules.t_simp must_finish 20 ts ju
   
     | PT.Rassm_comp(exact,maname,mrngs) ->
-      t_assm_comp ts exact maname (ranges ju mrngs)
+      t_assm_comp ts exact maname (ranges ju mrngs) ju
   
     | PT.Rrnd(exact,mi,mctxt1,mctxt2,mgen) ->
       let mgen = map_opt parse_e mgen in
-      t_rnd_maybe ts exact (map_opt get_pos mi) mctxt1 mctxt2 mgen
+      t_rnd_maybe ts exact (map_opt get_pos mi) mctxt1 mctxt2 mgen ju
+
+    | PT.Rrnd_exp(_exact,_ids) ->
+      failwith "not implemented yet"
   
     | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
-      t_rnd_oracle_maybe ts mopos mctxt1 mctxt2
+      t_rnd_oracle_maybe ts mopos mctxt1 mctxt2 ju
   
     | PT.Rhybrid((i,j),(lcmds,eret)) ->
       let se = ju.ju_se in
@@ -382,14 +390,15 @@ let handle_tactic ts tac =
       let oname = Id.name seoc.seoc_osym.Osym.id in
       let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts ~oname) lcmds in
       let eret = PU.expr_of_parse_expr vmap ts (Qual oname) eret in
-      CR.t_hybrid i j lcmds eret
+      CR.t_hybrid i j lcmds eret ju
 
     | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) ->
-      tacerror "add_test and debugging tactics and ';' cannot be combined"
+      tacerror "add_test and debugging tactics cannot be combined with ';'"
     
     | PT.Rbad(_i,_sx) ->
       tacerror "not implemented"
  in
+ let vmap_g = vmap_of_globals ju.ju_se.se_gdef in
  match tac with     
  | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
    (* create symbol for new adversary *)
@@ -404,14 +413,14 @@ let handle_tactic ts tac =
      | Prod(tys) -> tys
      | _ -> [ty]
    in
-   fail_unless (fun () -> not (Mstring.mem aname ts.ts_adecls))
-     "radd_test: adversary with same name already declared";
+   if (Mstring.mem aname ts.ts_adecls) then
+     tacerror "radd_test: adversary with same name already declared";
    let asym = Asym.mk aname oasym.Asym.dom oty in
    let adecls = Mstring.add aname asym ts.ts_adecls in
    let tys = destr_prod oty in
    (* create variables for returned values *)
-   fail_unless (fun () -> L.length fvs = L.length tys)
-     "number of given variables does not match type";
+   if not (L.length fvs = L.length tys) then
+     tacerror "number of given variables does not match type";
    let fvs = L.map2 (fun v ty -> PU.create_var vmap ts Unqual v ty) fvs tys in
    apply ~adecls (CR.t_add_test opos t asym fvs)
   
@@ -424,11 +433,6 @@ let handle_tactic ts tac =
  | PT.Deduce(ppt,pes,pe) ->
    let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
    let e = PU.expr_of_parse_expr vmap_g ts Unqual pe in
-   (*
-   let vars_es  = L.fold_left (fun s e -> Se.union s (e_vars e)) Se.empty es in
-   let vars_e   = e_vars e in
-   let vars_known = Se.diff vars_e vars_es in
-   let es = es @ Se.elements vars_known in *)
    log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_exp) es pp_exp e));
    (try
       let frame =
@@ -556,22 +560,6 @@ let handle_instr verbose ts instr =
 
   | PT.Apply(tac) ->
     let (ts,s) = handle_tactic ts tac in
-
-    (* FIXME: we always print games for dist judgments currently *)
-    let ps = get_proof_state ts in
-    let () = match ps.CR.subgoals with
-      | ju::_ ->
-        begin match ju.ju_pr with
-        | Pr_Dist se2 ->
-          let se1, se2 = ju.ju_se,se2 in
-          ExprUtils.pp_sort_expensive := true;
-          output_file "g_left" (fsprintf "%a" pp_se_nonum se1);
-          output_file "g_right" (fsprintf "%a" pp_se_nonum se2);
-          ExprUtils.pp_sort_expensive := false
-        | _ -> ()
-        end
-      | [] -> ()
-    in
     (ts, "Applied tactic"^(if verbose then ": "^Lazy.force s else "."))
 
   | PT.Back ->
@@ -707,9 +695,11 @@ let handle_instr verbose ts instr =
       | [] -> tacerror "cannot print games: there is no goal"
     in
     ExprUtils.pp_sort_expensive := true;
+    ExprUtils.pp_number_tuples := true;
     output_file fn1 (fsprintf "%a" pp_se_nonum se1);
     output_file fn2 (fsprintf "%a" pp_se_nonum se2);
     ExprUtils.pp_sort_expensive := false;
+    ExprUtils.pp_number_tuples := false;
     (ts, F.sprintf "Current games printed into files: %s and %s" fn1 fn2)
 
   | PT.Debug cmd ->
@@ -729,7 +719,7 @@ let handle_instr verbose ts instr =
     end
 
 let handle_instrs verbose ts instrs =
-  List.fold_left (fun (ts,s) instr ->
+  L.fold_left (fun (ts,s) instr ->
     let (ts',s') = handle_instr verbose ts instr in
     (ts',s^"\n"^s'))
     (ts,"")

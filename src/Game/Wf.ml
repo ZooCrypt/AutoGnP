@@ -15,7 +15,7 @@ let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
 let log_i ls = mk_logger "Logic.Wf" Bolt.Level.INFO "Wf" ls
 (*i*)
 
-exception Wf_var_undef of Vsym.t * expr
+exception Wf_var_undef of Vsym.t * expr * Vsym.S.t
 
 exception Wf_div_zero of expr list
 
@@ -120,7 +120,7 @@ and wf_exp ctype wfs e0 =
     | Cnst _ -> ()
     | V vs ->
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
-        (fun () -> raise (Wf_var_undef(vs,e0)))
+        (fun () -> raise (Wf_var_undef(vs,e0,wfs.wf_bvars)))
     | Exists(e1,e2,(vhs)) ->
       let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
       wf_exp ctype wfs e2;
@@ -268,6 +268,7 @@ let wf_gdef ctype gdef0 =
       in
       let exported_vsyms = ref Vsym.S.empty in
       List.iter (wf_odef ctype wfs (Some exported_vsyms)) os;
+      (* log_i (lazy (fsprintf "exported %a" (pp_list "," Vsym.pp) (Vsym.S.elements !exported_vsyms))); *)
       let wfs = { wfs with wf_bvars = Vsym.S.union wfs.wf_bvars !exported_vsyms } in
       go wfs gcmds
   in

@@ -41,9 +41,8 @@ let pvar modn v =
 
 let globals gdef = 
   let glob = gdef_global_vars gdef in
-  List.map (fun e ->
-     let v = destr_V e in 
-     MCvar(pvar [] v, v.Vsym.ty)) (Se.elements glob) 
+  List.map (fun v ->
+     MCvar(pvar [] v, v.Vsym.ty)) (Vsym.S.elements glob)
 
 let mk_eget file h e = 
   let hi = Hsym.H.find file.hvar h in
@@ -292,7 +291,7 @@ let add_assumption_dec file name assum =
   assert (ty_equal vres.Vsym.ty mk_Bool);
   let game name gdef i = 
     let locals = 
-      Se.fold (fun e l -> do_local (destr_V e) :: l) 
+      Vsym.S.fold (fun v l -> do_local v :: l) 
         (gdef_global_vars gdef) locals_end in
     
     let init = instructions file mA gdef in
@@ -348,7 +347,7 @@ let add_assumption_comp file name assum =
   let game = 
     let res = ([],"_res") in
     let local = 
-      Se.fold (fun e l -> do_local (destr_V e) :: l)
+      Vsym.S.fold (fun v l -> do_local v :: l)
         (gdef_global_vars assum.Ass.ac_prefix) locals_end in 
     let init = instructions file mA assum.Ass.ac_prefix in
     let g_end = 

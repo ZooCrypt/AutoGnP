@@ -101,7 +101,10 @@ module Vsym = struct
   let mk name ty = { id = Id.mk name; qual = Unqual; ty = ty; }
   let mk_qual name qual ty = { id = Id.mk name; qual = qual; ty = ty; }
 
-  (* FIXME: add different versions *)
+  let pp_tag fmt _t =
+    pp_string fmt ""
+    (* F.fprintf fmt ".%i" t *)
+
   let pp_qual ?qual:(qual=Unqual) fmt vs =
     let qual_eq o =
       match qual with
@@ -110,11 +113,11 @@ module Vsym = struct
     in
     match vs.qual with
     | Unqual ->
-      F.fprintf fmt "%s" (Id.name vs.id)
+      F.fprintf fmt "%s%a" (Id.name vs.id) pp_tag (Id.tag vs.id)
     | Qual o when qual_eq o ->
-      F.fprintf fmt "%s" (Id.name vs.id)
+      F.fprintf fmt "%s%a" (Id.name vs.id) pp_tag (Id.tag vs.id)
     | Qual q ->
-      F.fprintf fmt "%s`%s" (Id.name q.Osym.id) (Id.name vs.id)
+      F.fprintf fmt "%s`%s%a" (Id.name q.Osym.id) (Id.name vs.id) pp_tag (Id.tag vs.id)
   
   let pp fmt = pp_qual ~qual:Unqual fmt
 
@@ -127,7 +130,7 @@ module Vsym = struct
 end
 
 module Hsym = struct
-  type t = { 
+  type t = {
     id    : Id.id;
     ro    : bool;          (*r true if random oracle *)
     dom   : ty;

@@ -322,7 +322,11 @@ let t_abstract_deduce ts gpos v e mupto ju =
   let rec deduce e =
     if is_Tuple e
     then mk_Tuple (L.map deduce (destr_Tuple e))
-    else deduce_non_tuple e
+    else
+      try
+        deduce_non_tuple e
+      with
+        Not_found -> e
   in
   log_i (lazy (fsprintf "Abstracting %i lines@\n" abstract_len));
   let a_cmds = map_gdef_exp deduce a_cmds in

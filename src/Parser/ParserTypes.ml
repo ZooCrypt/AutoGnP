@@ -77,7 +77,7 @@ type diff_cmd =
   | Dinsert of assgn_pos * gcmd list
   | Dsubst  of assgn_pos * parse_expr * parse_expr
 
-type selector = InRight | InBoth (* Left is default *)
+type selector = InRight | InBoth (* InLeft is default *)
 
 type range_pos = assgn_pos option * assgn_pos option
 
@@ -102,6 +102,7 @@ type tactic =
   | Rctxt_ev       of int option * parse_ctx option
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
+  | Rrnd_exp       of bool * string list
   | Rrnd_orcl      of ocmd_pos option * parse_ctx option * parse_ctx option
   | Rconv          of gdef * parse_expr
   | Rtrans         of gdef * parse_expr

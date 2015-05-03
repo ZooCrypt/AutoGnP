@@ -94,16 +94,23 @@ let pp_lcmd ~qual fmt lc =
       (pp_distr ~qual) d
   | LGuard(e)   -> pp_exp_qual ~qual fmt e
 
-let pp_ilcmd ~qual fmt (i,lc) =
-  F.fprintf fmt "%i: %a" i (pp_lcmd ~qual) lc
+let pp_ilcmd ~nonum ~qual fmt (i,lc) =
+  if nonum
+  then (pp_lcmd ~qual fmt) lc
+  else F.fprintf fmt "%i: %a" i (pp_lcmd ~qual) lc
 
-let pp_lcomp ~qual fmt (e,m) =
+let pp_lcomp ~nonum ~qual fmt (e,m) =
   match m with
   | [] ->
-    F.fprintf fmt "1: return %a;" (pp_exp_qual ~qual) e
+    F.fprintf fmt "%sreturn %a;"
+      (if nonum then "" else "1: ")
+      (pp_exp_qual ~qual) e
+      
   | _  ->
-    F.fprintf fmt "@[%a;@\n%i: return %a;@]"
-      (pp_list ";@\n" (pp_ilcmd ~qual)) (num_list m) (L.length m + 1)
+    F.fprintf fmt "@[%a;@\n%sreturn %a;@]"
+      (pp_list ";@\n" (pp_ilcmd ~nonum ~qual))
+      (num_list m)
+      (if nonum then "" else F.sprintf "%i: " (L.length m + 1))
       (pp_exp_qual ~qual) e
 
 let string_of_otype = function
@@ -118,28 +125,28 @@ let pp_otype fmt ot =
   | Onohyb   -> pp_string fmt "no hybrid"
   | Ohyb oht -> pp_ohtype fmt oht
 
-let pp_obody osym ootype fmt (ms,e) =
+let pp_obody ~nonum osym ootype fmt (ms,e) =
   F.fprintf fmt "[ %s@\n  @[<v>%a@] ]"
     (match ootype with None -> "" | Some ot -> "(* "^string_of_otype ot^" *)")
-    (pp_lcomp ~qual:(Qual osym)) (e,ms)
+    (pp_lcomp ~nonum ~qual:(Qual osym)) (e,ms)
 
-let pp_ohybrid osym fmt oh =
+let pp_ohybrid ~nonum osym fmt oh =
   F.fprintf fmt "[@\n  @[<v>%a@]@\n  @[<v>%a@]@\n  @[<v>%a@]@\n]"
-    (pp_obody osym (Some OHless))    oh.odef_less
-    (pp_obody osym (Some OHeq))      oh.odef_eq
-    (pp_obody osym (Some OHgreater)) oh.odef_greater
+    (pp_obody ~nonum osym (Some OHless))    oh.odef_less
+    (pp_obody ~nonum osym (Some OHeq))      oh.odef_eq
+    (pp_obody ~nonum osym (Some OHgreater)) oh.odef_greater
 
-let pp_odecl osym fmt od =
+let pp_odecl ~nonum osym fmt od =
   match od with
-  | Odef od    -> pp_obody osym None fmt od
-  | Ohybrid oh -> pp_ohybrid osym fmt oh
+  | Odef od    -> pp_obody ~nonum osym None fmt od
+  | Ohybrid oh -> pp_ohybrid ~nonum osym fmt oh
 
-let pp_odef fmt (o, vs, od) =
+let pp_odef ~nonum fmt (o, vs, od) =
   F.fprintf fmt "@[<v>%a(%a) = %a@]" 
     Osym.pp o (pp_binder ~qual:(Qual o)) vs
-    (pp_odecl o) od
+    (pp_odecl ~nonum o) od
 
-let pp_gcmd fmt gc = match gc with
+let pp_gcmd ~nonum fmt gc = match gc with
   | GLet(vs,e) -> 
     F.fprintf fmt "@[<hov 2>let %a =@ %a@]" (pp_binder ~qual:Unqual) [vs] pp_exp e
   | GAssert(e) -> 
@@ -155,22 +162,23 @@ let pp_gcmd fmt gc = match gc with
     F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@]) with@\n%a@]"
       (pp_binder ~qual:Unqual) vs Asym.pp asym 
       pp_exp_tnp e
-      (pp_list ",@;" pp_odef) od
+      (pp_list ",@;" (pp_odef ~nonum)) od
 
 let pp_igcmd fmt (i,gc) = 
-  F.fprintf fmt "@[%i: %a@]" i pp_gcmd gc 
+  F.fprintf fmt "@[%i: %a@]" i (pp_gcmd ~nonum:false) gc 
 
-let pp_gdef fmt gd =
-  pp_list ";@;" pp_igcmd fmt (num_list gd)
+let pp_gdef ~nonum fmt gd =
+  if nonum then
+    pp_list ";@;" (pp_gcmd ~nonum) fmt gd
+  else
+    pp_list ";@;" pp_igcmd fmt (num_list gd)
 
 let pp_se fmt se =
-  F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef se.se_gdef pp_exp se.se_ev
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:false) se.se_gdef pp_exp se.se_ev
 
-let pp_gdef_nonum fmt gd =
-  pp_list ";@;" pp_gcmd fmt gd
 
 let pp_se_nonum fmt se =
-  F.fprintf fmt "@[<v 0>%a;@,: %a@]" pp_gdef_nonum se.se_gdef pp_exp se.se_ev
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:true) se.se_gdef pp_exp se.se_ev
 
 let pp_ps fmt ps =
   let se_idxs =
@@ -698,7 +706,6 @@ let lcmd_vars = function
 
 let lcmds_vars c = fold_union_vs lcmd_vars c
 
-
 let obody_vars (cmd,e) =
   (Vsym.S.union (expr_vars e) (lcmds_vars cmd))
 
@@ -725,7 +732,28 @@ let gcmd_all_vars = function
 
 let gdef_all_vars gdef = fold_union_vs gcmd_all_vars gdef
 
-let gdef_global_vars gdef = Se.union (read_gcmds gdef) (write_gcmds gdef)
+let obody_vars (cmd,e) =
+  (Vsym.S.union (expr_vars e) (lcmds_vars cmd))
+
+let ohybrid_global_vars oh =
+  (obody_vars oh.odef_eq)
+
+let odef_global_vars (_,vs,odecl) =
+  match odecl with
+  | Odef _ -> Vsym.S.empty
+  | Ohybrid oh ->
+    Vsym.S.union (set_of_list vs) (ohybrid_global_vars oh)
+
+let gcmd_global_vars = function
+  | GLet(v,e)  -> Vsym.S.add v (expr_vars e)
+  | GAssert(e) -> expr_vars e
+  | GSamp(v,d) -> Vsym.S.add v (exprs_vars (snd d))
+  | GCall(vs,_,e,odefs) ->
+    Vsym.S.union
+      (fold_union_vs odef_global_vars odefs)
+      (Vsym.S.union (expr_vars e) (set_of_list vs))
+
+let gdef_global_vars gdef = fold_union_vs gcmd_global_vars gdef
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Unification} *) 
@@ -932,9 +960,7 @@ let vmap_of_ves ves =
     ves;
   vm
 
-let vmap_of_globals gdef = vmap_of_ves (gdef_global_vars gdef)
-
-let vmap_of_all gdef = vmap_of_vss (gdef_all_vars gdef)
+let vmap_of_globals gdef = vmap_of_vss (gdef_global_vars gdef)
 
 let ves_to_vss ves =
   Se.fold (fun e vss -> Vsym.S.add (destr_V e) vss) ves Vsym.S.empty
@@ -948,10 +974,9 @@ let vmap_in_orcl se op =
   let _,seoc = get_se_octxt se op in
   vmap_of_vss
     (Vsym.S.union
-       (ves_to_vss
-          (Se.union (gdef_global_vars gdef_before)
-             (write_lcmds seoc.seoc_cleft)))
-          (set_of_list seoc.seoc_oargs))
+       (Vsym.S.union (gdef_global_vars gdef_before)
+          (ves_to_vss (write_lcmds seoc.seoc_cleft)))
+       (set_of_list seoc.seoc_oargs))
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Normal forms} *) 

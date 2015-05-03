@@ -80,6 +80,8 @@ val destr_Tuple_nofail : expr -> expr list
 
 val pp_sort_expensive : bool ref
 
+val pp_number_tuples : bool ref
+
 val pp_cnst : F.formatter -> cnst -> Type.ty -> unit
 val pp_exp  : F.formatter -> expr -> unit
 val pp_exp_qual  : qual:Osym.t qual -> F.formatter -> expr -> unit

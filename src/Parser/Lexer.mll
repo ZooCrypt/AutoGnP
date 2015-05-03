@@ -96,6 +96,7 @@ rule lex = parse
   | "except" { REXCEPT }
   | "except_oracle" { REXCEPT_ORACLE }
   | "rnd" { RRND }
+  | "rnd_exp" { RRND_EXP }
   | "swap" { RSWAP }
   | "swap_main" { RSWAP_MAIN }
   | "conv" { RCONV }

@@ -90,6 +90,8 @@ let is_field_exp e = match e.e_node with
 
 let pp_sort_expensive = ref false
 
+let pp_number_tuples = ref false
+
 (** The term $*(+(a,b),c)$ can be printed as $(a + b) * c$
     or $a + b * c$.
     We pass enough information to the function call
@@ -143,8 +145,20 @@ let rec pp_exp_p ~qual above fmt e =
     F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
   | H(h,e)     -> 
     F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p ~qual PrefixApp) e
-  | Tuple(es)  -> 
-    let pp fmt = F.fprintf fmt "@[<hov>%a@]" (pp_list ",@," (pp_exp_p ~qual Tup)) in
+  | Tuple(es) -> 
+    let pp_entry fmt (i,e) =
+      F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
+    in
+    let pp fmt es =
+      if !pp_number_tuples then
+        F.fprintf fmt "@[<hov>%a@]"
+          (pp_list ",@\n" pp_entry)
+          (num_list es)
+      else
+        F.fprintf fmt "@[<hov>%a@]"
+          (pp_list ",@," (pp_exp_p ~qual Tup))
+          es
+    in
     pp_maybe_paren false (above <> PrefixApp) pp fmt es
   | Proj(i,e)  -> 
     F.fprintf fmt "%a%s%i" (pp_exp_p ~qual Tup) e "#" i

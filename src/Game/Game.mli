@@ -63,25 +63,23 @@ val pp_binder : qual: Osym.t qual -> F.formatter -> Vsym.t list -> unit
 
 val pp_lcmd : qual: Osym.t qual -> F.formatter -> lcmd -> unit
 
-val pp_ilcmd : qual: Osym.t qual -> F.formatter -> int * lcmd -> unit
+val pp_ilcmd : nonum:bool -> qual: Osym.t qual -> F.formatter -> int * lcmd -> unit
 
-val pp_lcomp : qual: Osym.t qual -> F.formatter -> expr * lcmd list -> unit
+val pp_lcomp : nonum:bool -> qual: Osym.t qual -> F.formatter -> expr * lcmd list -> unit
 
-val pp_odef : F.formatter -> odef -> unit
+val pp_odef : nonum:bool -> F.formatter -> odef -> unit
 
 val pp_ohtype : F.formatter -> ohtype -> unit
 
 val pp_otype : F.formatter -> otype -> unit
 
-val pp_gcmd : F.formatter -> gcmd -> unit
+val pp_gcmd : nonum:bool -> F.formatter -> gcmd -> unit
 
 val pp_igcmd : F.formatter -> int * gcmd -> unit
 
-val pp_gdef_nonum : F.formatter -> gdef -> unit
+val pp_gdef : nonum:bool -> F.formatter -> gdef -> unit
 
 val pp_se_nonum : F.formatter -> sec_exp -> unit
-
-val pp_gdef : F.formatter -> gdef -> unit
 
 val pp_se : F.formatter -> sec_exp -> unit
 
@@ -250,7 +248,7 @@ val gcmd_all_vars : gcmd -> Vsym.S.t
 
 val gdef_all_vars : gdef -> Vsym.S.t
 
-val gdef_global_vars : gdef -> Se.t
+val gdef_global_vars : gdef -> Vsym.S.t
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Variable renaming} *)
@@ -288,8 +286,6 @@ val merge_vmap : vmap -> vmap -> vmap * (vs -> vs)
 val vmap_of_ves : Se.t -> vmap
 
 val vmap_of_globals : gdef -> vmap
-
-val vmap_of_all : gdef -> vmap
 
 val vmap_in_orcl : sec_exp -> ocmd_pos -> vmap
 

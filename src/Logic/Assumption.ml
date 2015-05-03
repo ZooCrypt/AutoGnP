@@ -80,8 +80,8 @@ let pp_acall_dec fmt (asym,vs1,(args1,args2)) =
 
 let pp_assm_dec fmt ad =
   F.fprintf fmt "assumption %s:@\n" ad.ad_name;
-  F.fprintf fmt "prefix left:@\n%a@\n"  pp_gdef ad.ad_prefix1;
-  F.fprintf fmt "prefix right:@\n%a@\n" pp_gdef ad.ad_prefix2;
+  F.fprintf fmt "prefix left:@\n%a@\n"  (pp_gdef ~nonum:false) ad.ad_prefix1;
+  F.fprintf fmt "prefix right:@\n%a@\n" (pp_gdef ~nonum:false) ad.ad_prefix2;
   F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_dec) ad.ad_acalls;
   F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ad.ad_symvars
 
@@ -174,7 +174,7 @@ let pp_acall_comp fmt (asym,vs1,args1) =
 
 let pp_assm_comp fmt ac =
   F.fprintf fmt "assumption %s (%a):@\n" ac.ac_name pp_atype ac.ac_type;
-  F.fprintf fmt "prefix left:@\n%a@\n"  pp_gdef ac.ac_prefix;
+  F.fprintf fmt "prefix left:@\n%a@\n"  (pp_gdef ~nonum:false) ac.ac_prefix;
   F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_comp) ac.ac_acalls;
   F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ac.ac_symvars
 
