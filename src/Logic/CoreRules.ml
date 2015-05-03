@@ -98,8 +98,9 @@ let prove_by ru g =
     mfail (lazy s)
   | Wf.Wf_div_zero es ->
     mfail (lazy (fsprintf "Failed divzero check: %a" (pp_list "," pp_exp) es))
-  | Wf.Wf_var_undef(vs,e) ->
-    mfail (lazy (fsprintf "Variable undefined: %a in %a" Vsym.pp vs pp_exp e))
+  | Wf.Wf_var_undef(vs,e,def_vars) ->
+    mfail (lazy (fsprintf "Variable undefined: %a in %a not in %a"
+                   Vsym.pp vs pp_exp e (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)))
 
 (** Get proof from proof state with no open goals. *)
 let get_proof ps =
@@ -249,7 +250,7 @@ let t_bind_ignore (t1 : 'a rtactic) (ft2 : 'a -> tactic) g =
 let ensure_gdef_eq rn a b =
   if not (gdef_equal a b) then 
     tacerror "%s: games not equal, @\n@[<hov 2>  %a@] vs @[<hov 2>  %a@]"
-      rn pp_gdef a pp_gdef b
+      rn (pp_gdef ~nonum:false) a (pp_gdef ~nonum:false) b
 
 let ensure_event_eq rn e1 e2 =
   if not (e_equal e1 e2) then
@@ -264,11 +265,11 @@ let ensure_not_use rn used_vars forbidden_vars gdef =
   if not (se_disjoint used_vars forbidden_vars) then
     tacerror "%s: judgment uses private variables: %a in @\n@[<hv 2>%a@]" rn
       (pp_list "," pp_exp) (Se.elements (Se.inter used_vars forbidden_vars))
-      pp_gdef gdef
+      (pp_gdef ~nonum:false) gdef
 
 let ensure_ppt rn gdef =
   if not (is_ppt_gcmds gdef) then
-    tacerror "%s: %a is not ppt" rn pp_gdef gdef
+    tacerror "%s: %a is not ppt" rn (pp_gdef ~nonum:false) gdef
 
 let ensure_pr_Adv rn ju =
   if ju.ju_pr <> Pr_Adv then
@@ -1039,6 +1040,21 @@ let t_trans new_se =
 (*i ----------------------------------------------------------------------- i*)
 (** {\bf Hybrid argument.} *)
 
+let rename_odef lcmds ret =
+  let vmap = Vsym.H.create 134 in
+  let add_mapping lcmd =
+    match lcmd with
+    | LLet(v,_) | LSamp(v,_) ->
+      let id = v.Vsym.id in
+      let new_v = Vsym.mk (Id.name id) v.Vsym.ty in
+      Vsym.H.add vmap v new_v
+    | LGuard(_) -> ()
+    | LBind(_) -> assert false
+  in
+  L.iter add_mapping lcmds;
+  let sigma v = try Vsym.H.find vmap v with Not_found -> v in
+  (L.map (subst_v_lc sigma) lcmds, subst_v_e sigma ret)
+
 let rhybrid gpos oidx new_lcmds new_eret ju =
   let se = ju.ju_se in
   let _, seoc = get_se_octxt_len se (gpos,oidx,0,Onohyb) 0 in
@@ -1056,11 +1072,11 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
   (* use hybrid oracles in first judgment *)
   let seoc_left1 =
     { seoc with
-      seoc_obless    = Some (new_lcmds,new_eret);
+      seoc_obless    = Some (rename_odef new_lcmds new_eret);
       seoc_obeq      = None;
       seoc_cright    = old_lcmds;
       seoc_return    = old_ret;
-      seoc_obgreater = Some (old_lcmds, old_ret); }
+      seoc_obgreater = Some (rename_odef old_lcmds old_ret); }
   in
   let seoc_left2 =
     { seoc_left1 with
