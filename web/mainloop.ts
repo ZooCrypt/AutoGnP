@@ -29,6 +29,11 @@ webSocket.onmessage = function (evt) {
     }
     editorMessage.clearSelection();
 
+  // answer for get_debug
+  } else if (m.cmd == 'setDebug') {
+    editorMessage.setValue(m.arg);
+    editorMessage.clearSelection();
+
   // answer for list files
   } else if (m.cmd == 'setFiles') {
     files = <any>(m.arg);

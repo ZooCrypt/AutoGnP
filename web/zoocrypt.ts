@@ -193,6 +193,10 @@ function loadBuffer(fname) {
   sendZoocrypt({'cmd':'load', 'arg':fname});
 }
 
+function getDebug() {
+  sendZoocrypt({'cmd':'getDebug','arg':''});
+}
+
 /* ******************************************************************/
 /* Websocket event handling                                         */
 /* ******************************************************************/
@@ -274,6 +278,18 @@ editorProof.commands.addCommand({
   },
   exec: function(env, args, request) {
     saveBuffer();
+  }
+});
+
+editorProof.commands.addCommand({
+  name: 'getDebugFile',
+  bindKey: {
+    win: 'Ctrl-D',
+    mac: 'Command-D',
+    sender: 'editor|cli'
+  },
+  exec: function(env, args, request) {
+    getDebug();
   }
 });
 

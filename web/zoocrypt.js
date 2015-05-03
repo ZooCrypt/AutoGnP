@@ -1,17 +1,14 @@
 /// <reference path="ace.d.ts" />
 /// <reference path="jquery.d.ts" />
-
 /* ******************************************************************/
 /* Debug logging                                                    */
 /* ******************************************************************/
 var enable_debug = false;
-
 function log(s) {
     if (enable_debug) {
         console.log(s);
     }
 }
-
 /* ******************************************************************/
 /* Websocket connection                                             */
 /* ******************************************************************/
@@ -20,7 +17,6 @@ var webSocket = new ReconnectingWebSocket("ws://" + wsServer + ":9999/");
 var firstConnect = true;
 var files = [];
 var currentFile = "";
-
 //webSocket.onclose = function(evt) {
 //  log("reconnecting to server");
 //  webSocket = new WebSocket("ws://" + wsServer + ":9999/");
@@ -31,28 +27,22 @@ function sendZoocrypt(m) {
         webSocket.send(JSON.stringify(m));
     }
 }
-
 /* ******************************************************************/
 /* Locking in proof editor                                          */
 /* ******************************************************************/
 // editorProof has been processed up to this character
 var firstUnlocked = 0;
-
 // the text from the timepoint when the locking was enabled
 var originalLockedText = "";
-
 // the last locking marker, used for removal
 var lastMarker;
-
 function lockedText() {
     return editorProof.getValue().substring(0, firstUnlocked);
 }
-
 function setFirstUnlocked(i) {
     firstUnlocked = i;
     originalLockedText = lockedText();
 }
-
 function insideCommentOrString(t, pos) {
     var i = 0;
     var insideComment = false;
@@ -62,14 +52,17 @@ function insideCommentOrString(t, pos) {
             if (t[i] == "*" && t.length > i + 1 && t[i + 1] == ")") {
                 insideComment = false;
             }
-        } else if (insideString) {
+        }
+        else if (insideString) {
             if (t[i] == "\"") {
                 insideString = false;
             }
-        } else {
+        }
+        else {
             if (t[i] == "(" && t.length > i + 1 && t[i + 1] == "*") {
                 insideComment = true;
-            } else if (t[i] == "\"") {
+            }
+            else if (t[i] == "\"") {
                 insideString = true;
             }
         }
@@ -77,7 +70,6 @@ function insideCommentOrString(t, pos) {
     }
     return insideComment || insideString;
 }
-
 function getNextDot(from) {
     var t = editorProof.getValue();
     var n = t.indexOf(".", from);
@@ -86,7 +78,6 @@ function getNextDot(from) {
     }
     return n;
 }
-
 function getPrevDot(from) {
     var t = editorProof.getValue();
     var n = t.lastIndexOf(".", Math.max(0, from - 2));
@@ -95,9 +86,7 @@ function getPrevDot(from) {
     }
     return n;
 }
-
 var emacs = ace.require("ace/keyboard/emacs").handler;
-
 var editorProof = ace.edit("editor-proof");
 editorProof.setTheme("ace/theme/eclipse");
 editorProof.setShowPrintMargin(false);
@@ -129,7 +118,6 @@ editorProof.getSession().getDocument().on("change", function (ev) {
         editorProof.moveCursorToPosition(pos);
     }
 });
-
 function markLocked(c) {
     var Range = ace.require('ace/range').Range;
     var pos = editorProof.getSession().getDocument().indexToPosition(firstUnlocked, 0);
@@ -138,7 +126,6 @@ function markLocked(c) {
     }
     lastMarker = editorProof.getSession().addMarker(new Range(0, 0, pos.row, pos.column), c, 'word', false);
 }
-
 /* ******************************************************************/
 /* Goal and message editor and resizing                             */
 /* ******************************************************************/
@@ -148,14 +135,12 @@ editorGoal.setHighlightActiveLine(false);
 editorGoal.setShowPrintMargin(false);
 editorGoal.setDisplayIndentGuides(false);
 editorGoal.renderer.setShowGutter(false);
-
 var editorMessage = ace.edit("editor-message");
 editorMessage.setTheme("ace/theme/eclipse");
 editorMessage.setHighlightActiveLine(false);
 editorMessage.setDisplayIndentGuides(false);
 editorMessage.setShowPrintMargin(false);
 editorMessage.renderer.setShowGutter(false);
-
 // resize windows
 function resizeAce() {
     var hpadding = 40;
@@ -163,33 +148,29 @@ function resizeAce() {
     var edit = $('#editor-proof');
     edit.height($(window).height() - vpadding + 13);
     edit.width($(window).width() / 2 - hpadding);
-
     edit = $('#editor-goal');
     edit.height(($(window).height() - vpadding) * 0.6);
     edit.width($(window).width() / 2 - hpadding);
-
     edit = $('#editor-message');
     edit.height(($(window).height() - vpadding) * 0.4);
     edit.width($(window).width() / 2 - hpadding);
 }
-
 //listen for changes
 $(window).resize(resizeAce);
-
 //set initially
 resizeAce();
-
 /* ******************************************************************/
 /* File handling functions                                         */
 /* ******************************************************************/
 function saveBuffer() {
     sendZoocrypt({ 'cmd': 'save', 'arg': editorProof.getValue(), 'filename': currentFile });
 }
-
 function loadBuffer(fname) {
     sendZoocrypt({ 'cmd': 'load', 'arg': fname });
 }
-
+function getDebug() {
+    sendZoocrypt({ 'cmd': 'getDebug', 'arg': '' });
+}
 /* ******************************************************************/
 /* Websocket event handling                                         */
 /* ******************************************************************/
@@ -201,7 +182,6 @@ webSocket.onopen = function (evt) {
     }
     firstConnect = false;
 };
-
 /* ******************************************************************/
 /* Evaluate parts of buffer                                         */
 /* ******************************************************************/
@@ -212,12 +192,12 @@ function evalLocked() {
     markLocked('processing');
     if (lockedText() !== "") {
         sendZoocrypt({ 'cmd': 'eval', 'arg': lockedText(), 'filename': currentFile });
-    } else {
+    }
+    else {
         editorGoal.setValue("");
         editorMessage.setValue("");
     }
 }
-
 function evalNext() {
     var nextDot = getNextDot(firstUnlocked);
     if (nextDot > firstUnlocked) {
@@ -225,29 +205,28 @@ function evalNext() {
         evalLocked();
     }
 }
-
 function evalCursor() {
     var pos = editorProof.getCursorPosition();
     var idx = editorProof.getSession().getDocument().positionToIndex(pos, 0);
     var prevDot = getPrevDot(idx + 1);
     if (prevDot == -1) {
         setFirstUnlocked(0);
-    } else {
+    }
+    else {
         setFirstUnlocked(prevDot + 1);
     }
     evalLocked();
 }
-
 function evalPrev() {
     var prevDot = getPrevDot(firstUnlocked);
     if (prevDot == -1) {
         setFirstUnlocked(0);
-    } else {
+    }
+    else {
         setFirstUnlocked(prevDot + 1);
     }
     evalLocked();
 }
-
 /* ******************************************************************/
 /* Add command bindings buffer                                      */
 /* ******************************************************************/
@@ -262,7 +241,17 @@ editorProof.commands.addCommand({
         saveBuffer();
     }
 });
-
+editorProof.commands.addCommand({
+    name: 'getDebugFile',
+    bindKey: {
+        win: 'Ctrl-D',
+        mac: 'Command-D',
+        sender: 'editor|cli'
+    },
+    exec: function (env, args, request) {
+        getDebug();
+    }
+});
 editorProof.commands.addCommand({
     name: 'evalCursor',
     bindKey: {
@@ -274,7 +263,6 @@ editorProof.commands.addCommand({
         evalCursor();
     }
 });
-
 editorProof.commands.addCommand({
     name: 'evalNext',
     bindKey: {
@@ -286,7 +274,6 @@ editorProof.commands.addCommand({
         evalNext();
     }
 });
-
 editorProof.commands.addCommand({
     name: 'evalPrev',
     bindKey: {
