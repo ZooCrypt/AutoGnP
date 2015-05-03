@@ -125,30 +125,30 @@ trans*
   , subst E2 (C6) (C6*C6')
   , subst E2 (C7) (C7*C7')
   ].
-  _: norm.
+  LR: norm.
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
-  _: rnd V  (v :  Fq -> g ^ v) _.  _: rnd V1 (v1 : Fq -> g ^ v1) _.
-  _: rnd V2 (v2 : Fq -> g ^ v2) _. _: rnd W  (w :  Fq -> g^w) _.
-  _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _.
-  _: //; //=.
+  LR: rnd V  (v :  Fq -> g ^ v) _.  LR: rnd V1 (v1 : Fq -> g ^ v1) _.
+  LR: rnd V2 (v2 : Fq -> g ^ v2) _. LR: rnd W  (w :  Fq -> g^w) _.
+  LR: rnd U  (u :  Fq -> g ^ u) _.  LR: rnd H  (h :  Fq -> g^h) _.
+  LR: //; //=.
   
   (* match p variables from assumption *)
-  _: rename a1 b1. _: rename a2 b2. _: swap b1 (1). _: swap b2 (2).
+  LR: rename a1 b1. LR: rename a2 b2. LR: swap b1 (1). LR: swap b2 (2).
   (* introduce remaining variables c1 and c2 from assumption. *)
-  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c2. _: //; //=.
-  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c1. _: //; //=.
-  _: swap [c1 c2] b2.
+  LR: abstract 1 arg (). LR: abstract _ res _.  LR: assumption_decisional dkill <- [arg] c2. LR: //; //=.
+  LR: abstract 1 arg (). LR: abstract _ res _.  LR: assumption_decisional dkill <- [arg] c1. LR: //; //=.
+  LR: swap [c1 c2] b2.
 
   (* we could use DLIN now, but it would be useless since the expression
      b2*(c1+c2)) does not occur anywhere.
      So we perform the right opt. samplings to "mix in" c1 and c2. *)
-  _: rnd s2 (s2 -> s2 + c1 + c2) _. _: rnd s1 (s1 -> s1 - c2)  _. _: //; //=.
+  LR: rnd s2 (s2 -> s2 + c1 + c2) _. LR: rnd s1 (s1 -> s1 - c2)  _. LR: //; //=.
   abstract* 5 arg (g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))). abstract _ res _.
-  assumption_decisional dlin -> [arg] x. _: //; //=.
+  assumption_decisional dlin -> [arg] x. LR: //; //=.
   swap x tagc.
   (* check differences, substitute some variable by polynomial to obtain additional terms existing on other side *)
   dist_sym.
-  except b2 [0]. rnd! x _ (x -> b2*(x + c1 + c2)). except b2 []. _: //; //=.
+  except b2 [0]. rnd! x _ (x -> b2*(x + c1 + c2)). except b2 []. LR: //; //=.
   dist_eq.
 
 (* ================================================== *)
@@ -177,50 +177,50 @@ hybrid (19,1)
 
   (* -------------------------------------------------- *)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
-  _: rnd V  (v :  Fq -> g ^ v) _.  _: rnd V1 (v1 : Fq -> g ^ v1) _.
-  _: rnd V2 (v2 : Fq -> g ^ v2) _. _: rnd W  (w :  Fq -> g^w) _.
-  _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _. _: //; //=.
+  LR: rnd V  (v :  Fq -> g ^ v) _.  LR: rnd V1 (v1 : Fq -> g ^ v1) _.
+  LR: rnd V2 (v2 : Fq -> g ^ v2) _. LR: rnd W  (w :  Fq -> g^w) _.
+  LR: rnd U  (u :  Fq -> g ^ u) _.  LR: rnd H  (h :  Fq -> g^h) _. LR: //; //=.
 
   (* -------------------------------------------------- *)
   (* side-step incomplete handling of Log(KeyGen1) *)
   trans* [ subst 1 (not (ci in Log(KeyGen1))) (not (ci in Log(KeyGen1)) /\ (KeyGen1`i<>ci)) ]. admit.
-  dist_sym. trans* [ subst 1 (not (ci in Log(KeyGen1))) (not (ci in Log(KeyGen1)) /\ (KeyGen1`i<>ci)) ]. admit.  _: // ; //=. dist_sym.
+  dist_sym. trans* [ subst 1 (not (ci in Log(KeyGen1))) (not (ci in Log(KeyGen1)) /\ (KeyGen1`i<>ci)) ]. admit.  LR: // ; //=. dist_sym.
 
   (* -------------------------------------------------- *)
   (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
   assert beta (KeyGen1`i<>ci). bycrush.
   dist_sym. assert beta (KeyGen1`i<>ci). bycrush. dist_sym.
-  _: rename tagc A.
-  _: rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _. _: //; //=.
-  _: swap A (1).
-  _: rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _. _: //; //=.
-  _: swap_main (12,1,5) B. _: swap B (2).
+  LR: rename tagc A.
+  LR: rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _. LR: //; //=.
+  LR: swap A (1).
+  LR: rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _. LR: //; //=.
+  LR: swap_main (12,1,5) B. LR: swap B (2).
   
   (* b1,b2 and c1,c2 will be used in reduction *)
-  _: rename b b1.
+  LR: rename b b1.
   (* v = -b2*a1*a2 *)
-  _: rename v b2. _: except a1 [0]. _: except a2 [0]. _: rnd! b2 (b2 -> -b2*a1*a2) _; // ; //=.
-  _: rnd! v1 (v1 -> v1 + b2*a2) _; //; //=.
-  _: rnd! v2 (v2 -> v2 + b2*a1) _; //; //=.
-  _: rnd! w (w -> w + b1) _; //; //=.
-  _: rnd! u (u -> u - b1*A) _; //; //=.
-  _: rnd! h (h -> h - b1*B) _; //; //=.
+  LR: rename v b2. LR: except a1 [0]. LR: except a2 [0]. LR: rnd! b2 (b2 -> -b2*a1*a2) _; // ; //=.
+  LR: rnd! v1 (v1 -> v1 + b2*a2) _; //; //=.
+  LR: rnd! v2 (v2 -> v2 + b2*a1) _; //; //=.
+  LR: rnd! w (w -> w + b1) _; //; //=.
+  LR: rnd! u (u -> u - b1*A) _; //; //=.
+  LR: rnd! h (h -> h - b1*B) _; //; //=.
   
   (* introduce remaining variables c1 and c2 from assumption. *)
-  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c2. _: //; //=.
-  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c1. _: //; //=.
-  _: swap b1 (1). _: swap b2 (2).
+  LR: abstract 1 arg (). LR: abstract _ res _.  LR: assumption_decisional dkill <- [arg] c2. LR: //; //=.
+  LR: abstract 1 arg (). LR: abstract _ res _.  LR: assumption_decisional dkill <- [arg] c1. LR: //; //=.
+  LR: swap b1 (1). LR: swap b2 (2).
 
-  _: rnd_oracle (19,1,1,=) (r1 -> r1 + c1) _. _: //; //=.
-  _: rnd_oracle (19,1,2,=) (r2 -> r2 + c2) _. _: //; //=.
-  _: rnd_oracle (19,1,3,=) (z1 -> z1 - v1*c2) _. _: //; //=.
-  _: rnd_oracle (19,1,4,=) (z2 -> z2 - v2*c2) _. _: //; //=.
+  LR: rnd_oracle (19,1,1,=) (r1 -> r1 + c1) _. LR: //; //=.
+  LR: rnd_oracle (19,1,2,=) (r2 -> r2 + c2) _. LR: //; //=.
+  LR: rnd_oracle (19,1,3,=) (z1 -> z1 - v1*c2) _. LR: //; //=.
+  LR: rnd_oracle (19,1,4,=) (z2 -> z2 - v2*c2) _. LR: //; //=.
   
-  _: rnd! t (t -> t + a1*a2*x*b2) _. _: //; //=.
+  LR: rnd! t (t -> t + a1*a2*x*b2) _. LR: //; //=.
 
   abstract* 5 arg (g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))).
   abstract _ res _.
-  assumption_decisional dlin -> [arg] tt. _: //; //=.
+  assumption_decisional dlin -> [arg] tt. LR: //; //=.
   swap tt (18).
   swap_main tt (19,1,1) gamma.
   swap (18,1,1,=) 4.
@@ -251,44 +251,44 @@ hybrid (41,1)
 
   (* -------------------------------------------------- *)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
-  _: rnd V  (v :  Fq -> g ^ v) _.  _: rnd V1 (v1 : Fq -> g ^ v1) _.
-  _: rnd V2 (v2 : Fq -> g ^ v2) _. _: rnd W  (w :  Fq -> g^w) _.
-  _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _.
-  _: //; //=.
+  LR: rnd V  (v :  Fq -> g ^ v) _.  LR: rnd V1 (v1 : Fq -> g ^ v1) _.
+  LR: rnd V2 (v2 : Fq -> g ^ v2) _. LR: rnd W  (w :  Fq -> g^w) _.
+  LR: rnd U  (u :  Fq -> g ^ u) _.  LR: rnd H  (h :  Fq -> g^h) _.
+  LR: //; //=.
 
 
   (* -------------------------------------------------- *)
   (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
-  _: rename tagc B.
-  _: rnd_oracle (18,1,6,=) (tagk -> tagk*(KeyGen2`i - ci) + B) _. _: //; //=.
-  _: swap_main (18,1,6) A. _: swap A (1). _: swap B (2).
-  _: rnd! B (B -> B + A*ci) _. _: //; //=.
+  LR: rename tagc B.
+  LR: rnd_oracle (18,1,6,=) (tagk -> tagk*(KeyGen2`i - ci) + B) _. LR: //; //=.
+  LR: swap_main (18,1,6) A. LR: swap A (1). LR: swap B (2).
+  LR: rnd! B (B -> B + A*ci) _. LR: //; //=.
 
   (* b1,b2 and c1,c2 will be used in reduction *)
-  _: rename b b1.
+  LR: rename b b1.
   (* v = -b2*a1*a2 *)
-  _: rename v b2. _: except a1 [0]. _: except a2 [0]. _: rnd! b2 (b2 -> -b2*a1*a2) _; // ; //=.
-  _: rnd! v1 (v1 -> v1 + b2*a2) _; //; //=.
-  _: rnd! v2 (v2 -> v2 + b2*a1) _; //; //=.
-  _: rnd! w (w -> w + b1) _; //; //=.
-  _: rnd! u (u -> u - b1*A) _; //; //=.
-  _: rnd! h (h -> h - b1*B) _; //; //=.
+  LR: rename v b2. LR: except a1 [0]. LR: except a2 [0]. LR: rnd! b2 (b2 -> -b2*a1*a2) _; // ; //=.
+  LR: rnd! v1 (v1 -> v1 + b2*a2) _; //; //=.
+  LR: rnd! v2 (v2 -> v2 + b2*a1) _; //; //=.
+  LR: rnd! w (w -> w + b1) _; //; //=.
+  LR: rnd! u (u -> u - b1*A) _; //; //=.
+  LR: rnd! h (h -> h - b1*B) _; //; //=.
   
   (* introduce remaining variables c1 and c2 from assumption. *)
-  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c2. _: //; //=.
-  _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c1. _: //; //=.
-  _: swap b1 (1). _: swap b2 (2).
+  LR: abstract 1 arg (). LR: abstract _ res _.  LR: assumption_decisional dkill <- [arg] c2. LR: //; //=.
+  LR: abstract 1 arg (). LR: abstract _ res _.  LR: assumption_decisional dkill <- [arg] c1. LR: //; //=.
+  LR: swap b1 (1). LR: swap b2 (2).
 
-  _: rnd_oracle (21,1,2,=) (r1 -> r1 + c1) _. _: //; //=.
-  _: rnd_oracle (21,1,3,=) (r2 -> r2 + c2) _. _: //; //=.
-  _: rnd_oracle (21,1,4,=) (z1 -> z1 - v1*c2) _. _: //; //=.
-  _: rnd_oracle (21,1,5,=) (z2 -> z2 - v2*c2) _. _: //; //=.
+  LR: rnd_oracle (21,1,2,=) (r1 -> r1 + c1) _. LR: //; //=.
+  LR: rnd_oracle (21,1,3,=) (r2 -> r2 + c2) _. LR: //; //=.
+  LR: rnd_oracle (21,1,4,=) (z1 -> z1 - v1*c2) _. LR: //; //=.
+  LR: rnd_oracle (21,1,5,=) (z2 -> z2 - v2*c2) _. LR: //; //=.
   
-  _: rnd! t (t -> t + a1*a2*x*b2) _. _: //; //=.
+  LR: rnd! t (t -> t + a1*a2*x*b2) _. LR: //; //=.
 
   abstract* 5 arg (g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))).
   abstract _ res _.
-  assumption_decisional dlin -> [arg] tt. _: //; //=.
+  assumption_decisional dlin -> [arg] tt. LR: //; //=.
   swap tt (21).
   swap_main tt (22,1,1) gamma.
   swap (21,1,1,=) 5.

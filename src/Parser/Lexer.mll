@@ -34,8 +34,8 @@ rule lex = parse
   | "in"    { IN }
   | "Log"   { QUERIES }
   | "let"   { LET }
-  | "2:" { INRIGHT }
-  | "_:"  { INBOTH }
+  | "R:" { INRIGHT }
+  | "LR:"  { INBOTH }
   | "undo_back"  { UNDOBACK }
   | "undo_back!"  { UNDOBACK_EXCL }
   | "adversary" { ADVERSARY }
