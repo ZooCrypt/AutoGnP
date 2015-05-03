@@ -300,7 +300,7 @@ let t_add_test_maybe ju =
       (asym,vars)
     with Not_found ->
       let asym = Asym.mk "BBB" aty oty in
-      let vars = L.map (fun ty -> Vsym.mk (mk_name se) ty) tys in
+      let vars = L.mapi (fun i ty -> Vsym.mk (mk_name ~name:("s"^string_of_int i) se) ty) tys in
       case_vars := ((opos,test),(asym,vars))::!case_vars;
       (asym,vars)
   in

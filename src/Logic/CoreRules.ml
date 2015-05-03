@@ -61,7 +61,7 @@ type 'a rtactic = goal -> ('a * proof_state) nondet
 (* \hd{General purpose functions} *)
 
 (** Create a variable name that is fresh in the given security experiment *)
-let mk_name ?(name="r") se =
+let mk_name ?(name="r__") se =
   let vars = gdef_all_vars se.se_gdef in
   let name_of_int i = name^(string_of_int i) in
   let names =
@@ -406,7 +406,7 @@ let ensure_bijection se c1 c2 rs =
       pp_ty dty2 pp_ty cty2 pp_ty t pp_ty t';
 
   let v  = mk_V rs in
-  let v' = mk_V (Vsym.mk (mk_name se) t') in
+  let v' = mk_V (Vsym.mk (mk_name ~name:"v__" se) t') in
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v')) v' &&
             Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v) then
     tacerror "rnd: contexts %a and %a are not bijective"
@@ -429,9 +429,9 @@ let rrnd p c1 c2 ju =
     let rv = mk_V rvs in
     let nrvs = 
       if ty_equal rvs.Vsym.ty new_ty then rvs 
-      else Vsym.mk (mk_name ~name:(Id.name  (fst c1).Vsym.id) se) new_ty in
+      else Vsym.mk (mk_name ~name:(Id.name (fst c1).Vsym.id) se) new_ty in
     let nrv = mk_V nrvs in
-    let vslet = Vsym.mk (mk_name se) rv.e_ty in
+    let vslet = Vsym.mk (mk_name ~name:"u__" se) rv.e_ty in
     let cmds = [ GSamp(nrvs,(new_ty, [])); GLet(vslet, inst_ctxt c1 nrv) ] in
     let subst e = e_replace rv (mk_V vslet) e in
     let sec = { sec with
@@ -467,7 +467,7 @@ let rrnd_oracle p c1 c2 ju =
       else Vsym.mk_qual (mk_name ~name:(Id.name (fst c1).Vsym.id) se) qual new_ty
     in
     let nrv = mk_V nrvs in
-    let vslet = Vsym.mk_qual (mk_name se) qual rv.e_ty in
+    let vslet = Vsym.mk_qual (mk_name ~name:"u__" se) qual rv.e_ty in
     let cmds = [ LSamp(nrvs,(new_ty, [])); LLet(vslet, inst_ctxt c1 nrv) ] in
     let subst e = e_replace rv (mk_V vslet) e in
     let sec =
