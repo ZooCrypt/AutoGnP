@@ -1,6 +1,12 @@
 #! /bin/sh
 
-EC_CMD="$HOME/easycrypt/ec.native -I ZooLib -I extraction"
+# set EC_CMD to override
+if [ -z ${EC_CMD} ]; then
+  EC_CMD="$HOME/easycrypt/ec.native"
+fi
+
+# add required includes
+EC_CMD="$EC_CMD -I ZooLib -I extraction"
 
 FAILED_ZC=""
 FAILED_EC=""
