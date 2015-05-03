@@ -137,23 +137,18 @@ trans*
   (* introduce remaining variables c1 and c2 from assumption. *)
   _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c2. _: //; //=.
   _: abstract 1 arg (). _: abstract _ res _.  _: assumption_decisional dkill <- [arg] c1. _: //; //=.
-  swap [c1 c2] b2.
+  _: swap [c1 c2] b2.
 
   (* we could use DLIN now, but it would be useless since the expression
      b2*(c1+c2)) does not occur anywhere.
      So we perform the right opt. samplings to "mix in" c1 and c2. *)
-  rnd s2 (s2 -> s2 + c1 + c2) _. rnd s1 (s1 -> s1 - c2)  _. _: //; //=.
-  abstract* 5 arg (g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))).
-  abstract _ res _.
+  _: rnd s2 (s2 -> s2 + c1 + c2) _. _: rnd s1 (s1 -> s1 - c2)  _. _: //; //=.
+  abstract* 5 arg (g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))). abstract _ res _.
   assumption_decisional dlin -> [arg] x. _: //; //=.
   swap x tagc.
   (* check differences, substitute some variable by polynomial to obtain additional terms existing on other side *)
   dist_sym.
-  rnd  s2 (s2 -> s2 + c1 + c2) _.
-  rnd! s1 (s1 -> s1 - c2) _.
-  rnd! x _ (x -> x + c1 + c2).
-  except b2 [0]. rnd x _ (x -> x*b2). _: //; //=.
-  swap s1 s2. swap [c1 c2] b2. except b2 [].
+  except b2 [0]. rnd! x _ (x -> b2*(x + c1 + c2)). except b2 []. _: //; //=.
   dist_eq.
 
 (* ================================================== *)
@@ -184,8 +179,7 @@ hybrid (19,1)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
   _: rnd V  (v :  Fq -> g ^ v) _.  _: rnd V1 (v1 : Fq -> g ^ v1) _.
   _: rnd V2 (v2 : Fq -> g ^ v2) _. _: rnd W  (w :  Fq -> g^w) _.
-  _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _.
-  _: //; //=.
+  _: rnd U  (u :  Fq -> g ^ u) _.  _: rnd H  (h :  Fq -> g^h) _. _: //; //=.
 
   (* -------------------------------------------------- *)
   (* side-step incomplete handling of Log(KeyGen1) *)
