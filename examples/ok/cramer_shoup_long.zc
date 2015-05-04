@@ -58,9 +58,8 @@ bound_adv
   ] : b = b'.
   
   (* decisional assumption *)
-  unfold. norm_unknown u w. swap u x1.
-  abstract x1 arg (g^w,g^u,g^(w*u)). abstract _ res' _.
-  assumption_decisional ddh -> [arg] v.
+  unfold. swap u (2).
+  assumption_decisional! ddh -> v.
   norm.
   
   (* rnd rule for x1, y1, z1 *)
