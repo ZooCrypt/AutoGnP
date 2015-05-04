@@ -1,0 +1,131 @@
+bilinear map e : G * G -> G_t.
+
+adversary A1 : G^17 -> (G * G * G).
+adversary A2 : (G * G * G * G * G_t) -> Bool.
+
+oracle Dec1 : (G * G * G * G * G_t * G) -> G.
+oracle Dec2 :  (G * G * G * G * G_t * G) -> G.
+
+adversary A_dlin : G^6 -> Bool.
+
+assumption dlin
+  [ g1 <-$ G; g2 <-$ G; g3 <-$ G; r <-$ Fq; s <-$ Fq;
+    b <- A_dlin(g1,g2,g3,g1^r,g2^s, g3^(r+s)); ]
+  [ g1 <-$ G; g2 <-$ G; g3 <-$ G; r <-$ Fq; s <-$ Fq; t <-$ Fq;
+    b <- A_dlin(g1,g2,g3,g1^r,g2^s, g3^t); ].
+
+bound_succ
+[ (* setup *)
+  g1 <-$ G;
+  g2 <-$ G;
+  g3 <-$ G;
+  
+  a1 <-$ Fq;
+  a2 <-$ Fq;
+  a3 <-$ Fq;
+
+  b01 <-$ Fq;
+  b02 <-$ Fq;
+  b03 <-$ Fq;
+  b11 <-$ Fq;
+  b12 <-$ Fq;
+  b13 <-$ Fq;
+  b21 <-$ Fq;
+  b22 <-$ Fq;
+  b23 <-$ Fq;
+  b31 <-$ Fq;
+  b32 <-$ Fq;
+  b33 <-$ Fq;
+  b41 <-$ Fq;
+  b42 <-$ Fq;
+  b43 <-$ Fq;
+  b51 <-$ Fq;
+  b52 <-$ Fq;
+  b53 <-$ Fq;
+  
+  let h1 = g1^a1*g3^a3;
+  let h2 = g2^a2*g3^a3;
+
+  let f01 = g1^b01*g3^b03;
+  let f02 = g2^b02*g3^b03;
+  let f11 = g1^b11*g3^b13;
+  let f12 = g2^b12*g3^b13;
+  let f21 = g1^b21*g3^b23;
+  let f22 = g2^b22*g3^b23;
+  let f31 = g1^b31*g3^b33;
+  let f32 = g2^b32*g3^b33;
+  let f41 = g1^b41*g3^b43;
+  let f42 = g2^b42*g3^b43;
+  let f51 = g1^b51*g3^b53;
+  let f52 = g2^b52*g3^b53;
+
+  (m0,m1,sL) <- A1(g1,g2,g3,h1,h2,f01,f02,f11,f12,f21,f22,f31,f32,f41,f42,f51,f52) with
+    Dec1(u1,u2,u3,c,v,L) =
+      [ c / (u1^a1*u2^a2*u3^a3) |
+        let v' = e(u1^b01*u2^b02*u3^b03,g) *
+                 e(u1^b11*u2^b12*u3^b13,u1) *
+                 e(u1^b21*u2^b22*u3^b23,u2) *
+                 e(u1^b31*u2^b32*u3^b33,u3) *
+                 e(u1^b41*u2^b42*u3^b43,c) * e(u1^b51*u2^b52*u3^b53,L),
+        v = v' ];
+
+  (* encryption of m with label L *)
+  beta <-$ Bool;
+  let m = beta?m0:m1;
+  r <-$ Fq;
+  s <-$ Fq;
+  let su1 = g1^r;
+  let su2 = g2^s;
+  let su3 = g3^(r + s);
+  let sc = m*h1^r*h2^s;
+  let sv = e(f01^r*f02^s,g) *
+           e(f11^r*f12^s,su1) *
+           e(f21^r*f22^s,su2) *
+           e(f31^r*f32^s,su3) *
+           e(f41^r*f42^s,sc) * e(f51^r*f52^s,sL);
+  beta' <- A2(su1,su2,su3,sc,sv)  with
+    Dec2(u1,u2,u3,c,v,L) =
+      [ c / (u1^a1*u2^a2*u3^a3) |
+        not ((u1,u2,u3,c,v,L) = (su1,su2,su3,sc,sv,sL)),
+        let v' = e(u1^b01*u2^b02*u3^b03,g) *
+                 e(u1^b11*u2^b12*u3^b13,u1) *
+                 e(u1^b21*u2^b22*u3^b23,u2) *
+                 e(u1^b31*u2^b32*u3^b33,u3) *
+                 e(u1^b41*u2^b42*u3^b43,c) * e(u1^b51*u2^b52*u3^b53,L),
+        v = v' ];
+
+] : (beta = beta').
+norm.
+(* sample exponents of g1, g2, g3 to apply DLIN *)
+swap r a1. swap s a1.
+abstract* 6 arg (g1,g2,g3,g1^r,g2^s, g3^(r+s)). abstract _ res _.
+assumption_decisional dlin -> [arg] t. //; //=.
+
+(* sample exponents for g1, g2, and g3 *)
+rnd g1 (e1 : Fq -> g^e1) _. rnd g2 (e2 : Fq -> g^e2) _. rnd g3 (e3 : Fq -> g^e3) _.
+except e1 [0]. except e2 [0]. //; //=.
+
+rnd! b01 _ (b01 -> b01*e1 + b03*e3); //. rnd! b02 _ (b02 -> b03*e3 + b02*e2); //.
+rnd! b11 _ (b11 -> b11*e1 + b13*e3); //. rnd! b12 _ (b12 -> b13*e3 + b12*e2); //.
+rnd! b21 _ (b21 -> b21*e1 + b23*e3); //. rnd! b22 _ (b22 -> b23*e3 + b22*e2); //.
+rnd! b31 _ (b31 -> b31*e1 + b33*e3); //. rnd! b32 _ (b32 -> b33*e3 + b32*e2); //.
+rnd! b41 _ (b41 -> b41*e1 + b43*e3); //. rnd! b42 _ (b42 -> b43*e3 + b42*e2); //.
+rnd! b51 _ (b51 -> b51*e1 + b53*e3); //. rnd! b52 _ (b52 -> b53*e3 + b52*e2); //.
+rnd! a1 _ (a1 -> a1*e1 + a3*e3); //. rnd! a2 _ (a2 -> a2*e2 + a3*e3); //.
+
+add_test (28,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A3 gu1 gu2 gu3 gc gv gL.
+  rewrite_oracle (28,1,1) ->. simp. //.
+  swap b03 (28).
+  ctxt_ev 1 (u -> log(u)). //.
+  admit. (* this should work: indep. *)
+rewrite_oracle (28,1,1) ->. //; //=.
+add_test (30,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 gu3 gc gv gL.
+  rewrite_oracle (30,1,1) ->. simp. //. admit.
+rewrite_oracle (30,1,1) ->. simp. //. admit.
+    
+  bycrush.
+  swap b03 (28).
+  
+unfold. norm.
+false_ev.
+qed.
