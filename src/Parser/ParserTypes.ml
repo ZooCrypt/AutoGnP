@@ -102,7 +102,7 @@ type tactic =
   | Rctxt_ev       of int option * parse_ctx option
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
-  | Rrnd_exp       of bool * string list
+  | Rrnd_exp       of bool * (string * string option) list
   | Rrnd_orcl      of ocmd_pos option * parse_ctx option * parse_ctx option
   | Rconv          of gdef * parse_expr
   | Rtrans         of gdef * parse_expr
@@ -112,7 +112,8 @@ type tactic =
   | Rassm_comp     of bool * string option * ranges
   | Rlet_abstract  of assgn_pos option * string * parse_expr option * 
                       assgn_pos option * bool
-  | Rlet_abstract_deduce of assgn_pos * string * parse_expr * assgn_pos option
+  | Rlet_abstract_deduce
+    of bool * assgn_pos * string * parse_expr * assgn_pos option
   | Rassert        of assgn_pos * parse_expr option
   | Rsubst         of assgn_pos option * parse_expr * parse_expr * 
                       assgn_pos option

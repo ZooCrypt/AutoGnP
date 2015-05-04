@@ -37,4 +37,4 @@ bound_adv
   bycrush.
 qed.
 print_proof.
-extract "extraction/cpa_matrix_scasc.ec".
+extract "extraction/cpa_matrix_scasc_long.ec".

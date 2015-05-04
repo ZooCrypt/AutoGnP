@@ -288,7 +288,7 @@ let t_let_unfold p ju =
     t_conv false (set_se_ctxt [] sec) ju
   | _ -> tacerror "rlet_unfold: no let at given position"
 
-let t_abstract_deduce ts gpos v e mupto ju =
+let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   let se = ju.ju_se in
   let ve = mk_V v in
   let frame = [(Norm.norm_expr_strong e,I ve)] in
@@ -302,10 +302,10 @@ let t_abstract_deduce ts gpos v e mupto ju =
     |> cat_Some |> se_of_list
   in
   let deduce_non_tuple e =
-    log_i (lazy (fsprintf "====================================@\nSearching for %a@\n" pp_exp e));
+    log_i (lazy (fsprintf "====================================@\nSearching for@\n  %a@\n" pp_exp e));
     try
       let recipe = He.find cache e in
-      log_i (lazy (fsprintf "====================================@\nFound %a for %a in cache@\n"
+      log_i (lazy (fsprintf "====================================@\nFound %a for@\n  %a in cache@\n"
                      pp_exp recipe pp_exp e));
       recipe
     with
@@ -315,7 +315,7 @@ let t_abstract_deduce ts gpos v e mupto ju =
         in
         let recipe = Deduc.invert ~ppt_inverter:true ts (frame@k_vars) e in
         He.add cache e recipe; 
-        log_i (lazy (fsprintf "====================================@\nFound %a for %a@\n"
+        log_i (lazy (fsprintf "====================================@\nFound %a for@\n  %a@\n"
                        pp_exp recipe pp_exp e));
         recipe
   in
@@ -326,7 +326,7 @@ let t_abstract_deduce ts gpos v e mupto ju =
       try
         deduce_non_tuple e
       with
-        Not_found -> e
+        Not_found when keep_going -> e
   in
   log_i (lazy (fsprintf "Abstracting %i lines@\n" abstract_len));
   let a_cmds = map_gdef_exp deduce a_cmds in

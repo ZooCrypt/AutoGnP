@@ -204,10 +204,10 @@ let handle_tactic ts tac =
       let v = mk_new_var sv e.e_ty in
       t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm) ju
 
-    | PT.Rlet_abstract_deduce(i,sv,se,mupto) ->
+    | PT.Rlet_abstract_deduce(keep_going,i,sv,se,mupto) ->
       let e = parse_e se in
       let v = mk_new_var sv e.e_ty in
-      t_abstract_deduce ts (get_pos i) v e (map_opt get_pos mupto) ju
+      t_abstract_deduce ~keep_going ts (get_pos i) v e (map_opt get_pos mupto) ju
       
     | PT.Rassert(i,Some se) ->
       let e = parse_e se in
@@ -376,8 +376,18 @@ let handle_tactic ts tac =
       let mgen = map_opt parse_e mgen in
       t_rnd_maybe ts exact (map_opt get_pos mi) mctxt1 mctxt2 mgen ju
 
-    | PT.Rrnd_exp(_exact,_ids) ->
-      failwith "not implemented yet"
+    | PT.Rrnd_exp(exact,ids) ->
+      let to_tac (i,mi2) =
+        let v = Ht.find vmap_g (Unqual,i) in
+        let ename =
+          let li = String.lowercase i in
+          from_opt (if li<>i then li else "e_"^i) mi2
+        in
+        let gname = destr_G v.Vsym.ty in
+        let e = PT.Exp(PT.CGen (Groupvar.name gname), PT.V(Unqual,ename)) in
+        PT.Rrnd(exact,Some (PT.Var i), Some (ename,Some PT.Fq,e),None,None)
+      in
+      t_seq_fold (L.map (fun i -> interp_tac (to_tac i)) ids) ju
   
     | PT.Rrnd_orcl(mopos,mctxt1,mctxt2) ->
       t_rnd_oracle_maybe ts mopos mctxt1 mctxt2 ju

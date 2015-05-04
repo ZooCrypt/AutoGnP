@@ -96,22 +96,23 @@ bound_adv
 
 ] : (beta = beta').
 norm.
-(* sample exponents of g1, g2, g3 to apply DLIN *)
+
+(* Apply DLIN for g1, g2, g3, r, s *)
 swap r a1. swap s a1.
-abstract* 6 arg (g1,g2,g3,g1^r,g2^s, g3^(r+s)). abstract _ res _.
-assumption_decisional dlin -> [arg] t. //; //=.
+assumption_decisional! dlin -> t; //; //=.
 
 (* sample exponents for g1, g2, and g3 *)
-rnd g1 (e1 : Fq -> g^e1) _. rnd g2 (e2 : Fq -> g^e2) _. rnd g3 (e3 : Fq -> g^e3) _.
+rnd_exp (g1 e1) (g2 e2) (g3 e3).
 except e1 [0]. except e2 [0]. //; //=.
 
-rnd! b01 _ (b01 -> b01*e1 + b03*e3); //. rnd! b02 _ (b02 -> b03*e3 + b02*e2); //.
-rnd! b11 _ (b11 -> b11*e1 + b13*e3); //. rnd! b12 _ (b12 -> b13*e3 + b12*e2); //.
-rnd! b21 _ (b21 -> b21*e1 + b23*e3); //. rnd! b22 _ (b22 -> b23*e3 + b22*e2); //.
-rnd! b31 _ (b31 -> b31*e1 + b33*e3); //. rnd! b32 _ (b32 -> b33*e3 + b32*e2); //.
-rnd! b41 _ (b41 -> b41*e1 + b43*e3); //. rnd! b42 _ (b42 -> b43*e3 + b42*e2); //.
-rnd! b51 _ (b51 -> b51*e1 + b53*e3); //. rnd! b52 _ (b52 -> b53*e3 + b52*e2); //.
-rnd! a1 _ (a1 -> a1*e1 + a3*e3); //. rnd! a2 _ (a2 -> a2*e2 + a3*e3); //.
+(* make view of adversary A1 independent of b*3 and a3 *)
+rnd! b01 _ _; //. rnd! b02 _ _; //.
+rnd! b11 _ _; //. rnd! b12 _ _; //.
+rnd! b21 _ _; //. rnd! b22 _ _; //.
+rnd! b31 _ _; //. rnd! b32 _ _; //.
+rnd! b41 _ _; //. rnd! b42 _ _; //.
+rnd! b51 _ _; //. rnd! b52 _ _; //.
+rnd! a1 _ _;  //. rnd! a2 _ _;  //.
 
 add_test (28,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A3 gu1 gu2 gu3 gc gv gL.
   rewrite_oracle (28,1,1) ->. simp. //.

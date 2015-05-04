@@ -491,6 +491,10 @@ diff_cmd:
 | RSUBST p=assgn_pos e1=expr0 e2=expr0
   { Dsubst(p,e1,e2) }
 
+id_pair:
+| id = ID { (id,None) }
+| LPAREN id1=ID id2=ID RPAREN { (id1,Some id2) }
+
 tactic :
 
 /* norm variants */
@@ -515,9 +519,9 @@ tactic :
 | RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
           i1=ID e1=uopt(expr0) mupto=assgn_pos?
   { Rlet_abstract(i,i1,e1,mupto,excl=None) }
-| RLET_ABSTRACT_DEDUCE i=assgn_pos
+| RLET_ABSTRACT_DEDUCE excl=EXCL? i=assgn_pos
           i1=ID e1=expr0 mupto=assgn_pos?
-  { Rlet_abstract_deduce(i,i1,e1,mupto) }
+  { Rlet_abstract_deduce(excl<>None,i,i1,e1,mupto) }
 | ASSERT i=assgn_pos e=expr0?
   { Rassert(i,e) }
 
@@ -530,7 +534,7 @@ tactic :
 /* random samplings */
 | RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?
   { Rrnd(excl=None,mi,mc1,mc2,mgen) }
-| RRND_EXP excl=EXCL? ids=ID+
+| RRND_EXP excl=EXCL? ids=id_pair+
   { Rrnd_exp(excl=None,ids) }
 
 | REXCEPT i=uopt(assgn_pos) es=uopt(br_exprlist0) { Rexcept(i,es) }

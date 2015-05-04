@@ -19,176 +19,13 @@ module Ht = Hashtbl
 module CR = CoreRules
 module PU = ParserUtil
 
+let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "AssumptionRules" ls
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "AssumptionRules" ls
 let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "AssumptionRules" ls
 (*i*)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Decisional assumptions} *)
-
-(** Compute substitution and perform let abstraction. *)
-let t_assm_dec_aux ts assm dir subst assm_samps assm_lets ju =
-  let se = ju.ju_se in
-  let gdef_samps = Util.take (L.length assm_samps) (samplings se.se_gdef) in
-
-  (* subst renames assm into judgment *)
-  guard (list_eq_for_all2
-           (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2)
-           assm_samps gdef_samps) >>= fun _ ->
-  let ren =
-    L.fold_left2
-      (fun s (_,(vs1,_)) (_,(vs2,_)) ->Vsym.M.add vs1 vs2 s)
-      subst
-      assm_samps
-      gdef_samps
-  in
-  log_t (lazy (fsprintf "ren %a" pp_ren ren));
-
-  (* perform let abstractions *)
-  let n_let = L.length assm_lets in
-  let ltac (i_let,subst) (i,(vs,e)) =
-    (* FIXME: use deterministic name generation / reuse name *)
-    let name = CR.mk_name se in
-    let vs'  = Vsym.mk name vs.Vsym.ty in
-    let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
-    ( (i_let + 1, Vsym.M.add vs vs' subst)
-    , t_let_abstract i vs' (Norm.norm_expr_nice e') None false
-      @>
-      (* We assume the last let definition differs between left and right
-         and therefore enforce that it is used in the game *)
-      (if i_let = n_let
-       then t_guard (fun ju -> Se.mem (mk_V vs') (Game.read_se ju.ju_se))
-       else CR.t_id))
-  in
-  let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) gdef_samps in
-  let ((_,subst), let_abstrs) =  map_accum ltac (1,subst) assm_lets in
-
-  (* try conversion between gdef = gprefix;grest and inst(assm);grest *)
-  let conv_common_prefix ju =
-    let a_rn = inst_dec subst assm in
-    let c = if dir = LeftToRight then a_rn.ad_prefix1 else a_rn.ad_prefix2 in
-    let grest = Util.drop (L.length c) se.se_gdef in
-    (   CoreRules.t_conv true { se with se_gdef=c@grest }
-     @> CoreRules.t_assm_dec dir subst [] assm) ju
-  in
-  try
-    ((*  t_print "after swapping, before unknown"
-     @> *) t_norm_unknown ts priv_exprs
-     (* @> t_print "after unknown" *)
-     @> t_seq_fold let_abstrs
-     (* @> t_print "after let" *)
-     @> (CoreRules.t_assm_dec dir subst [] assm @|| conv_common_prefix)) ju
-  with
-    Invalid_rule s -> log_t (lazy s); mempty
-
-(** We known which samplings in the assumption are equivalent, so we
-    extract the corresponding samplings in the judgment and make sure
-    that equivalent samplings are order *)
-let ordered_eqclass samp_assm match_samps eq_class =
-  let eq_class_pos =
-    samp_assm
-    |> L.mapi (fun i (_,(vs,_)) -> if L.mem vs eq_class then Some i else None)
-    |> cat_Some
-  in
-  let match_samp_pos =
-    L.map (fun i -> fst (L.nth match_samps i)) eq_class_pos
-  in
-  L.sort compare match_samp_pos =  match_samp_pos
-
-let match_samps symvars assm_samps_typed gdef_samps_typed =
-  let rec go acc asts gsts =
-    match asts,gsts with
-    | [], [] ->
-      ret acc
-    | (t,asamps)::asts, (t',gsamps)::gsts ->
-      assert (ty_equal t t');
-      pick_set_exact (L.length asamps) (mconcat gsamps) >>= fun match_samps ->
-      permutations match_samps >>= fun match_samps ->
-      let ordered eq_class = ordered_eqclass asamps match_samps eq_class in
-      guard (L.for_all ordered symvars) >>= fun _ ->
-      let old_new_pos =
-        L.map (fun (sg,ss) -> (fst sg, fst ss)) (L.combine match_samps asamps)
-      in
-      go (acc@old_new_pos) asts gsts 
-    | _ ->
-      assert false
-  in
-  go [] assm_samps_typed gdef_samps_typed
-
-(** Fuzzy matching with given assumption, compute sequence of swap
-    applications that make assumption applicable. Compute sequence of
-    let abstraction applications in next step. *)
-let t_assm_dec_auto ts assm dir subst ju =
-  let se = ju.ju_se in
-  log_t (lazy "###############################");
-  log_t (lazy (fsprintf "t_assm_dec_auto dir=%s ad=%s" (string_of_dir dir) assm.ad_name));
-
-  (* extract samplings and lets from assumption and judgment *)
-  let assm_cmds  = if dir=LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
-  let assm_samps = samplings assm_cmds in
-  let assm_lets  = lets assm_cmds in
-  let gdef_samps = samplings se.se_gdef in
-  log_t (lazy (fsprintf "@[assm samps:@\n%a@]" (pp_list "@\n" pp_samp) assm_samps));
-  log_t (lazy (fsprintf "@[assm lets:@\n%a@]" (pp_list "@\n" pp_let)  assm_lets));
-  log_t (lazy (fsprintf "@[gdef samplings:@\n%a@]" (pp_list "@\n" pp_samp) gdef_samps));
-
-  (* compute matchings between samplings in assumption and judgment (match up types) *)
-  let ty_of_samp (_,(_,(t,_))) = t in
-  let assm_samp_types = sorted_nub ty_compare (L.map ty_of_samp assm_samps) in
-  let assm_samps_typed =
-    L.map
-      (fun ty -> (ty, L.filter (fun s -> ty_equal (ty_of_samp s) ty) assm_samps))
-      assm_samp_types
-  in
-  let gdef_samps_typed =
-    L.map
-      (fun ty -> (ty, L.filter (fun s -> ty_equal (ty_of_samp s) ty) gdef_samps))
-      assm_samp_types
-  in
-  match_samps assm.ad_symvars assm_samps_typed gdef_samps_typed >>= fun old_new_pos ->
-  log_t (lazy (fsprintf "@[match samps:@\n[%a]@]"
-                 (pp_list ", " (pp_pair pp_int pp_int)) old_new_pos));
-  let swaps =
-       parallel_swaps old_new_pos
-    |> filter_map (fun (old_pos,delta) ->
-                    if delta = 0 then None else Some (CR.t_swap old_pos delta))
-  in
-  (t_seq_fold swaps @> t_assm_dec_aux ts assm dir subst assm_samps assm_lets) ju
-
-(** Supports placeholders for which all possible values are tried *)
-let t_assm_dec_non_exact
-    ?i_assms:(iassms=Sstring.empty) ts massm_name mdir _mrngs  mvnames ju =
-  let se = ju.ju_se in
-  (* use assumption with given name or try all decisional assumptions *)
-  (match massm_name with
-   | Some aname ->
-     begin try ret (Mstring.find aname ts.ts_assms_dec)
-     with Not_found -> tacerror "error no assumption %s" aname
-     end
-   | None ->
-     mconcat (Mstring.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_dec [])
-  ) >>= fun assm ->
-  guard (not (Sstring.mem assm.ad_name iassms)) >>= fun _ ->
-  (* use given direction or try both directions *)
-  (opt ret (mconcat [LeftToRight; RightToLeft]) mdir)
-  >>= fun dir ->
-  (* generate substitution for all required new variable names
-     generating new variable names if not enough are provided *)
-  let needed = needed_vars_dec dir assm in
-  let given_vnames = from_opt [] mvnames in
-  let required = max 0 (L.length needed - L.length given_vnames) in
-  (* FIXME: prevent variable clashes here *)
-  let generated_vnames =
-    L.map (fun _ -> CR.mk_name se) (list_from_to 0 required)
-  in
-  let ren = 
-    L.fold_left2
-      (fun sigma v x -> Vsym.M.add v (Vsym.mk x v.Vsym.ty) sigma)
-      Vsym.M.empty
-      needed
-      (given_vnames@generated_vnames)
-  in
-  t_assm_dec_auto ts assm dir ren ju
 
 let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   let rn = "asumption_decisional" in
@@ -269,6 +106,160 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
      @> CoreRules.t_assm_dec dir ren rngs assm) ju
   in
   (CR.t_assm_dec dir ren rngs assm @|| conv_common_prefix) ju
+
+(** Compute substitution and perform let abstraction. *)
+let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
+  guard (L.length assm.ad_acalls = 1)  >>= fun _ ->
+  let (arg_e) = match assm.ad_acalls with
+    | [ _, _, (ae_left, ae_right) ] ->
+      if dir=LeftToRight then ae_left else ae_right
+    | _ -> assert false
+  in
+  let se = ju.ju_se in
+  let gdef_samps = Util.take (L.length assm_samps) (samplings se.se_gdef) in
+
+  (* subst renames assm into judgment *)
+  guard (list_eq_for_all2
+           (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2)
+           assm_samps gdef_samps) >>= fun _ ->
+  let ren =
+    L.fold_left2
+      (fun s (_,(vs1,_)) (_,(vs2,_)) -> Vsym.M.add vs1 vs2 s)
+      subst
+      assm_samps
+      gdef_samps
+  in
+  log_i (lazy (fsprintf "ren %a" pp_ren ren));
+
+  let arg_e = Game.subst_v_e (fun vs -> Vsym.M.find vs ren) arg_e in
+  let arg_v = Vsym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
+  let pref_len = L.length assm_samps in
+  let ev_v = Vsym.mk (CR.mk_name ~name:"re" ju.ju_se) ju.ju_se.se_ev.e_ty in
+  let max = L.length ju.ju_se.se_gdef in
+  try
+    ((*  t_print "after swapping, before unknown" *)
+     (* @> t_print "after unknown" *)
+      t_let_abstract max ev_v ju.ju_se.se_ev None false
+      @> t_abstract_deduce ~keep_going:false ts (L.length assm_samps) arg_v arg_e None
+      @> t_print log_i "after abstract* "
+      @> (fun ju ->
+            let rngs = [pref_len, L.length ju.ju_se.se_gdef - 1] in
+            t_assm_dec_exact ts (Some assm.ad_name) (Some dir) (Some rngs) (Some vnames) ju))
+      ju
+  with
+    Invalid_rule s -> log_i (lazy s); mempty
+
+(** We known which samplings in the assumption are equivalent, so we
+    extract the corresponding samplings in the judgment and make sure
+    that equivalent samplings are order *)
+let ordered_eqclass samp_assm match_samps eq_class =
+  let eq_class_pos =
+    samp_assm
+    |> L.mapi (fun i (_,(vs,_)) -> if L.mem vs eq_class then Some i else None)
+    |> cat_Some
+  in
+  let match_samp_pos =
+    L.map (fun i -> fst (L.nth match_samps i)) eq_class_pos
+  in
+  L.sort compare match_samp_pos =  match_samp_pos
+
+let match_samps symvars assm_samps_typed gdef_samps_typed =
+  let rec go acc asts gsts =
+    match asts,gsts with
+    | [], [] ->
+      ret acc
+    | (t,asamps)::asts, (t',gsamps)::gsts ->
+      assert (ty_equal t t');
+      pick_set_exact (L.length asamps) (mconcat gsamps) >>= fun match_samps ->
+      permutations match_samps >>= fun match_samps ->
+      let ordered eq_class = ordered_eqclass asamps match_samps eq_class in
+      guard (L.for_all ordered symvars) >>= fun _ ->
+      let old_new_pos =
+        L.map (fun (sg,ss) -> (fst sg, fst ss)) (L.combine match_samps asamps)
+      in
+      go (acc@old_new_pos) asts gsts 
+    | _ ->
+      assert false
+  in
+  go [] assm_samps_typed gdef_samps_typed
+
+(** Fuzzy matching with given assumption, compute sequence of swap
+    applications that make assumption applicable. Compute let abstraction
+    of argument in next step. *)
+let t_assm_dec_auto ts assm dir subst ju vnames =
+  let se = ju.ju_se in
+  log_t (lazy "###############################");
+  log_t (lazy (fsprintf "t_assm_dec_auto dir=%s ad=%s" (string_of_dir dir) assm.ad_name));
+
+  (* extract samplings and lets from assumption and judgment *)
+  let assm_cmds  = if dir=LeftToRight then assm.ad_prefix1 else assm.ad_prefix2 in
+  let assm_samps = samplings assm_cmds in
+  let assm_lets  = lets assm_cmds in
+  let gdef_samps = samplings se.se_gdef in
+  log_t (lazy (fsprintf "@[assm samps:@\n%a@]" (pp_list "@\n" pp_samp) assm_samps));
+  log_t (lazy (fsprintf "@[assm lets:@\n%a@]" (pp_list "@\n" pp_let)  assm_lets));
+  log_t (lazy (fsprintf "@[gdef samplings:@\n%a@]" (pp_list "@\n" pp_samp) gdef_samps));
+
+  (* compute matchings between samplings in assumption and judgment (match up types) *)
+  let ty_of_samp (_,(_,(t,_))) = t in
+  let assm_samp_types = sorted_nub ty_compare (L.map ty_of_samp assm_samps) in
+  let assm_samps_typed =
+    L.map
+      (fun ty -> (ty, L.filter (fun s -> ty_equal (ty_of_samp s) ty) assm_samps))
+      assm_samp_types
+  in
+  let gdef_samps_typed =
+    L.map
+      (fun ty -> (ty, L.filter (fun s -> ty_equal (ty_of_samp s) ty) gdef_samps))
+      assm_samp_types
+  in
+  match_samps assm.ad_symvars assm_samps_typed gdef_samps_typed >>= fun old_new_pos ->
+  (* FIXME: for now, we assume variables are already correctly ordered *)
+  guard (L.for_all (fun (op,np) -> op = np) old_new_pos) >>= fun _ ->
+
+  log_t (lazy (fsprintf "@[match samps:@\n[%a]@]"
+                 (pp_list ", " (pp_pair pp_int pp_int)) old_new_pos));
+  let swaps =
+       parallel_swaps old_new_pos
+    |> filter_map (fun (old_pos,delta) ->
+                    if delta = 0 then None else Some (CR.t_swap old_pos delta))
+  in
+  (t_seq_fold swaps @> t_assm_dec_aux ts assm dir subst assm_samps vnames) ju
+
+(** Supports placeholders for which all possible values are tried *)
+let t_assm_dec_non_exact
+    ?i_assms:(iassms=Sstring.empty) ts massm_name mdir _mrngs mvnames ju =
+  let se = ju.ju_se in
+  (* use assumption with given name or try all decisional assumptions *)
+  (match massm_name with
+   | Some aname ->
+     begin try ret (Mstring.find aname ts.ts_assms_dec)
+     with Not_found -> tacerror "error no assumption %s" aname
+     end
+   | None ->
+     mconcat (Mstring.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_dec [])
+  ) >>= fun assm ->
+  guard (not (Sstring.mem assm.ad_name iassms)) >>= fun _ ->
+  (* use given direction or try both directions *)
+  (opt ret (mconcat [LeftToRight; RightToLeft]) mdir)
+  >>= fun dir ->
+  (* generate substitution for all required new variable names
+     generating new variable names if not enough are provided *)
+  let needed = needed_vars_dec dir assm in
+  let given_vnames = from_opt [] mvnames in
+  let required = max 0 (L.length needed - L.length given_vnames) in
+  (* FIXME: prevent variable clashes here *)
+  let generated_vnames =
+    L.map (fun _ -> CR.mk_name se) (list_from_to 0 required)
+  in
+  let ren = 
+    L.fold_left2
+      (fun sigma v x -> Vsym.M.add v (Vsym.mk x v.Vsym.ty) sigma)
+      Vsym.M.empty
+      needed
+      (given_vnames@generated_vnames)
+  in
+  t_assm_dec_auto ts assm dir ren ju (given_vnames@generated_vnames)
 
 let t_assm_dec
   ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mrngs mvnames ju =

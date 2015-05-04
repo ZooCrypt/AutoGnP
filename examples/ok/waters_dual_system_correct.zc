@@ -74,3 +74,4 @@ case_ev (tagc = tagk).
 norm.
 false_ev.
 qed.
+(* extract "extraction/waters_dual_system_correct.ec". *)
