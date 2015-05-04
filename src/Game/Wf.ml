@@ -173,7 +173,7 @@ let wf_samp ctype wfs v t es =
   List.iter (wf_exp ctype wfs) es;
   let wfs = ensure_varname_fresh wfs v in
   let v = mk_V v in
-  List.fold_left (fun wfs e -> add_ineq ctype wfs e v) wfs es
+  List.fold_left (fun wfs e -> add_ineq ctype wfs v e) wfs es
 
 let wf_let ctype wfs v e =
   let wfs = ensure_varname_fresh wfs v in
