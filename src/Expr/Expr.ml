@@ -57,7 +57,7 @@ let op_hash = (*c ... *) (*i*)
   | Eq       -> 8
   | Not      -> 9
   | Ifte     -> 10
-  | EMap(es) ->  Hashcons.combine 11 (Esym.hash es)
+  | EMap(es) -> Hashcons.combine 11 (Esym.hash es)
   (*i*)
 
 
@@ -94,10 +94,6 @@ and expr_node =
   | Cnst   of cnst            (*r constants *)
   | App    of op * expr list  (*r fixed arity operators *)
   | Nary   of nop * expr list (*r variable arity AC operators *)
-  | InLog  of expr * Osym.t   (* e in log o *)
-  | Exists of expr * expr * (Vsym.t * Hsym.t) list
-    (*r $Exists(e_1,e_2,[(x_1,L_{H_{h1}}),\ldots]$: $\exists x_1 \in L_{H_{h1}}.\, e_1 = e_2$ *)
-
 
 (** Equality hashing, and comparison for expressions. *)
 let e_equal : expr -> expr -> bool = (==) 
@@ -118,11 +114,6 @@ module Hse = Hashcons.Make (struct
     | Cnst c1, Cnst c2           -> c1 = c2
     | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
-    | InLog(e1,o1), InLog(e2,o2) -> e_equal e1 e2 && Osym.equal o1 o2
-    | Exists(e1,e1',vh1), Exists(e2,e2',vh2) -> 
-      e_equal e1 e2 && e_equal e1' e2' &&
-        list_eq_for_all2 (fun (v1,h1) (v2,h2) ->
-          Vsym.equal v1 v2 && Hsym.equal h1 h2) vh1 vh2
     | _, _                       -> false
   (*i*)
 
@@ -135,11 +126,6 @@ module Hse = Hashcons.Make (struct
     | Cnst(c)    -> cnst_hash c
     | App(o,es)  -> Hashcons.combine_list e_hash (op_hash o) es
     | Nary(o,es) -> Hashcons.combine_list e_hash (nop_hash o) es
-    | InLog(e,o) -> Hashcons.combine (e_hash e) (Osym.hash o)
-    | Exists(e1,e2,vh) -> 
-        Hashcons.combine_list 
-          (fun (v,h) -> Hashcons.combine (Vsym.hash v) (Hsym.hash h))
-          (Hashcons.combine (e_hash e1) (e_hash e2)) vh
   (*i*)
 
   let hash e = Hashcons.combine (ty_hash e.e_ty) (hash_node e.e_node)
@@ -189,10 +175,6 @@ let mk_H h e =
   ensure_ty_equal e.e_ty h.Hsym.dom e None "mk_H";
   mk_e (H(h,e)) h.Hsym.codom
 
-let mk_InLog e orc = 
-  ensure_ty_equal e.e_ty orc.Osym.dom e None "mk_InLog";
-  mk_e (InLog(e,orc)) ty_Bool
-
 let mk_Tuple es =
   match es with
   | [e] -> e
@@ -209,12 +191,6 @@ let mk_Proj i e =
         (i+1)
     in
     raise (TypeError(e.e_ty,e.e_ty,e,None,s))
-
-let mk_Exists e1 e2 h =
-  ensure_ty_equal e1.e_ty e2.e_ty e1 None "mk_ElemH";
-  L.iter (fun (v,h) ->
-    ensure_ty_equal v.Vsym.ty h.Hsym.dom (mk_V v) None "mk_ElemH") h;
-  mk_e (Exists(e1,e2,h)) ty_Bool
   
 let mk_Cnst c ty = mk_e (Cnst c) ty
 
@@ -342,11 +318,6 @@ let sub_map g e =
       let e1' = g e1 in
       if e1 == e1' then e
       else mk_e (H(h, e1')) e.e_ty
-  | Exists(e1,e2,h) ->
-      let e1' = g e1 in
-      let e2' = g e2 in
-      if e1 == e1' && e2 == e2' then e
-      else mk_e (Exists(e1', e2', h)) e.e_ty
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
@@ -363,10 +334,6 @@ let sub_map g e =
       let es' = smart_map g es in
       if es == es' then e
       else mk_e (Nary(o, es')) e.e_ty
-  | InLog(e1,orc) ->
-      let e1' = g e1 in
-      if e1 == e1' then e
-      else mk_e (InLog(e1', orc)) e.e_ty
 
 let check_fun g e =
   let e' = g e in 
@@ -378,15 +345,13 @@ let e_sub_map g = sub_map (check_fun g)
 let e_sub_fold g acc e =
   match e.e_node with
   | V _ | Cnst _ -> acc
-  | H(_,e) | Proj(_, e) | InLog(e,_)-> g acc e
-  | Exists(e1,e2,_) -> g (g acc e1) e2
+  | H(_,e) | Proj(_, e) -> g acc e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | H(_,e) | Proj(_, e) | InLog(e,_)-> g e
-  | Exists(e1,e2,_) -> g e1; g e2
+  | H(_,e) | Proj(_, e) -> g e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
 
 let rec e_iter g e =
@@ -452,12 +417,6 @@ let e_map_ty_maximal ty g e0 =
     | Nary(o,es) -> 
       let es = L.map (go ie) es in
       trans (mk_Nary o es) 
-    | InLog(e,orc) ->
-      let e = go ie e in
-      trans (mk_InLog e orc)
-    | Exists(e1,e2,vh) ->
-      let (e1, e2) = (go ie e1, go ie e2) in
-      trans (mk_Exists e1 e2 vh)
   in
   go false e0
 

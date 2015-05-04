@@ -821,9 +821,11 @@ let check_event r ev =
         if is_Eq ev then
           let e1, e2 = destr_Eq ev in
           check_eq e1 e2
+        (*
         else if is_Exists ev then
           let e1,e2,_ = destr_Exists ev in
           check_eq e1 e2
+        *)
         else aux (i+1) evs
       with Not_found -> aux (i+1) evs
   in

@@ -56,7 +56,7 @@ bound_adv
           d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
 
   ] : b = b'.
-  
+
   (* decisional assumption *)
   unfold. swap u (2).
   assumption_decisional! ddh -> v.

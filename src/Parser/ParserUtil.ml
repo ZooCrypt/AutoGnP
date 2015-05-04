@@ -92,19 +92,6 @@ let expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (List.map go es)
     | Proj(i,e) -> E.mk_Proj i (go e)
-    | InLog(e,orc) ->
-      let e = go e in
-      let osym =
-        try Mstring.find orc ts.ts_odecls
-        with Not_found -> fail_parse "oracle name not declared"
-      in
-      E.mk_InLog e osym
-
-    | Exists(e1,e2,lH) ->
-      let lH = bind_of_parse_bind vmap ts lH in
-      let e1 = go e1 in
-      let e2 = go e2 in
-      E.mk_Exists e1 e2 lH
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (List.map go es) in

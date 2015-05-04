@@ -110,7 +110,6 @@ let string_of_cnst file ty = function
 
 let rec expression file e = 
   match e.e_node with 
-  | InLog(_,_) -> assert false
   | V v -> Epv (pvar [] v)
   | H(h,e) ->  mk_eget file h (expression file e)
   | Tuple es -> Etuple (List.map (expression file) es)
@@ -137,12 +136,10 @@ let rec expression file e =
       List.fold_left (fun e e1 -> Eapp(op,[e;expression file e1])) 
         (expression file e) es 
     end
-  | Exists _ -> assert false 
 
 let rec formula file prefix mem 
     ?(local=Vsym.S.empty) ?(flocal=Vsym.S.empty) e = 
   match e.e_node with 
-  | InLog(_,_) -> assert false
   | V v -> 
     if Vsym.S.mem v flocal then Fv(pvar [] v, None)
     else if Vsym.S.mem v local then Fv (pvar [] v, mem)
@@ -178,7 +175,6 @@ let rec formula file prefix mem
         (fun e e1 -> Fapp(op,[e;formula file prefix mem ~local ~flocal e1])) 
         (formula file prefix mem ~local ~flocal e) es 
     end
-  | Exists _ -> assert false 
   
 let rec init_res_expr ty = 
   match ty.ty_node with 

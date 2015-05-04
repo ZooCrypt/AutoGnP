@@ -121,12 +121,13 @@ and wf_exp ctype wfs e0 =
     | V vs ->
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
         (fun () -> raise (Wf_var_undef(vs,e0,wfs.wf_bvars)))
+    (*
     | Exists(e1,e2,(vhs)) ->
       let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
       wf_exp ctype wfs e2;
       wf_exp ctype wfs e1
+    *)
     | H(_,e1) | Proj(_,e1) -> go e1
-    | InLog(e,_orc) -> go e (* FIXME check oracle name, allows only in event *)
     | Nary(Land,es) ->
       let is_InEq e =
         if is_App Not e then is_App Eq (destr_Not e) else false

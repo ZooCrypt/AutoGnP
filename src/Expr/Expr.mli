@@ -51,8 +51,6 @@ and expr_node =
   | Cnst of cnst
   | App of op * expr list
   | Nary of nop * expr list
-  | InLog  of expr * Osym.t   
-  | Exists of expr * expr * (Vsym.t * Hsym.t) list
 
 val e_equal : expr -> expr -> bool
 val e_hash : expr -> int
@@ -75,8 +73,6 @@ val mk_V      : Vsym.t -> expr
 val mk_H      : Hsym.t -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
-val mk_InLog  : expr -> Osym.t -> expr
-val mk_Exists : expr -> expr -> (Vsym.t * Hsym.t) list -> expr
 val mk_GGen   : Groupvar.id -> expr
 val mk_GOne   : Groupvar.id -> expr
 val mk_FNat   : int -> expr

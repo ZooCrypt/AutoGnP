@@ -71,8 +71,8 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
 
   (* known expressions / polynomials *)
   let known_Fq  = He.create 17 in
-  let known_Gt  = Hep.create 17 in (* the group gt *)
-  let known_Gs1 = Hep.create 17 in (* left source group for e : _ x _ -> gn (if exists) *)
+  let known_Gt  = Hep.create 17 in (* the group gt: always the group where e must be deduced *)
+  let known_Gs1 = Hep.create 17 in (* left source group for e : _ x _ -> gt (if exists) *)
   let known_Gs2 = Hep.create 17 in (* right source group *)
 
   (* register known expressions in Fq *)
@@ -141,14 +141,14 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
     let k_Gt = Hep.fold (fun k _v l -> k::l) known_Gt [] in
     let rec go f i_trans unused =
       log_i (lazy (fsprintf ">>> go\n  f = %a\n  i_trans = %a\n  unused = (%a)"
-                       EP.pp f pp_inverter (i_trans (I (mk_V (Vsym.mk "<_>" e.e_ty))))
-                       (pp_list "," EP.pp) unused));
+                     EP.pp f pp_inverter (i_trans (I (mk_V (Vsym.mk "<_>" e.e_ty))))
+                     (pp_list "," EP.pp) unused));
 
       if EP.is_const f then (
         (* f is a constant, we are done *)
         ret (i_trans (I (gexp (mk_GGen gt) (exp_of_poly f))))
       ) else (
-        (* choose unknown polynomial h is known in exponent and try division *)
+        (* choose unknown polynomial h that is known in exponent and try division *)
         mconcat unused >>= fun h ->
         let unused = L.filter (fun g -> not (EP.equal g h)) unused in
         let d = div_EP f h in
@@ -175,6 +175,15 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
           mempty
       )
     in
+    let f_exprs = Se.of_list (EP.vars f) in
+    let k_exprs =
+      Se.union
+        (Hep.fold (fun fe _ se -> Se.union se (Se.of_list (EP.vars fe))) known_Gt Se.empty)
+        (He.fold (fun fe _ se -> Se.add fe se) known_Fq Se.empty)
+    in
+    (* log_i (lazy (fsprintf "f expressions: %a@\n" (pp_list "," pp_exp) (Se.elements f_exprs)));
+       log_i (lazy (fsprintf "potentially known expressions: %a@\n" (pp_list "," pp_exp) (Se.elements k_exprs))); *)
+    guard (Se.cardinal (Se.diff f_exprs k_exprs) = 0)  >>= fun _ ->
     go f i_trans k_Gt
   in
   match run 1 (search ()) with

@@ -307,7 +307,6 @@ let _match_expr (var : vs) pat e =
     | Cnst(c1),      Cnst(c2)       -> ensure (c1 = c2)
     | App(op1,es1),  App(op2,es2)   -> ensure (op1 = op2); pmatchl es1 es2
     | Nary(nop1,es1),Nary(nop2,es2) -> ensure (nop1 = nop2); pmatchl es1 es2
-    | Exists(_),_                   -> raise Not_found
     | _                             -> raise Not_found
   in
   try

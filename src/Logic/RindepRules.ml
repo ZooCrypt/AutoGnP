@@ -49,7 +49,7 @@ i*)
 let init_inverter test =
   let e1, e2, bd =
     if is_Eq test then let e1,e2 = destr_Eq test in e1,e2,[]
-    else if is_Exists test then destr_Exists test
+    (* else if is_Exists test then destr_Exists test *)
     else raise Not_found
   in
   let (x1,c), z = sub e2.e_ty in

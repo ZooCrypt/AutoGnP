@@ -59,8 +59,6 @@ let is_Xor e = is_Nary Xor e
 
 let is_Land e = is_Nary Land e
 
-let is_Exists e = match e.e_node with Exists _ -> true | _ -> false
-
 let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
 let is_GLog_gv gv e =
@@ -177,18 +175,6 @@ let rec pp_exp_p ~qual above fmt e =
       )
     in
     pp_nop_p ~qual above fmt (o,es)
-  | InLog(e,orc) -> 
-    let pp fmt () = 
-      F.fprintf fmt "@[<hov>%a in@ Log(%a)@]"
-        (pp_exp_p ~qual Top) e Osym.pp orc in
-    pp_maybe_paren true true pp fmt ()
-  | Exists(e1,e2,h) ->
-    let pp fmt () = 
-      F.fprintf fmt "@[<hv 2>exists %a:@ %a =@ %a@]"
-        (pp_list ",@ " (fun fmt (v,h) ->
-          F.fprintf fmt "%a <- L_%a" (Vsym.pp_qual ~qual) v Hsym.pp h)) h 
-        (pp_exp_p ~qual Top) e1 (pp_exp_p ~qual Top) e2 in
-    pp_maybe_paren true (notsep above && above<>NInfix(Land)) pp fmt ()
 
 (** Pretty-prints operator assuming that
     the expression above is of given type. *)
@@ -345,10 +331,6 @@ let destr_Ifte   e =
   | App(Eq,[a;b;c]) -> (a,b,c) 
   | _ -> raise (Destr_failure "Ifte")
 
-let destr_Exists  e = 
-  match e.e_node with
-  | Exists(e1,e2,vh) -> e1,e2,vh
-  | _ -> raise (Destr_failure "Exists")
 
 let destr_Xor_nofail e = 
   match e.e_node with
@@ -378,12 +360,10 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | H(_,e) | Proj(_,e) | InLog(e,_) -> 
+    | H(_,e) | Proj(_,e) -> 
       go ie e; run e0
     | Tuple(es) | App(_,es) | Nary(_,es) ->
       L.iter (go ie) es;  run e0
-    | Exists(e1,e2,_) ->
-      go ie e1; go ie e2; run e0
   in
   go false e0
 

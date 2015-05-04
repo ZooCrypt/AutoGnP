@@ -766,12 +766,12 @@ let unif_vs ren v1 v2 =
     Vsym.H.add ren v1 v2
 
 (* FIXME: pretty incomplete *)
-let unif_expr ren e1 e2 =
-  match e1.e_node, e2.e_node with
-  | Exists(_,_,binders1), Exists(_,_,binders2) ->
-    ensure_same_length binders1 binders2;
-    L.iter2 (unif_vs ren) (L.map fst binders1) (L.map fst binders2)
-  | _ -> ()
+let unif_expr _ren _e1 _e2 = ()
+  (* match e1.e_node, e2.e_node with
+     | Exists(_,_,binders1), Exists(_,_,binders2) ->
+        ensure_same_length binders1 binders2;
+        L.iter2 (unif_vs ren) (L.map fst binders1) (L.map fst binders2)
+     | _ -> () *)
 
 let unif_lcmd ren lc1 lc2 =
   match lc1,lc2 with
@@ -858,17 +858,19 @@ let ren_injective sigma =
 (* \hd{Variable renaming} *)
 
 let subst_v_e tov =
-  let rec aux e =
+  let aux e =
     match e.e_node with
     | V v -> mk_V (tov v)
     (*i we could reorder n-ary constructors here after the renaming
     | Nary(o, es) when o == FPlus || o == FMult || o == GMult || o == Xor ->
       let es = L.map (e_map_top aux) es in
       Expr.mk_nary "subst" true o (L.sort e_compare es) (L.hd es).e_ty i*)
+    (*
     | Exists(e1,e2,binders) ->
       let e1 = e_map_top aux e1 in
       let e2 = e_map_top aux e2 in
       mk_Exists e1 e2 (L.map (fun (v,h) -> (tov v,h)) binders)
+    *)
     | _   -> raise Not_found
   in
   e_map_top aux

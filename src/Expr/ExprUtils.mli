@@ -35,7 +35,6 @@ val is_Nary : nop -> expr -> bool
 val is_FPlus : expr -> bool
 val is_FMult : expr -> bool
 val is_Xor : expr -> bool  
-val is_Exists : expr -> bool
 val is_Eq    : expr -> bool
 val is_Not : expr -> bool
 val is_field_op : op -> bool
@@ -70,7 +69,6 @@ val destr_FPlus  : expr -> expr list
 val destr_FMult  : expr -> expr list
 val destr_Xor    : expr -> expr list
 val destr_Land   : expr -> expr list
-val destr_Exists  : expr -> expr * expr * (Vsym.t * Hsym.t) list
 val destr_Xor_nofail : expr -> expr list
 val destr_Land_nofail : expr -> expr list
 val destr_Tuple_nofail : expr -> expr list

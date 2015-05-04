@@ -31,7 +31,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     )
   and add_subterms e inv =
     match e.e_node with
-    | V _  | H _ | Proj _ | Cnst _ | Exists _ | InLog _ -> ()
+    | V _  | H _ | Proj _ | Cnst _ -> ()
     | Tuple es -> 
       List.iteri (fun i e -> add_known e (mk_Proj i inv)) es
     | App(op, es) ->
@@ -118,9 +118,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       (* normal form is g^log(v) and must have been already added *)
     | V _ when is_G e.e_ty -> ()
     | V _                  -> add_sub_solver e
-    | InLog(e1,_) -> add_sub_constr e; register_subexprs false e1
     | Cnst _ -> add_sub_constr e
-    | Exists _ -> ()
   in
 
   (** Try to construct unknown useful expressions *)
@@ -153,11 +151,6 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     )
     i*)
   in
-  let construct_inLog e e1 os =
-    if not (is_in e) && is_in e1 then (
-      reg_constr e (mk_InLog (get e1) os)
-    )
-  in
   let construct_app e op es =
     match op, es with
     | (FOpp | FMinus), _ -> assert false
@@ -178,7 +171,6 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Proj(i, e1) -> construct1 e e1 (mk_Proj i)
     | H(h,e1)     -> construct1 e e1 (mk_H h)
     | Tuple es    -> constructn e es mk_Tuple
-    | InLog(e1,os)  -> construct_inLog e e1 os
     | App(op,es)  -> construct_app e op es
     | Nary(op,es) ->
       begin match op with
@@ -188,7 +180,6 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       end
     | V _
     | Cnst _ -> reg_constr e e
-    | Exists _ -> ()
   in
  
   (* Try do deduce interesting subterms for the given type using solvers *)

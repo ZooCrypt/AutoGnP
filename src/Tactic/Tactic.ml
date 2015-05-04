@@ -353,8 +353,8 @@ let handle_tactic ts tac =
       in
       let ty =
         if is_Eq b then (fst (destr_Eq b)).e_ty
-        else if is_Exists b then
-          let (e1,_,_) = destr_Exists b in e1.e_ty
+        (* else if is_Exists b then
+          let (e1,_,_) = destr_Exists b in e1.e_ty *)
         else tacerror "rctxt_ev: bad event"
       in
       let vmap = vmap_of_globals ju.ju_se.se_gdef in

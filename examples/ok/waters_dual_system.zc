@@ -106,7 +106,7 @@ bound_adv
         let D6 = g^(r2*b),
         let D7 = g^r1,
         let k  = (U^i*W^tagk*H)^r1 ];
-] : (beta = beta') /\ not (ci in Log (KeyGen1)).
+] : (beta = beta') (* FIXME: we cannot deal with this constraint at the moment /\ not (exists ci' in Log (KeyGen1`i), ci = ci') *).
 
 (* ================================================ *)
 (* make ciphertext semi-functional by applying DLIN *)
@@ -174,8 +174,9 @@ hybrid (19,1)
 
   (* -------------------------------------------------- *)
   (* side-step incomplete handling of Log(KeyGen1) *)
-  trans* [ subst 1 (not (ci in Log(KeyGen1))) (not (ci in Log(KeyGen1)) /\ (KeyGen1`i<>ci)) ]. admit.
-  dist_sym. trans* [ subst 1 (not (ci in Log(KeyGen1))) (not (ci in Log(KeyGen1)) /\ (KeyGen1`i<>ci)) ]. admit.  LR: // ; //=. dist_sym.
+  trans* [ subst 1 (beta = beta') ((beta = beta') /\ (KeyGen1`i<>ci)) ]. admit.
+  
+  dist_sym. trans* [ subst 1 (beta = beta') ((beta = beta') /\ (KeyGen1`i<>ci)) ]. admit. LR: // ; //=. dist_sym.
 
   (* -------------------------------------------------- *)
   (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
