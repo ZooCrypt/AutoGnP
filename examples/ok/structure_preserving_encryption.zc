@@ -14,7 +14,7 @@ assumption dlin
   [ g1 <-$ G; g2 <-$ G; g3 <-$ G; r <-$ Fq; s <-$ Fq; t <-$ Fq;
     b <- A_dlin(g1,g2,g3,g1^r,g2^s, g3^t); ].
 
-bound_succ
+bound_adv
 [ (* setup *)
   g1 <-$ G;
   g2 <-$ G;
@@ -119,13 +119,50 @@ add_test (28,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A3 gu1 gu2 
   ctxt_ev 1 (u -> log(u)). //.
   admit. (* this should work: indep. *)
 rewrite_oracle (28,1,1) ->. //; //=.
-add_test (30,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 gu3 gc gv gL.
-  rewrite_oracle (30,1,1) ->. simp. //. admit.
-rewrite_oracle (30,1,1) ->. simp. //. admit.
-    
-  bycrush.
-  swap b03 (28).
-  
-unfold. norm.
-false_ev.
+add_test (30,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 gu3 gc gv gL.
+  last. //.
+  rewrite_oracle (30,1,2) ->. simp. //.
+  except t [r + s]. except e3 [0].
+  rnd! a3 _ (a3 -> a3 * e3*(t - r - s) + log(beta?m0:m1) + a1*r + a2*s); //.
+  swap beta (30).
+  indep!.
+//. rewrite_oracle (30,1,2) ->. //.
+case_ev (gu1 = g^(r*e1)).
+  simp.
+except t [r + s]. except e3 [0].
+rnd! a3 _ (a3 -> a3 * e3*(t - r - s) + log(beta?m0:m1) + a1*r + a2*s); //.
+norm_unknown b03 b13 b23 b33 b43 b53.
+except r [0].
+rnd! b13 _ (b13 -> b13*e1*e3*r*(t - r - s) - b03*(r*e3 + s*e3 - t*e3)
+                   + b53*log(sL)*t*e3
+                + b33*t*t*e3*e3
+                + b23*s*t*e2*e3
+                + b01*r
+                + b02*s
+                + b11*r*r*e1
+                + b12*r*s*e1
+                + b21*r*s*e2
+                + -(b23*r*s*e2*e3)
+                + b22*s*s*e2
+                + -(b23*s*s*e2*e3)
+                + b31*r*t*e3
+                + -(b33*r*t*e3*e3)
+                + -(b33*s*t*e3*e3)
+                + b32*s*t*e3
+                + b51*r*log(sL)
+                + -(b53*r*log(sL)*e3)
+                + b52*s*log(sL)
+                + -(b53*s*log(sL)*e3)
+                + a3*b41*r
+                + a3*b42*s
+                + -(a3*b43*r*e3)
+                + -(a3*b43*s*e3)
+                + a3*b43*t*e3); //.
+norm_solve b03.
+norm_solve b23.
+norm_solve b33.
+norm_solve b43.
+norm_solve b53.
+
+indep!.
 qed.
