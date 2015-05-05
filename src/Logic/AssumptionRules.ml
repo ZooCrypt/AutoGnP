@@ -103,7 +103,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
         (Util.drop pref_len se.se_gdef)
     in
     (   CR.t_ensure_progress (CR.t_conv true { se with se_gdef=pref@grest })
-     @> CoreRules.t_assm_dec dir ren rngs assm) ju
+     @> CR.t_assm_dec dir ren rngs assm) ju
   in
   (CR.t_assm_dec dir ren rngs assm @|| conv_common_prefix) ju
 
@@ -181,7 +181,14 @@ let match_samps symvars assm_samps_typed gdef_samps_typed =
     | _ ->
       assert false
   in
-  go [] assm_samps_typed gdef_samps_typed
+  let matches =
+    Nondet.run (-1) (go [] assm_samps_typed gdef_samps_typed)
+  in
+  let m1, m2 =
+    L.partition (fun old_new_pos -> L.for_all (fun (op,np) -> op = np) old_new_pos) matches
+  in
+  Nondet.mconcat (m1 @ m2)
+  
 
 (** Fuzzy matching with given assumption, compute sequence of swap
     applications that make assumption applicable. Compute let abstraction
@@ -215,7 +222,6 @@ let t_assm_dec_auto ts assm dir subst ju vnames =
   in
   match_samps assm.ad_symvars assm_samps_typed gdef_samps_typed >>= fun old_new_pos ->
   (* FIXME: for now, we assume variables are already correctly ordered *)
-  guard (L.for_all (fun (op,np) -> op = np) old_new_pos) >>= fun _ ->
 
   log_t (lazy (fsprintf "@[match samps:@\n[%a]@]"
                  (pp_list ", " (pp_pair pp_int pp_int)) old_new_pos));
@@ -259,7 +265,7 @@ let t_assm_dec_non_exact
       needed
       (given_vnames@generated_vnames)
   in
-  t_assm_dec_auto ts assm dir ren ju (given_vnames@generated_vnames)
+  (t_unfold_only @> (fun ju -> t_assm_dec_auto ts assm dir ren ju (given_vnames@generated_vnames))) ju
 
 let t_assm_dec
   ?i_assms:(iassms=Sstring.empty) ts exact massm_name mdir mrngs mvnames ju =
@@ -494,7 +500,7 @@ let t_assm_comp_no_exact ?icases:(icases=Se.empty) ts maname mrngs ju =
     mconcat (Mstring.fold (fun _aname assm acc -> assm::acc) ts.ts_assms_comp [])
   ) >>= fun assm ->
   (* try all assumptions *)
-  t_assm_comp_auto ~icases ts assm mrngs ju
+  (t_norm @> t_assm_comp_auto ~icases ts assm mrngs) ju
 
 let t_assm_comp_exact ts maname mrngs ju =
   let se = ju.ju_se in
@@ -545,7 +551,7 @@ let t_assm_comp_exact ts maname mrngs ju =
   let conv_event ju =
     let se = ju.ju_se in
     let a_rn = inst_comp ren assm in
-    (   CoreRules.t_conv true { se with se_ev=a_rn.ac_event }
+    (   CR.t_conv true { se with se_ev=a_rn.ac_event }
      @> CR.t_assm_comp assm rngs ren) ju
   in
 
