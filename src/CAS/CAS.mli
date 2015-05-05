@@ -11,6 +11,13 @@ open Expr
     non-field subexpressions. *)
 val mod_reduce : expr -> expr -> bool
 
+(** [check_nz is_nz:a b] returns [true] if
+    [b = 0] implies [a = 0].
+    The result is undefined if one of the arguments
+    is not a polynomial after abstracting away all
+    non-field subexpressions. *)
+val check_nz : is_nz:expr -> expr -> bool
+
 (** [norm f e] returns the normal-form of [e]
     using [f] recursively to normalize all non-field
     subexpressions. *)

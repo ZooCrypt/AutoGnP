@@ -100,18 +100,22 @@ and check_nonzero ctype wfs e =
       match wfs.wf_nzero with
       | Some nz ->
         log_i (lazy (fsprintf "nonzero assumption: %a" pp_exp nz));
-        CAS.mod_reduce nz e
+        CAS.check_nz ~is_nz:nz e
       | None    -> false
     in
     (* we know e itself is division-safe *)
     let e = norm_expr_weak e in
-    match e.e_node with
-    | App(Ifte, [c; _a; b]) when is_False c -> check b
-    | App(Ifte, [c; a; b]) when
-        is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in e_equal u b && is_Zero v) ->
-      true
-    | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
-    | _                 -> check e (* e is polynomial *)
+    let rec check_simp e =
+      match e.e_node with
+      | Nary(FMult,es) -> L.for_all check_simp es
+      | App(Ifte, [c; _a; b]) when is_False c -> check b
+      | App(Ifte, [c; a; b]) when
+          is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in e_equal u b && is_Zero v) ->
+        true
+      | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
+      | _                 -> check e (* e is polynomial *)
+    in
+    check_simp e
   )
 
 and wf_exp ctype wfs e0 =

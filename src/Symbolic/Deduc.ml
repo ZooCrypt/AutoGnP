@@ -67,6 +67,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       solvers, e.g., for Xor or Fq. *)
   let sub_solver = Hty.create 7 in
   let add_sub_solver e =
+    log_i (lazy (fsprintf "add_sub_solver[maybe]: %a" pp_exp e));
     match e.e_ty.ty_node with
     | BS _ | Fq | G _ | Bool ->
       if is_G e.e_ty && not ppt then () else
@@ -92,7 +93,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Proj(_,e1)  -> add_sub e; (register_subexprs false) e1
     | App(op, es) -> 
       begin match op with
-      | FOpp | FMinus | FInv -> 
+      | FOpp | FMinus | FInv | FDiv -> 
         if not in_field then add_sub_solver e;
         List.iter (register_subexprs true) es 
       | GExp _ | EMap _ ->
@@ -105,7 +106,11 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
         else add_sub e; List.iter (register_subexprs false) es
       | Eq | Not | Ifte ->
         add_sub_constr e; List.iter (register_subexprs false) es
-      | GInv | FDiv -> failwith "GInv and FDiv cannot occur in normal-form"
+      | GInv -> failwith "GInv cannot occur in normal-form"
+      (*
+      | FDiv ->
+        FIXME: not the case, check where/why we need this
+        failwith "FDiv cannot occur in normal-form" *)
       end
     | Nary(op,es) ->
       begin match op with
@@ -234,9 +239,15 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       if not (!progress) then Hty.iter solve sub_solver
     done;
     raise Not_found
-  with Found inv -> inv
+  with
+  | Found inv -> inv
+  | Not_found -> raise Not_found
+  | e ->
+    let err = Printexc.to_string e in
+    let bt = Printexc.get_backtrace () in
+    log_i (lazy (fsprintf "invert: %s\n %s" err bt)); raise e
     
 let invert ?ppt_inverter:(ppt=false) ts known_es to_ =
   let open TheoryTypes in
   let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in
-  invert' ~ppt_inverter:ppt emaps true known_es to_
+  invert' ~ppt_inverter:ppt emaps false known_es to_

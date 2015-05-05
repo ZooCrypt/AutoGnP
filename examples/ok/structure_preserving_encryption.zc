@@ -98,7 +98,7 @@ bound_adv
 norm.
 
 (* Apply DLIN for g1, g2, g3, r, s *)
-swap r a1. swap s a1.
+swap r (4). swap s (5).
 assumption_decisional! dlin -> t; //; //=.
 
 (* sample exponents for g1, g2, and g3 *)
@@ -117,8 +117,8 @@ rnd! a1 _ _;  //. rnd! a2 _ _;  //.
 add_test (28,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A3 gu1 gu2 gu3 gc gv gL.
   rewrite_oracle (28,1,1) ->. simp. //.
   swap b03 (28).
-  ctxt_ev 1 (u -> log(u)). //.
-  admit. (* this should work: indep. *)
+  ctxt_ev 1 (u -> log(u)); //.
+  indep!.
 rewrite_oracle (28,1,1) ->. //; //=.
 add_test (30,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 gu3 gc gv gL.
   last. //.
@@ -129,41 +129,10 @@ add_test (30,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 
   indep!.
 //. rewrite_oracle (30,1,2) ->. //.
 case_ev (gu1 = g^(r*e1)).
-  simp.
+  simp. admit.
 except t [r + s]. except e3 [0].
 rnd! a3 _ (a3 -> a3 * e3*(t - r - s) + log(beta?m0:m1) + a1*r + a2*s); //.
 norm_unknown b03 b13 b23 b33 b43 b53.
 except r [0].
-rnd! b13 _ (b13 -> b13*e1*e3*r*(t - r - s) - b03*(r*e3 + s*e3 - t*e3)
-                   + b53*log(sL)*t*e3
-                + b33*t*t*e3*e3
-                + b23*s*t*e2*e3
-                + b01*r
-                + b02*s
-                + b11*r*r*e1
-                + b12*r*s*e1
-                + b21*r*s*e2
-                + -(b23*r*s*e2*e3)
-                + b22*s*s*e2
-                + -(b23*s*s*e2*e3)
-                + b31*r*t*e3
-                + -(b33*r*t*e3*e3)
-                + -(b33*s*t*e3*e3)
-                + b32*s*t*e3
-                + b51*r*log(sL)
-                + -(b53*r*log(sL)*e3)
-                + b52*s*log(sL)
-                + -(b53*s*log(sL)*e3)
-                + a3*b41*r
-                + a3*b42*s
-                + -(a3*b43*r*e3)
-                + -(a3*b43*s*e3)
-                + a3*b43*t*e3); //.
-norm_solve b03.
-norm_solve b23.
-norm_solve b33.
-norm_solve b43.
-norm_solve b53.
-
-indep!.
+admit.
 qed.
