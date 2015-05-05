@@ -182,14 +182,14 @@ bound_adv
     assumption_computational cpa1 [3 15] [16 18].
 
   (* equality on u1,u2, but not on ciphertext and Mac implies Mac forgery *)
-  case_ev (tu1,tu2) = (g ^ (r1*log(g1)),g ^ (log(g1)*r2*w)). 
+  case_ev (tu1,tu2) = (g ^ (r1*log(g1)),g ^ (log(g1)*r2*w)).
     (* make Kdf input random *)
-    simp. norm.
+    simp; //.
     (* Make Kdf input random (FIXME add exceptions automatically) *)
     except w [0]. except r2 [r1].
     rnd! x2 _ _; //.
     case_ev (te = Enc(Kdf(g ^ x2)#1,b?m0:m1)).
-      bycrush.
+      bysimp.
     (* apply Kdf security *)
     swap x2 (1). norm_unknown.
     assumption_decisional! kdf -> km ks.
@@ -203,17 +203,17 @@ bound_adv
     abstract 18 res1_2 tt.
     assumption_computational cma1 [2 14] [15 18].
 
-  simp. norm.
+  simp; //.
   (* Reduce hash collision case to TCR *)
   case_ev (H(i,tu1,tu2) = H(i,g1^r1,g1^(r2*w))).
 
     norm. remove_ev 1 2 3.
     rnd! r1 _ _. norm.
-    except 2 [0].
-    rnd! r2 _ _. norm.
+    except w [0].
+    rnd! r2 _ _; //.
     (* apply TCR *)
     norm_unknown r1 r2.
-    swap 3 -2. swap 10 -8. swap 11 -8.
+    swap i (1). swap r1 (2). swap r2 (3).
     abstract 4 arg (i,g^r1,g^r2).
     abstract 14 res1 tu1.
     abstract 15 res2 tu2.

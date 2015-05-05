@@ -557,24 +557,29 @@ let rmerge_ev i j ju =
 let t_merge_ev i j = prove_by (rmerge_ev i j)
 
 (*i ----------------------------------------------------------------------- i*)
-(** {\bf Split equality on tuples into multiple equalities} *)
+(** {\bf Split (in)equality on tuples into multiple equalities} *)
 
 let rsplit_ev i ju =
+  let rn = "split_ev" in
   let se = ju.ju_se in
   let ev = se.se_ev in
   let evs = destr_Land_nofail ev in
-  if i < 0 || i >= L.length evs then failwith "invalid event position";
+  if i < 0 || i >= L.length evs then
+    tacerror "%s: invalid event position %i" rn i;
   let l,b,r = Util.split_n i evs in
   let b =
-    if not (is_Eq b)
+    if not (is_Eq b || is_InEq b)
       then tacerror "rsplit_ev: bad event, expected equality";
-    let (e1,e2) = destr_Eq b in
+    let (e1,e2) =
+      if is_Eq b then destr_Eq b else destr_Eq (destr_Not b)
+    in
     if not (is_Tuple e1 && is_Tuple e2)
-      then tacerror "rsplit_ev: bad event, tuples";
+      then tacerror "rsplit_ev: bad event, expected tuples, %a and %a" pp_exp e1 pp_exp e2;
     let es1, es2 = destr_Tuple e1, destr_Tuple e2 in
     if not (L.length es1 = L.length es2)
-      then tacerror "rsplit_ev: bad event, tuples";
-    L.map (fun (e1,e2) -> mk_Eq e1 e2) (L.combine es1 es2)
+      then tacerror "rsplit_ev: bad event, got tuples of different lengths, %a and %a" pp_exp e1 pp_exp e2;
+    let eqs = L.map (fun (e1,e2) -> mk_Eq e1 e2) (L.combine es1 es2) in
+    if is_Eq b then eqs else [ mk_Not (mk_Land eqs) ]
   in
   let evs = l@b@r in
   let new_se = { se with se_ev = mk_Land evs } in
@@ -591,7 +596,7 @@ let rrw_ev i d ju =
   let ev = se.se_ev in
   let evs = destr_Land_nofail ev in
   if i < 0 || i >= L.length evs then
-    tacerror "%s: invalid event position" rn;
+    tacerror "%s: invalid event position %i" rn i;
   let l,b,r = Util.split_n i evs in
   let u,v =
     if is_Eq b then (

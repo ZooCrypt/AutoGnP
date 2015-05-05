@@ -36,6 +36,7 @@ val is_FPlus : expr -> bool
 val is_FMult : expr -> bool
 val is_Xor : expr -> bool  
 val is_Eq    : expr -> bool
+val is_InEq  : expr -> bool
 val is_Not : expr -> bool
 val is_field_op : op -> bool
 val is_field_nop : nop -> bool

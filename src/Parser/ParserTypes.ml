@@ -41,8 +41,6 @@ type parse_expr =
   | Ifte of parse_expr * parse_expr * parse_expr
   | Land of parse_expr * parse_expr
   | Xor of parse_expr * parse_expr
-  | Exists of parse_expr * parse_expr * (string * string) list
-  | InLog  of parse_expr * string
 
 let mk_Tuple = function [t] -> t | ts -> Tuple ts
 
@@ -108,7 +106,7 @@ type tactic =
                       parse_ctx option * parse_expr option
   | Rrnd_exp       of bool * (string * string option) list
   | Rrnd_orcl      of ocmd_pos option * parse_ctx option * parse_ctx option
-  | Rconv          of gdef * parse_expr
+  | Rconv          of gdef option * parse_expr
   | Rtrans         of gdef * parse_expr
   | Rtrans_diff    of diff_cmd list
   | Rassm_dec      of bool * string option * direction option * ranges *

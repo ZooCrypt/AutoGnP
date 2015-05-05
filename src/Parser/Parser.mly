@@ -460,7 +460,7 @@ tactic :
 | RNORM_SOLVE e=expr  { Rnorm_solve(e) }
 
 /* conversion */
-| RCONV LBRACK gd=gdef RBRACK e=event   { Rconv(gd,e) }
+| RCONV gd=uopt(delimited(LBRACK,gdef,RBRACK)) e=event { Rconv(gd,e) }
 | RTRANS LBRACK gd=gdef RBRACK e=event  { Rtrans(gd,e) }
 | RTRANSSTAR LBRACK dcmds=separated_nonempty_list(COMMA,diff_cmd) RBRACK
   { Rtrans_diff(dcmds) }
@@ -519,10 +519,10 @@ tactic :
   { Rhybrid((i-1,j-1),lc) }
 
 /* events */
-| RREMOVE_EV is=gpos+         { Rremove_ev(is) }
-| RSPLIT_EV i=gpos            { Rsplit_ev(i - 1) }
-| RCASE_EV e=uopt(expr)       { Rcase_ev(e) }
-| RREWRITE_EV i=gpos d=dir?   { Rrewrite_ev(i,opt id LeftToRight d) }
+| RREMOVE_EV is=gpos+                { Rremove_ev(is) }
+| RSPLIT_EV i=gpos                   { Rsplit_ev(i) }
+| RCASE_EV e=uopt(expr)              { Rcase_ev(e) }
+| RREWRITE_EV i=gpos d=dir?          { Rrewrite_ev(i,from_opt LeftToRight d) }
 | RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Rctxt_ev(oj,c) }
 
 /* probability bounding rules */

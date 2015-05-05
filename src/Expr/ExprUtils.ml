@@ -326,6 +326,8 @@ let destr_Not    e = destr_App_uop "Not"  Not e
 let destr_Xor    e = destr_Nary   "Xor"  Xor e 
 let destr_Land   e = destr_Nary   "Land" Land e
 
+let is_InEq e = is_Not e && is_Eq (destr_Not e)
+
 let destr_Ifte   e = 
   match e.e_node with 
   | App(Eq,[a;b;c]) -> (a,b,c) 
