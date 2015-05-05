@@ -38,8 +38,6 @@ type tactic = goal -> proof_state nondet
 
 type 'a rtactic = goal -> ('a * proof_state) nondet
 
-
-
 exception NoOpenGoal 
 
 (*i ----------------------------------------------------------------------- i*)

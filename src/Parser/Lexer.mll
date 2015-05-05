@@ -131,14 +131,15 @@ rule lex = parse
   | ","     { COMMA }
   | "^"     { CARET }
   | "/"     { SLASH }
-  | "//"     { SLASH2 }
-  | "/="     { SLASHEQ }
-  | "//="    { SLASH2EQ }
+  | "//"    { SLASH2 }
+  | "/="    { SLASHEQ }
+  | "//="   { SLASH2EQ }
+  | "///="  { SLASH3EQ }
   | "/\\"   { LAND }
   | "<-"    { LEFTARROW }
   | "<>"    { NEQ }
   | "<-$"   { SAMP }
-  | "\\"     { BACKSLASH }
+  | "\\"    { BACKSLASH }
   | "#"     { SHARP }
   | "`"     { BACKTICK }
   | "["     { LBRACK }

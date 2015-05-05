@@ -41,6 +41,7 @@
 %token SLASH2
 %token SLASHEQ
 %token SLASH2EQ
+%token SLASH3EQ
 %token PPT
 %token INFTHEORETIC
 %token INRIGHT
@@ -504,6 +505,7 @@ tactic :
 | SLASHEQ              { Rnorm_nounfold }
 | RNORM_UNKNOWN is=ID* { Rnorm_unknown(is) }
 | SLASH2EQ is=ID*      { Rnorm_unknown(is) }
+| SLASH3EQ is=ID*      { Rseq [Rnorm; Rnorm_unknown(is)] }
 | RNORM_SOLVE e=expr0  { Rnorm_solve(e) }
 
 /* conversion */
@@ -574,7 +576,7 @@ tactic :
 
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Rindep(excl=None) }
-| RFALSE_EV         { Rfalse_ev}
+| RFALSE_EV         { Rfalse_ev }
 
 /* bounding distinguishing probability */
 | RDIST_EQ  { Rdist_eq }
@@ -583,7 +585,7 @@ tactic :
 /* debugging */
 | DEDUCE  ppt=PPT?
     LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Deduce(ppt<>None,es,e) }
-| LISTFE  es=expr0*                                            { FieldExprs(es) }
+| LISTFE  es=expr0*                                      { FieldExprs(es) }
 
 
 /************************************************************************/

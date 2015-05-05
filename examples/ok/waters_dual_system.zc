@@ -126,22 +126,21 @@ trans*
   , subst E2 (C7) (C7*C7')
   ].
 
-  (* sample exponents instead of group elements to maximize deducibility for reduction *)
-  LR: rnd_exp V V1 V2 W U H; //; //=.
+  (* sample exponents instead of group elements to maximize  deducibility for reduction *)
+  LR: rnd_exp V V1 V2 W U H; ///=.
   
   (* b1, b2, c1, and c2 correspond to variables in DLIN *)
   LR: rename a1 b1; rename a2 b2; swap b1 (1); swap b2 (2).
-  abstract _ res _.
-  LR: assumption_decisional! dkill <- c2; //; //=.
-  LR: assumption_decisional! dkill <- c1; //; //=.
+  LR: assumption_decisional! dkill <- c2; ///=. (* new rule: add_sampling c2 Fq. *)
+  LR: assumption_decisional! dkill <- c1; ///=.
   LR: swap [c1 c2] (4).
 
   (* Perform the right opt. samplings to "mix in" c1 and c2. *)
-  LR: rnd s2 (s2 -> s2 + c1 + c2) _; rnd s1 (s1 -> s1 - c2)  _; //; //=.
+  LR: rnd s2 (s2 -> s2 + c1 + c2) _; rnd s1 (s1 -> s1 - c2)  _; ///=.
   assumption_decisional! dlin -> x; //.
   swap x tagc.
   (* substitute some variable by polynomial to obtain additional terms missing in right game *)
-  R: except b2 [0]; rnd! x _ (x -> b2*(x + c1 + c2)); except b2 []; //; //=.
+  R: except b2 [0]; rnd! x _ (x -> b2*(x + c1 + c2)); except b2 []; //.
   dist_eq.
 
 (* ================================================== *)
@@ -170,7 +169,7 @@ hybrid (19,1)
 
   (* -------------------------------------------------- *)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
-  LR: rnd_exp V V1 V2 W U H; //; //=.
+  LR: rnd_exp V V1 V2 W U H; ///=.
 
   (* -------------------------------------------------- *)
   (* side-step incomplete handling of Log(KeyGen1) *)
@@ -182,39 +181,39 @@ hybrid (19,1)
   (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
   assert beta (KeyGen1`i<>ci). bycrush.
   dist_sym. assert beta (KeyGen1`i<>ci). bycrush. dist_sym.
-  LR: rename tagc A; rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _; swap A (1); //; //=.
+  LR: rename tagc A; rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _; swap A (1); ///=.
   LR: rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _; //; //=; swap_main (12,1,5) B; swap B (2).
 
   (* b1, b2, c1, and c2 correspond to variables in DLIN. *)
   LR: rename b b1; rename v b2.
-  LR: assumption_decisional! dkill <- c2; //; //=.
-  LR: assumption_decisional! dkill <- c1; //; //=.
+  LR: assumption_decisional! dkill <- c2; ///=.
+  LR: assumption_decisional! dkill <- c1; ///=.
   LR: swap b1 (1); swap b2 (2).
   
   (* public parameters *)
-  LR: except a1 [0]; except a2 [0]; rnd! b2 (b2 -> -b2*a1*a2) _; // ; //=.
-  LR: rnd! v1 (v1 -> v1 + b2*a2) _; //; //=.
-  LR: rnd! v2 (v2 -> v2 + b2*a1) _; //; //=.
-  LR: rnd! w (w -> w + b1) _;       //; //=.
-  LR: rnd! u (u -> u - b1*A) _;     //; //=.
-  LR: rnd! h (h -> h - b1*B) _;     //; //=.
+  LR: except a1 [0]; except a2 [0]; rnd! b2 (b2 -> -b2*a1*a2) _; //.
+  LR: rnd! v1 (v1 -> v1 + b2*a2) _; //.
+  LR: rnd! v2 (v2 -> v2 + b2*a1) _; //.
+  LR: rnd! w (w -> w + b1) _;       //.
+  LR: rnd! u (u -> u - b1*A) _;     //.
+  LR: rnd! h (h -> h - b1*B) _;     //.
 
   (* key generation for =-oracle *)
-  LR: rnd_oracle (19,1,1,=) (r1 -> r1 + c1) _;    //; //=.
-  LR: rnd_oracle (19,1,2,=) (r2 -> r2 + c2) _;    //; //=.
-  LR: rnd_oracle (19,1,3,=) (z1 -> z1 - v1*c2) _; //; //=.
-  LR: rnd_oracle (19,1,4,=) (z2 -> z2 - v2*c2) _; //; //=.
+  LR: rnd_oracle (19,1,1,=) (r1 -> r1 + c1) _;    //.
+  LR: rnd_oracle (19,1,2,=) (r2 -> r2 + c2) _;    //.
+  LR: rnd_oracle (19,1,3,=) (z1 -> z1 - v1*c2) _; //.
+  LR: rnd_oracle (19,1,4,=) (z2 -> z2 - v2*c2) _; //.
   
   (* challenge ciphertext *)
-  LR: rnd! t (t -> t + a1*a2*x*b2) _; //; //=.
+  LR: rnd! t (t -> t + a1*a2*x*b2) _; //.
 
   (* apply assumption *)
   LR: swap b1 (1); swap b2 (2); swap c1 (3); swap c2 (4).
-  assumption_decisional! dlin -> tt. //; //=.
+  assumption_decisional! dlin -> tt. //.
   
   (* match up variables in both games *)
   swap tt (18). swap_main tt (19,1,1) gamma. swap (18,1,1,=) 4.
-  rnd_oracle (18,1,5,=) (gamma -> gamma + b2*c1 + b2*c2) _; //; //=.
+  rnd_oracle (18,1,5,=) (gamma -> gamma + b2*c1 + b2*c2) _; //.
   dist_eq.
 
 (* ================================================== *)
@@ -243,46 +242,46 @@ hybrid (41,1)
 
   (* -------------------------------------------------- *)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
-  LR: rnd_exp V V1 V2 W U H; //; //=.
+  LR: rnd_exp V V1 V2 W U H; //.
 
   (* ------------------------------------------------------------------------------ *)
   (* THIS PART DIFFERS FROM FIRST HYBRID ARGUMENT:
      introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
   LR: rename tagc B.
-  LR: rnd_oracle (18,1,6,=) (tagk -> tagk*(KeyGen2`i - ci) + B) _. LR: //; //=.
+  LR: rnd_oracle (18,1,6,=) (tagk -> tagk*(KeyGen2`i - ci) + B) _. LR: //.
   LR: swap_main (18,1,6) A; swap A (1); swap B (2).
-  LR: rnd! B (B -> B + A*ci) _; //; //=.
+  LR: rnd! B (B -> B + A*ci) _; //.
 
   (* b1, b2, c1, and c2 correspond to variables in DLIN. *)
   LR: rename b b1; rename v b2.
-  LR: assumption_decisional! dkill <- c2; //; //=.
-  LR: assumption_decisional! dkill <- c1; //; //=.
+  LR: assumption_decisional! dkill <- c2; //.
+  LR: assumption_decisional! dkill <- c1; //.
   LR: swap b1 (1); swap b2 (2).
 
   (* public parameters *)
-  LR: except a1 [0]; except a2 [0]; rnd! b2 (b2 -> -b2*a1*a2) _; // ; //=.
-  LR: rnd! v1 (v1 -> v1 + b2*a2) _; //; //=.
-  LR: rnd! v2 (v2 -> v2 + b2*a1) _; //; //=.
-  LR: rnd! w (w -> w + b1) _;       //; //=.
-  LR: rnd! u (u -> u - b1*A) _;     //; //=.
-  LR: rnd! h (h -> h - b1*B) _;     //; //=.
+  LR: except a1 [0]; except a2 [0]; rnd! b2 (b2 -> -b2*a1*a2) _; //.
+  LR: rnd! v1 (v1 -> v1 + b2*a2) _; //.
+  LR: rnd! v2 (v2 -> v2 + b2*a1) _; //.
+  LR: rnd! w (w -> w + b1) _;       //.
+  LR: rnd! u (u -> u - b1*A) _;     //.
+  LR: rnd! h (h -> h - b1*B) _;     //.
   
   (* key generation for =-oracle *)
-  LR: rnd_oracle (21,1,2,=) (r1 -> r1 + c1) _;    //; //=.
-  LR: rnd_oracle (21,1,3,=) (r2 -> r2 + c2) _;    //; //=.
-  LR: rnd_oracle (21,1,4,=) (z1 -> z1 - v1*c2) _; //; //=.
-  LR: rnd_oracle (21,1,5,=) (z2 -> z2 - v2*c2) _; //; //=.
+  LR: rnd_oracle (21,1,2,=) (r1 -> r1 + c1) _;    //.
+  LR: rnd_oracle (21,1,3,=) (r2 -> r2 + c2) _;    //.
+  LR: rnd_oracle (21,1,4,=) (z1 -> z1 - v1*c2) _; //.
+  LR: rnd_oracle (21,1,5,=) (z2 -> z2 - v2*c2) _; //.
   
   (* challenge ciphertext *)
-  LR: rnd! t (t -> t + a1*a2*x*b2) _; //; //=.
+  LR: rnd! t (t -> t + a1*a2*x*b2) _; //.
 
   (* apply assumption *)
   LR: swap b1 (1); swap b2 (2); swap c1 (3); swap c2 (4).
-  assumption_decisional! dlin -> tt; //; //=.
+  assumption_decisional! dlin -> tt; //.
 
   (* match up variables in both games *)
   swap tt (21). swap_main tt (22,1,1) gamma. swap (21,1,1,=) 5.
-  rnd_oracle (21,1,6,=) (gamma -> gamma + b2*c1 + b2*c2) _; //; //=.
+  rnd_oracle (21,1,6,=) (gamma -> gamma + b2*c1 + b2*c2) _; //.
   dist_eq.
 
 (* ================================================== *)
@@ -292,7 +291,7 @@ hybrid (41,1)
 rename alpha c1. rename a2 c2. rename s2 c3.
 
 (* sample exponents *)
-rnd_exp V V1 V2 W U H; //; //=.
+rnd_exp V V1 V2 W U H; //.
 
 except c2 [0]. rnd c1 (c1 -> c1 * c2) _. except c2 []. unfold u__.
 rnd_oracle (11,1,6) (gamma -> gamma + c1) _. norm.
@@ -302,4 +301,4 @@ swap c1 (1). swap c2 (2). swap c3 (3).
 assumption_decisional! dbdh -> tt. norm.
 except a1 [0]. except b [0]. rnd! tt _ _; //. swap 13 beta'. indep!.
 qed.
-(* extract "extraction/waters_dual_system.ec". *)
+(* extract "extraction/waters_dual_system.ec".*)
