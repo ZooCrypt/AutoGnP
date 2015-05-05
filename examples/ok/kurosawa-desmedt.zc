@@ -7,10 +7,8 @@
 adversary A_ddh : (G * G * G * G) -> Bool.
 
 assumption ddh
-  [ g1 <-$ G\g^0; g2 <-$ G\g^0; y <-$ Fq;
-    b <- A_ddh(g1,g2,g1^y,g2^y); ]
-  [ g1 <-$ G\g^0; g2 <-$ G\g^0; y <-$ Fq; z <-$ Fq;
-    b <- A_ddh(g1,g2,g1^y,g2^z); ].
+  [ g1, g2 <-$ G\g^0; y <-$ Fq;    b <- A_ddh(g1,g2,g1^y,g2^y); ]
+  [ g1, g2 <-$ G\g^0; y, z <-$ Fq; b <- A_ddh(g1,g2,g1^y,g2^z); ].
 
 (* ----------------------------------------------------------------- *)
 (* Hash funcion (secure wrt. TCR) *)
@@ -22,7 +20,7 @@ operator H : (BS_i * G * G) -> Fq.
 adversary A_tcr : (BS_i * G * G) ->  (G * G).
 
 assumption tcr succ
-  [ i <-$ BS_i; a <-$ Fq; b <-$ Fq; (gu,gv) <- A_tcr(i,g^a,g^b); ]
+  [ i <-$ BS_i; a, b <-$ Fq; (gu,gv) <- A_tcr(i,g^a,g^b); ]
   : (H(i,gu,gv) = H(i,g^a,g^b)) /\ ((gu,gv) <> (g^a,g^b)).
 
 (* It seems like the following definition is actually required to
@@ -31,15 +29,15 @@ assumption tcr succ
 adversary A_tcr_dlog : (BS_i * Fq * Fq) ->  (G * G).
 
 assumption tcr_dlog succ
-  [ i <-$ BS_i; a <-$ Fq; b <-$ Fq; (gu,gv) <- A_tcr_dlog(i,a,b); ]
+  [ i <-$ BS_i; a, b <-$ Fq; (gu,gv) <- A_tcr_dlog(i,a,b); ]
   : (H(i,gu,gv) = H(i,g^a,g^b)) /\ ((gu,gv) <> (g^a,g^b)).
 
 (* ----------------------------------------------------------------- *)
 (* Key derivation function *)
 
-operator Kdf : G  -> (BS_km * BS_ks).
+operator Kdf : G -> (BS_km * BS_ks).
 
-adversary A_kdf :  (BS_km * BS_ks) -> Bool.
+adversary A_kdf : (BS_km * BS_ks) -> Bool.
 
 assumption kdf
   [ x <-$ Fq; res <- A_kdf(Kdf(g^x)); ]
@@ -96,27 +94,24 @@ bound_adv
   [ 
     (* Sample a hash function (its index) and two generators of G *)
     i <-$ BS_i;
-    g1 <-$ G \ g^0;
-    g2 <-$ G \ g^0;
+    g1, g2 <-$ G \ g^0;
 
     (* secret key is x1,x2,y1,y2,z1 *)
-    x1 <-$ Fq;
-    x2 <-$ Fq;
-    y1 <-$ Fq;
-    y2 <-$ Fq;
+    x1, x2, y1, y2 <-$ Fq;
     let c = g1^x1*g2^x2;
     let d = g1^y1*g2^y2;
     
     (* give public key to adversary *)
     (m0,m1) <- A1(i,g1,g2,c,d) with
-      Dec1(u1,u2,e,t) =
-        [ Dec(ks,e)
-        | let alpha = H(i,u1,u2),
-          let v = u1^(x1 + y1*alpha)*u2^(x2 +y2*alpha),
-          let k = Kdf(v),
-          let km = k#0,
-          let ks = k#1,
-          Mac(km,e) = t ];
+      Dec1(u1,u2,e,t) = {
+        let alpha = H(i,u1,u2);
+        let v = u1^(x1 + y1*alpha)*u2^(x2 +y2*alpha);
+        let k = Kdf(v);
+        let km = k#0;
+        let ks = k#1;
+        Mac(km,e) = t;
+        return Dec(ks,e)
+      };
   
     b <-$ Bool;
     let mb = (b?m0:m1);
@@ -131,15 +126,16 @@ bound_adv
     let ce = Enc(ck#1,mb);
     let ct = Mac(ck#0,ce);
     b' <- A2(cu1,cu2,ce,ct) with
-      Dec2(u1,u2,e,t) =
-        [ Dec(ks,e)
-        | not ((u1,u2,e,t) = (cu1,cu2,ce,ct)),
-          let alpha = H(i,u1,u2),
-          let v = u1^(x1 + y1*alpha)*u2^(x2 +y2*alpha),
-          let k = Kdf(v),
-          let km = k#0,
-          let ks = k#1,
-          Mac(km,e) = t ];
+      Dec2(u1,u2,e,t) = {
+        not ((u1,u2,e,t) = (cu1,cu2,ce,ct));
+        let alpha = H(i,u1,u2);
+        let v = u1^(x1 + y1*alpha)*u2^(x2 +y2*alpha);
+        let k = Kdf(v);
+        let km = k#0;
+        let ks = k#1;
+        Mac(km,e) = t;
+        return Dec(ks,e)
+      };
   ] : b = b'.
 
   (* apply DDH to g1,g2,r1 *)
@@ -148,7 +144,7 @@ bound_adv
 
   (* sample exponent of g2 directly (FIXME: add support for excepted distribution) *)
   except g2 []. rnd_exp (g2 w); //.
-  rnd w _ (w -> w/log(g1)); //.
+  rnd! w _ (w -> w/log(g1)); //.
   
   rnd! x1 _ _ g1; //.
   rnd! y1 _ _ g1; //.
@@ -171,8 +167,8 @@ bound_adv
     (* handle b = b' case first *)
     last. simp.
     (* make Kdf input random (FIXME add exceptions automatically) *)
-    except 2 [0]. except 4 [r1].
-    rnd! 6 _ _. unfold.
+    except w [0]. except r2 [r1].
+    rnd! x2 _ _; //.
     (* apply Kdf assumption *)
     swap x2 (1).
     assumption_decisional! kdf -> km ks; //.
@@ -190,10 +186,10 @@ bound_adv
     (* make Kdf input random *)
     simp. norm.
     (* Make Kdf input random (FIXME add exceptions automatically) *)
-    except 2 [0]. except 4 [r1].
-    rnd! x2 _ _. norm.
+    except w [0]. except r2 [r1].
+    rnd! x2 _ _; //.
     case_ev (te = Enc(Kdf(g ^ x2)#1,b?m0:m1)).
-      bysimp.
+      bycrush.
     (* apply Kdf security *)
     swap x2 (1). norm_unknown.
     assumption_decisional! kdf -> km ks.

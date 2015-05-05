@@ -5,13 +5,7 @@ adversary A2 : (Fq*G_t*G*G*G*G*G*G*G*G*G) -> Bool.
 
 bound_succ
 [ (* setup *)
-  g1    <-$ G;
-  v     <-$ G;
-  v1    <-$ G;
-  v2    <-$ G;
-  w     <-$ G;
-  u     <-$ G;
-  h     <-$ G;
+  g1, v, v1, v2, w, u, h <-$ G;
   a1    <-$ Fq;
   a2    <-$ Fq;
   b     <-$ Fq;

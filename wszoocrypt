@@ -1,4 +1,8 @@
 #!/bin/sh
 
 export BOLT_CONFIG=log_bolt.config
-./wszoocrypt.native $@
+if [ -z ${@} ]; then
+  ./wszoocrypt.native examples/ok/*.zc examples/ok/**/*.zc test/ok/*.zc
+else
+  ./wszoocrypt.native $@
+fi

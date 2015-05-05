@@ -17,11 +17,13 @@ bound_adv
   [ b <-$ Bool;
     u <-$ G;
     b' <- A(u) with
-      Samp() =
-        [ (g^x,g^y,g^(b?x*y:z)) | x <-$ Fq, y <-$ Fq, z <-$ Fq ];
+      Samp() = {
+        x, y, z <-$ Fq;
+        return (g^x,g^y,g^(b?x*y:z))
+      };
   ] : b = b'.
   
-  hybrid (3,1) [ (g^x,g^y,g^z) | x <-$ Fq, y <-$ Fq, z <-$ Fq ].
+  hybrid (3,1) { x, y, z <-$ Fq; return (g^x,g^y,g^z) }.
     last. indep!.
   (* move sampling from "once-oracle" to main *)
   swap_main (3,1,1) mx.
@@ -30,9 +32,9 @@ bound_adv
   (* apply DDH assumption *)
   swap mz b.
   swap my mz.
-  swap mx my.
-  subst [5] (g^(b?(mx*my):mz)) (b?g^(mx*my):g^mz).
-  abstract 3 arg (g^mx,g^my,g^(mx*my)).
+  swap mx my; //=.
+  subst [1] (g^(b?(mx*my):mz) -> b?(g^(mx*my)):g^mz).
+  abstract 3 arg (g^mx, g^my, g^(mx*my)).
   abstract _ res _.
   assumption_decisional ddh -> [arg] zz.
   (* apply trivial assumption *)

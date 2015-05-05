@@ -26,18 +26,8 @@ let wrap_error f s =
       raise (PU.ParseError err)
   | _ -> raise (PU.ParseError "Unknown error while lexing/parsing.")
 
-(** Parse type declaration. *)
-let ty = wrap_error (Parser.typ Lexer.lex)
-
-(** Parse expression. *)
-let expr = wrap_error (Parser.expr Lexer.lex)
-
 (** Parse oracle definition. *)
 let odef = wrap_error (Parser.odef Lexer.lex)
-
-(** Parse game definition. *)
-let gdef = wrap_error (Parser.gdef Lexer.lex)
-
 
 (** Parse instruction definition. *)
 let instruction = wrap_error (Parser.instruction Lexer.lex)

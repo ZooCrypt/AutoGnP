@@ -2,6 +2,7 @@
   (** Parser for expressions, games, judgments, and tactic command. *)
   open ParserTypes
   open Syms
+  open Abbrevs
   open Assumption
   open Util
 
@@ -9,11 +10,15 @@
 
 %}
 
+/*======================================================================*/
+/* Tokens */
+
 %token EOF
 
-/************************************************************************/
+/*----------------------------------------------------------------------*/
 /* Tokens for types */
-%token EXISTS
+
+(* %token EXISTS *)
 %token <string> TBS
 %token TBOOL
 %token <string> TG
@@ -24,8 +29,9 @@
 %token LPAREN
 %token RPAREN
 
-/************************************************************************/
+/*----------------------------------------------------------------------*/
 /* Tokens for expressions */
+
 %token <string> ID
 %token PLUS
 %left PLUS
@@ -43,7 +49,7 @@
 %token SLASH2EQ
 %token SLASH3EQ
 %token PPT
-%token INFTHEORETIC
+%token INFTHEO
 %token INRIGHT
 %token INBOTH
 %token TRUE
@@ -63,30 +69,32 @@
 %token NEQ
 
 %token <string> GEN
-%token UNIT
 %token LOG
 %token <string> ZBS
-%token QUERIES
-%token IN
-/************************************************************************/
+(* %token QUERIES *)
+(* %token IN *)
+
+/*----------------------------------------------------------------------*/
 /* Tokens for games */
 
 %token LEFTARROW
 %token LET
+%token RETURN
 %token SAMP
 %token SHARP
 %token BACKTICK
 %token BACKSLASH
 %token LBRACK
 %token RBRACK
-%token MID
+%token LCBRACE
+%token RCBRACE
 %token SEMICOLON
 %token <string> LIST
 %token WITH
 /* %token <string> AID */
 %token <int> NAT
 
-/************************************************************************/
+/*----------------------------------------------------------------------*/
 /* Tokens for theories */
 
 %token TO
@@ -161,34 +169,23 @@
 %token LISTFE
 %token <string> STRING
 
-/************************************************************************/
+/*======================================================================*/
 /* Production types */
 
-%type <ParserTypes.parse_ty> typ
-
-%type <ParserTypes.parse_expr> expr
-
-%type <ParserTypes.lcmd> lcmd
+%type <ParserTypes.lcmd list> lcmd
 
 %type <ParserTypes.odef> odef
 
-%type <ParserTypes.gcmd> gcmd
-
-%type <ParserTypes.gdef> gdef
+%type <ParserTypes.gcmd list> gcmd
 
 %type <ParserTypes.theory> theory
 
 %type <ParserTypes.instr list> instruction
 
-/************************************************************************/
+/*======================================================================*/
 /* Start productions */
-%start typ
-
-%start expr
 
 %start odef
-
-%start gdef
 
 %start instruction
 
@@ -196,45 +193,55 @@
 
 %%
 
-/************************************************************************/
+
+/*======================================================================*/
+/* Useful definitions and abbreviations */
+
+%public uopt(X):
+| UNDERSCORE { None }
+| x=X { Some x }
+
+%public seplist0(S,X):
+| l=separated_list(S,X) {l}
+
+%public seplist1(S,X):
+| l=separated_nonempty_list(S,X) { l }
+
+%public termlist0(S,X):
+| l=list(terminated(X,S)) {l}
+
+%public termlist1(S,X):
+| l=nonempty_list(terminated(X,S)) { l }
+
+%public paren_list0(S,X):
+| l=delimited(LPAREN,separated_list(S,X),RPAREN) {l}
+
+/*======================================================================*/
 /* Types */
 
 typ :
-| t=typ0 EOF { t }
+| i=TBS                              { BS(i) }
+| TBOOL                              { Bool }
+| i=TG                               { G(i) }
+| TFQ                                { Fq }
+| LPAREN l=seplist0(STAR,typ) RPAREN { mk_Prod l }
+| t=typ CARET n=NAT                  { Prod(Util.replicate n t) }
 
-typ0 :
-| i=TBS { BS(i) }
-| TBOOL { Bool }
-| i=TG { G(i) }
-| TFQ { Fq }
-| UNIT { Prod([]) }
-| LPAREN l=separated_list(STAR,typ0) RPAREN
-  { match l with [t] -> t | _ -> Prod(l) }
-| t=typ0 CARET n=NAT
-  { Prod(Util.replicate n t) }
-
-/************************************************************************/
+/*======================================================================*/
 /* Expressions */
 
-/* FIXME: check operator precedence */
-
 expr :
-| e=expr0 EOF { e }
-
-expr0 :
-| EXISTS bd=hbindings COLON e1=expr1 EQUAL e2=expr1
-  { Exists(e1,e2,bd) }
-| e1=expr0 SHARP i=NAT { Proj(i,e1) }
-| e1=expr1 EQUAL e2=expr1 { Eq(e1,e2) }
-| e1=expr1 NEQ e2=expr1 { Not(Eq(e1,e2)) }
-| e1=expr1 QUESTION e2=expr1 COLON e3=expr1 { Ifte(e1, e2, e3) }
-| e1=expr1 IN QUERIES LPAREN oname=ID RPAREN { InLog(e1,oname) } 
-| e=expr1 { e }
+| e1=expr  SHARP i=NAT                       { Proj(i,e1) }
+| e1=expr1 EQUAL e2=expr1                    { Eq(e1,e2) }
+| e1=expr1 NEQ e2=expr1                      { Not(Eq(e1,e2)) }
+| e1=expr1 QUESTION e2=expr1 COLON e3=expr1  { Ifte(e1, e2, e3) }
+(* | e1=expr1 IN QUERIES LPAREN oname=ID RPAREN { InLog(e1,oname) }  *)
+| e=expr1                                    { e }
 
 expr1 :
 | e1=expr1 PLUS e2=expr1 { Plus(e1, e2) }
 | e1=expr1 XOR e2=expr1  { Xor (e1, e2) }
-| e=expr2 { e }
+| e=expr2                { e }
 
 expr2:
 | e1=expr2 MINUS e2=expr2 { Minus(e1, e2) }
@@ -251,166 +258,110 @@ expr4 :
 
 expr5:
 | e1=expr6 CARET e2=expr6 { Exp(e1, e2) }
-| e =expr6 { e }
-
-exprlist1 :
-| e=expr0 { [e] }
-| e=expr0 COMMA l=exprlist1 { e::l }
-
-exprlist0 :
-| l=exprlist1? { from_opt [] l }
+| e=expr6                 { e }
 
 expr6 :
-| s=ID                 { V(Unqual,s) }
-| s1=ID BACKTICK s2=ID { V(Qual s1, s2) }
-| UNIT    { Tuple [] }
-| i=NAT { CFNat i }
-| i=GEN { CGen(i) }
-| i=ZBS { CZ(i) }
-| TRUE    { CB(true) }
-| FALSE   { CB(false) }
-| s=ID LPAREN l=exprlist1 RPAREN
-  { SApp(s,l) }
-| MINUS e1=expr6 { Opp(e1) }
-| NOT e=expr6 { Not(e) }
-| LOG LPAREN e1=expr0 RPAREN { Log(e1) }
-| LPAREN e=expr0 RPAREN {e}
-| LPAREN l=exprlist1 RPAREN { Tuple(l) }
-;
+| s=ID                           { V(Unqual,s) }
+| s1=ID BACKTICK s2=ID           { V(Qual s1, s2) }
+| i=NAT                          { CFNat i }
+| i=GEN                          { CGen(i) }
+| i=ZBS                          { CZ(i) }
+| TRUE                           { CB(true) }
+| FALSE                          { CB(false) }
+| s=ID l=paren_list0(COMMA,expr) { SApp(s,l) }
+| MINUS e1=expr6                 { Opp(e1) } (* FIXME: check how unary/binary minus handled in Haskell/OCaml *)
+| NOT e=expr6                    { Not(e) }
+| LOG LPAREN e1=expr RPAREN      { Log(e1) }
+| l=paren_list0(COMMA,expr)      { mk_Tuple l }
 
-hbinding:
-| x=ID LEFTARROW h=LIST {x,h}
-;
-hbindings:
-| hbs=separated_nonempty_list(COMMA,hbinding) { hbs }
+/*======================================================================*/
+/* Oracle definitions */
 
-;
-/************************************************************************/
-/* List comprehensions */
-/* FIXME: handle shift-reduce conflict */
-
-idlist :
-| UNIT { [] }
-| LPAREN is=idlist0 RPAREN { is }
-| is=idlist0 { is }
-
-idlist0 :
-| i=ID { [i] }
-| i=ID COMMA is=idlist0 { i :: is }
+except_exprs :
+| BACKSLASH es=separated_nonempty_list(COMMA,expr) { es }
 
 lcmd :
-| LET i=ID EQUAL e=expr0 { LLet(i,e) }
-| is=idlist LEFTARROW hsym=LIST { LBind(is,hsym) }
-| i=ID SAMP t=typ0 BACKSLASH es=exprlist1 { LSamp(i,t,es) }
-| i=ID SAMP t=typ0                          { LSamp(i,t,[]) }
-| e=expr0 { LGuard(e) }
+| LET i=ID EQUAL e=expr                         { [ LLet(i, e) ] }
+| is=seplist0(COMMA,ID) LEFTARROW hsym=LIST     { [ LBind(is, hsym) ] }
+| is=seplist1(COMMA,ID) SAMP t=typ
+    es=loption(except_exprs)                    { L.map (fun i -> LSamp(i, t, es)) is }
+| e=expr                                        { [ LGuard(e) ] }
 
-lcmdlist :
-| c=lcmd { [c] }
-| c=lcmd COMMA cs=lcmdlist { c::cs }
-
-lcomp :
-| LBRACK e=expr0 MID cmds=lcmdlist RBRACK { (cmds, e) }
-| LBRACK e=expr0  RBRACK { ([], e) }
+obody :
+| LCBRACE cmds=termlist0(SEMICOLON,lcmd)
+    RETURN e=expr SEMICOLON? RCBRACE     { (L.concat cmds, e) }
 
 odecl :
-| lc=lcomp { Odef lc}
-| LBRACK lc1=lcomp lc2=lcomp lc3=lcomp RBRACK { Ohybrid (lc1,lc2,lc3) }
+| lc=obody { Odef lc}
+| LBRACK lc1=obody lc2=obody lc3=obody RBRACK { Ohybrid(lc1,lc2,lc3) }
 
 odef :
-| oname=ID UNIT EQUAL od=odecl { (oname,[],od) }
-| oname=ID LPAREN args=idlist RPAREN EQUAL od=odecl { (oname, args, od) }
+| oname=ID args=paren_list0(COMMA,ID) EQUAL od=odecl { (oname, args, od) }
 
-/************************************************************************/
-/* games */
+/*======================================================================*/
+/* Games */
 
-odeflist :
-| od=odef { [od] }
-| od=odef COMMA ods=odeflist { od::ods }
+arglist0 :
+| l=paren_list0(COMMA,expr) { mk_Tuple l }
 
-mexprlist0 :
-| l=exprlist1 {  match l with [e] -> e | _   -> Tuple l }
+odefs :
+| WITH os=seplist1(COMMA,odef) { os }
+
+var_pat :
+| i = ID                                    { [i] }
+| LPAREN is=separated_list(COMMA,ID) RPAREN { is }
 
 gcmd :
-| LET i=ID EQUAL e=expr0 { GLet(i,e) }
-| is=idlist LEFTARROW asym=ID LPAREN e=mexprlist0 RPAREN WITH os=odeflist
-  { GCall(is,asym,e,os) }
-| is=idlist LEFTARROW asym=ID LPAREN e=mexprlist0 RPAREN
-  { GCall(is,asym,e,[]) }
-| is=idlist LEFTARROW asym=ID UNIT WITH os=odeflist
-  { GCall(is,asym,Tuple [],os) }
-| is=idlist LEFTARROW asym=ID UNIT
-  { GCall(is,asym,Tuple [],[]) }
-| i=ID SAMP t=typ0 BACKSLASH es=exprlist1
-  { GSamp(i,t,es) }
-| i=ID SAMP t=typ0
-  { GSamp(i,t,[]) }
-| ASSERT LPAREN e=expr0 RPAREN
-  { GAssert(e) }
-
-gcmdlist0 :
-| c=gcmd SEMICOLON { [c] }
-| c=gcmd SEMICOLON cs=gcmdlist0 { c::cs }
-
-gdef0 :
-| cs=gcmdlist0 { cs }
+| LET i=ID EQUAL e=expr                                      { [ GLet(i,e) ] }
+| is=var_pat LEFTARROW asym=ID e=arglist0 ods=loption(odefs) { [ GCall(is, asym, e, ods) ] }
+| ASSERT LPAREN e=expr RPAREN                                { [ GAssert(e) ] }
+| ids=seplist1(COMMA,ID) SAMP t=typ es=loption(except_exprs) { L.map (fun i -> GSamp(i, t, es)) ids }
 
 gdef :
-| gdef0 EOF { [] }
+| cs=termlist0(SEMICOLON,gcmd) { L.concat cs }
 
-/************************************************************************/
-/* for defining instructions */
+/*======================================================================*/
+/* Instructions */
+
+/*----------------------------------------------------------------------*/
+/* helper definitions */
 
 int:
 | i=NAT {i}
 | MINUS i=NAT {-i}
-;
 
 event:
-| COLON e=expr0 { e }
-;
+| COLON e=expr { e }
 
 dir:
 | LEFTARROW { Util.RightToLeft }
 | TO        { Util.LeftToRight }
-;
 
 otype:
 | LESS    { G.OHless}
 | EQUAL   { G.OHeq }
 | GREATER { G.OHgreater }
-;
 
 opos:
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1,G.Onohyb) }
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT COMMA ot=otype RPAREN { (i-1,j-1,k-1,G.Ohyb ot) }
-;
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN                { (i-1, j-1, k-1, G.Onohyb) }
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT COMMA ot=otype RPAREN { (i-1, j-1, k-1, G.Ohyb ot) }
 
 opos_partial:
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1,j-1,k-1) }
-;
-
-%public uopt(X):
-| UNDERSCORE { None }
-| x=X { Some x }
-;
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1, j-1, k-1) }
 
 ty_anno :
-| COLON  t=typ0 { t }
+| COLON  t=typ { t }
 
 ctx :
-| LPAREN i=ID ot=option(ty_anno) TO e=expr0 RPAREN { (i,ot,e) }
-;
+| LPAREN i=ID ot=option(ty_anno) TO e=expr RPAREN { (i, ot, e) }
 
 sym_class:
 | LBRACK vs=separated_nonempty_list(COMMA,ID) RBRACK { vs }
-;
 
 sym_vars:
 | LPAREN symclass=sym_class* RPAREN {symclass}
-;
 
-/************************************************************************/
+/*----------------------------------------------------------------------*/
 /* declarations */
 
 atype:
@@ -418,83 +369,83 @@ atype:
 | ADV  { A_Adv }
 
 decl :
-| ADVERSARY i=ID  COLON t1=typ0 TO t2=typ0 { ADecl(i,t1,t2) } 
-| ORACLE    i=ID  COLON t1=typ0 TO t2=typ0 { ODecl(i,t1,t2) }
-| RANDOM ORACLE i=ID COLON t1=typ0 TO t2=typ0 { RODecl(i,true,t1,t2) }
-| OPERATOR i=ID COLON t1=typ0 TO t2=typ0 { RODecl(i,false,t1,t2) }
-| BILINEAR MAP i=ID COLON g1=TG STAR g2=TG TO g3=TG { EMDecl(i,g1,g2,g3) }
-| ASSUMPTION it=delimited(LBRACK,INFTHEORETIC,RBRACK)?
-    i=ID sym=option(sym_vars) LBRACK g0=gdef0 RBRACK LBRACK g1=gdef0 RBRACK
-  { AssmDec(i,it<>None,g0,g1,opt id [] sym) }
-| ASSUMPTION it=delimited(LBRACK,INFTHEORETIC,RBRACK)?
-    i1=ID at=atype sym=option(sym_vars) LBRACK g=gdef0 RBRACK COLON e=expr0
-  { AssmComp(i1,it<>None,at,g,e,opt id [] sym) }
-| BOUNDSUCC LBRACK g=gdef0 RBRACK e=event { JudgSucc(g,e) }
-| BOUNDADV LBRACK g=gdef0 RBRACK e=event { JudgAdv(g,e) }
-| BOUNDDIST LBRACK g1=gdef0 RBRACK e1=event
-     LBRACK g2=gdef0 RBRACK e2=event
-   { JudgDist(g1,e1,g2,e2) }
-;
+| ADVERSARY i=ID  COLON t1=typ TO t2=typ    { ADecl(i, t1, t2) } 
+| ORACLE    i=ID  COLON t1=typ TO t2=typ    { ODecl(i, t1, t2) }
+| RANDOM ORACLE i=ID COLON t1=typ TO t2=typ { RODecl(i, true, t1, t2) }
+| OPERATOR i=ID COLON t1=typ TO t2=typ      { RODecl(i, false, t1, t2) }
+| BILINEAR MAP i=ID COLON
+    g1=TG STAR g2=TG TO g3=TG               { EMDecl(i, g1, g2, g3) }
+| ASSUMPTION
+    it=boption(delimited(LBRACK,INFTHEO,RBRACK))
+    i=ID sym=loption(sym_vars)
+    LBRACK g0=gdef RBRACK
+    LBRACK g1=gdef RBRACK                   { AssmDec(i, it, g0, g1, sym) }
+| ASSUMPTION
+    it=boption(delimited(LBRACK,INFTHEO,RBRACK))
+    i1=ID at=atype sym=loption(sym_vars)
+    LBRACK g=gdef RBRACK COLON e=expr       { AssmComp(i1, it, at, g, e, sym) }
+| BOUNDSUCC LBRACK g=gdef RBRACK e=event    { JudgSucc(g, e) }
+| BOUNDADV LBRACK g=gdef RBRACK e=event     { JudgAdv(g, e) }
+| BOUNDDIST LBRACK g1=gdef RBRACK e1=event
+    LBRACK g2=gdef RBRACK e2=event          { JudgDist(g1, e1, g2, e2) }
 
-/************************************************************************/
+/*----------------------------------------------------------------------*/
 /* proof commands */
 
 proof_command :
-| ADMIT { Admit }
-| LAST { Last }
-| BACK { Back }
-| UNDOBACK { UndoBack(false) }
-| UNDOBACK_EXCL { UndoBack(true) }
-| QED { Qed }
-| EXTRACT s=STRING { Extract s }
-| PRINTGOALS COLON i=ID { PrintGoals(i) }
-| PRINTGOAL COLON i=ID { PrintGoal(i) }
-| PRINTPROOF { PrintProof(false) }
-| PRINTPROOF_EX { PrintProof(true) }
-| PRINTGOALS { PrintGoals("") }
-| PRINTDEBUG s=STRING { Debug s }
-| PRINTGAME s=STRING { PrintGame s }
+| ADMIT                          { Admit }
+| LAST                           { Last }
+| BACK                           { Back }
+| UNDOBACK                       { UndoBack(false) }
+| UNDOBACK_EXCL                  { UndoBack(true) }
+| QED                            { Qed }
+| EXTRACT s=STRING               { Extract s }
+| PRINTGOALS COLON i=ID          { PrintGoals(i) }
+| PRINTGOAL COLON i=ID           { PrintGoal(i) }
+| PRINTPROOF                     { PrintProof(false) }
+| PRINTPROOF_EX                  { PrintProof(true) }
+| PRINTGOALS                     { PrintGoals("") }
+| PRINTDEBUG s=STRING            { Debug s }
+| PRINTGAME s=STRING             { PrintGame s }
 | PRINTGAMES s1=STRING s2=STRING { PrintGames(s1,s2) }
-;
 
-/************************************************************************/
+/*----------------------------------------------------------------------*/
 /* tactics */
+
 br_exprlist0:
-| LBRACK es=exprlist0 RBRACK { es }
-;
+| LBRACK es=separated_list(COMMA,expr) RBRACK { es }
 
 gpos:
 | i=NAT { i - 1 }
 | LBRACK i=NAT RBRACK { i - 1 }
 | LBRACK MINUS i=NAT RBRACK { (-i) - 1}
-;
 
 assgn_pos:
 | n=int            { Pos(n) }
 | i=ID             { Var(i) } 
-| LPAREN n=int RPAREN  { AbsPos(n-1) }
-;
+| LPAREN n=NAT RPAREN  { AbsPos(n-1) }
 
 inter_pos:
 | LBRACK i1=assgn_pos i2=assgn_pos? RBRACK { Some i1, i2 }
-;
 
 swap_pos:
 | i=inter_pos  { i } 
 | i1=assgn_pos { Some i1 , Some i1 }
-; 
 
 diff_cmd:
 | RRENAME i1=ID i2=ID mupto=assgn_pos?
   { Drename(i1,i2,mupto) }
-| RINSERT p=assgn_pos LBRACK gd=gdef0 RBRACK
+| RINSERT p=assgn_pos LBRACK gd=gdef RBRACK
   { Dinsert(p,gd) }
-| RSUBST p=assgn_pos e1=expr0 e2=expr0
+| RSUBST p=assgn_pos LPAREN e1=expr TO e2=expr RPAREN
   { Dsubst(p,e1,e2) }
 
 id_pair:
 | id = ID { (id,None) }
 | LPAREN id1=ID id2=ID RPAREN { (id1,Some id2) }
+
+maybe_upto:
+| COLON ap=assgn_pos { ap }
 
 tactic :
 
@@ -506,25 +457,25 @@ tactic :
 | RNORM_UNKNOWN is=ID* { Rnorm_unknown(is) }
 | SLASH2EQ is=ID*      { Rnorm_unknown(is) }
 | SLASH3EQ is=ID*      { Rseq [Rnorm; Rnorm_unknown(is)] }
-| RNORM_SOLVE e=expr0  { Rnorm_solve(e) }
+| RNORM_SOLVE e=expr  { Rnorm_solve(e) }
 
 /* conversion */
-| RCONV LBRACK gd=gdef0 RBRACK e=event   { Rconv(gd,e) }
-| RTRANS LBRACK gd=gdef0 RBRACK e=event  { Rtrans(gd,e) }
+| RCONV LBRACK gd=gdef RBRACK e=event   { Rconv(gd,e) }
+| RTRANS LBRACK gd=gdef RBRACK e=event  { Rtrans(gd,e) }
 | RTRANSSTAR LBRACK dcmds=separated_nonempty_list(COMMA,diff_cmd) RBRACK
   { Rtrans_diff(dcmds) }
-| RSUBST i=inter_pos? e1=expr0 e2=expr0 { 
-    let i, mupto = from_opt (None,None) i in
+| RSUBST i=inter_pos? LPAREN e1=expr TO e2=expr RPAREN
+  { let i, mupto = from_opt (None,None) i in
     Rsubst(i,e1,e2,mupto) } 
 | RRENAME v1=ID v2=ID { Rrename(v1,v2) }
 | RLET_UNFOLD i=assgn_pos*            { Rlet_unfold(i) }
 | RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
-          i1=ID e1=uopt(expr0) mupto=assgn_pos?
+          i1=ID e1=uopt(expr) mupto=maybe_upto?
   { Rlet_abstract(i,i1,e1,mupto,excl=None) }
 | RLET_ABSTRACT_DEDUCE excl=EXCL? i=assgn_pos
-          i1=ID e1=expr0 mupto=assgn_pos?
+          i1=ID e1=expr mupto=maybe_upto?
   { Rlet_abstract_deduce(excl<>None,i,i1,e1,mupto) }
-| ASSERT i=assgn_pos e=expr0?
+| ASSERT i=assgn_pos e=expr?
   { Rassert(i,e) }
 
 /* swapping */
@@ -534,13 +485,13 @@ tactic :
 | RSWAP_MAIN i=assgn_pos op=opos_partial v=ID { Rswap_to_orcl(i,op,v) }
 
 /* random samplings */
-| RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr0?
+| RRND excl=EXCL?  mi=uopt(assgn_pos) mc1=uopt(ctx) mc2=uopt(ctx) mgen=expr?
   { Rrnd(excl=None,mi,mc1,mc2,mgen) }
 | RRND_EXP excl=EXCL? ids=id_pair+
   { Rrnd_exp(excl=None,ids) }
 
 | REXCEPT i=uopt(assgn_pos) es=uopt(br_exprlist0) { Rexcept(i,es) }
-| REXCEPT_ORACLE op=opos es=expr0*          { Rexcept_orcl(op,es) }
+| REXCEPT_ORACLE op=opos es=br_exprlist0          { Rexcept_orcl(op,es) }
 
 /* assumptions */
 | ASSUMPTION_DECISIONAL excl=EXCL?
@@ -561,16 +512,16 @@ tactic :
 | RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Rrnd_orcl(op,c1,c2) }
 | RREWRITE_ORACLE op=opos d=dir                       { Rrewrite_orcl(op,d) }
 | RBAD i=NAT s=ID                                     { Rbad (i-1,s) }
-| RADD_TEST op=opos e=expr0 asym=ID fvs=ID*
+| RADD_TEST op=opos e=expr asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
 | RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }
-| RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=lcomp
+| RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=obody
   { Rhybrid((i-1,j-1),lc) }
 
 /* events */
 | RREMOVE_EV is=gpos+         { Rremove_ev(is) }
 | RSPLIT_EV i=gpos            { Rsplit_ev(i - 1) }
-| RCASE_EV e=uopt(expr0)      { Rcase_ev(e) }
+| RCASE_EV e=uopt(expr)       { Rcase_ev(e) }
 | RREWRITE_EV i=gpos d=dir?   { Rrewrite_ev(i,opt id LeftToRight d) }
 | RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Rctxt_ev(oj,c) }
 
@@ -584,11 +535,10 @@ tactic :
 
 /* debugging */
 | DEDUCE  ppt=PPT?
-    LBRACK es=separated_list(COMMA,expr0) RBRACK e=expr0 { Deduce(ppt<>None,es,e) }
-| LISTFE  es=expr0*                                      { FieldExprs(es) }
+    LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Deduce(ppt<>None,es,e) }
+| LISTFE LBRACK es=seplist1(COMMA,expr) RBRACK   { FieldExprs(es) }
 
-
-/************************************************************************/
+/*----------------------------------------------------------------------*/
 /* instructions and theories */
 
 selector:

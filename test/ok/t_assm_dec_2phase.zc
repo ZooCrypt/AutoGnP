@@ -38,7 +38,7 @@ bound_adv
   abstract 6 res1_1 gz1_.
   abstract 7 res1_2 gz2_.
   abstract 10 res2_1 (b_=b_').
-  abstract 3 arg1 gy_ 7.
+  abstract 3 arg1 gy_ : 7.
   abstract 9 arg2 KDF(gx_,gy_,res1_1,res1_2).
   (* gives ranges for both adversaries and names for new vars in right game *)
   assumption_decisional kdf -> [3 8] [9 12] aa bb.

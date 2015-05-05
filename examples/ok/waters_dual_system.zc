@@ -13,10 +13,8 @@ assumption dbdh
 adversary A_dlin : (G * G * G * G * G) -> Bool.
 
 assumption dlin
-  [ b1 <-$ Fq; b2 <-$ Fq; c1 <-$ Fq; c2 <-$ Fq;
-    b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))); ]
-  [ b1 <-$ Fq; b2 <-$ Fq; c1 <-$ Fq; c2 <-$ Fq; t <-$ Fq;
-    b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^t); ].
+  [ b1, b2, c1, c2 <-$ Fq;    b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))); ]
+  [ b1, b2, c1, c2, t <-$ Fq; b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^t); ].
     
 adversary A_dkill : () -> Bool.
 
@@ -31,16 +29,8 @@ oracle KeyGen2 : Fq -> (Fq*G*G*G*G*G*G*G*G).
 
 bound_adv
 [ (* setup *)
-  V     <-$ G;
-  V1    <-$ G;
-  V2    <-$ G;
-  W     <-$ G;
-  U     <-$ G;
-  H     <-$ G;
-  a1    <-$ Fq;
-  a2    <-$ Fq;
-  b     <-$ Fq;
-  alpha <-$ Fq;
+  V, V1, V2, W, U, H <-$ G;
+  a1, a2,  b, alpha <-$ Fq;
   
   let tau1 = V*V1^a1;
   let tau2 = V*V2^a2;
@@ -50,32 +40,25 @@ bound_adv
   let P3   = g^(b*a1);
   let P4   = g^(b*a2);
   let P5   = e(g,g)^(alpha*a1*b);
-  (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,W,U,H,P5)
-    with
-    KeyGen1(i) =
-      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
-      | r1   <-$ Fq,
-        r2   <-$ Fq,
-        z1   <-$ Fq,
-        z2   <-$ Fq,
-        tagk <-$ Fq,
-        let r  = r1 + r2,
-        let D1 = g^(alpha*a1)*V^r,
-        let D2 = g^(-alpha)*V1^r*g^z1,
-        let D3 = (g^b)^-z1,
-        let D4 = V2^r*g^z2,
-        let D5 = (g^b)^-z2,
-        let D6 = g^(r2*b),
-        let D7 = g^r1,
-        let k  = (U^i*W^tagk*H)^r1 ];
+  (ci,m0,m1) <- A1(P0,P1,P2,P3,P4,tau1,tau2,tau1^b,tau2^b,W,U,H,P5) with
+    KeyGen1(i) = {
+      r1, r2, z1, z2, tagk <-$ Fq;
+      let r  = r1 + r2;
+      let D1 = g^(alpha*a1)*V^r;
+      let D2 = g^(-alpha)*V1^r*g^z1;
+      let D3 = (g^b)^(-z1);
+      let D4 = V2^r*g^z2;
+      let D5 = (g^b)^-z2;
+      let D6 = g^(r2*b);
+      let D7 = g^r1;
+      let k  = (U^i*W^tagk*H)^r1;
+      return (tagk,D1,D2,D3,D4,D5,D6,D7,k)
+    };
   
   beta <-$ Bool;  
   let m = beta?m0:m1;
   (* encryption of Enc(PK,i,m) *)
-  s1   <-$ Fq;
-  s2   <-$ Fq;
-  t    <-$ Fq;
-  tagc <-$ Fq;
+  s1, s2, t, tagc <-$ Fq;
   let C0 = m*P5^s2;
   let C1 = P0^(s1+s2);
   let C2 = P3^s1;
@@ -87,25 +70,21 @@ bound_adv
   let E1 = (U^ci*W^tagc*H)^t;
   let E2 = g^t;
   
-  beta' <- A2(tagc,C0,C1,C2,C3,C4,C5,C6,C7,E1,E2)
-    with
-    KeyGen2(i) =
-      [ (tagk,D1,D2,D3,D4,D5,D6,D7,k)
-      | i <> ci,
-        r1   <-$ Fq,
-        r2   <-$ Fq,
-        z1   <-$ Fq,
-        z2   <-$ Fq,
-        tagk <-$ Fq,
-        let r  = r1 + r2,
-        let D1 = g^(alpha*a1)*V^r,
-        let D2 = g^(-alpha)*V1^r*g^z1,
-        let D3 = (g^b)^-z1,
-        let D4 = V2^r*g^z2,
-        let D5 = (g^b)^-z2,
-        let D6 = g^(r2*b),
-        let D7 = g^r1,
-        let k  = (U^i*W^tagk*H)^r1 ];
+  beta' <- A2(tagc,C0,C1,C2,C3,C4,C5,C6,C7,E1,E2) with
+    KeyGen2(i) = {
+      i <> ci;
+      r1, r2, z1, z2, tagk <-$ Fq;
+      let r  = r1 + r2;
+      let D1 = g^(alpha*a1)*V^r;
+      let D2 = g^(-alpha)*V1^r*g^z1;
+      let D3 = (g^b)^-z1;
+      let D4 = V2^r*g^z2;
+      let D5 = (g^b)^-z2;
+      let D6 = g^(r2*b);
+      let D7 = g^r1;
+      let k  = (U^i*W^tagk*H)^r1;
+      return (tagk,D1,D2,D3,D4,D5,D6,D7,k)
+    };
 ] : (beta = beta') (* FIXME: we cannot deal with this constraint at the moment /\ not (exists ci' in Log (KeyGen1`i), ci = ci') *).
 
 (* ================================================ *)
@@ -120,10 +99,10 @@ trans*
       let C5' = g^(a2*x);
       let C6' = V2^(a2*x);
       let C7' = V2^(b*a2*x); ]
-  , subst E2 (C4) (C4*C4')
-  , subst E2 (C5) (C5*C5')
-  , subst E2 (C6) (C6*C6')
-  , subst E2 (C7) (C7*C7')
+  , subst E2 (C4 -> C4*C4')
+  , subst E2 (C5 -> C5*C5')
+  , subst E2 (C6 -> C6*C6')
+  , subst E2 (C7 -> C7*C7')
   ].
 
   (* sample exponents instead of group elements to maximize  deducibility for reduction *)
@@ -147,25 +126,20 @@ trans*
 (* make first oracle semi-functional by applying DLIN *)
 
 hybrid (19,1)
-  [ (tagk,D1,D2,D3,D4,D5,D6,D7,k) |
-    r1 <-$ Fq,
-    r2 <-$ Fq,
-    z1 <-$ Fq,
-    z2 <-$ Fq,
-    tagk <-$ Fq,
-    gamma <-$ Fq,
-    let r = r2 + r1,
-    let D1' = g^(a1*alpha) * V^r,
-    let D2' = g^-alpha * V1^r * g^z1,
-    let D3 = (g^b)^-z1,
-    let D4' = V2^r * g^z2,
-    let D5 = (g^b)^-z2,
-    let D6 = g^(b*r2),
-    let D7 = g^r1,
-    let k = (H * U^i * W^tagk)^r1,
-    let D1 = D1' * g^(-a1*a2*gamma),
-    let D2 = D2' * g^(a2*gamma),
-    let D4 = D4' * g^(a1*gamma) ].
+  { r1, r2, z1, z2, tagk, gamma <-$ Fq;
+    let r = r2 + r1;
+    let D1' = g^(a1*alpha) * V^r;
+    let D2' = g^-alpha * V1^r * g^z1;
+    let D3 = (g^b)^-z1;
+    let D4' = V2^r * g^z2;
+    let D5 = (g^b)^-z2;
+    let D6 = g^(b*r2);
+    let D7 = g^r1;
+    let k = (H * U^i * W^tagk)^r1;
+    let D1 = D1' * g^(-a1*a2*gamma);
+    let D2 = D2' * g^(a2*gamma);
+    let D4 = D4' * g^(a1*gamma);
+    return (tagk,D1,D2,D3,D4,D5,D6,D7,k) }.
 
   (* -------------------------------------------------- *)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
@@ -173,9 +147,9 @@ hybrid (19,1)
 
   (* -------------------------------------------------- *)
   (* side-step incomplete handling of Log(KeyGen1) *)
-  trans* [ subst 1 (beta = beta') ((beta = beta') /\ (KeyGen1`i<>ci)) ]. admit.
+  trans* [ subst 1 (beta = beta' -> (beta = beta') /\ (KeyGen1`i<>ci)) ]. admit.
   
-  dist_sym. trans* [ subst 1 (beta = beta') ((beta = beta') /\ (KeyGen1`i<>ci)) ]. admit. LR: // ; //=. dist_sym.
+  dist_sym. trans* [ subst 1 (beta = beta' -> (beta = beta') /\ (KeyGen1`i<>ci)) ]. admit. LR: // ; //=. dist_sym.
 
   (* -------------------------------------------------- *)
   (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
@@ -219,26 +193,21 @@ hybrid (19,1)
 (* ================================================== *)
 (* make second oracle semi-functional by applying DLIN *)
 hybrid (41,1)
-  [ (tagk,D1,D2,D3,D4,D5,D6,D7,k) |
-    i <> ci,
-    r1 <-$ Fq,
-    r2 <-$ Fq,
-    z1 <-$ Fq,
-    z2 <-$ Fq,
-    tagk <-$ Fq,
-    gamma <-$ Fq,
-    let r = r2 + r1,
-    let D1' = g^(a1*alpha) * V^r,
-    let D2' = g^-alpha * V1^r * g^z1,
-    let D3 = (g^b)^-z1,
-    let D4' = V2^r * g^z2,
-    let D5 = (g^b)^-z2,
-    let D6 = g^(b*r2),
-    let D7 = g^r1,
-    let k = (H * U^i * W^tagk)^r1,
-    let D1 = D1' * g^(-a1*a2*gamma),
-    let D2 = D2' * g^(a2*gamma),
-    let D4 = D4' * g^(a1*gamma) ].
+  { i <> ci;
+    r1, r2, z1, z2, tagk, gamma <-$ Fq;
+    let r = r2 + r1;
+    let D1' = g^(a1*alpha) * V^r;
+    let D2' = g^-alpha * V1^r * g^z1;
+    let D3 = (g^b)^-z1;
+    let D4' = V2^r * g^z2;
+    let D5 = (g^b)^-z2;
+    let D6 = g^(b*r2);
+    let D7 = g^r1;
+    let k = (H * U^i * W^tagk)^r1;
+    let D1 = D1' * g^(-a1*a2*gamma);
+    let D2 = D2' * g^(a2*gamma);
+    let D4 = D4' * g^(a1*gamma);
+    return (tagk,D1,D2,D3,D4,D5,D6,D7,k) }.
 
   (* -------------------------------------------------- *)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)

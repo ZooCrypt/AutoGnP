@@ -21,6 +21,8 @@ rule lex = parse
   | eof     { EOF }
   | "("     { LPAREN }
   | ")"     { RPAREN }
+  | "{"     { LCBRACE }
+  | "}"     { RCBRACE }
   | "+"     { PLUS }
   | "++"    { XOR }
   | "-"     { MINUS }
@@ -31,8 +33,8 @@ rule lex = parse
   | "log"   { LOG }
   | "true"  { TRUE }
   | "false" { FALSE }
-  | "in"    { IN }
-  | "Log"   { QUERIES }
+(*  | "in"    { IN }
+    | "Log"   { QUERIES } *)
   | "let"   { LET }
   | "R:" { INRIGHT }
   | "LR:"  { INBOTH }
@@ -78,7 +80,7 @@ rule lex = parse
   | "abstract"  { RLET_ABSTRACT }
   | "unfold"  { RLET_UNFOLD }
   | "subst" { RSUBST }
-  | "inf" { INFTHEORETIC }
+  | "inf" { INFTHEO }
   | "ppt" { PPT }
   | "rename" { RRENAME }
   | "assert" { ASSERT }
@@ -105,10 +107,11 @@ rule lex = parse
   | "trans" { RTRANS }
   | "indep" { RINDEP }
   | "rnd_oracle" { RRND_ORACLE }
-  | "bad"           { RBAD }
-  | "ctxt_ev"       { RCTXT_EV }
-  | "exists"    { EXISTS }
-  | "extract"   { EXTRACT }
+  | "bad" { RBAD }
+  | "ctxt_ev" { RCTXT_EV }
+(*  | "exists"    { EXISTS } *)
+  | "extract" { EXTRACT }
+  | "return" { RETURN }
   | "L_"
     (['A'-'Z']
      ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
@@ -126,7 +129,6 @@ rule lex = parse
     as s { ID s }
   | ":"     { COLON }
   | ";"     { SEMICOLON }
-  | "()"    { UNIT }
   | "?"     { QUESTION }
   | ","     { COMMA }
   | "^"     { CARET }
@@ -145,12 +147,12 @@ rule lex = parse
   | "["     { LBRACK }
   | "]"     { RBRACK }
   | "="     { EQUAL }
-  | "|"     { MID }
   | "->"    { TO }
   | "<"     { LESS }
   | ">"     { GREATER }
   | "."     { DOT }
   | "_"     { UNDERSCORE }
+
 
 and comment = parse
   | "*)"        { () }

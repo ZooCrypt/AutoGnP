@@ -17,6 +17,8 @@ type parse_ty =
   | Fq
   | Prod of parse_ty list
 
+let mk_Prod = function [t] -> t | ts -> Prod ts
+
 type parse_expr =
   | V of string qual * string
   | SApp of string * parse_expr list
@@ -40,7 +42,9 @@ type parse_expr =
   | Land of parse_expr * parse_expr
   | Xor of parse_expr * parse_expr
   | Exists of parse_expr * parse_expr * (string * string) list
-  | InLog  of parse_expr * string 
+  | InLog  of parse_expr * string
+
+let mk_Tuple = function [t] -> t | ts -> Tuple ts
 
 type parse_ctx = string * parse_ty option * parse_expr
 
