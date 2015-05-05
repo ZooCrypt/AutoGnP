@@ -108,11 +108,15 @@ add_test (30,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 
   swap beta (30).
   indep!.
 //. rewrite_oracle (30,1,2) ->. //.
-case_ev (gu1 = g^(r*e1)).
-  simp. admit.
-except t [r + s]. except e3 [0].
-rnd! a3 _ (a3 -> a3 * e3*(t - r - s) + log(beta?m0:m1) + a1*r + a2*s); //.
-norm_unknown b03 b13 b23 b33 b43 b53.
-except r [0].
-admit.
+split_ev 1.
+(* make view of adversary independent of b{1,2,3,4,5}3 *)
+norm_solve b03. except t [r + s]. except e3 [0].
+rnd! b03 _ _; //.
+(* there are 6 possible inequalities, for 5 of them, we can use indep with a different variable *)
+case_ev (gu1 = g^(r*e1)). last. indep!.
+case_ev (gu2 = g^(s*e2)). last. indep!.
+case_ev (gu3 = g^(t*e3)). last. indep!.
+case_ev (gc = g^(log(beta?m0:m1) + a1*r + a2*s + a3*t*e3 + -(a3*r*e3) + -(a3*s*e3))). last. indep!.
+case_ev (gL = sL). last. indep!.
+simp; //.
 qed.
