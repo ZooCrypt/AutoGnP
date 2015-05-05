@@ -61,7 +61,7 @@ let gpos_of_offset ju i =
 
 let epos_of_offset ju i =
   let ev = ju.ju_se.se_ev in
-  if i < 1 && is_Land ev
+  if i < 0 && is_Land ev
   then L.length (destr_Land ev) + i + 1
   else i
 
@@ -275,11 +275,15 @@ let handle_tactic ts tac =
     | PT.Rlet_abstract(_,_,_,_,_) ->
       tacerror "No placeholders or placeholders for both position and event"
   
-    | PT.Rconv(sgd,sev) ->
+    | PT.Rconv(Some sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
       let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
       CR.t_conv true { se_gdef = gd2; se_ev = ev2 } ju
+
+    | PT.Rconv(None,sev) ->
+      let ev2 = PU.expr_of_parse_expr vmap_g ts Unqual sev in
+      CR.t_conv true { se_gdef = ju.ju_se.se_gdef; se_ev = ev2 } ju
   
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
