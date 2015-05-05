@@ -4,48 +4,26 @@ adversary A : () -> (G * G).
 
 bound_succ
 [ (* setup *)
-  g1 <-$ G;
-  g2 <-$ G;
-  g3 <-$ G;
-  
-  a1 <-$ Fq;
-  a2 <-$ Fq;
-  a3 <-$ Fq;
+  g1, g2, g3 <-$ G;
 
-  b01 <-$ Fq;
-  b02 <-$ Fq;
-  b03 <-$ Fq;
-  b11 <-$ Fq;
-  b12 <-$ Fq;
-  b13 <-$ Fq;
-  b21 <-$ Fq;
-  b22 <-$ Fq;
-  b23 <-$ Fq;
-  b31 <-$ Fq;
-  b32 <-$ Fq;
-  b33 <-$ Fq;
-  b41 <-$ Fq;
-  b42 <-$ Fq;
-  b43 <-$ Fq;
-  b51 <-$ Fq;
-  b52 <-$ Fq;
-  b53 <-$ Fq;
-  
+  a1, a2, a3 <-$ Fq;
+
+  b01, b02, b03 <-$ Fq;
+  b11, b12, b13 <-$ Fq;
+  b21, b22, b23 <-$ Fq;
+  b31, b32, b33 <-$ Fq;
+  b41, b42, b43 <-$ Fq;
+  b51, b52, b53 <-$ Fq;
+
   let h1 = g1^a1*g3^a3;
   let h2 = g2^a2*g3^a3;
 
-  let f01 = g1^b01*g3^b03;
-  let f02 = g2^b02*g3^b03;
-  let f11 = g1^b11*g3^b13;
-  let f12 = g2^b12*g3^b13;
-  let f21 = g1^b21*g3^b23;
-  let f22 = g2^b22*g3^b23;
-  let f31 = g1^b31*g3^b33;
-  let f32 = g2^b32*g3^b33;
-  let f41 = g1^b41*g3^b43;
-  let f42 = g2^b42*g3^b43;
-  let f51 = g1^b51*g3^b53;
-  let f52 = g2^b52*g3^b53;
+  let f01 = g1^b01*g3^b03; let f02 = g2^b02*g3^b03;
+  let f11 = g1^b11*g3^b13; let f12 = g2^b12*g3^b13;
+  let f21 = g1^b21*g3^b23; let f22 = g2^b22*g3^b23;
+  let f31 = g1^b31*g3^b33; let f32 = g2^b32*g3^b33;
+  let f41 = g1^b41*g3^b43; let f42 = g2^b42*g3^b43;
+  let f51 = g1^b51*g3^b53; let f52 = g2^b52*g3^b53;
 
   (m,L) <- A();  
   (* encryption of m with label L *)

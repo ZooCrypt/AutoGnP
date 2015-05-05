@@ -1,0 +1,46 @@
+bilinear map e : G * G -> G_t.
+
+adversary A1 : () -> Fq.
+adversary A2 : (G * G * G) -> (G_t * G_t).
+adversary A3 : (G_t * G * G) -> Bool.
+
+oracle Kg1 : Fq -> (G * G).
+oracle Kg2 : Fq -> (G * G).
+
+(* DBDH assumption *)
+adversary A_dbdh : (G * G * G * G_t) -> Bool.
+
+assumption dbdh
+  [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq;
+    b <- A_dbdh(g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)); ]
+  [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq; t <-$ Fq;
+    b <- A_dbdh(g^c1, g^c2,g^c3, e(g,g)^t); ].
+
+bound_adv
+  [ i' <- A1();
+    c, d, h <-$ Fq;
+    let pk1 = g^c;
+    let pk2 = g^d;
+    let pk3 = g^h;
+    (m0,m1) <- A2(pk1,pk2,pk3)  with
+      Kg1(i) = {
+        i<>i';
+        r <-$ Fq;
+        return (g^(c*d + r*(d*i + h)), g^r)
+      };
+
+    b <-$ Bool;
+    let mb = (b?m0:m1);
+    e' <-$ Fq;
+    b' <- A3(mb * e(pk1,pk2)^e', g^e', (pk2^i'*pk3)^e') with
+      Kg2(i) = {
+        i<>i';
+        r <-$ Fq;
+        return (g^(c*d + r*(d*i + h)), g^r)
+      };
+
+  ] : b = b'.
+admit.
+qed.
+print_proof.
+extract "extraction/bb1.ec".

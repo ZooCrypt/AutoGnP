@@ -10,24 +10,23 @@ bound_dist
   [ j <- A1() with
         O(i) =
           [ (* for < *)
-            [ 0 ]
+            { return 0 }
             (* for = *)
-            [ t1 | t1 <-$ Fq ]
+            { t1 <-$ Fq; return t1 }
             (* for > *)
-            [ 0 ] ];
+            { return 0 } ];
     t2 <-$ Fq;
     beta <- A2(t2);
   ] : beta /\ (O`i<>j)
-  [ a <-$ Fq;
-    b <-$ Fq;
+  [ a, b <-$ Fq;
     j <- A1() with
         O(i) =
           [ (* for < *)
-            [ 0 ]
+            { return 0 }
             (* for = *)
-            [ a*i + b ]
+            { return a*i + b }
             (* for > *)
-            [ 0 ] ];
+            { return 0 } ];
     beta <- A2(a*j + b);
   ] : beta /\ (O`i<>j).
   rename t2 a.
@@ -50,27 +49,26 @@ bound_dist
       with
         O(i) =
           [ (* for < *)
-            [ 0 ]
+            { return 0 }
             (* for = *)
-            [ t
-            | i <> j,
-              t <-$ Fq
-            ]
+            { i <> j;
+              t <-$ Fq;
+              return t }
             (* for > *)
-            [ 0 ] ];
+            { return 0 } ];
   ] : beta
-  [ a <-$ Fq;
-    b <-$ Fq;
+  [ a, b <-$ Fq;
     j <- A1();
     beta <- A2(a*j + b)
       with
         O(i) =
           [ (* for < *)
-            [ 0 ]
+            { return 0 }
             (* for = *)
-            [ a*i + b | i<>j ]
+            { i<>j;
+              return a*i + b }
             (* for > *)
-            [ 0 ] ];
+            { return 0 } ];
   ] : beta.
   
   swap t1 -1.

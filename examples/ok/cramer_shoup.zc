@@ -1,20 +1,16 @@
 adversary A_ddh : (G * G * G) -> Bool.
 
 assumption ddh ([x,y])
-  [ x <-$ Fq; y <-$ Fq;
-    b <- A_ddh(g^x,g^y,g^(x*y)); ]
-  [ x <-$ Fq; y <-$ Fq; z <-$ Fq;
-    b <- A_ddh(g^x,g^y,g^z); ].
+  [ x, y <-$ Fq;   b <- A_ddh(g^x,g^y,g^(x*y)); ]
+  [ x,y, z <-$ Fq; b <- A_ddh(g^x,g^y,g^z); ].
 
 operator H : (G * G * G) -> Fq.
 
 adversary A_tcr : (G * G * G) -> (G * G * G).
 
 assumption tcr succ
-  [ a <-$ Fq; b <-$ Fq; c <-$ Fq;
-    (x1,x2,x3) <- A_tcr(g^a,g^b,g^c); ]
-  : (H(x1,x2,x3) = H(g^a,g^b,g^c))
-    /\ not ((x1,x2,x3) = (g^a,g^b,g^c)).
+  [ a, b, c <-$ Fq; (x1,x2,x3) <- A_tcr(g^a,g^b,g^c); ]
+  : (H(x1,x2,x3) = H(g^a,g^b,g^c)) /\ not ((x1,x2,x3) = (g^a,g^b,g^c)).
 
 adversary A1 : (G * G * G * G) -> (G * G).
 adversary A2 : (G * G * G * G) -> Bool.
@@ -22,23 +18,18 @@ oracle Dec1 : (G * G * G * G) -> G.
 oracle Dec2 : (G * G * G * G) -> G.
 
 bound_adv
-  [ w  <-$ Fq;
-    x1 <-$ Fq;
-    x2 <-$ Fq;
-    y1 <-$ Fq;
-    y2 <-$ Fq;
-    z1 <-$ Fq;
-    z2 <-$ Fq;
-    (* secret key is x1,x2,y1,y2,z1,z2 *)
+  [ (* secret key is x1, x2, y1, y2, z1, z2 *)
+    w, x1, x2, y1, y2, z1, z2 <-$ Fq;
     let p1 = g^(x1+w*x2);
     let p2 = g^(y1+w*y2);
     let p3 = g^(z1+w*z2);
     let p4 = g^w;
     
     (m0,m1) <- A1(p1,p2,p3,p4) with
-      Dec1(a,a',c,d) =
-        [ c * (a^z1 * a' ^z2)^(-1)
-        | d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
+      Dec1(a,a',c,d) = {
+        d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2);
+        return c * (a^z1 * a' ^z2)^(-1)
+      };
 
     b <-$ Bool;
     let mb = (b?m0:m1);
@@ -50,10 +41,11 @@ bound_adv
     let sd  = p1^u * p2^(u*H(sa,sa',sc));
 
     b' <- A2(sa,sa',sc,sd) with
-      Dec2(a,a',c,d) =
-        [ c * (a^z1 * a'^z2)^(-1)
-        | not ((a,a',c,d) = (sa,sa',sc,sd)),
-          d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2) ];
+      Dec2(a,a',c,d) = {
+        (a,a',c,d) <> (sa,sa',sc,sd);
+        d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2);
+        return c * (a^z1 * a'^z2)^(-1)
+      };
 
   ] : b = b'.
 
@@ -97,4 +89,4 @@ bound_adv
   assumption_computational tcr [arg].
 qed.
 print_proof!.
-extract "extraction/cramer_shoup_long.ec".
+extract "extraction/cramer_shoup.ec".

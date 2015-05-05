@@ -2,13 +2,7 @@ adversary A1 : () -> G.
 operator H : (G * G * G) -> Fq.
 
 bound_succ
-  [ w  <-$ Fq;
-    x1 <-$ Fq;
-    x2 <-$ Fq;
-    y1 <-$ Fq;
-    y2 <-$ Fq;
-    z1 <-$ Fq;
-    z2 <-$ Fq;
+  [ w, x1, x2, y1, y2, z1, z2 <-$ Fq;
     (* public keys *)
     let p1 = g^(x1+w*x2);
     let p2 = g^(y1+w*y2);
