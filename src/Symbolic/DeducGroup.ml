@@ -20,11 +20,6 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
                  (pp_list "," (pp_pair pp_exp pp_inverter)) ecs pp_exp e));
 
   (* helper functions *)
-  let poly_of_expr e =
-    let (nom, denom) = polys_of_field_expr (CAS.norm id e) in
-    if denom<>None then failwith "solve_group: no support for rational functions";
-    nom
-  in
   let gexp e h =
     if is_FOne h then e
     else if is_FZ h then mk_GExp (mk_GGen (destr_G e.e_ty)) h
@@ -57,15 +52,33 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   (* returns polynomial and inverter transformer *)
   let group_to_poly_simp subtract e gn k_Fq =
     let exp = if is_GExp e then (snd (destr_GExp e)) else mk_GLog e in
-    let f = poly_of_expr exp in
+    let (f, mh) = polys_of_field_expr (CAS.norm id exp) in
+    let sub_f =
+      let (f,i_poly) = subtract_known f k_Fq in
+      if is_FNat i_poly
+      then (f, None)
+      else
+        let i_poly = if subtract then mk_FOpp i_poly else i_poly in
+        let inv = gexp (mk_GGen gn) i_poly in
+        (f, Some inv)
+    in
     (* NOTE: for now, we don't perform divide_known since this requires non-zero constraints *)
-    let (f,i_poly) = subtract_known f k_Fq in
-    if is_FNat i_poly
-    then (f, id)
-    else
-      let i_poly = if subtract then mk_FOpp i_poly else i_poly in
-      let inv_g = gexp (mk_GGen gn) i_poly in
-      (f, fun i -> I (gmult (expr_of_inverter i) inv_g))
+    match mh with
+    | None ->
+      let (f,minv) = sub_f in
+      (f, opt (fun inv -> fun i -> I (gmult (expr_of_inverter i) inv)) id minv)
+    | Some h0 ->
+      let (h,i_poly_h) = subtract_known h0 k_Fq in
+      let (f,minv) = sub_f in
+      if not (EP.equal EP.zero h)
+      then (
+        log_i (lazy (fsprintf "unknown denominator %a" EP.pp h0));
+        raise Not_found
+      ) else (
+        log_i (lazy (fsprintf "deduced denominator %a" EP.pp h0));
+        let inv_f = opt (fun inv -> fun i -> I (gmult (expr_of_inverter i) inv)) id minv in
+        (f, fun i -> I (gexp (expr_of_inverter (inv_f i)) (mk_FInv i_poly_h)))
+      )
   in
   let gt = destr_G e.e_ty in
 
