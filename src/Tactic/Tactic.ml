@@ -161,6 +161,7 @@ let handle_tactic ts tac =
     | PT.Rdist_sym             -> CR.t_dist_sym ju
     | PT.Rremove_ev(is)        -> CR.t_remove_ev is ju
     | PT.Rsplit_ev(i)          -> CR.t_split_ev (e_pos i) ju
+    | PT.Rsplit_ineq(i)        -> SimpRules.t_split_ineq (e_pos i) ju
     | PT.Rrewrite_ev(i,d)      -> CR.t_rw_ev (e_pos i) d ju
     | PT.Rcrush(finish,mi)     -> t_crush finish mi ts ps ju
   
@@ -371,7 +372,7 @@ let handle_tactic ts tac =
       SimpRules.t_ctx_ev_maybe mj ju
   
     | PT.Rsimp must_finish ->
-      SimpRules.t_simp must_finish 20 ts ju
+      SimpRules.t_simp must_finish 20 ju
   
     | PT.Rassm_comp(exact,maname,mrngs) ->
       t_assm_comp ts exact maname (ranges ju mrngs) ju

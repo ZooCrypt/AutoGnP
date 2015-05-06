@@ -101,8 +101,8 @@ let t_rewrite_oracle_maybe mopos mdir ju =
     guard (is_Eq e) >>= fun _ ->
     let (a,b) = destr_Eq e in
     msum
-      [ if (is_V a) then (ret LeftToRight) else mempty
-      ; if (is_V b) then (ret RightToLeft) else mempty ] >>= fun dir ->
+      [ if (is_V a || is_GLog a) then (ret LeftToRight) else mempty
+      ; if (is_V b || is_GLog b) then (ret RightToLeft) else mempty ] >>= fun dir ->
     ret (opos,dir)
   ) >>= fun (opos,dir) ->
   (CR.t_ensure_progress (CR.t_rewrite_oracle opos dir)) ju
@@ -127,7 +127,38 @@ let t_fix must_finish max t ju =
   in
   aux max ps0
 
-let t_simp i must_finish _ts ju =
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Simp and split inequality on n-tuples to obtain n proof obligations} *)
+
+let rec t_split_ineq i ju =
+  let rn = "split_ev" in
+  let se = ju.ju_se in
+  let ev = se.se_ev in
+  let evs = destr_Land_nofail ev in
+  if i < 0 || i >= L.length evs then
+    tacerror "%s: invalid event position %i" rn i;
+  let b = L.nth evs i in
+  let eqs =
+    if not (is_InEq b)
+      then tacerror "rsplit_ev: bad event, expected equality";
+    let (e1,e2) = destr_Eq (destr_Not b) in
+    if not (is_Tuple e1 && is_Tuple e2)
+      then tacerror "rsplit_ev: bad event, expected tuples, %a and %a" pp_exp e1 pp_exp e2;
+    let es1, es2 = destr_Tuple e1, destr_Tuple e2 in
+    if not (L.length es1 = L.length es2)
+      then tacerror "rsplit_ev: bad event, got tuples of different lengths, %a and %a" pp_exp e1 pp_exp e2;
+    L.map (fun (e1,e2) -> mk_Eq e1 e2) (L.combine es1 es2)
+  in
+  (* delay inequalities with too many variables *)
+  let eqs,deqs = L.partition (fun e -> Se.cardinal (e_vars e) < 10) eqs in
+  let rec tac eqs =
+    match eqs with
+    | []      -> t_simp true 20
+    | eq::eqs -> CR.t_case_ev eq @>> [ tac eqs; CR.t_id ]
+  in
+  tac (eqs@deqs) ju
+
+and t_simp i must_finish ju =
   let step =
     (   (t_norm ~fail_eq:true @|| CR.t_id)
      @> (    CR.t_false_ev 

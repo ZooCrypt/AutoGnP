@@ -6,6 +6,7 @@ open Util
 open Nondet
 open Syms
 open Expr
+(* open ExprUtils *)
 open Game
 open Rules
 open CoreTypes
@@ -25,6 +26,7 @@ let log_t ls  = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
 let _log_d ls = mk_logger "Logic.Crush" Bolt.Level.DEBUG "CrushRules" ls
 let log_i ls  = mk_logger "Logic.Crush" Bolt.Level.INFO  "CrushRules" ls
 (*i*)
+
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Automated crush tactic} *)
@@ -96,7 +98,7 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
   let ias = psi.psi_assms in
   let irvs = psi.psi_rvars in
   let iorvs = psi.psi_rvars in
-  let icases = psi.psi_cases in
+  (* let icases = psi.psi_cases in *)
   (*i let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in i*)
   let t_after_simp ju =
     let (ses,unqstates,is_old) =
@@ -124,12 +126,12 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
     CR.t_id ju
   in
   let t_prepare =
-    (   (CR.t_ensure_progress (t_simp false 40 ts) @|| CR.t_id)
+    (   (CR.t_ensure_progress (t_simp false 40) @|| CR.t_id)
         @> (t_norm ~fail_eq:true @|| CR.t_id))
   in
   let t_close ju =
     ( (t_random_indep ts false @> t_log "random_indep")
-      @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp")) ju
+      (* @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp") *) ) ju 
   in
   let t_progress = 
        (t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None None

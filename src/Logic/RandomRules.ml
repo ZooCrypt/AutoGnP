@@ -179,7 +179,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
           CR.t_remove_ev [ev_idx]) ju
        in
        let discharge ju =
-         SimpRules.t_simp true 20 ts ju
+         SimpRules.t_simp true 20 ju
        in
        (CR.t_rnd i (v2,e1') (v2,e2') @>
         CR.t_case_ev ~allow_existing:true (mk_Eq ze mk_FZ) @>> [ discharge; simp_guard ]) ju

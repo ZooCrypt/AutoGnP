@@ -133,6 +133,7 @@ type tactic =
   | Rremove_ev     of int list
   | Rrewrite_ev    of int * direction
   | Rsplit_ev      of int
+  | Rsplit_ineq    of int
   | Deduce         of bool * parse_expr list * parse_expr
   | FieldExprs     of parse_expr list
 

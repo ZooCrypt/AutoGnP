@@ -7,6 +7,79 @@
   let unterminated_string () =
     raise (Error "unterminated string")
 
+  let keyword_table = Hashtbl.create 53
+  let _ =
+    List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
+      [ "split_ineq", RSPLIT_INEQ
+      ; "case_ev", RCASE_EV
+      ; "adversary", ADVERSARY
+      ; "admit", ADMIT
+      ; "last", LAST
+      ; "qed", QED
+      ; "back", BACK
+      ; "oracle",ORACLE
+      ; "operator", OPERATOR
+      ; "assumption", ASSUMPTION
+      ; "assumption_decisional", ASSUMPTION_DECISIONAL
+      ; "assumption_computational", ASSUMPTION_COMPUTATIONAL
+      ; "random", RANDOM
+      ; "bilinear", BILINEAR
+      ; "map", MAP
+      ; "succ", SUCC
+      ; "adv", ADV
+      ; "bound_dist", BOUNDDIST
+      ; "bound_succ", BOUNDSUCC
+      ; "bound_adv", BOUNDADV
+      ; "print_goals", PRINTGOALS
+      ; "print_goal", PRINTGOAL
+      ; "print_proof", PRINTPROOF
+      ; "print_debug", PRINTDEBUG
+      ; "print_games", PRINTGAMES
+      ; "print_game", PRINTGAME
+      ; "norm_unknown", RNORM_UNKNOWN
+      ; "norm_solve", RNORM_SOLVE
+      ; "norm", RNORM
+      ; "add_test", RADD_TEST
+      ; "hybrid", RHYBRID
+      ; "remove_ev", RREMOVE_EV
+      ; "dist_sym", RDIST_SYM
+      ; "dist_eq", RDIST_EQ
+      ; "norm_nounfold", RNORM_NOUNFOLD
+      ; "abstract" , RLET_ABSTRACT
+      ; "unfold" , RLET_UNFOLD
+      ; "subst", RSUBST
+      ; "inf", INFTHEO
+      ; "ppt", PPT
+      ; "rename", RRENAME
+      ; "assert", ASSERT
+      ; "rewrite_oracle" , RREWRITE_ORACLE
+      ; "rewrite_ev", RREWRITE_EV
+      ; "crush", RCRUSH
+      ; "deduce", DEDUCE
+      ; "field_exprs", LISTFE
+      ; "bycrush", BYCRUSH
+      ; "simp", RSIMP
+      ; "bysimp", BYSIMP
+      ; "split_ev", RSPLIT_EV
+      ; "false_ev", RFALSE_EV
+      ; "with" , WITH
+      ; "except", REXCEPT
+      ; "except_oracle", REXCEPT_ORACLE
+      ; "rnd", RRND
+      ; "rnd_exp", RRND_EXP
+      ; "swap", RSWAP
+      ; "swap_main", RSWAP_MAIN
+      ; "conv", RCONV
+      ; "insert", RINSERT
+      ; "trans", RTRANS
+      ; "indep", RINDEP
+      ; "rnd_oracle", RRND_ORACLE
+      ; "bad", RBAD
+      ; "undo_back", UNDOBACK
+      ; "ctxt_ev", RCTXT_EV
+      ; "extract", EXTRACT
+      ; "return", RETURN
+      ]
 }
 
 let blank = [' ' '\t' '\r' '\n']
@@ -33,85 +106,13 @@ rule lex = parse
   | "log"   { LOG }
   | "true"  { TRUE }
   | "false" { FALSE }
+  | "trans*" { RTRANSSTAR }
 (*  | "in"    { IN }
     | "Log"   { QUERIES } *)
   | "let"   { LET }
   | "R:" { INRIGHT }
   | "LR:"  { INBOTH }
-  | "undo_back"  { UNDOBACK }
-  | "undo_back!"  { UNDOBACK_EXCL }
-  | "adversary" { ADVERSARY }
-  | "admit" { ADMIT }
-  | "last" { LAST }
-  | "qed" { QED }
-  | "back" { BACK }
-  | "oracle" { ORACLE }
-  | "operator" { OPERATOR }
-  | "assumption" { ASSUMPTION }
-  | "assumption_decisional" { ASSUMPTION_DECISIONAL }
-  | "assumption_computational" { ASSUMPTION_COMPUTATIONAL }
-  | "random" { RANDOM }
-  | "bilinear" { BILINEAR }
-  | "map" { MAP }
-  | "succ" { SUCC }
-  | "adv" { ADV }
-  | "bound_dist" { BOUNDDIST }
-  | "bound_succ" { BOUNDSUCC }
-  | "bound_adv" { BOUNDADV }
-  | "print_goals" { PRINTGOALS }
-  | "print_goal" { PRINTGOAL }
-  | "print_proof" { PRINTPROOF }
-  | "print_proof!" { PRINTPROOF_EX }
-  | "print_debug" { PRINTDEBUG }
-  | "print_games" { PRINTGAMES }
-  | "print_game" { PRINTGAME }
-
-  | "norm_unknown" { RNORM_UNKNOWN }
-  | "norm_solve" { RNORM_SOLVE }
-  | "norm" { RNORM }
-  | "add_test" { RADD_TEST }
-  | "case_ev" { RCASE_EV }
-  | "hybrid" { RHYBRID }
-  | "remove_ev" { RREMOVE_EV }
-  | "dist_sym" { RDIST_SYM }
-  | "dist_eq" { RDIST_EQ }
-  | "norm_nounfold" { RNORM_NOUNFOLD }
   | "abstract*"  { RLET_ABSTRACT_DEDUCE }
-  | "abstract"  { RLET_ABSTRACT }
-  | "unfold"  { RLET_UNFOLD }
-  | "subst" { RSUBST }
-  | "inf" { INFTHEO }
-  | "ppt" { PPT }
-  | "rename" { RRENAME }
-  | "assert" { ASSERT }
-  | "rewrite_oracle"  { RREWRITE_ORACLE }
-  | "rewrite_ev" { RREWRITE_EV }
-  | "crush" { RCRUSH }
-  | "deduce" { DEDUCE }
-  | "field_exprs" { LISTFE }
-  | "bycrush" { BYCRUSH }
-  | "simp" { RSIMP }
-  | "bysimp" { BYSIMP }
-  | "split_ev" { RSPLIT_EV }
-  | "false_ev" { RFALSE_EV }
-  | "with"  { WITH }
-  | "except" { REXCEPT }
-  | "except_oracle" { REXCEPT_ORACLE }
-  | "rnd" { RRND }
-  | "rnd_exp" { RRND_EXP }
-  | "swap" { RSWAP }
-  | "swap_main" { RSWAP_MAIN }
-  | "conv" { RCONV }
-  | "insert" { RINSERT }
-  | "trans*" { RTRANSSTAR }
-  | "trans" { RTRANS }
-  | "indep" { RINDEP }
-  | "rnd_oracle" { RRND_ORACLE }
-  | "bad" { RBAD }
-  | "ctxt_ev" { RCTXT_EV }
-(*  | "exists"    { EXISTS } *)
-  | "extract" { EXTRACT }
-  | "return" { RETURN }
   | "L_"
     (['A'-'Z']
      ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
@@ -125,8 +126,9 @@ rule lex = parse
   | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z' 'A'-'Z' ]
-    ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
-    as s { ID s }
+    ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s
+    { try Hashtbl.find keyword_table s
+      with Not_found -> ID s }
   | ":"     { COLON }
   | ";"     { SEMICOLON }
   | "?"     { QUESTION }

@@ -116,7 +116,6 @@
 %token PRINTGOALS
 %token PRINTGOAL
 %token PRINTPROOF
-%token PRINTPROOF_EX
 %token PRINTDEBUG
 %token PRINTGAME
 %token PRINTGAMES
@@ -145,6 +144,7 @@
 %token RFALSE_EV
 %token RREWRITE_EV
 %token RSPLIT_EV
+%token RSPLIT_INEQ
 %token RREMOVE_EV
 %token RLET_ABSTRACT
 %token RLET_ABSTRACT_DEDUCE
@@ -162,7 +162,6 @@
 %token LAST
 %token BACK
 %token UNDOBACK
-%token UNDOBACK_EXCL
 %token QED
 %token EXTRACT
 %token DEDUCE
@@ -396,14 +395,12 @@ proof_command :
 | ADMIT                          { Admit }
 | LAST                           { Last }
 | BACK                           { Back }
-| UNDOBACK                       { UndoBack(false) }
-| UNDOBACK_EXCL                  { UndoBack(true) }
+| UNDOBACK b=boption(EXCL)       { UndoBack(b) }
 | QED                            { Qed }
 | EXTRACT s=STRING               { Extract s }
 | PRINTGOALS COLON i=ID          { PrintGoals(i) }
 | PRINTGOAL COLON i=ID           { PrintGoal(i) }
-| PRINTPROOF                     { PrintProof(false) }
-| PRINTPROOF_EX                  { PrintProof(true) }
+| PRINTPROOF b=boption(EXCL)     { PrintProof(b) }
 | PRINTGOALS                     { PrintGoals("") }
 | PRINTDEBUG s=STRING            { Debug s }
 | PRINTGAME s=STRING             { PrintGame s }
@@ -521,6 +518,7 @@ tactic :
 /* events */
 | RREMOVE_EV is=gpos+                { Rremove_ev(is) }
 | RSPLIT_EV i=gpos                   { Rsplit_ev(i) }
+| RSPLIT_INEQ i=gpos                 { Rsplit_ineq(i) }
 | RCASE_EV e=uopt(expr)              { Rcase_ev(e) }
 | RREWRITE_EV i=gpos d=dir?          { Rrewrite_ev(i,from_opt LeftToRight d) }
 | RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Rctxt_ev(oj,c) }
