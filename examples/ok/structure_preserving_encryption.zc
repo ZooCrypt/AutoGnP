@@ -75,6 +75,7 @@ bound_adv
     };
 
 ] : (beta = beta').
+
 norm.
 
 (* Apply DLIN for g1, g2, g3, r, s *)
@@ -83,7 +84,7 @@ assumption_decisional! dlin -> t; ///=.
 
 (* sample exponents for g1, g2, and g3 *)
 rnd_exp (g1 e1) (g2 e2) (g3 e3).
-except e1 [0]. except e2 [0]. //; //=.
+except e1 [0]. except e2 [0]. except e3 [0]. except t [r + s]. //; //=.
 
 (* make view of adversary A1 independent of b*3 and a3 *)
 rnd! b01 _ _; //. rnd! b02 _ _; //.
@@ -95,28 +96,18 @@ rnd! b51 _ _; //. rnd! b52 _ _; //.
 rnd! a1 _ _;  //. rnd! a2 _ _;  //.
 
 add_test (28,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A3 gu1 gu2 gu3 gc gv gL.
-  rewrite_oracle (28,1,1) ->. simp. //.
-  swap b03 (28).
-  ctxt_ev 1 (u -> log(u)); //.
-  indep!.
-rewrite_oracle (28,1,1) ->. //; //=.
-add_test (30,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 gu3 gc gv gL.
-  last. //.
-  rewrite_oracle (30,1,2) ->. simp. //.
-  except t [r + s]. except e3 [0].
-  rnd! a3 _ (a3 -> a3 * e3*(t - r - s) + log(beta?m0:m1) + a1*r + a2*s); //.
-  swap beta (30).
-  indep!.
-//. rewrite_oracle (30,1,2) ->. //.
-split_ev 1.
-(* make view of adversary independent of b{1,2,3,4,5}3 *)
-norm_solve b03. except t [r + s]. except e3 [0].
-rnd! b03 _ _; //.
-(* there are 6 possible inequalities, for 5 of them, we can use indep with a different variable *)
-case_ev (gu1 = g^(r*e1)). last. indep!.
-case_ev (gu2 = g^(s*e2)). last. indep!.
-case_ev (gu3 = g^(t*e3)). last. indep!.
-case_ev (gc = g^(log(beta?m0:m1) + a1*r + a2*s + a3*t*e3 + -(a3*r*e3) + -(a3*s*e3))). last. indep!.
-case_ev (gL = sL). last. indep!.
+  bycrush.
 simp; //.
+add_test (30,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 gu3 gc gv gL.
+  last. bycrush.
+simp; //.
+(* make view of adversary independent of b{1,2,3,4,5}3 *)
+rnd! b03 _ _. simp; //.
+split_ineq 1.
+  bysimp.
+  indep!.
+  indep!.
+  indep!.
+  indep!.
+indep!.
 qed.
