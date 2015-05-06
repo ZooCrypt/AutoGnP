@@ -22,7 +22,7 @@ let pp_debug a = Format.ifprintf Format.err_formatter a
 let ec_keyword = 
   [ "var"; "module"; "type"; "op"; "pred"; "lemma"; 
     "res"; "rnd"; "proc"; "fun"; "forall"; "exists"; 
-    "m"; "g1"; "e"; "tt"]
+    "m"; "g1"; "e"; "tt"; "beta"; "alpha"; "delta" ]
 
 let reloc_tbl = Hashtbl.create 0
 
@@ -52,10 +52,10 @@ let mk_fget file mem h f =
   let hi = Hsym.H.find file.hvar h in
   hi.h_fget mem f
 
-let string_of_op file = function
+let string_of_op file ty = function
   | GExp gv -> (gvar_mod file gv) ^ ".(^)"
   | GLog gv -> (gvar_mod file gv) ^ ".log"
-  | GInv    -> assert false
+  | GInv    -> (gvar_mod file (destr_G ty)) ^ ".( / )"
   | FOpp    -> "F.([-])"
   | FMinus  -> "F.(-)"
   | FInv    -> "F.inv"
@@ -65,10 +65,10 @@ let string_of_op file = function
   | Ifte    -> assert false
   | EMap _  -> assert false
 
-let op_of_op file = function
+let op_of_op file ty = function
   | GExp _  -> Opow
   | GLog gv -> Ostr ((gvar_mod file gv) ^ ".log")
-  | GInv    -> assert false
+  | GInv    -> Ostr ((gvar_mod file (destr_G ty)) ^ ".( / )")
   | FOpp    -> Oopp
   | FMinus  -> Osub
   | FInv    -> Ostr "F.inv"
@@ -118,7 +118,7 @@ let rec expression file e =
   | App(Ifte,[e1;e2;e3]) -> 
     Eif(expression file e1, expression file e2, expression file e3)
   | App(op,es) ->
-    Eapp(op_of_op file op, List.map (expression file) es)
+    Eapp(op_of_op file e.e_ty op, List.map (expression file) es)
   | Nary(Land, es) ->
     begin match List.rev es with
     | [] -> assert false
@@ -156,7 +156,7 @@ let rec formula file prefix mem
         formula file prefix mem ~local ~flocal e2, 
         formula file prefix mem ~local ~flocal e3)
   | App(op,es) ->
-    Fapp(op_of_op file op, List.map (formula file prefix mem ~local ~flocal) es)
+    Fapp(op_of_op file e.e_ty op, List.map (formula file prefix mem ~local ~flocal) es)
   | Nary(Land, es) ->
     begin match List.rev es with
     | [] -> assert false

@@ -111,3 +111,4 @@ split_ineq 1.
   indep!.
 indep!.
 qed.
+extract "extraction/structure_preserving_encryption.ec".
