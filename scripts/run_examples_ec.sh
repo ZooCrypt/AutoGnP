@@ -1,7 +1,9 @@
 #! /bin/sh
 
+set -x
+
 # set EC_CMD to override
-if [ -z ${EC_CMD} ]; then
+if [ -z "${EC_CMD}" ]; then
   EC_CMD="$HOME/easycrypt/ec.native"
 fi
 
