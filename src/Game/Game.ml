@@ -102,12 +102,12 @@ let pp_ilcmd ~nonum ~qual fmt (i,lc) =
 let pp_lcomp ~nonum ~qual fmt (e,m) =
   match m with
   | [] ->
-    F.fprintf fmt "%sreturn %a;"
+    F.fprintf fmt "%sreturn %a"
       (if nonum then "" else "1: ")
       (pp_exp_qual ~qual) e
       
   | _  ->
-    F.fprintf fmt "@[%a;@\n%sreturn %a;@]"
+    F.fprintf fmt "@[%a;@\n%sreturn %a@]"
       (pp_list ";@\n" (pp_ilcmd ~nonum ~qual))
       (num_list m)
       (if nonum then "" else F.sprintf "%i: " (L.length m + 1))
@@ -126,7 +126,7 @@ let pp_otype fmt ot =
   | Ohyb oht -> pp_ohtype fmt oht
 
 let pp_obody ~nonum osym ootype fmt (ms,e) =
-  F.fprintf fmt "[ %s@\n  @[<v>%a@] ]"
+  F.fprintf fmt "{ %s@\n  @[<v>%a@] }"
     (match ootype with None -> "" | Some ot -> "(* "^string_of_otype ot^" *)")
     (pp_lcomp ~nonum ~qual:(Qual osym)) (e,ms)
 
@@ -142,7 +142,7 @@ let pp_odecl ~nonum osym fmt od =
   | Ohybrid oh -> pp_ohybrid ~nonum osym fmt oh
 
 let pp_odef ~nonum fmt (o, vs, od) =
-  F.fprintf fmt "@[<v>%a(%a) = %a@]" 
+  F.fprintf fmt "@[<v>%a%a = %a@]" 
     Osym.pp o (pp_binder ~qual:(Qual o)) vs
     (pp_odecl ~nonum o) od
 

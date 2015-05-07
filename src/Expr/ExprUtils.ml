@@ -223,7 +223,7 @@ and pp_op_p ~qual above fmt (op, es) =
     in
     pp_maybe_paren true (notsep above) pp fmt ()
   | GInv, [a] ->
-    pp_prefix GInv  "inv("     ")"    a
+    pp_prefix GInv  ""      "^-1" a
   | _             -> failwith "pp_op: invalid expression"
 
 (** Pretty-prints n-ary operator assuming that

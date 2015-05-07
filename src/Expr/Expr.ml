@@ -172,7 +172,7 @@ let ty_Prod tys = mk_ty (Prod tys)
 let mk_V v = mk_e (V v) v.Vsym.ty
   
 let mk_H h e =
-  ensure_ty_equal e.e_ty h.Hsym.dom e None "mk_H";
+  ensure_ty_equal h.Hsym.dom e.e_ty e None (fsprintf "mk_H for %a" Hsym.pp h);
   mk_e (H(h,e)) h.Hsym.codom
 
 let mk_Tuple es =
