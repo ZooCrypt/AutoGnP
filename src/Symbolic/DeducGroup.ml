@@ -151,19 +151,26 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   (* search for inverter by performing division with remainder in different orders *)
   let open Nondet in
   let search () =
-    let k_Gt = Hep.fold (fun k _v l -> k::l) known_Gt [] in
+    let k_Gt =
+      Hep.fold (fun k _v l -> k::l) known_Gt []
+      |> L.filter (fun e -> not (EP.is_const e))
+    in
     let rec go f i_trans unused =
+      print_endline "HERE 3";
       log_i (lazy (fsprintf ">>> go\n  f = %a\n  i_trans = %a\n  unused = (%a)"
                      EP.pp f pp_inverter (i_trans (I (mk_V (Vsym.mk "<_>" e.e_ty))))
                      (pp_list "," EP.pp) unused));
 
       if EP.is_const f then (
+          print_endline "HERE 4";
         (* f is a constant, we are done *)
         ret (i_trans (I (gexp (mk_GGen gt) (exp_of_poly f))))
       ) else (
+        print_endline "HERE 5";
         (* choose unknown polynomial h that is known in exponent and try division *)
         mconcat unused >>= fun h ->
         let unused = L.filter (fun g -> not (EP.equal g h)) unused in
+        print_endline "HERE 6";
         let d = div_EP f h in
         let r = EP.(minus f (mult h d)) in
 
@@ -177,15 +184,18 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
       
         log_i (lazy (fsprintf "d simpl: %a @\n  with %a" EP.pp d pp_exp i_poly_d));
         log_i (lazy (fsprintf "r simpl: %a @\n  with %a" EP.pp r pp_exp i_poly_r));
-        if (EP.equal EP.zero d) then
+        if (EP.equal EP.zero d) then (
+          print_endline "HERE 1";
           let i_trans = fun i ->
             let e1 = gmult (expr_of_inverter i) (gexp (mk_GGen gt) i_poly_r) in
             let e2 = gexp (expr_of_inverter (Hep.find known_Gt h)) i_poly_d in
             i_trans (I (gmult e1 e2))
           in
+          print_endline "HERE 2";
           go r i_trans unused
-        else
+        ) else (
           mempty
+        )
       )
     in
     let f_exprs = Se.of_list (EP.vars f) in

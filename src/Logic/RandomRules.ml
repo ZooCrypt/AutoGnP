@@ -84,8 +84,13 @@ let contexts se rv mgen =
   let add_subterms e =
     e_iter_ty_maximal mk_Fq
       (fun fe ->
-        if not (is_V fe) && Se.mem re (e_vars fe) && not (L.mem fe !es)
-        then es := fe::!es)
+        let maybe_add fe =
+          if not (is_V fe) && Se.mem re (e_vars fe) && not (L.mem fe !es)
+          then es := fe::!es
+        in
+        if is_Ifte fe
+        then (let (_,e1,e2) = destr_Ifte fe in maybe_add e1; maybe_add e2)
+        else maybe_add fe)
       e
   in
   iter_gdef_exp add_subterms se.se_gdef;

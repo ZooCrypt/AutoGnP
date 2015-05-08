@@ -30,6 +30,7 @@ val is_App : op -> expr -> bool
 val is_FDiv : expr -> bool
 val is_FOpp : expr -> bool
 val is_GExp : expr -> bool
+val is_Ifte : expr -> bool
 val is_some_Nary : expr -> bool
 val is_Nary : nop -> expr -> bool
 val is_FPlus : expr -> bool

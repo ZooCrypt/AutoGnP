@@ -45,6 +45,8 @@ let is_FDiv e = is_App FDiv e
 
 let is_FOpp e = is_App FOpp e
 
+let is_Ifte e = is_App Ifte e
+
 let is_GExp e = match e.e_node with App(GExp _,_) -> true | _ -> false
 
 let is_some_Nary e = match e.e_node with Nary _ -> true | _ -> false
@@ -328,9 +330,9 @@ let destr_Land   e = destr_Nary   "Land" Land e
 
 let is_InEq e = is_Not e && is_Eq (destr_Not e)
 
-let destr_Ifte   e = 
+let destr_Ifte e = 
   match e.e_node with 
-  | App(Eq,[a;b;c]) -> (a,b,c) 
+  | App(Ifte,[a;b;c]) -> (a,b,c) 
   | _ -> raise (Destr_failure "Ifte")
 
 

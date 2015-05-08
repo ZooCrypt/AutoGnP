@@ -330,6 +330,7 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   in
   log_i (lazy (fsprintf "Abstracting %i lines@\n" abstract_len));
   let a_cmds = map_gdef_exp deduce a_cmds in
+  let sec = {sec with sec_ev = deduce sec.sec_ev } in
   t_conv true (set_se_ctxt (GLet(v,e)::a_cmds) sec) ju
 
   

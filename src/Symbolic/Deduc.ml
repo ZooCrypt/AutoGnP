@@ -22,6 +22,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   (** add an expression with the given inverter and also immediately
       add extractable subterms (e.g., components of tuple). *)
   let rec add_known e inv =
+    (* we might deduce non-normalized Ifte expressions such as b?g^a:g^b *)
+    let e = if is_Ifte e then Norm.norm_expr_strong e else e in
     if e_equal e to_ then raise (Found inv);
     if not (He.mem known e) && not (is_some_Cnst e) then (
       log_i (lazy (fsprintf "add_known: %a" pp_exp e));
@@ -99,8 +101,22 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | GExp _ | EMap _ ->
         (* solve_group used for ppt=true, solve_fq+construction otherwise *)
         if ppt
-        then ( add_sub_solver e; List.iter (register_subexprs true) es )
-        else ( add_sub_constr e; List.iter (register_subexprs false) es )
+        then (
+          add_sub_solver e; List.iter (register_subexprs true) es;
+          (* also add g^u and g^v if e=g^(b?u:v) *)
+          if (is_GExp e) then (
+            let (a,b) = destr_GExp e in
+            if (is_Ifte b) then (
+              let (c,u,v) = destr_Ifte b in
+              let e1 = mk_GExp a u in
+              let e2 = mk_GExp a v in
+              add_sub_solver e1; add_sub_solver e2;
+              add_sub_constr (mk_Ifte c e1 e2);
+            ) 
+          )
+        ) else (
+          add_sub_constr e; List.iter (register_subexprs false) es
+        )
       | GLog _ ->
         if ppt then add_sub_solver e
         else add_sub e; List.iter (register_subexprs false) es
