@@ -43,7 +43,7 @@ let ty_of_parse_ty ts pty =
     match pty with
     | Bool      -> T.mk_Bool
     | Fq        -> T.mk_Fq
-    | Prod(pts) -> T.mk_Prod (List.map go pts)
+    | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
@@ -55,7 +55,7 @@ let mk_Tuple es =
   | _ -> E.mk_Tuple es
 
 let bind_of_parse_bind (vmap : G.vmap) ts lH =
-  List.map
+  L.map
     (fun (s,h) ->
        let h =
          try Mstring.find h ts.ts_rodecls
@@ -90,11 +90,11 @@ let expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
                            (Ht.fold (fun qv _ acc -> (string_of_qvar qv)::acc) vmap [])))
       in
       E.mk_V v
-    | Tuple(es) -> E.mk_Tuple (List.map go es)
+    | Tuple(es) -> E.mk_Tuple (L.map go es)
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
-      let es = mk_Tuple (List.map go es) in
+      let es = mk_Tuple (L.map go es) in
       E.mk_H h es
     | SApp(s,[a;b]) when Mstring.mem s ts.ts_emdecls ->
       let es = Mstring.find s ts.ts_emdecls in
@@ -179,10 +179,10 @@ let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
   let vs =
     match osym.Osym.dom.Type.ty_node, vs with
     | Type.Prod([]), [] -> []
-    | Type.Prod(tys), vs when List.length tys = List.length vs ->
-      List.map
+    | Type.Prod(tys), vs when L.length tys = L.length vs ->
+      L.map
         (fun (v,t) -> create_var vmap_g ts (Qual oname) v t)
-        (List.combine vs tys)
+        (L.combine vs tys)
     | _, [v] ->
       [create_var vmap_g ts (Qual oname) v osym.Osym.dom]
     | _ ->
@@ -214,17 +214,23 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
     if not (Type.ty_equal e.E.e_ty asym.Asym.dom) then
       fail_parse "adversary argument has wrong type";
     let os = L.map (odef_of_parse_odef vmap ts) os in
-    begin match asym.Asym.codom.Type.ty_node, vs with
+    let cty = asym.Asym.codom in
+    begin match cty.Type.ty_node, vs with      
     | Type.Prod([]), [] ->
       G.GCall([], asym, e, os)
-    | Type.Prod(tys), vs when List.length tys = List.length vs ->
-      let vts = List.combine vs tys in
-      let vs = List.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
-      G.GCall(vs, asym, e, os)
     | _, [v] ->
       let v = create_var vmap ts Unqual v asym.Asym.codom in
       G.GCall([v], asym, e, os)
-    | _ -> assert false
+    | Type.Prod(tys), vs ->
+      if L.length tys <> L.length vs then
+        tacerror "Parser: wrong argument for adversary return value, expected %i variables for type %a"
+          (L.length vs)Type.pp_ty cty;
+      let vts = L.combine vs tys in
+      let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
+      G.GCall(vs, asym, e, os)
+    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int), ([] | _ :: _ :: _) -> 
+      tacerror "Parser: wrong argument for adversary return value, expected one variable for type Bool"
+          Type.pp_ty cty (L.length vs);
     end
 
 let gdef_of_parse_gdef (vmap : G.vmap) ts gd =
