@@ -4,7 +4,9 @@ require import Distr.
 require import FSet.
 
 
-
+lemma abs_add_minus x y y' z : 0%r <= x => y = y' => x <= z => `|((x + y) - y')| <= z
+by [].
+  
 lemma abs_minus_xx (x:real): `|x - x| = 0%r
 by [].
 

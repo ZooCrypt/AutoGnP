@@ -34,7 +34,8 @@ let    eq_lvl = next_lvl add_lvl
 let   not_lvl = next_lvl eq_lvl
 let   iff_lvl = next_lvl not_lvl
 let   and_lvl = next_lvl iff_lvl 
-let   imp_lvl = next_lvl and_lvl 
+let    or_lvl = next_lvl and_lvl
+let   imp_lvl = next_lvl or_lvl 
 let    if_lvl = next_lvl imp_lvl 
 let quant_lvl = next_lvl if_lvl 
 let   max_lvl = max_int 
@@ -93,6 +94,7 @@ let pp_at_mem fmt = function
 
 let rec pp_form_lvl outer fmt = function
   | Fv (v, m)     -> F.fprintf fmt "%a%a" pp_pvar v pp_at_mem m 
+  | Feqglob a     -> F.fprintf fmt "={glob %s}" a
   | Ftuple es     ->
     F.fprintf fmt "(@[<hov 1>%a@])" (pp_list ",@ " pp_form) es
   | Fproj (i,e)   ->
@@ -121,8 +123,9 @@ let rec pp_form_lvl outer fmt = function
       | Olt,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "<" e1 e2, eq_lvl
       | Oiff, [e1;e2] -> pp_infix_n pp_form_lvl iff_lvl "<=>" e1 e2, iff_lvl
       | Oand, [e1;e2] -> pp_infix_r pp_form_lvl and_lvl "/\\" e1 e2, and_lvl
+      | Oor,  [e1;e2] -> pp_infix_r pp_form_lvl or_lvl "\\/" e1 e2, or_lvl
       | Oimp, [e1;e2] -> pp_infix_r pp_form_lvl imp_lvl "=>" e1 e2, imp_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff | Oimp), _ -> 
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Oor | Onot | Oiff | Oimp), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -188,8 +191,9 @@ let rec pp_exp_lvl outer fmt = function
       | Olt,  [e1;e2] -> pp_infix_n pp_exp_lvl eq_lvl  "<" e1 e2, eq_lvl
       | Oiff, [e1;e2] -> pp_infix_n pp_exp_lvl iff_lvl "<=>" e1 e2, iff_lvl
       | Oand, [e1;e2] -> pp_infix_r pp_exp_lvl and_lvl "/\\" e1 e2, and_lvl
+      | Oor, [e1;e2]  -> pp_infix_r pp_exp_lvl or_lvl "/\\" e1 e2, or_lvl
       | Oimp, [e1;e2] -> pp_infix_r pp_exp_lvl imp_lvl "=>" e1 e2, imp_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Onot | Oiff | Oimp), _ -> 
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Oor | Onot | Oiff | Oimp), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
@@ -561,8 +565,9 @@ and pp_section file fmt s =
           a.adv_name a.adv_ty
           (pp_list ",@ " (fun fmt -> F.fprintf fmt "%s")) a.adv_restr
       in
-      F.fprintf fmt "section.@   @[<v>%a@ @ %a@]@ @ end section."
+      F.fprintf fmt "section.@   @[<v>%a@ %a@ @ %a@]@ @ end section."
         pp_adv_info l.adv_info
+        (pp_list "@ " (fun fmt -> F.fprintf fmt "%s")) l.adv_info.adv_ll
         (pp_cmds file) l.loca_decl
   in
   F.fprintf fmt "theory %s.@   @[<v>%a@ @ theory Local.@ @ %a@ @ %a@ end Local.@]@ end %s." 

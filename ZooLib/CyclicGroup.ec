@@ -109,6 +109,11 @@ theory Distr.
     mu_x dt s = (1%r/q%r).
 
   axiom lossless: weight dt = 1%r.
+
+  require import FSet.
+  import Dexcepted.
+  axiom loosless_excp x : weight (dt \ single x) = 1%r.
+
 end Distr.
 
 end CG.

@@ -173,6 +173,7 @@ theory FDistr.
 
   require import Distr.
   require import Real.
+  
   (* distrinution *)
   op dt: t distr.
 
@@ -183,6 +184,10 @@ theory FDistr.
     mu_x dt s = (1%r/q%r)%Real.
 
   axiom lossless: weight dt = 1%r.
+
+  require import FSet.
+  import Dexcepted.
+  axiom loosless_excp x : weight (dt \ single x) = 1%r.
 
 end FDistr.
 

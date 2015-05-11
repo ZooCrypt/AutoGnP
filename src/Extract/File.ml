@@ -28,6 +28,7 @@ type op =
  | Olt
  | Ostr of string
  | Oand
+ | Oor
  | Onot
 
 
@@ -48,6 +49,7 @@ let e_int0 = e_int 0
 let e_int1 = e_int 1
 let e_incr e = e_add e e_int1
 let e_lt e1 e2 = Eapp(Olt, [e1;e2])
+let e_true = Ecnst "true"
 
 let e_tuple es = 
   match es with
@@ -103,6 +105,7 @@ and mod_def = {
 
 type form = 
   | Fv of pvar * mem option
+  | Feqglob of string 
   | Ftuple of form list
   | Fproj of int * form
   | Fcnst of cnst
@@ -159,7 +162,8 @@ type adv_info = {
   adv_ty    : string;
   adv_oty   : string;
   mutable adv_restr : string list;
-  adv_g    : game_info 
+  adv_ll    : string list;
+  adv_g     : game_info;
 }
 
 
@@ -520,10 +524,20 @@ let init_adv_info file gdef =
         (aname, params, rty, List.map oOname os)::l) ginfo.ainfo [];
   } in
   add_top file (Cmodty aty);
+(* forall (O <: Orcl{A}), islossless A(O).aA2 *)
+  let lossless = 
+    List.map (fun (a,_,_,os) -> 
+      F.fprintf F.str_formatter "axiom %s_ll (O<:%s{%s}): " a oty_name a_name;
+      List.iter (fun (_,o) -> F.fprintf F.str_formatter "islossless O.%s =>" o) os;
+      F.fprintf F.str_formatter "islossless %s(O).%s." a_name a;
+      F.flush_str_formatter () 
+    ) aty.modt_proc in
+
   let adv_info =
     { adv_name  = a_name;
       adv_ty    = aty_name;
       adv_oty   = oty_name;
+      adv_ll    = lossless;
       adv_restr = [];
       adv_g = ginfo } in
   let section_loc = {

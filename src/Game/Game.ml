@@ -657,13 +657,15 @@ let read_odecl xs od =
 let read_odef (_,xs,odecl) =
   read_odecl xs odecl
 
+let read_odefs odefs = fold_union read_odef odefs
+
 (** Main body. *)
 
 let read_gcmd = function
   | GLet(_,e)         -> e_vars e 
   | GAssert(e)        -> e_vars e
   | GSamp(_,d)        -> read_distr d
-  | GCall(_,_,e,odefs) -> Se.union (e_vars e) (fold_union read_odef odefs)
+  | GCall(_,_,e,odefs) -> Se.union (e_vars e) (read_odefs odefs)
 
 let read_gcmds c = fold_union read_gcmd c
 
@@ -1116,6 +1118,12 @@ let is_call = function
   | _       -> false
 
 let has_call c = L.exists is_call c
+
+let is_assert = function
+  | GAssert _ -> true
+  | _         -> false
+
+let has_assert c =  L.exists is_assert c
 
 let destr_guard lcmd =
   match lcmd with

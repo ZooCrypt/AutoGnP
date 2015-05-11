@@ -228,6 +228,7 @@ val write_lcmd : lcmd -> Se.t
 val write_lcmds : lcmd list -> Se.t
 
 val read_odef : odef -> Se.t
+val read_odefs : odef list -> Se.t
 
 val read_gcmd : gcmd -> Se.t
 
@@ -336,5 +337,9 @@ val is_ppt_se : sec_exp -> bool
 val is_call : gcmd -> bool
 
 val has_call : gcmd list -> bool
+
+val is_assert : gcmd -> bool
+
+val has_assert : gcmd list -> bool
 
 val destr_guard : lcmd -> expr
