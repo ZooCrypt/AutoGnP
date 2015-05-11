@@ -142,8 +142,9 @@ let pp_odecl ~nonum osym fmt od =
   | Ohybrid oh -> pp_ohybrid ~nonum osym fmt oh
 
 let pp_odef ~nonum fmt (o, vs, od) =
-  F.fprintf fmt "@[<v>%a%a = %a@]" 
-    Osym.pp o (pp_binder ~qual:(Qual o)) vs
+  F.fprintf fmt "@[<v>%a(@[<hov 0>%a@]) = %a@]" 
+    Osym.pp o
+    (pp_list "," (Vsym.pp_qual ~qual:(Qual o))) vs
     (pp_odecl ~nonum o) od
 
 let pp_gcmd ~nonum fmt gc = match gc with
