@@ -13,7 +13,7 @@ OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -class
 .PHONY : clean all doc test\
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
-all: zoocrypt
+all: wszoocrypt
 
 stubs:
 	@test -d _build/c_src || mkdir -p _build/c_src
@@ -43,6 +43,8 @@ clean:
 
 zoocrypt : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) zoocrypt.native
+	#rm zoocrypt.log
+	#BOLT_CONFIG=log_bolt.config ./zoocrypt.native test.zc ; cat zoocrypt.log
 
 factory : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Factory.native
