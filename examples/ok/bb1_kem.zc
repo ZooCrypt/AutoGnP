@@ -3,7 +3,7 @@ bilinear map e : G * G -> G_t.
 adversary A1 : () -> Fq.
 adversary A2 : (G * G * G * G_t * G * G) -> Bool.
 
-oracle Kg1 : Fq -> (G * G).
+oracle Kg : Fq -> (G * G).
 
 (* DBDH assumption *)
 adversary A_dbdh : (G * G * G * G_t) -> Bool.
@@ -15,12 +15,14 @@ assumption dbdh
     b <- A_dbdh(g^c1, g^c2,g^c3, e(g,g)^t); ].
 
 bound_adv
-  [ i' <- A1();
-    (* master secret key *)
+  [ (* master secret key *)
     c, d, h <-$ Fq;
     let pk1 = g^c;
     let pk2 = g^d;
     let pk3 = g^h;
+    
+    i' <- A1();
+    
     (* encapsulate challenge session key *)
     b <-$ Bool;
     e' <-$ Fq;
@@ -32,23 +34,28 @@ bound_adv
     (* FIXME: required for proof, implement insert rule *)
     xxx <-$ Fq;
     b' <- A2(pk1,pk2,pk3,Kb,C1,C2)  with
-      Kg1(i) = {
+      Kg(i) = {
         i<>i';
         r <-$ Fq;
         return (g^(c*d + r*(d*i + h)), g^r)
       };
-  ] : b = b'.
-  swap c (1); swap d (2); swap e' (3).
-  rnd h _ (h -> h + d*i'); //.
+  ] : b = b'.                                          (* 1: initial game*)
+  //.                                                  (* 2. unfold definitions and simplify (we want to see polynomials *)
+     (* We want to apply dbdh, but cannot since c*d required in Kg,
+        IDEA: r fresh random variable in every query, use 'rnd' to make Kg indep of c*g
+              exponent equal to: c*d + r*(h + i*d)
+              r -> r - (c/i) would result in r*h + r*i*d + h*c/i ==> we could perform the reduction, BUT i might be zero
+              ==> use h to change coefficient polynomial (before just i) of r*d to something that is guaranteed to be non-zero
+              i - i' is actually guaranteed to be nonzero => ...
+              *)
+
+  rnd! h _ (h -> h + d*i'); //.                        (* 3. redefine mpk such that coeff of r is (h  *)
   rnd_oracle (9,1,2) _ (r -> r * (i - i') + c); //.
+  swap c (1); swap d (2); swap e' (3).
   assumption_decisional! dbdh -> tt; //.
-  rnd K1 (t : Fq -> g_t^t) _; //.
-  rnd! tt (tt -> tt + xxx) _; //.
-  rnd! t  (t -> t + xxx)   _; //.
-  (* FIXME: decide what to do with normal form of ifte: c?a:b -> check if norm(a) = norm(b), otherwise, push outwards?
-            or try to push more inwards? *)
-  trans* [ subst t (b?(xxx + tt):(xxx + t) -> (b?tt:t) + xxx) ]. admit.
-  rnd! xxx _ _.
+  (* BEGIN: if tt <-$ Fq; K1 <-$ G_t; return (b?g^tt:K1) equivalent to K1 <-$ G_t; return K1 *)
+  rnd! tt (tt -> tt + xxx) _; //. rnd! K1  (K1 -> K1 * g_t^xxx)   _. //.
+  (* END: *)
   bycrush.
 qed.
 print_proof.

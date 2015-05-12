@@ -14,6 +14,8 @@ val norm_expr_abbrev_strong : expr -> expr
 
 val norm_expr_nice : expr -> expr
 
+val norm_expr_conv : expr -> expr
+
 val remove_tuple_proj : expr -> expr
 
 (** [abbrev_ggen e] simplifies the expression [e] (e.g. for printing)

@@ -257,7 +257,6 @@ let mk_Ifte a b c =
   ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
   mk_App Ifte [a;b;c] b.e_ty
 
-
 let rec flatten nop es =
   let go e = match e.e_node with
     | Nary(nop1, es1) when nop1 = nop ->

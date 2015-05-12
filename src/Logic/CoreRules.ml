@@ -305,17 +305,28 @@ let rconv do_norm_terms new_se ju =
   (* perform renaming if required *)
   let se' = rename_if_required rn se' new_se' in
   (* check DivZero for unfolded+renamed and normalize (if requested) *)
-  let se',new_se' =
-    if not do_norm_terms then (se',new_se')
-    else (
+  if not do_norm_terms then (
+    ensure_gdef_eq  rn se'.se_gdef new_se'.se_gdef;
+    ensure_event_eq rn se'.se_ev   new_se'.se_ev;
+  ) else (
+      (* try strong version first *)
       wf_se CheckDivZero se';
       wf_se CheckDivZero new_se';
       let norm_rw = map_se_exp Norm.norm_expr_strong in
-      (norm_rw se', norm_rw new_se')
-    )
-  in
-  ensure_gdef_eq  rn se'.se_gdef new_se'.se_gdef;
-  ensure_event_eq rn se'.se_ev   new_se'.se_ev;
+      let se', new_se' = (norm_rw se', norm_rw new_se') in
+      (* try *)
+      ensure_gdef_eq  rn se'.se_gdef new_se'.se_gdef;
+      ensure_event_eq rn se'.se_ev   new_se'.se_ev
+      (*
+      with
+        _ ->
+          (* try version that deals better with if afterwards *)
+          let norm_rw = map_se_exp Norm.norm_expr_conv in
+          let se', new_se' = (norm_rw se', norm_rw new_se') in
+          ensure_gdef_eq  rn se'.se_gdef new_se'.se_gdef;
+          ensure_event_eq rn se'.se_ev   new_se'.se_ev
+      *)
+  );
   Rconv, [{ ju with ju_se = new_se }]
 
 let t_conv do_norm_terms new_se = prove_by (rconv do_norm_terms new_se)

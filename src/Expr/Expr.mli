@@ -70,6 +70,8 @@ val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
 exception TypeError of (ty *  ty * expr * expr option * string)
 
 val mk_V      : Vsym.t -> expr
+val mk_App    : op -> expr list -> ty -> expr
+val mk_Nary   : nop -> expr list -> expr
 val mk_H      : Hsym.t -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
