@@ -279,7 +279,13 @@ let wf_gdef ctype gdef0 =
   in
   go (mk_wfs ()) gdef0
 
+let check_binding ctype wfs ev = 
+  let check_binding1 (vs,os) = assert (ty_equal (ty_prod vs) os.Osym.dom) in
+  List.iter check_binding1 ev.ev_binding;
+  assert (ty_equal mk_Bool ev.ev_expr.e_ty);
+  wf_exp ctype wfs ev.ev_expr
+    
 let wf_se ctype se =
   let wfs = wf_gdef ctype se.se_gdef in
-  assert (ty_equal mk_Bool se.se_ev.e_ty);
-  wf_exp ctype wfs se.se_ev
+  check_binding ctype wfs se.se_ev
+

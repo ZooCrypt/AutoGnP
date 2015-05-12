@@ -162,7 +162,7 @@ type assm_comp = {
   ac_inf        : bool;         (*r information-theoretic assumption *)
   ac_type       : assm_type;
   ac_prefix     : gdef;         (*r prefix of assumption *)
-  ac_event      : Expr.expr;    (*r event expression *)
+  ac_event      : ev;    (*r event expression *)
   ac_acalls     : (Asym.t * Vsym.t list * expr) list;
    (*r adversary calls: asym, returned variables, and argument *)
   ac_symvars    : vs list list; (*r symmetric in given variables *)
@@ -218,7 +218,7 @@ let inst_comp ren assm =
   let subst_g = Game.subst_v_gdef ren_v in
   { assm with
     ac_prefix     = subst_g assm.ac_prefix;
-    ac_event      = subst_v_e ren_v assm.ac_event;
+    ac_event      = subst_v_ev ren_v assm.ac_event;
     ac_acalls     = L.map ren_acall assm.ac_acalls;
     ac_symvars    = L.map (L.map ren_v) assm.ac_symvars;
   }

@@ -57,8 +57,9 @@ type gcmd =
 (** Game definition. *)
 type gdef = gcmd list
 
-(** An event is just an expression. *)
-type ev = expr
+(** An event is just an quantified expression. *)
+type quant = Forall | Exists
+type ev = { ev_quant: quant; ev_binding: (vs list * os)list; ev_expr:expr }
 
 (** A security experiment consists of a game and an event. *)
 type sec_exp = { se_gdef : gdef; se_ev : ev }
@@ -174,12 +175,36 @@ let pp_gdef ~nonum fmt gd =
   else
     pp_list ";@;" pp_igcmd fmt (num_list gd)
 
+let pp_quant fmt = function
+  | Forall -> F.fprintf fmt "forall"
+  | Exists -> F.fprintf fmt "exists"
+
+let pp_binding1 fmt (vs,os) = 
+  let pp_bdecl fmt vs = 
+    match vs with
+    | [v] -> Vsym.pp fmt v
+    | _   -> F.fprintf fmt "(%a)" (pp_list "," Vsym.pp) vs in
+  F.fprintf fmt "%a in %a,"
+  pp_bdecl vs Osym.pp os
+
+let pp_binding = pp_list "" pp_binding1 
+
+let pp_ev fmt ev = 
+  if ev.ev_binding = [] then pp_exp fmt ev.ev_expr 
+  else
+    F.fprintf fmt "@[<hov>%a %a@ %a@]"
+      pp_quant ev.ev_quant
+      pp_binding ev.ev_binding
+      pp_exp ev.ev_expr
+
 let pp_se fmt se =
-  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:false) se.se_gdef pp_exp se.se_ev
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:false) se.se_gdef
+    pp_ev se.se_ev
 
 
 let pp_se_nonum fmt se =
-  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:true) se.se_gdef pp_exp se.se_ev
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:true) se.se_gdef 
+    pp_ev se.se_ev
 
 let pp_ps fmt ps =
   let se_idxs =
@@ -230,8 +255,10 @@ let map_gcmd_exp f gcmd = match gcmd with
 
 let map_gdef_exp f gdef = L.map (map_gcmd_exp f) gdef
 
+let map_ev_exp f ev = { ev with ev_expr = f ev.ev_expr }
+
 let map_se_exp f se =
-  { se_gdef = map_gdef_exp f se.se_gdef; se_ev = f se.se_ev }
+  { se_gdef = map_gdef_exp f se.se_gdef; se_ev = map_ev_exp f se.se_ev }
 
 (** iter *)
 
@@ -283,7 +310,7 @@ let iter_gdef_exp ?iexc:(iexc=false) f gdef =
   L.iter (iter_gcmd_exp_orcl ~iexc f) gdef
 
 let iter_se_exp ?iexc:(iexc=false) f se =
-  iter_gdef_exp ~iexc f se.se_gdef; f se.se_ev
+  iter_gdef_exp ~iexc f se.se_gdef; f se.se_ev.ev_expr
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Positions and replacement functions} *)
@@ -522,8 +549,8 @@ let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
 
 let iter_ctx_se_exp ?iexc:(iexc=false) f se =
   let nz = iter_ctx_gdef_exp ~iexc f se.se_gdef in
-  if is_Land se.se_ev then (
-    let conjs = destr_Land se.se_ev in
+  if is_Land se.se_ev.ev_expr then (
+    let conjs = destr_Land se.se_ev.ev_expr  in
     let (ineqs,eqs) = L.partition is_Not conjs in
     let nonZero = ref nz in
     let _ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
@@ -539,7 +566,7 @@ let iter_ctx_se_exp ?iexc:(iexc=false) f se =
     L.iter (f ctx) eqs
   ) else (
     let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
-    f ctx se.se_ev
+    f ctx se.se_ev.ev_expr 
   )
 
 (*i ----------------------------------------------------------------------- i*)
@@ -603,9 +630,19 @@ let gcmd_equal i1 i2 =
 
 let gdef_equal c1 c2 = list_eq_for_all2 gcmd_equal c1 c2
 
+let ev_equal ev1 ev2 =
+  let b_equal (xs1,o1) (xs2,o2) = 
+    Osym.equal o1 o2 &&
+    try List.for_all2 Vsym.equal xs1 xs2
+    with Invalid_argument _ -> false in
+  ev1.ev_quant = ev2.ev_quant &&
+  e_equal ev1.ev_expr ev2.ev_expr &&
+  try List.for_all2 b_equal ev1.ev_binding ev2.ev_binding
+  with Invalid_argument _ -> false
+
 let se_equal se1 se2 =
   gdef_equal se1.se_gdef se2.se_gdef &&
-    e_equal se1.se_ev se2.se_ev
+    ev_equal se1.se_ev se2.se_ev
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Read and write variables } *)
@@ -686,7 +723,7 @@ let asym_gcmds gcmds =
 
 (** Sedgments. *)
 
-let read_se se = Se.union (read_gcmds se.se_gdef) (e_vars se.se_ev)
+let read_se se = Se.union (read_gcmds se.se_gdef) (e_vars se.se_ev.ev_expr)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Variable occurences} *) 
@@ -909,8 +946,11 @@ let subst_v_gc tov = function
 
 let subst_v_gdef tov = L.map (subst_v_gc tov)
 
+let subst_v_ev tov ev = 
+  { ev with ev_expr = subst_v_e tov ev.ev_expr }
+ 
 let subst_v_se tov se =
-  { se_gdef = subst_v_gdef tov se.se_gdef; se_ev = subst_v_e tov se.se_ev }
+  { se_gdef = subst_v_gdef tov se.se_gdef; se_ev = subst_v_ev tov se.se_ev }
 
 (** Renaming of variables. *)
 type renaming = vs Vsym.M.t
@@ -1056,7 +1096,7 @@ let norm_gdef ?norm:(nf=Norm.norm_expr_nice) g =
 let norm_se ?norm:(nf=Norm.norm_expr_nice) se =
   let g,s = norm_gdef ~norm:nf se.se_gdef in
   { se_gdef = g;
-    se_ev = nf (e_subst s se.se_ev) }
+    se_ev = {se.se_ev with ev_expr = nf (e_subst s se.se_ev.ev_expr) } }
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Probabilistic polynomial time} *)
@@ -1111,7 +1151,7 @@ let is_ppt_gcmd = function
 
 let is_ppt_gcmds c = L.for_all is_ppt_gcmd c
 
-let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt se.se_ev 
+let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt se.se_ev.ev_expr 
 
 let is_call = function
   | GCall _ -> true

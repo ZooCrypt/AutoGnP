@@ -94,7 +94,7 @@ let contexts se rv mgen =
       e
   in
   iter_gdef_exp add_subterms se.se_gdef;
-  add_subterms se.se_ev;
+  add_subterms se.se_ev.ev_expr;
   mconcat (L.rev !es) >>= fun e ->
   log_t (lazy (fsprintf "possible expr=%a@\n%!" pp_exp e));
 
@@ -163,7 +163,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
      let nz_in_ev () =
        let wfs = Wf.wf_gdef Wf.NoCheckDivZero se.se_gdef in
        try
-         let test_ev = mk_Land [se.se_ev; mk_Eq (mk_FDiv mk_FOne ze) mk_FOne] in
+         let test_ev = mk_Land [se.se_ev.ev_expr; mk_Eq (mk_FDiv mk_FOne ze) mk_FOne] in
          Wf.wf_exp Wf.CheckDivZero wfs test_ev;
          true
        with
@@ -176,7 +176,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
        let e2' = Norm.norm_expr_nice (e_replace re (mk_FMult [mk_FDiv re ze; gze]) e2) in
        let e1' = DeducField.solve_fq_vars_known e2' v2 in
        let simp_guard ju =
-         let ev_idx = L.length (destr_Land_nofail ju.ju_se.se_ev) -1 in
+         let ev_idx = L.length (destr_Land_nofail ju.ju_se.se_ev.ev_expr) -1 in
          (RewriteRules.t_let_unfold (L.length ju.ju_se.se_gdef - 1) @>
           CR.t_rw_ev ev_idx LeftToRight @>
           RewriteRules.t_subst 0 (mk_Ifte mk_False mk_FOne ze) ze None @>

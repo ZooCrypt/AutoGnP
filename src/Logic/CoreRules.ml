@@ -253,9 +253,9 @@ let ensure_gdef_eq rn a b =
       rn (pp_gdef ~nonum:false) a (pp_gdef ~nonum:false) b
 
 let ensure_event_eq rn e1 e2 =
-  if not (e_equal e1 e2) then
+  if not (ev_equal e1 e2) then
     tacerror "%s: events not equal, @\n@[<hov 2>  %a vs @ %a@]"
-      rn pp_exp e1 pp_exp e2
+      rn pp_ev e1 pp_ev e2
 
 let ensure_ren_inj rn ren =
   if not (ren_injective ren) then
@@ -447,7 +447,7 @@ let rrnd p c1 c2 ju =
     let subst e = e_replace rv (mk_V vslet) e in
     let sec = { sec with
                 sec_right = map_gdef_exp subst sec.sec_right;
-                sec_ev    = subst sec.sec_ev }
+                sec_ev    = map_ev_exp subst sec.sec_ev }
     in
     Rrnd(p,nrvs,c1,c2), [ { ju with ju_se = set_se_ctxt cmds sec } ]
   | _ ->
@@ -484,7 +484,7 @@ let rrnd_oracle p c1 c2 ju =
     let sec =
       { seoc.seoc_sec with
         sec_right = map_gdef_exp subst seoc.seoc_sec.sec_right;
-        sec_ev    = subst seoc.seoc_sec.sec_ev }
+        sec_ev    = map_ev_exp subst seoc.seoc_sec.sec_ev }
     in
     let seoc =
       { seoc with
@@ -511,7 +511,9 @@ let rassert p e ju =
   let cmds = [ GAssert(e); cmd ] in
   let ju1 =
     { ju_pr = Pr_Succ;
-      ju_se = { se with se_ev = mk_Land [se.se_ev; mk_Not e]; } }
+      ju_se = { se with se_ev = 
+                { se.se_ev with 
+                  ev_expr = mk_Land [se.se_ev.ev_expr; mk_Not e]; } } }
   in
   let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
   Rassert(p,e), [ ju1; ju2 ]
@@ -554,7 +556,7 @@ let merge_base_event ev1 ev2 =
 let rmerge_ev i j ju =
   let se = ju.ju_se in
   let i,j = if i <= j then i, j else j, i in
-  let evs = destr_Land_nofail se.se_ev in
+  let evs = destr_Land_nofail se.se_ev.ev_expr in
   let l,b1,r = Util.split_n i evs in
   let l',b2,r =
     if i = j then [], b1, r
@@ -562,7 +564,7 @@ let rmerge_ev i j ju =
   in
   let ev = merge_base_event b1 b2 in
   let evs = L.rev_append l (L.rev_append l' (ev::r)) in
-  let new_se = {se with se_ev = mk_Land evs} in
+  let new_se = {se with se_ev = { se.se_ev with ev_expr = mk_Land evs} } in
   Rmerge_ev(i,j), [ { ju with ju_se = new_se } ]
 
 let t_merge_ev i j = prove_by (rmerge_ev i j)
@@ -574,7 +576,7 @@ let rsplit_ev i ju =
   let rn = "split_ev" in
   let se = ju.ju_se in
   let ev = se.se_ev in
-  let evs = destr_Land_nofail ev in
+  let evs = destr_Land_nofail ev.ev_expr in
   if i < 0 || i >= L.length evs then
     tacerror "%s: invalid event position %i" rn i;
   let l,b,r = Util.split_n i evs in
@@ -590,7 +592,7 @@ let rsplit_ev i ju =
     L.map (fun (e1,e2) -> mk_Eq e1 e2) (L.combine es1 es2)
   in
   let evs = l@b@r in
-  let new_se = { se with se_ev = mk_Land evs } in
+  let new_se = { se with se_ev = { se.se_ev with ev_expr = mk_Land evs }} in
   Rsplit_ev(i), [ { ju with ju_se = new_se } ]
 
 let t_split_ev i = prove_by (rsplit_ev i)
@@ -602,7 +604,7 @@ let rrw_ev i d ju =
   let rn = "rewrite_ev" in
   let se = ju.ju_se in
   let ev = se.se_ev in
-  let evs = destr_Land_nofail ev in
+  let evs = destr_Land_nofail ev.ev_expr in
   if i < 0 || i >= L.length evs then
     tacerror "%s: invalid event position %i" rn i;
   let l,b,r = Util.split_n i evs in
@@ -620,7 +622,7 @@ let rrw_ev i d ju =
   in
   let subst e = e_replace u v e in
   let evs = (L.map subst l |> L.rev)@[b]@(L.map subst r) in
-  let new_se = { se with se_ev = mk_Land evs } in
+  let new_se = { se with se_ev = {se.se_ev with ev_expr = mk_Land evs } } in
   Rrw_ev(i,d), [ { ju with ju_se = new_se } ]
 
 let t_rw_ev i d = prove_by (rrw_ev i d)
@@ -638,7 +640,7 @@ let rswap_main ((i,j,k) as opos_eq) vname ju =
     let sec =
       { sec_left  = samp::seoc.seoc_sec.sec_left;
         sec_right = map_gdef_exp subst seoc.seoc_sec.sec_right;
-        sec_ev    = subst seoc.seoc_sec.sec_ev;
+        sec_ev    = map_ev_exp subst seoc.seoc_sec.sec_ev;
       }
     in
  
@@ -712,11 +714,13 @@ let conj_or_negation_included e ev =
 let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   let se = ju.ju_se in
   ensure_pr_Succ_or_Adv "case_ev" ju;
-  let ev = se.se_ev in
+  let ev = se.se_ev.ev_expr in
   if not ae && conj_or_negation_included e ev then
     tacerror "case_ev: event or negation already in event";
-  let ju1 = { ju with ju_se = { se with se_ev = mk_Land [ev;e] } } in
-  let ju2 = { ju with ju_se = { se with se_ev = mk_Land [ev; mk_Not e] } } in
+  let ju1 = { ju with ju_se =
+      { se with se_ev = { se.se_ev with ev_expr = mk_Land [ev;e] }}} in
+  let ju2 = { ju with ju_se = 
+      { se with se_ev = { se.se_ev with ev_expr = mk_Land [ev; mk_Not e] }}} in
   Rcase_ev(flip,e), if flip then [ju2; ju1] else [ju1;ju2]
 
 let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
@@ -728,7 +732,7 @@ let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
 let rctxt_ev i c ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
-  let ev = se.se_ev in
+  let ev = se.se_ev.ev_expr in
   let evs = destr_Land_nofail ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in
@@ -741,7 +745,7 @@ let rctxt_ev i c ju =
   let ev = mk_Land (L.rev_append l (b::r)) in
   let wfs = wf_gdef NoCheckDivZero (se.se_gdef) in
   wf_exp NoCheckDivZero wfs ev;
-  let new_ju = { se with se_ev = ev } in
+  let new_ju = { se with se_ev = { se.se_ev with ev_expr = ev } } in
   Rctxt_ev(i,c), [ { ju with ju_se = new_ju } ]
 
 let t_ctxt_ev i c = prove_by (rctxt_ev i c)
@@ -753,11 +757,12 @@ let rremove_ev (rm:int list) ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
   let evs =
-    destr_Land_nofail se.se_ev
+    destr_Land_nofail se.se_ev.ev_expr
     |> L.mapi (fun i e -> if L.mem i rm then None else Some e)
     |> cat_Some
   in
-  let new_ju = { se with se_ev = if evs = [] then mk_True else mk_Land evs } in
+  let new_ju = { se with se_ev = 
+      { se.se_ev with ev_expr = if evs = [] then mk_True else mk_Land evs }} in
   Rremove_ev rm, [ { ju with ju_se = new_ju } ]
 
 let t_remove_ev rm = prove_by (rremove_ev rm)
@@ -805,7 +810,7 @@ let t_dist_eq = prove_by rdist_eq
 
 let rfalse_ev ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
-  if is_False ju.ju_se.se_ev
+  if is_False ju.ju_se.se_ev.ev_expr
   then Rfalse_ev, []
   else tacerror "false_ev: event false expected"
 
@@ -815,6 +820,9 @@ let t_false_ev = prove_by rfalse_ev
 (** {\bf Bound random independence} *)
 
 let check_event r ev =
+  if ev.ev_binding <> [] 
+     then tacerror "indep: the event can not be quantified";
+  let ev = ev.ev_expr in
   let r = mk_V r in
   let rec aux i evs =
     match evs with
@@ -988,8 +996,9 @@ let rassm_dec dir ren rngs assm0 ju =
   (* check that event is equal to last returned variable *)
   let ev_is_last_returned = 
     match Util.last acalls_ju with
-    | GLet(vs,_) when e_equal se.se_ev (mk_V vs) -> true
-    | _                                          -> false
+    | GLet(vs,_) when e_equal se.se_ev.ev_expr (mk_V vs) &&
+                      se.se_ev.ev_binding = []         -> true
+    | _                                                -> false
   in
   if not ev_is_last_returned then
     tacerror "assm_dec: event must be equal to variable defined in last line";
@@ -1028,7 +1037,10 @@ let radd_test opos tnew asym fvs ju =
         seoc_avars = fvs;
         seoc_sec =
           { seoc.seoc_sec with
-            sec_ev = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]));
+            sec_ev = 
+              { ev_quant = Forall;
+                ev_binding = [];
+                ev_expr = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]))};
             sec_right = [] } }
     in
     let ju1 = {ju_se = set_se_octxt [LGuard(t)] seoc_bad; ju_pr = Pr_Succ } in

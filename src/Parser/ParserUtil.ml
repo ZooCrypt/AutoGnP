@@ -236,9 +236,14 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
 let gdef_of_parse_gdef (vmap : G.vmap) ts gd =
   L.map (fun gc -> gcmd_of_parse_gcmd vmap ts gc) gd
 
-let se_of_parse_se (vmap : G.vmap) ts gd e =
+let ev_of_parse_ev vmap ts (qual:string qual) pe0 = 
+  { G.ev_quant = G.Forall; 
+    G.ev_binding = [];
+    G.ev_expr = expr_of_parse_expr vmap ts qual pe0 }
+
+let se_of_parse_se (vmap : G.vmap) ts gd ev =
   let gd = gdef_of_parse_gdef vmap ts gd in
-  let e  = expr_of_parse_expr vmap ts Unqual e in
-  let se = { G.se_gdef = gd; G.se_ev = e } in
+  let ev  = ev_of_parse_ev vmap ts Unqual ev in
+  let se = { G.se_gdef = gd; G.se_ev = ev } in
   Wf.wf_se Wf.NoCheckDivZero se;
   se

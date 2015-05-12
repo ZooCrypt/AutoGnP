@@ -245,7 +245,7 @@ let t_let_abstract p vs e0 mupto do_norm_expr ju =
         se_ev = se.se_ev }
     | None ->
       { se_gdef = List.rev_append l (GLet(vs,e0)::map_gdef_exp subst r);
-        se_ev = subst se.se_ev }
+        se_ev = map_ev_exp subst se.se_ev }
   in
   t_conv true new_se ju
 
@@ -270,7 +270,7 @@ let t_subst p e1 e2 mupto ju =
         se_ev = se.se_ev }
     | None ->
       { se_gdef = L.rev_append l (map_gdef_exp subst r);
-        se_ev   = subst se.se_ev }
+        se_ev   = map_ev_exp subst se.se_ev }
   in
   log_t (lazy (fsprintf "t_subst before:@\n  %a@\n" pp_se se));
   log_t (lazy (fsprintf "t_subst after:@\n  %a@\n" pp_se new_se));
@@ -283,7 +283,7 @@ let t_let_unfold p ju =
     let subst a = e_replace (mk_V vs) e a in
     let sec = { sec with
                 sec_right = map_gdef_exp subst sec.sec_right;
-                sec_ev = subst sec.sec_ev }
+                sec_ev = map_ev_exp subst sec.sec_ev }
     in
     t_conv false (set_se_ctxt [] sec) ju
   | _ -> tacerror "rlet_unfold: no let at given position"
@@ -330,7 +330,8 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   in
   log_i (lazy (fsprintf "Abstracting %i lines@\n" abstract_len));
   let a_cmds = map_gdef_exp deduce a_cmds in
-  let sec = {sec with sec_ev = deduce sec.sec_ev } in
+  let sec = {sec with sec_ev = 
+               { sec.sec_ev with ev_expr = deduce sec.sec_ev.ev_expr }} in
   t_conv true (set_se_ctxt (GLet(v,e)::a_cmds) sec) ju
 
   

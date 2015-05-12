@@ -16,13 +16,12 @@ module Ht = Hashtbl
 (*let pp_debug a = Format.eprintf a*)
 let pp_debug a = Format.ifprintf Format.err_formatter a
 
-
 (** game translation *)
 let assertion = "assertion"
 let ec_keyword = 
   [ "var"; "module"; "type"; "op"; "pred"; "lemma"; 
     "res"; "rnd"; "proc"; "fun"; "forall"; "exists"; 
-    "m"; "g1"; "e"; "tt"; "beta"; "alpha"; "delta";
+    "m"; "g1"; "e"; "tt"; "beta"; "alpha"; "delta"; "arg";
     assertion
 ]
 
@@ -357,7 +356,7 @@ let add_assumption_comp file name assum =
         let args = destr_Tuple_nofail arg in
         Icall(List.map (pvar []) xs, (mA, asym_to_string  a), 
               List.map (expression file) args)) assum.Ass.ac_acalls in
-    let i_ret = [ Iasgn([res], expression file assum.Ass.ac_event)] in
+    let i_ret = [ Iasgn([res], expression file assum.Ass.ac_event.ev_expr)] in
     let main = {
       f_name = "main";
       f_def = Fbody {
@@ -444,7 +443,8 @@ let game ?(local=`Local) file g =
         f_param = [];
         f_local = [];
         f_res   = None;
-        f_body  = init_assert @ init_vcs @ instructions file (mod_name nA []) g;}
+        f_body  = init_assert @ init_vcs @ 
+                  instructions file (mod_name nA []) g;}
       } in
     let comp = 
       decl_assert @ cdecls@globs @ [MCmod m_orcl;
@@ -471,7 +471,7 @@ let init_section file name pft =
 let extract_pr_se ?(local=`Local) file mem se =
   let modm  = game ~local file se.se_gdef in
   let modma = {mn = modm.mod_name; ma = [adv_mod file]} in
-  let ev    = formula file [modm.mod_name] None se.se_ev in
+  let ev    = formula file [modm.mod_name] None se.se_ev.ev_expr in
   let ev    = 
     if Game.has_assert se.se_gdef then
       f_and (Fv(([modm.mod_name], assertion), None)) ev
@@ -1045,8 +1045,8 @@ let pr_conv sw1 ju1 ju ju' ju2 sw2 file =
   let info = 
     build_conv_proof nvc eqvc file g1 g2 ju.ju_se.se_gdef ju'.ju_se.se_gdef in 
   let forpost = 
-    if ExprUtils.is_False ju1.ju_se.se_ev 
-       || ExprUtils.is_False ju2.ju_se.se_ev then
+    if ExprUtils.is_False ju1.ju_se.se_ev.ev_expr 
+       || ExprUtils.is_False ju2.ju_se.se_ev.ev_expr then
       "progress[not];algebra*;elimIF;algebra*"
     else
       "progress;algebra*;elimIF;algebra*" in
@@ -1104,7 +1104,7 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
     | _, _ -> assert false in
 
   let eqfv =  
-    mk_eq_exprs file g1 g2 (Se.remove (mk_V x1) (e_vars ju1.ju_se.se_ev)) in
+    mk_eq_exprs file g1 g2 (Se.remove (mk_V x1) (e_vars ju1.ju_se.se_ev.ev_expr)) in
   let eqx = 
     f_eq (Fv (pvar [g1.mod_name] x1, Some "1"))
          (Fv (pvar [g2.mod_name] x2, Some "2")) in
@@ -1668,7 +1668,7 @@ let bound_rnd_indep file pos ju =
     | _     -> assert false (* FIXME *) in
   let isize = f_rinv (Frofi size) in
   assert (l = []);
-  let evs = destr_Land_nofail ju.ju_se.se_ev in
+  let evs = destr_Land_nofail ju.ju_se.se_ev.ev_expr in
   let ev = List.nth evs pos in
   if is_Eq ev then isize, ev, lemma 
   else assert false (* FIXME exists *)
@@ -1774,7 +1774,7 @@ let extract_except file pos _l pft pft' =
     match Se.elements fv with
     | [] -> f_true
     | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
-  let fv = e_vars ju.ju_se.se_ev in
+  let fv = e_vars ju.ju_se.se_ev.ev_expr in
   let nA = adv_name file in
   let eqvc = mk_eq_vcs g2 adv vcs in
   let proof fmt () = 
@@ -1786,7 +1786,7 @@ let extract_except file pos _l pft pft' =
       F.fprintf fmt "  let %s = g.`%s.%s in@ "
         s adv.mod_name s) (Se.elements fv);
     F.fprintf fmt "  @[%a@].@ "
-      Printer.pp_form (formula file [] None ju.ju_se.se_ev);
+      Printer.pp_form (formula file [] None ju.ju_se.se_ev.ev_expr);
     F.fprintf fmt "cut H1 := %s.SD1_conseq_abs %s &m EV.@ " 
       clone_info.ci_as adv.mod_name;
     F.fprintf fmt "apply (real_le_trans _ _ _ _ H1)=>{H1}.@ ";
@@ -1893,7 +1893,7 @@ let add_adv_add_test_bad file seoc auxname asym infob info gb =
           let aname' = "a" ^ Asym.to_string seoc.seoc_asym in
           let body = 
             if Asym.equal an asym then
-              let varg = ([],"arg") in
+              let varg = ([],"___arg") in
               let vaux = ([],"aux") in
               let q  = Ecnst (q_oracle file seoc.seoc_osym) in 
               Fbody {
@@ -2304,7 +2304,7 @@ let rec extract_proof file pft =
   | Rctxt_ev (i,_) ->
     pp_debug "ctxt_ev@.";
     let pft' = List.hd pft.pt_children in
-    let ev = pft.pt_ju.ju_se.se_ev in
+    let ev = pft.pt_ju.ju_se.se_ev.ev_expr in
     let evs = destr_Land_nofail ev in
     let hs = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
     let proof _file fmt () = 
@@ -2415,7 +2415,7 @@ let rec extract_proof file pft =
     add_local file (Cclone lclone); 
     (* Perform all the lemma *)
     let pr = extract_pr file mem pft.pt_ju in
-    let ev = formula file [advOT.mod_name] None pft.pt_ju.ju_se.se_ev in
+    let ev = formula file [advOT.mod_name] None pft.pt_ju.ju_se.se_ev.ev_expr in
     let mOT s = Format.sprintf "%s.%s" tOT s in
     let tOTM = mOT "M" in
     let mOt1 = mod_name (mOT "Ot1") []  in
@@ -2468,7 +2468,7 @@ let rec extract_proof file pft =
     let proof fmt () = 
       let sadvOT = advOT.mod_name in
       let pp_E fmt () = 
-        let ev = pft.pt_ju.ju_se.se_ev in
+        let ev = pft.pt_ju.ju_se.se_ev.ev_expr in
         let fv = Se.elements (ExprUtils.e_vars ev) in
         let f = formula file [] None ev in
         let pp_let fmt v = 
@@ -2568,13 +2568,13 @@ let rec extract_proof file pft =
     pp_debug "rewrite ev@."; 
     let pft' = List.hd pft.pt_children in
     let is_not = 
-      let ev = pft.pt_ju.ju_se.se_ev in
+      let ev = pft.pt_ju.ju_se.se_ev.ev_expr in
       let evs = destr_Land_nofail ev in
       let _,b,_ = Util.split_n i evs in
       is_Not b in
  
     let pp_branch pft fmt dir = 
-      let ev = pft.pt_ju.ju_se.se_ev in
+      let ev = pft.pt_ju.ju_se.se_ev.ev_expr in
       let evs = destr_Land_nofail ev in
       let his = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
       let hi = Format.sprintf "H%i" i in

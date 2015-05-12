@@ -48,9 +48,12 @@ type gcmd =
 
 type gdef = gcmd list
 
-type ev = expr
+(** An event is just an quantified expression. *)
+type quant = Forall | Exists
+type ev = { ev_quant: quant; ev_binding: (vs list * os)list; ev_expr:expr }
 
-type sec_exp = { se_gdef : gdef; se_ev : ev; }
+(** A security experiment consists of a game and an event. *)
+type sec_exp = { se_gdef : gdef; se_ev : ev }
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Pretty printing} *)
@@ -83,6 +86,8 @@ val pp_se_nonum : F.formatter -> sec_exp -> unit
 
 val pp_se : F.formatter -> sec_exp -> unit
 
+val pp_ev : F.formatter -> ev -> unit
+
 val pp_ps : F.formatter -> sec_exp list -> unit
 
 (*i ----------------------------------------------------------------------- i*)
@@ -97,6 +102,8 @@ val map_odef_exp : (expr -> expr) -> odef -> odef
 val map_gcmd_exp : (expr -> expr) -> gcmd -> gcmd
 
 val map_gdef_exp : (expr -> expr) -> gdef -> gcmd list
+
+val map_ev_exp   :  (expr -> expr) -> ev -> ev 
 
 val map_se_exp : (expr -> expr) -> sec_exp -> sec_exp
 
@@ -210,6 +217,8 @@ val gcmd_equal : gcmd -> gcmd -> bool
 
 val gdef_equal : gdef -> gdef -> bool
 
+val ev_equal   : ev -> ev -> bool
+
 val se_equal : sec_exp -> sec_exp -> bool
 
 (*i ----------------------------------------------------------------------- i*)
@@ -255,6 +264,7 @@ val gdef_global_vars : gdef -> Vsym.S.t
 (* \hd{Variable renaming} *)
 
 val subst_v_e : (vs -> vs) -> expr -> expr
+val subst_v_ev : (vs -> vs) -> ev -> ev
 
 val subst_v_lc : (vs -> vs) -> lcmd -> lcmd
 

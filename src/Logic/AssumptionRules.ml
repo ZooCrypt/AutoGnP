@@ -134,12 +134,16 @@ let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
   let arg_e = Game.subst_v_e (fun vs -> Vsym.M.find vs ren) arg_e in
   let arg_v = Vsym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
   let pref_len = L.length assm_samps in
-  let ev_v = Vsym.mk (CR.mk_name ~name:"re" ju.ju_se) ju.ju_se.se_ev.e_ty in
+  if ju.ju_se.se_ev.ev_binding <> [] then 
+    tacerror "t_assm_dec: not quantificator allowed";
+  let ev = ju.ju_se.se_ev.ev_expr in
+  let ev_v = 
+    Vsym.mk (CR.mk_name ~name:"re" ju.ju_se) ev.e_ty in
   let max = L.length ju.ju_se.se_gdef in
   try
     ((*  t_print "after swapping, before unknown" *)
      (* @> t_print "after unknown" *)
-      t_let_abstract max ev_v ju.ju_se.se_ev None false
+      t_let_abstract max ev_v ev None false
       @> t_abstract_deduce ~keep_going:false ts (L.length assm_samps) arg_v arg_e None
       @> t_print log_i "after abstract* "
       @> (fun ju ->
@@ -466,11 +470,16 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
       match_samps
   in
   (* FIXME: use case_ev and rfalse to handle case with missing events *)
+  assert (assm.ac_event.ev_binding = []);
+  if (se.se_ev.ev_binding <> []) then 
+    tacerror " t_assm_comp_auto: quantifier not allowed";
+  let aev = assm.ac_event.ev_expr in
+  let ev = se.se_ev.ev_expr in
   let remove_events =
-    if not (is_Land assm.ac_event && is_Land se.se_ev) then ( [] )
+    if not (is_Land aev && is_Land ev) then ( [] )
     else (
-      let ctypes = L.map conj_type (destr_Land assm.ac_event) in
-      destr_Land se.se_ev
+      let ctypes = L.map conj_type (destr_Land aev) in
+      destr_Land ev
       |> L.mapi (fun i e -> (i,conj_type e))
       |> L.filter (fun (_,ct) -> not (L.mem ct ctypes))
       |> L.map fst
@@ -482,7 +491,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
     @> t_seq_fold excepts
     @> t_seq_fold swaps
   in
-  guard (not (is_Land assm.ac_event && not (is_Land se.se_ev))) >>= fun _ ->
+  guard (not (is_Land aev && not (is_Land ev))) >>= fun _ ->
   before_t_assm ju >>= fun ps ->
   CR.rapply_all
     (t_assm_comp_aux ~icases ts before_t_assm assm mev_e) ps >>= fun (ot,ps) ->

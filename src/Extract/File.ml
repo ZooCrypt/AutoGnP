@@ -225,6 +225,7 @@ let f_imp f1 f2 = Fapp(Oimp, [f1;f2])
 let f_eq f1 f2 = Fapp(Oeq,[f1;f2])
 let f_neq f1 f2 = f_not (f_eq f1 f2)
 let f_le f1 f2 = Fapp(Ole,[f1;f2])
+let f_lt f1 f2 = Fapp(Olt,[f1;f2])
 let f_and f1 f2 = Fapp(Oand, [f1; f2])
 let f_rsub f1 f2 = Fapp(Osub, [f1;f2])
 let f_radd f1 f2 = Fapp(Oadd, [f1;f2])
@@ -272,14 +273,6 @@ type assumption_comp_info = {
 
 type bmap_info = string
 
-(*type open_section = {
-          osection_name : string;
-  mutable game_trans   : (gdef * mod_def) list;
-  mutable osection_top     : cmd list;
-  mutable osection_glob : cmd list;
-  mutable osection_loc  : local_section option;
-}*)
-  
 type file = {
   mutable top_name : Sstring.t;
   levar : tvar_info Lenvar.H.t;
@@ -472,7 +465,7 @@ let game_info file gdef =
     let qname = top_name file ("q" ^ oname o) in
     add_top file (Cbound qname);
     add_top file (Clemma (false, qname^"_pos", 
-                          f_le f_r0 (Frofi (Fcnst qname)), None));
+                          f_lt f_r0 (Frofi (Fcnst qname)), None));
     let e = match od with Odef (_body,e) -> e | _ -> assert false (* FIXME *) in
     let info = { 
       obound  = qname; 

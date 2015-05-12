@@ -60,7 +60,7 @@ let gpos_of_offset ju i =
   if i < 0 then L.length ju.ju_se.se_gdef + i + 1 else i
 
 let epos_of_offset ju i =
-  let ev = ju.ju_se.se_ev in
+  let ev = ju.ju_se.se_ev.ev_expr in
   if i < 0 && is_Land ev
   then L.length (destr_Land ev) + i + 1
   else i
@@ -257,7 +257,7 @@ let handle_tactic ts tac =
               seoc_sec =
                 { sec_left = L.rev (L.rev_append cleft cright);
                   sec_right = L.map (map_gcmd_exp subst) seoc.seoc_sec.sec_right;
-                  sec_ev = subst seoc.seoc_sec.sec_ev; } }
+                  sec_ev = map_ev_exp subst seoc.seoc_sec.sec_ev; } }
           in
           let lcright = L.map (map_lcmd_exp subst) seoc.seoc_cright in
           let se = set_se_octxt [LSamp(vso,d)] { seoc with seoc_cright = lcright } in
@@ -269,9 +269,9 @@ let handle_tactic ts tac =
       t_swap_to_orcl ju
   
     | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
-      let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
+      let v = mk_new_var sv ju.ju_se.se_ev.ev_expr.e_ty in
       let max = L.length ju.ju_se.se_gdef in
-      t_let_abstract max v ju.ju_se.se_ev (map_opt get_pos mupto) (not no_norm) ju
+      t_let_abstract max v ju.ju_se.se_ev.ev_expr (map_opt get_pos mupto) (not no_norm) ju
   
     | PT.Rlet_abstract(_,_,_,_,_) ->
       tacerror "No placeholders or placeholders for both position and event"
@@ -279,17 +279,17 @@ let handle_tactic ts tac =
     | PT.Rconv(Some sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-      let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
+      let ev2 = PU.ev_of_parse_ev vmap2 ts Unqual sev in
       CR.t_conv true { se_gdef = gd2; se_ev = ev2 } ju
 
     | PT.Rconv(None,sev) ->
-      let ev2 = PU.expr_of_parse_expr vmap_g ts Unqual sev in
+      let ev2 = PU.ev_of_parse_ev vmap_g ts Unqual sev in
       CR.t_conv true { se_gdef = ju.ju_se.se_gdef; se_ev = ev2 } ju
   
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-      let ev2 = PU.expr_of_parse_expr vmap2 ts Unqual sev in
+      let ev2 = PU.ev_of_parse_ev vmap2 ts Unqual sev in
       CR.t_trans { se_gdef = gd2; se_ev = ev2 } ju
 
     | PT.Rtrans_diff(dcmds) ->
@@ -308,7 +308,7 @@ let handle_tactic ts tac =
           let a_cmds, sec = get_se_ctxt_len se ~pos:0 ~len:rn_len in
           let sigma v = if Vsym.equal v v1 then v2 else v in
           let a_cmds = subst_v_gdef sigma a_cmds in
-          let ev = if mupto=None then subst_v_e sigma sec.sec_ev else sec.sec_ev in
+          let ev = if mupto=None then subst_v_ev sigma sec.sec_ev else sec.sec_ev in
           app_diff dcmds { ju with ju_se = (set_se_ctxt a_cmds { sec with sec_ev = ev }) }
         | PT.Dsubst(p,e1,e2)::dcmds ->
           let p = get_pos p in
@@ -317,7 +317,8 @@ let handle_tactic ts tac =
           let subst a = e_replace e1 e2 a in
           let l,r = cut_n p se.se_gdef in
           let new_se = 
-            { se_gdef = L.rev_append l (map_gdef_exp subst r); se_ev   = subst se.se_ev }
+            { se_gdef = L.rev_append l (map_gdef_exp subst r); 
+              se_ev   = map_ev_exp subst se.se_ev }
           in
           app_diff dcmds { ju with ju_se = new_se }
         | PT.Dinsert(p,gcmds)::dcmds ->
@@ -348,7 +349,7 @@ let handle_tactic ts tac =
         | Some j -> j
         | None -> tacerror "position placeholder not allowed if context is given"
       in
-      let ev = ju.ju_se.se_ev in
+      let ev = ju.ju_se.se_ev.ev_expr in
       let b =
         match ev.e_node with
         | Nary(Land,es) when j < L.length es ->
@@ -547,7 +548,7 @@ let handle_instr verbose ts instr =
       with Not_found -> tacerror "unknown variable %s" s
     in
     let symvs = L.map (L.map parse_var) symvs in
-    let ev = PU.expr_of_parse_expr vmap ts Unqual ev in
+    let ev = PU.ev_of_parse_ev vmap ts Unqual ev in
     let assm = Assumption.mk_assm_comp s inf at g ev symvs in
     if Mstring.mem s ts.ts_assms_comp then
       tacerror "assumption with the same name already exists";
