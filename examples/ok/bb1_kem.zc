@@ -41,6 +41,7 @@ bound_adv
       };
   ] : b = b'.                                          (* 1: initial game*)
   //.                                                  (* 2. unfold definitions and simplify (we want to see polynomials *)
+  norm_solve h.
      (* We want to apply dbdh, but cannot since c*d required in Kg,
         IDEA: r fresh random variable in every query, use 'rnd' to make Kg indep of c*g
               exponent equal to: c*d + r*(h + i*d)
@@ -59,4 +60,4 @@ bound_adv
   bycrush.
 qed.
 print_proof.
-extract "extraction/bb1.ec".
+extract "extraction/bb1_kem.ec".

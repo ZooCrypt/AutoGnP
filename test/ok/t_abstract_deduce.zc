@@ -18,7 +18,8 @@ bound_succ
   ] : beta.
   abstract* 3 arg (g^a,g^b,g^(a*b)).
   abstract _ res _.
-  assumption_decisional ddh -> [arg] c.
+  assumption_decisional ddh -> [arg] t.
   admit.
 qed.
+extract "extraction/t_abstract_deduce.ec".
   
