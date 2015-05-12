@@ -156,7 +156,7 @@ bound_adv
     (* apply decisional Kdf assumption *)
     swap x2 (1). assumption_decisional! kdf -> km ks; //.
     (* apply CMA0 assumption *)
-    abstract* 2 arg ().
+    abstract*! 2 arg ().
     abstract 13 res2 tt.
     abstract res2 res1 te.
     remove_ev 1.
