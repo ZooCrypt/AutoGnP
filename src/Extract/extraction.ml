@@ -2484,11 +2484,15 @@ let rec extract_proof file pft =
       F.fprintf fmt "apply Real.addleM.@ ";
       F.fprintf fmt "  by rewrite -(%s &m);%s (%s &m).@ "
         lemma2 (if cmp' = cmp_eq then "rewrite" else "apply") lemma';
-      F.fprintf fmt "apply mulleM;last by move=> /=;apply %s_pos.@ " qo;
+      F.fprintf fmt "apply mulleM;last by move=> /=;apply ZooUtil.real_lt_le;apply %s_pos.@ " qo;
       F.fprintf fmt "(split;first by smt)=> _.@ ";
       F.fprintf fmt "cut {H}H := %s &m;apply (real_le_trans _ _ _ H).@ " lemma3;
-      F.fprintf fmt "apply (%s.%s (<:Adv_%s(%s)) &m)." 
+      let l = 
+        Asym.H.fold (fun _ _ l -> ()::l) infob.adv_g.ainfo [] in
+      F.fprintf fmt "apply (%s.%s (<:Adv_%s(%s)) %a&m)." 
         auxname_Loc conclusion auxname nA
+        (pp_list "" (fun fmt _ -> F.fprintf fmt "_ ")) l;
+      List.iter (fun _ -> F.fprintf fmt "@ admit.") l
     in
     let concl = 
       add_pr_lemma file (mk_cmp pr cmp_le bound) (Some proof) in

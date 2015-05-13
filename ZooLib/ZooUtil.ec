@@ -74,6 +74,9 @@ lemma nosmt bound_eq_trans r1 r2 p2 :
    r1 = p2
 by [].
 
+lemma nosmt real_lt_le (r1 r2:real): r1 < r2 => r1 <= r2
+by [].
+
 lemma nosmt real_eq_le (r1 r2:real): r1 = r2 => r1 <= r2
 by [].
 
