@@ -973,7 +973,7 @@ let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 =
           "by apply (in_excepted_diff %a)" 
           (Printer.pp_ty_distr file) ty;
         let s = F.flush_str_formatter () in
-        Tstring s :: l) ds [Tstring "by algebra *" ] in
+        Tstring s :: l) ds [Tstring "by algebra *;elimIF;algebra *" ] in
     if ts = [] then [] else [TOr ts] in
   
   let rec aux lc1 lc2 info = 
