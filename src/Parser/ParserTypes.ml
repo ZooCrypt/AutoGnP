@@ -86,6 +86,9 @@ type range_pos = assgn_pos option * assgn_pos option
 type range = int * int
 type ranges = range_pos list
 
+
+type parse_ev = (Game.quant * (string list * string) list) * parse_expr
+
 type tactic =
   | Rseq           of tactic list
   | Rnorm
@@ -106,8 +109,8 @@ type tactic =
                       parse_ctx option * parse_expr option
   | Rrnd_exp       of bool * (string * string option) list
   | Rrnd_orcl      of ocmd_pos option * parse_ctx option * parse_ctx option
-  | Rconv          of gdef option * parse_expr
-  | Rtrans         of gdef * parse_expr
+  | Rconv          of gdef option * parse_ev
+  | Rtrans         of gdef * parse_ev
   | Rtrans_diff    of diff_cmd list
   | Rassm_dec      of bool * string option * direction option * ranges *
                       (string list) option
@@ -143,10 +146,10 @@ type instr =
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
   | AssmDec    of string * bool * gdef * gdef * (string list) list
-  | AssmComp   of string * bool * assm_type * gdef * parse_expr * string list list
-  | JudgSucc   of gdef * parse_expr 
-  | JudgAdv    of gdef * parse_expr
-  | JudgDist   of gdef * parse_expr * gdef * parse_expr
+  | AssmComp   of string * bool * assm_type * gdef * parse_ev * string list list
+  | JudgSucc   of gdef * parse_ev 
+  | JudgAdv    of gdef * parse_ev
+  | JudgDist   of gdef * parse_ev * gdef * parse_ev
   | PrintGoal  of string
   | PrintGoals of string
   | PrintProof of bool

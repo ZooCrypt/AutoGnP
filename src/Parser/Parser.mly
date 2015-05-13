@@ -58,6 +58,9 @@
 %token COLON
 %token QUESTION
 %token LAND
+%token FORALL
+%token EXISTS
+%token IN
 %left  LAND
 
 %token EQUAL
@@ -329,8 +332,16 @@ int:
 | i=NAT {i}
 | MINUS i=NAT {-i}
 
-event:
-| COLON e=expr { e }
+binding1:
+| x=ID IN o=ID {[x], o}
+| LPAREN xs=seplist1(COMMA,ID) RPAREN IN o=ID {xs, o}
+
+binding:
+| FORALL l=termlist1(COMMA,binding1) {Game.Forall, l}
+| EXISTS l=termlist1(COMMA,binding1) {Game.Exists, l}
+
+bind_event:
+| COLON b=binding? e=expr { Util.from_opt (Game.Forall, []) b, e }
 
 dir:
 | LEFTARROW { Util.RightToLeft }
@@ -382,11 +393,11 @@ decl :
 | ASSUMPTION
     it=boption(delimited(LBRACK,INFTHEO,RBRACK))
     i1=ID at=atype sym=loption(sym_vars)
-    LBRACK g=gdef RBRACK COLON e=expr       { AssmComp(i1, it, at, g, e, sym) }
-| BOUNDSUCC LBRACK g=gdef RBRACK e=event    { JudgSucc(g, e) }
-| BOUNDADV LBRACK g=gdef RBRACK e=event     { JudgAdv(g, e) }
-| BOUNDDIST LBRACK g1=gdef RBRACK e1=event
-    LBRACK g2=gdef RBRACK e2=event          { JudgDist(g1, e1, g2, e2) }
+    LBRACK g=gdef RBRACK e=bind_event       { AssmComp(i1, it, at, g, e, sym) }
+| BOUNDSUCC LBRACK g=gdef RBRACK e=bind_event    { JudgSucc(g, e) }
+| BOUNDADV LBRACK g=gdef RBRACK e=bind_event     { JudgAdv(g, e) }
+| BOUNDDIST LBRACK g1=gdef RBRACK e1=bind_event
+    LBRACK g2=gdef RBRACK e2=bind_event          { JudgDist(g1, e1, g2, e2) }
 
 /*----------------------------------------------------------------------*/
 /* proof commands */
@@ -457,8 +468,8 @@ tactic :
 | RNORM_SOLVE e=expr  { Rnorm_solve(e) }
 
 /* conversion */
-| RCONV gd=uopt(delimited(LBRACK,gdef,RBRACK)) e=event { Rconv(gd,e) }
-| RTRANS LBRACK gd=gdef RBRACK e=event  { Rtrans(gd,e) }
+| RCONV gd=uopt(delimited(LBRACK,gdef,RBRACK)) e=bind_event { Rconv(gd,e) }
+| RTRANS LBRACK gd=gdef RBRACK e=bind_event  { Rtrans(gd,e) }
 | RTRANSSTAR LBRACK dcmds=separated_nonempty_list(COMMA,diff_cmd) RBRACK
   { Rtrans_diff(dcmds) }
 | RSUBST i=inter_pos? LPAREN e1=expr TO e2=expr RPAREN

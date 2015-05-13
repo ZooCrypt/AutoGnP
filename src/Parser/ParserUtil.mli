@@ -36,6 +36,6 @@ val gcmd_of_parse_gcmd : vmap -> theory_state -> gcmd -> Game.gcmd
 
 val gdef_of_parse_gdef : vmap -> theory_state -> gcmd list -> Game.gcmd list
 
-val ev_of_parse_ev : vmap -> theory_state -> string qual -> parse_expr -> ev
+val ev_of_parse_ev : vmap -> theory_state -> parse_ev -> ev
 
-val se_of_parse_se : vmap -> theory_state -> gcmd list -> parse_expr -> sec_exp
+val se_of_parse_se : vmap -> theory_state -> gcmd list -> parse_ev -> sec_exp

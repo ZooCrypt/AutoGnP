@@ -79,6 +79,9 @@
       ; "ctxt_ev", RCTXT_EV
       ; "extract", EXTRACT
       ; "return", RETURN
+      ; "forall", FORALL
+      ; "exists", EXISTS
+      ; "in",     IN
       ]
 }
 

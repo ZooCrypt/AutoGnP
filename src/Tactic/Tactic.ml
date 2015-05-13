@@ -279,17 +279,17 @@ let handle_tactic ts tac =
     | PT.Rconv(Some sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-      let ev2 = PU.ev_of_parse_ev vmap2 ts Unqual sev in
+      let ev2 = PU.ev_of_parse_ev vmap2 ts sev in
       CR.t_conv true { se_gdef = gd2; se_ev = ev2 } ju
 
     | PT.Rconv(None,sev) ->
-      let ev2 = PU.ev_of_parse_ev vmap_g ts Unqual sev in
+      let ev2 = PU.ev_of_parse_ev vmap_g ts sev in
       CR.t_conv true { se_gdef = ju.ju_se.se_gdef; se_ev = ev2 } ju
   
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
-      let ev2 = PU.ev_of_parse_ev vmap2 ts Unqual sev in
+      let ev2 = PU.ev_of_parse_ev vmap2 ts sev in
       CR.t_trans { se_gdef = gd2; se_ev = ev2 } ju
 
     | PT.Rtrans_diff(dcmds) ->
@@ -548,7 +548,7 @@ let handle_instr verbose ts instr =
       with Not_found -> tacerror "unknown variable %s" s
     in
     let symvs = L.map (L.map parse_var) symvs in
-    let ev = PU.ev_of_parse_ev vmap ts Unqual ev in
+    let ev = PU.ev_of_parse_ev vmap ts ev in
     let assm = Assumption.mk_assm_comp s inf at g ev symvs in
     if Mstring.mem s ts.ts_assms_comp then
       tacerror "assumption with the same name already exists";

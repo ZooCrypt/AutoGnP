@@ -171,23 +171,28 @@ let odec_of_parse_odec vmap_g ts ~oname od =
         G.odef_eq      = obody_of_parse_obody vmap_g ts ~oname ob2;
         G.odef_greater = obody_of_parse_obody vmap_l ts ~oname ob3; }
 
-let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
+let init_odef_params vmap_g ts ?(qual=true) oname vs = 
   let osym =
     try Mstring.find oname ts.ts_odecls
     with Not_found -> fail_parse "oracle name not declared"
   in
+  let qual = if qual then (Qual oname) else Unqual in
   let vs =
     match osym.Osym.dom.Type.ty_node, vs with
     | Type.Prod([]), [] -> []
     | Type.Prod(tys), vs when L.length tys = L.length vs ->
       L.map
-        (fun (v,t) -> create_var vmap_g ts (Qual oname) v t)
+        (fun (v,t) -> create_var vmap_g ts qual v t)
         (L.combine vs tys)
     | _, [v] ->
-      [create_var vmap_g ts (Qual oname) v osym.Osym.dom]
+      [create_var vmap_g ts qual v osym.Osym.dom]
     | _ ->
       tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
   in
+  vs,osym
+  
+let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
+  let vs,osym = init_odef_params vmap_g ts oname vs in
   let od = odec_of_parse_odec vmap_g ts ~oname odec in
   (osym, vs, od)
 
@@ -236,14 +241,16 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
 let gdef_of_parse_gdef (vmap : G.vmap) ts gd =
   L.map (fun gc -> gcmd_of_parse_gcmd vmap ts gc) gd
 
-let ev_of_parse_ev vmap ts (qual:string qual) pe0 = 
-  { G.ev_quant = G.Forall; 
-    G.ev_binding = [];
-    G.ev_expr = expr_of_parse_expr vmap ts qual pe0 }
+let ev_of_parse_ev vmap ts ((quant, bd),pe) = 
+  let b = 
+    List.map (fun (vs,oname) -> init_odef_params vmap ts oname vs) bd in
+  { G.ev_quant = quant; 
+    G.ev_binding = b;
+    G.ev_expr = expr_of_parse_expr vmap ts Unqual pe }
 
 let se_of_parse_se (vmap : G.vmap) ts gd ev =
   let gd = gdef_of_parse_gdef vmap ts gd in
-  let ev  = ev_of_parse_ev vmap ts Unqual ev in
+  let ev  = ev_of_parse_ev vmap ts ev in
   let se = { G.se_gdef = gd; G.se_ev = ev } in
   Wf.wf_se Wf.NoCheckDivZero se;
   se
