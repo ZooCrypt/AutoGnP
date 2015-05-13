@@ -8,6 +8,11 @@ open Abbrevs
 open Util
 (*i*)
 
+let ty_prod_vs vs =
+  match List.map (fun vs -> vs.Vsym.ty) vs with
+  | [a] -> a
+  | ts  -> mk_Prod ts
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Indicator functions} *)
 

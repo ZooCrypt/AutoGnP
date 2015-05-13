@@ -158,6 +158,9 @@
 %token REXCEPT
 %token RHYBRID
 %token RADD_TEST
+%token RGUARD
+%token RGUESS
+%token RFIND
 %token REXCEPT_ORACLE
 %token RREWRITE_ORACLE
 %token UNDERSCORE
@@ -523,6 +526,10 @@ tactic :
 | RADD_TEST op=opos e=expr asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
 | RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }
+| RGUARD op=opos e=expr { Rguard(op,e) }
+| RGUESS asym=ID fvs=ID* { Rguess(asym,fvs) }
+| RFIND LPAREN bd=ID* TO body=expr RPAREN e=expr asym=ID fvs=ID*
+                         { Rfind((bd,body),e,asym,fvs) }
 | RHYBRID LPAREN i=NAT COMMA j=NAT RPAREN  lc=obody
   { Rhybrid((i-1,j-1),lc) }
 

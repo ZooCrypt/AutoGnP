@@ -145,7 +145,13 @@ let handle_tactic ts tac =
     let vmap_g = vmap_of_globals ju.ju_se.se_gdef in
     let e_pos = epos_of_offset ju in
     let get_pos = gpos_of_apos ju in
+    
     let parse_e se = PU.expr_of_parse_expr vmap_g ts Unqual se in
+   
+    let parse_ev se = 
+      let vmap_se = vmap_of_se ju.ju_se in
+      PU.expr_of_parse_expr vmap_se ts Unqual se in
+
     let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); Vsym.mk sv ty in
     match tac with
     | PT.Rnorm                 -> t_norm ~fail_eq:false ju
@@ -171,7 +177,7 @@ let handle_tactic ts tac =
       t_seq_fold (L.map interp_tac tacs) ju
 
     | PT.Rcase_ev(Some(se)) ->
-      CR.t_case_ev (parse_e se) ju
+      CR.t_case_ev (parse_ev se) ju
   
     | PT.Rsubst(i,e1,e2,mupto) ->
       t_subst (Util.opt get_pos 0 i) (parse_e e1) (parse_e e2) (map_opt get_pos mupto) ju
@@ -408,12 +414,57 @@ let handle_tactic ts tac =
       let eret = PU.expr_of_parse_expr vmap ts (Qual oname) eret in
       CR.t_hybrid i j lcmds eret ju
 
-    | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) ->
+    | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) | PT.Rguard _ ->
       tacerror "add_test and debugging tactics cannot be combined with ';'"
     
     | PT.Rbad(_i,_sx) ->
       tacerror "not implemented"
- in
+
+    | PT.Rguess(aname, fvs) ->
+      if (Mstring.mem aname ts.ts_adecls) then
+        tacerror "rguess: adversary with same name already declared";
+      let ev = ju.ju_se.se_ev in
+      let vs = 
+        match ev.ev_binding with
+        | [vs,_] -> vs
+        | _ ->  tacerror "rguess: invalid binding" in
+      let asym = Asym.mk aname (mk_Prod []) (ty_prod_vs vs) in
+      if not (L.length fvs = L.length vs) then
+        tacerror "number of given variables does not match type";
+      let vmap = vmap_of_globals ju.ju_se.se_gdef in
+      let fvs = 
+        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
+          fvs vs in
+      CR.t_guess asym fvs ju
+    | PT.Rfind((bd,body),arg,aname,fvs) ->
+      if (Mstring.mem aname ts.ts_adecls) then
+        tacerror "rguess: adversary with same name already declared";
+      let ev = ju.ju_se.se_ev in
+      let vs = 
+        match ev.ev_binding with
+        | [vs,_] -> vs
+        | _ ->  tacerror "rguess: invalid binding" in
+      let arg = parse_e arg in
+      let asym = Asym.mk aname (arg.e_ty) (ty_prod_vs vs) in
+      if not (L.length fvs = L.length vs) then
+        tacerror "number of given variables does not match type";
+      let vmap = vmap_of_globals ju.ju_se.se_gdef in
+      let fvs = 
+        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
+          fvs vs in
+      (* typing of f *)
+      let f = 
+        let vmap_se = vmap_of_se ju.ju_se in
+        let bd = 
+          L.map2 (fun v e -> PU.create_var vmap_se ts Unqual v e.e_ty)
+            bd (destr_Tuple_nofail arg) in
+        let body =
+          PU.expr_of_parse_expr vmap_se ts Unqual body in
+        bd,body in
+      
+      CR.t_find f arg asym fvs ju
+  in
+
  let vmap_g = vmap_of_globals ju.ju_se.se_gdef in
  match tac with     
  | PT.Radd_test(Some(opos),Some(t),Some(aname),Some(fvs)) ->
@@ -480,6 +531,15 @@ let handle_tactic ts tac =
    (ts,res)
 
    (* remaining tactics that can be nested with seq *)
+ | PT.Rguard(opos, t) ->
+   (* create symbol for new adversary *)
+   let se = ju.ju_se in
+   let _, seoc = get_se_octxt se opos in
+   let vmap = vmap_in_orcl se opos in
+   let oname = Id.name seoc.seoc_osym.Osym.id in
+   let t = PU.expr_of_parse_expr vmap ts (Qual oname) t in
+   apply (CR.t_guard opos t)
+
  | _ ->
    apply (interp_tac tac)
 

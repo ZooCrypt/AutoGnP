@@ -139,6 +139,9 @@ type tactic =
   | Rsplit_ineq    of int
   | Deduce         of bool * parse_expr list * parse_expr
   | FieldExprs     of parse_expr list
+  | Rguard         of ocmd_pos * parse_expr 
+  | Rguess         of string * string list
+  | Rfind          of (string list * parse_expr) * parse_expr * string * string list
 
 type instr =
   | RODecl     of string * bool * parse_ty * parse_ty

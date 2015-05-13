@@ -53,11 +53,6 @@ let ensure_varname_fresh wfs vs =
 let ensure_varnames_fresh wfs vs =
   List.fold_left ensure_varname_fresh wfs vs
 
-let ty_prod vs =
-  match List.map (fun vs -> vs.Vsym.ty) vs with
-  | [a] -> a
-  | ts  -> mk_Prod ts
-
 let rec add_ineq ctype wfs e1 e2 =
   try
     if ctype = NoCheckDivZero then (
@@ -204,7 +199,7 @@ let wf_lcmds ctype wfs0 exported_vsyms odef0 =
       let wfs = wf_samp ctype wfs v t es in
       go wfs ~do_export lcmds
     | LBind (vs,hsym)::lcmds -> 
-      assert (ty_equal (ty_prod vs) hsym.Hsym.dom);
+      assert (ty_equal (ty_prod_vs vs) hsym.Hsym.dom);
       go wfs ~do_export:false lcmds
     | LGuard e::lcmds ->
       assert (ty_equal e.e_ty mk_Bool);
@@ -222,7 +217,7 @@ let wf_lcmds ctype wfs0 exported_vsyms odef0 =
   go wfs0 ~do_export odef0
 
 let wf_obody ctype wfs osym vs exported_vsyms (lcmds,e) =
-   assert (ty_equal osym.Osym.dom (ty_prod vs) &&
+   assert (ty_equal osym.Osym.dom (ty_prod_vs vs) &&
              ty_equal osym.Osym.codom e.e_ty);
    let wfs = ensure_varnames_fresh wfs vs in
    begin match exported_vsyms with
@@ -265,7 +260,7 @@ let wf_gdef ctype gdef0 =
     | GCall(vs,asym,e,os)::gcmds ->
       let wfs = ensure_varnames_fresh wfs vs in
       let wfs = ensure_name_fresh wfs (Id.name asym.Asym.id) in
-      assert (ty_equal (ty_prod vs) asym.Asym.codom &&
+      assert (ty_equal (ty_prod_vs vs) asym.Asym.codom &&
                 ty_equal asym.Asym.dom e.e_ty);
       let wfs =
         ensure_names_fresh wfs
@@ -280,8 +275,10 @@ let wf_gdef ctype gdef0 =
   go (mk_wfs ()) gdef0
 
 let check_binding ctype wfs ev = 
-  let check_binding1 (vs,os) = assert (ty_equal (ty_prod vs) os.Osym.dom) in
-  List.iter check_binding1 ev.ev_binding;
+  let check_binding1 wfs (vs,os) = 
+    assert (ty_equal (ty_prod_vs vs) os.Osym.dom);
+    ensure_varnames_fresh wfs vs in
+  let wfs = List.fold_left check_binding1 wfs ev.ev_binding in
   assert (ty_equal mk_Bool ev.ev_expr.e_ty);
   wf_exp ctype wfs ev.ev_expr
     

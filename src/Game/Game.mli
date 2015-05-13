@@ -298,6 +298,8 @@ val vmap_of_ves : Se.t -> vmap
 
 val vmap_of_globals : gdef -> vmap
 
+val vmap_of_se : sec_exp -> vmap
+
 val vmap_in_orcl : sec_exp -> ocmd_pos -> vmap
 
 (*i ----------------------------------------------------------------------- i*)

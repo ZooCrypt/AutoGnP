@@ -1119,3 +1119,103 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
 
 let t_hybrid gpos oidx lcmds eret =
   prove_by (rhybrid gpos oidx lcmds eret)
+
+
+let rguard opos tnew ju =
+  let se = ju.ju_se in
+  match get_se_octxt se opos with
+  | LGuard(t), seoc ->
+    (* TODO, FIXME: check that tnew is well formed ? *)
+    assert (ty_equal tnew.e_ty mk_Bool);
+    let destr_guard lcmd =
+      match lcmd with
+      | LGuard(e) -> e
+      | _ -> tacerror "add_test: new test cannot be inserted after %a, %s"
+               (pp_lcmd ~qual:Unqual) lcmd "preceeding commands must be tests"
+    in
+    let vs = 
+      List.map (fun v -> Vsym.mk (Vsym.to_string v) v.Vsym.ty) seoc.seoc_oargs
+    in
+    
+    let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
+    let subst =
+      L.fold_left2
+        (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
+        Me.empty seoc.seoc_oargs vs
+    in
+    
+    let seoc = { seoc with seoc_cleft = LGuard(tnew) :: seoc.seoc_cleft } in
+    let seoc_bad = 
+      { seoc with seoc_sec = 
+          { seoc.seoc_sec with
+            sec_right = [];
+            sec_ev = 
+              { ev_quant = Exists;
+                ev_binding = [vs,seoc.seoc_osym];
+                ev_expr = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]))}
+          }} in
+    let ju1 = {ju_se = set_se_octxt [LGuard(t)] seoc_bad; ju_pr = Pr_Succ } in
+    let ju2 = { ju with ju_se =  set_se_octxt [LGuard(t)] seoc } in
+    Wf.wf_se NoCheckDivZero ju1.ju_se;
+    Wf.wf_se NoCheckDivZero ju2.ju_se;
+    Rguard(opos, tnew), [ ju1; ju2 ]
+  | _ -> tacerror "guard: given position is not a test"
+
+let t_guard p tnew = prove_by (rguard p tnew)
+
+let rguess asym fvs ju = 
+  let ev = ju.ju_se.se_ev in
+  match ev.ev_quant, ev.ev_binding, ju.ju_pr with
+  | Exists, [vs,_o], Pr_Succ ->
+    assert (ty_equal (ty_prod_vs fvs) (ty_prod_vs vs));
+    let subst =
+      L.fold_left2
+        (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
+        Me.empty vs fvs in
+    let e = e_subst subst ev.ev_expr in
+    let ju1 = {ju with
+      ju_se = {
+        se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,mk_Tuple [], [])];
+        se_ev = { ev_quant = Forall; ev_binding = []; ev_expr = e }} } in
+    Wf.wf_se NoCheckDivZero ju1.ju_se;
+    Rguess, [ ju1 ]
+    
+  | _ ->
+    tacerror "guess: not a valid event"
+
+let t_guess asym fvs = prove_by (rguess asym fvs)
+
+let rfind (bd,body) arg asym fvs ju =
+  let ev = ju.ju_se.se_ev in
+  match ev.ev_quant, ev.ev_binding, ju.ju_pr with
+  | Exists, [vs,_o], Pr_Succ ->
+    assert (ty_equal (ty_prod_vs fvs) (ty_prod_vs vs));
+    (* check that body{bd <- arg} = ev.ev_expr *)
+    assert (ty_equal (ty_prod_vs bd) arg.e_ty);
+    let subst_bd = 
+      L.fold_left2 (fun s v e -> Me.add (mk_V v) e s) Me.empty bd 
+        (destr_Tuple_nofail arg) in
+    let e1 = e_subst subst_bd body in
+    if not (e_equal e1 ev.ev_expr) then
+      tacerror "find: invalid function or argument";
+    (* check that the function is PPT *)
+    if not (is_ppt body) then 
+      tacerror "find: the function is not ppt";
+    (* build the game *)
+    let subst =
+      L.fold_left2
+        (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
+        Me.empty vs fvs in
+    let e = e_subst subst ev.ev_expr in
+    let ju1 = {ju with
+      ju_se = {
+        se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,arg, [])];
+        se_ev = { ev_quant = Forall; ev_binding = []; ev_expr = e }} } in
+    Wf.wf_se NoCheckDivZero ju1.ju_se;
+    Rfind, [ ju1 ]
+    
+  | _ ->
+    tacerror "find: not a valid event"
+
+let t_find f arg asym fvs = prove_by (rfind f arg asym fvs)
+  

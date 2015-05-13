@@ -2601,6 +2601,9 @@ let rec extract_proof file pft =
       F.fprintf fmt "%a@]" (pp_branch pft') dir2 in
     extract_proof_sb1 "Rw_ev" file pft pft' proof
 
+  | Rguard _ | Rguess | Rfind -> assert false
+ 
+
 and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in
   let sw2, pft' = skip_swap pft2 in 

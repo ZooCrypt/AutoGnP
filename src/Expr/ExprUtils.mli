@@ -7,6 +7,7 @@ open Expr
 open Type
 (*i*)
 
+val ty_prod_vs : Vsym.t list -> ty
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Indicator functions} *)
 

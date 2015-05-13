@@ -1007,6 +1007,14 @@ let vmap_of_ves ves =
 
 let vmap_of_globals gdef = vmap_of_vss (gdef_global_vars gdef)
 
+let vmap_of_se se = 
+  let s = 
+    List.fold_left (fun s (vs,_) -> 
+      List.fold_left (fun s v -> Vsym.S.add v s) s vs)
+      (gdef_global_vars se.se_gdef)
+      se.se_ev.ev_binding in
+  vmap_of_vss s
+
 let ves_to_vss ves =
   Se.fold (fun e vss -> Vsym.S.add (destr_V e) vss) ves Vsym.S.empty
 

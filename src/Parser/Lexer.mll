@@ -40,6 +40,9 @@
       ; "norm_solve", RNORM_SOLVE
       ; "norm", RNORM
       ; "add_test", RADD_TEST
+      ; "guard", RGUARD
+      ; "guess", RGUESS
+      ; "find", RFIND
       ; "hybrid", RHYBRID
       ; "remove_ev", RREMOVE_EV
       ; "dist_sym", RDIST_SYM

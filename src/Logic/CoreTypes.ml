@@ -139,8 +139,15 @@ type rule_name =
 
   | Rdist_eq
 
-  | Rtrans  (* FIXME: do we need any arguments? *)
+  | Rtrans  
 
   | Rhybrid (* FIXME: add arguments *)
 
   | Rswap_main of ocmd_pos_eq
+
+  (* New rules for add test *)
+
+  | Rguard  of ocmd_pos * expr 
+  | Rguess  (* FIXME: add arguments *)
+  | Rfind   (* FIXME: add arguments *)
+

@@ -194,3 +194,13 @@ val t_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> tactic
 
 val rassm_comp  : assm_comp -> (int * int) list -> renaming -> rule
 val t_assm_comp : assm_comp -> (int * int) list  -> renaming -> tactic
+
+(** [guard] *)
+val rguard  : ocmd_pos -> expr -> rule 
+val t_guard : ocmd_pos -> expr -> tactic
+
+val rguess  : Asym.t -> vs list -> rule
+val t_guess : Asym.t -> vs list ->  tactic
+
+val rfind  : vs list * expr -> expr -> Asym.t -> vs list -> rule
+val t_find : vs list * expr -> expr -> Asym.t -> vs list ->  tactic
