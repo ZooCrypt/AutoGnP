@@ -30,7 +30,8 @@ type op =
  | Oand
  | Oor
  | Onot
-
+ | Olength
+ | Ocons
 
 type expr = 
   | Epv    of pvar 
@@ -50,7 +51,9 @@ let e_int1 = e_int 1
 let e_incr e = e_add e e_int1
 let e_lt e1 e2 = Eapp(Olt, [e1;e2])
 let e_true = Ecnst "true"
-
+let e_length e = Eapp(Olength, [e])
+let e_cons e1 e2 = Eapp(Ocons, [e1;e2])
+let e_nil = Ecnst "[]"
 let e_tuple es = 
   match es with
   | [e] -> e
@@ -88,6 +91,10 @@ type fundef = {
   f_def   : fun_def1
 }
 
+type ec_type =
+  | Tzc  of ty
+  | List of ty
+
 type mod_body = 
   | Mod_def of mod_comp list
   | Mod_alias of mod_name
@@ -95,7 +102,7 @@ type mod_body =
 and mod_comp = 
   | MCmod of mod_def
   | MCfun of fundef
-  | MCvar of pvar * ty
+  | MCvar of pvar * ec_type
   
 and mod_def = {
   mod_name : string;
@@ -113,7 +120,7 @@ type form =
   | Fif of form * form * form 
   | Fabs of form
   | Frofi of form (* int -> real *)
-(*  | Fexists of (lvar * hvar) list * form *)
+  | Fquant_in of quant * (string list * string * form) * form
   | Fforall_mem of mem * form  
   | Fpr of fun_name * mem * form list * form
 
@@ -227,6 +234,7 @@ let f_neq f1 f2 = f_not (f_eq f1 f2)
 let f_le f1 f2 = Fapp(Ole,[f1;f2])
 let f_lt f1 f2 = Fapp(Olt,[f1;f2])
 let f_and f1 f2 = Fapp(Oand, [f1; f2])
+let f_or f1 f2 = Fapp(Oor, [f1; f2])
 let f_rsub f1 f2 = Fapp(Osub, [f1;f2])
 let f_radd f1 f2 = Fapp(Oadd, [f1;f2])
 let f_rmul f1 f2 = Fapp(Omul, [f1;f2])

@@ -28,7 +28,8 @@ let  proj_lvl = next_lvl min_lvl
 let   app_lvl = next_lvl proj_lvl
 let   pow_lvl = next_lvl app_lvl 
 let   opp_lvl = next_lvl pow_lvl 
-let   mul_lvl = next_lvl opp_lvl 
+let  cons_lvl = next_lvl pow_lvl
+let   mul_lvl = next_lvl cons_lvl 
 let   add_lvl = next_lvl mul_lvl 
 let    eq_lvl = next_lvl add_lvl 
 let   not_lvl = next_lvl eq_lvl
@@ -103,6 +104,7 @@ let rec pp_form_lvl outer fmt = function
     maybe_paren outer proj_lvl pp fmt e
   | Fcnst c       -> F.fprintf fmt "%s" c
   | Fapp(op,es)   -> 
+    let pp_form_lvl = pp_form_lvl in
     let pp, inner = 
       match op, es with
       | Oopp, [e] -> 
@@ -125,14 +127,20 @@ let rec pp_form_lvl outer fmt = function
       | Oand, [e1;e2] -> pp_infix_r pp_form_lvl and_lvl "/\\" e1 e2, and_lvl
       | Oor,  [e1;e2] -> pp_infix_r pp_form_lvl or_lvl "\\/" e1 e2, or_lvl
       | Oimp, [e1;e2] -> pp_infix_r pp_form_lvl imp_lvl "=>" e1 e2, imp_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Oor | Onot | Oiff | Oimp), _ -> 
+      | Ocons,[e1;e2] -> pp_infix_r pp_form_lvl cons_lvl "::" e1 e2, cons_lvl
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Oor | Onot | Oiff | Oimp | Ocons), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
           F.fprintf fmt "@[<hov 2>%s@ %a@]" op 
             (pp_list "@ " (pp_form_lvl (app_lvl - 1))) es in
         pp, app_lvl
- 
+      | Olength, [e] -> 
+        let pp fmt () = 
+          F.fprintf fmt "`|%a|" pp_form e in
+        pp, min_lvl
+      | Olength, _ -> assert false
+
     in
     maybe_paren outer inner pp fmt ()
   | Fif(e1,e2,e3) ->
@@ -157,6 +165,24 @@ let rec pp_form_lvl outer fmt = function
     let pp fmt () = 
       F.fprintf fmt "%a%s" (pp_form_lvl proj_lvl) f "%r" in
     maybe_paren outer proj_lvl pp fmt ()
+  | Fquant_in(q,f,log) ->
+    let pp_fun fmt (bd, ty, body) = 
+      
+      let pp_bd fmt bd =
+        match bd with
+        | [x] -> F.fprintf fmt "%s" x
+        | _ -> 
+          F.fprintf fmt "(%a)" 
+            (pp_list "," (fun fmt -> F.fprintf fmt "%s")) bd in
+      F.fprintf fmt "(fun (__elem__:%s),@ let %a = __elem__ in@ %a)"
+        ty
+        pp_bd bd 
+        pp_form body in
+    F.fprintf fmt "(%s (@[<hov>%a@]) %a)"
+      (if q = Game.Forall then "all" else "any")
+      pp_fun f
+      (pp_form_lvl min_lvl) log
+
 
 and pp_form fmt e = pp_form_lvl max_lvl fmt e
 
@@ -193,13 +219,18 @@ let rec pp_exp_lvl outer fmt = function
       | Oand, [e1;e2] -> pp_infix_r pp_exp_lvl and_lvl "/\\" e1 e2, and_lvl
       | Oor, [e1;e2]  -> pp_infix_r pp_exp_lvl or_lvl "/\\" e1 e2, or_lvl
       | Oimp, [e1;e2] -> pp_infix_r pp_exp_lvl imp_lvl "=>" e1 e2, imp_lvl
-      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Oor | Onot | Oiff | Oimp), _ -> 
+      | Ocons,[e1;e2] -> pp_infix_r pp_exp_lvl cons_lvl "::" e1 e2, cons_lvl
+      | (Oopp | Opow | Oadd | Osub | Omul | Odiv | Oeq | Ole | Olt | Oand | Oor | Onot | Oiff | Oimp | Ocons), _ -> 
         assert false
       | Ostr op, es ->
         let pp fmt () = 
           F.fprintf fmt "@[<hov 2>%s@ %a@]" op 
             (pp_list "@ " (pp_exp_lvl (app_lvl - 1))) es in
         pp, app_lvl
+      | Olength, [e] -> 
+        let pp fmt () = F.fprintf fmt "`|%a|" pp_exp e in
+        pp, min_lvl
+      | Olength, _ -> assert false
  
     in
     maybe_paren outer inner pp fmt ()
@@ -207,6 +238,7 @@ let rec pp_exp_lvl outer fmt = function
   | Eif(e1,e2,e3) ->
       F.fprintf fmt "(@[<hov 2>(%a)?@ (%a) :@ (%a)@])" 
         (pp_exp_lvl if_lvl) e1 (pp_exp_lvl if_lvl) e2 (pp_exp_lvl if_lvl) e3 
+
 
 and pp_exp fmt e = pp_exp_lvl max_lvl fmt e
 
@@ -261,6 +293,14 @@ let pp_pvar_decl file fmt (x,ty) =
   F.fprintf fmt "@[<hov 2>%a:@ %a@]"
     pp_pvar x (pp_type file) ty
 
+let pp_gtype file fmt = function
+  | Tzc ty -> pp_type file fmt ty
+  | List ty -> Format.fprintf fmt "%a list" (pp_type file) ty 
+
+let pp_pvar_gdecl file fmt (x,ty) = 
+  F.fprintf fmt "@[<hov 2>%a:@ %a@]"
+    pp_pvar x (pp_gtype file) ty
+
 let pp_fun_def file fmt fd = 
   let pp_params fmt p = 
     F.fprintf fmt "@[<hov 2>%a@]" 
@@ -301,23 +341,22 @@ let pp_mod_params fmt = function
     F.fprintf fmt "(@[<hov 2>%a@])"
       (pp_list ",@ " pp_mod_param) l
 
-
 let rec pp_mod_body file fmt = function
   | Mod_def mc ->
     let isMCvar = function MCvar _ -> true | _ -> false in
     let vars, other = List.partition isMCvar mc in
     (* We try to merge the declaration of global variables *)
-    let ht = Hty.create 7 in
+    let ht = Hashtbl.create 7 in
     let add = function
-      | MCvar (x,ty) -> 
-        let l = try Hty.find ht ty with Not_found -> [] in
-        Hty.replace ht ty (x::l)
+      | MCvar (x, ty) -> 
+        let l = try Hashtbl.find ht ty with Not_found -> [] in
+        Hashtbl.replace ht ty (x::l)
       | _ -> assert false in
     List.iter add vars;
-    let vars = Hty.fold (fun ty l vars -> (l,ty) :: vars) ht [] in
+    let vars = Hashtbl.fold (fun ty l vars -> (l,ty) :: vars) ht [] in
     let pp_var fmt (l,ty) = 
       F.fprintf fmt "@[<hov 2>var %a: %a@]"
-        (pp_list ",@ " pp_pvar) l (pp_type file) ty in
+        (pp_list ",@ " pp_pvar) l (pp_gtype file) ty in
     let pp_vars fmt vars = 
       if vars <> [] then
         F.fprintf fmt "%a@ @ " (pp_list "@ " pp_var) vars in
@@ -328,7 +367,7 @@ let rec pp_mod_body file fmt = function
 and pp_mod_comp file fmt = function
   | MCmod md -> pp_mod_def file fmt md
   | MCfun fd -> pp_fundef file fmt fd
-  | MCvar (v,ty) -> F.fprintf fmt "var %a" (pp_pvar_decl file) (v,ty)
+  | MCvar (v,ty) -> F.fprintf fmt "var %a" (pp_pvar_gdecl file) (v,ty)
 
 and pp_mod_def ?(local=false) file fmt md = 
   F.fprintf fmt "@[<v>%smodule %s%a = %a@]"
@@ -602,6 +641,7 @@ let pp_main_section fmt file =
 
 let pp_file fmt file = 
   F.fprintf fmt "@[<v>require import Option.@ ";
+  F.fprintf fmt "require import List.@ ";
   F.fprintf fmt "require import Int.@ ";
   F.fprintf fmt "require import Real.@ ";
   F.fprintf fmt "require import ZooUtil.@ ";

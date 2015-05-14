@@ -103,6 +103,38 @@ by [].
 
 hint rewrite Ring.rw_algebra : Logic.eqT Logic.neqF.
 
+(* List *)
+require import List.
+
+lemma nosmt any_congr (f1 f2:'a -> bool) (l:'a list): 
+   (forall a, f1 a <=> f2 a) => any f1 l <=> any f2 l.
+proof.
+  move=> H;rewrite -eq_iff;congr;apply fun_ext=> x;rewrite eq_iff;apply H.
+qed.
+
+lemma nosmt all_congr (f1 f2:'a -> bool) (l:'a list): 
+    (forall a, f1 a <=> f2 a) => all f1 l <=> all f2 l.
+proof.
+  move=> H;rewrite -eq_iff;congr;apply fun_ext=> x;rewrite eq_iff;apply H.
+qed.
+
+lemma nosmt any_impl (f1 f2:'a -> bool) (l:'a list): 
+   (forall a, f1 a => f2 a) => any f1 l => any f2 l.
+proof.
+  move=> H;rewrite /List.any;progress. by exists x;progress;apply H.
+qed.
+
+lemma nosmt all_impl (f1 f2:'a -> bool) (l:'a list): 
+    (forall a, f1 a => f2 a) => all f1 l => all f2 l.
+proof.
+  by move=> H;rewrite /List.all;progress;apply H;apply H0.
+qed.
+
+lemma nosmt le_trans_sub (x y z w:real): 0%r <= z <= 1%r => x + y <= w => x + y - z <= w
+by [].
+
+
+
 
 
 
