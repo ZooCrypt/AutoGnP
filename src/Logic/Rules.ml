@@ -286,9 +286,9 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "rnd_indep %b %i" b i
   | Rguard ((i,j,k,otype),e) -> 
     F.fprintf fmt "guard (%i,%i,%i,%a) (%a)" i j k pp_exp e pp_otype otype
-  | Rguess ->
+  | Rguess _ ->
     F.fprintf fmt "guess"
-  | Rfind ->
+  | Rfind _ ->
     F.fprintf fmt "find"
 
 let rec pp_proof_tree_verbose ?hide_admit:(hide_admit=false) fmt pt =

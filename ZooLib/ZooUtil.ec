@@ -3,6 +3,8 @@ require import Bool.
 require import Distr.
 require import FSet.
 
+lemma real_mulleMl (x y z:real) : 0%r < x => y <= z => x * y <= x * z
+by [].
 
 lemma abs_add_minus x y y' z : 0%r <= x => y = y' => x <= z => `|((x + y) - y')| <= z
 by [].

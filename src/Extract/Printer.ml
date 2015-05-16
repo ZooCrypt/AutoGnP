@@ -93,6 +93,13 @@ let pp_at_mem fmt = function
   | None -> ()
   | Some m -> F.fprintf fmt "{%s}" m
 
+let pp_let_quant_bd fmt bd =
+  match bd with
+  | [x] -> F.fprintf fmt "%s" x
+  | _ -> 
+    F.fprintf fmt "(%a)" 
+      (pp_list "," (fun fmt -> F.fprintf fmt "%s")) bd 
+
 let rec pp_form_lvl outer fmt = function
   | Fv (v, m)     -> F.fprintf fmt "%a%a" pp_pvar v pp_at_mem m 
   | Feqglob a     -> F.fprintf fmt "={glob %s}" a
@@ -167,16 +174,9 @@ let rec pp_form_lvl outer fmt = function
     maybe_paren outer proj_lvl pp fmt ()
   | Fquant_in(q,f,log) ->
     let pp_fun fmt (bd, ty, body) = 
-      
-      let pp_bd fmt bd =
-        match bd with
-        | [x] -> F.fprintf fmt "%s" x
-        | _ -> 
-          F.fprintf fmt "(%a)" 
-            (pp_list "," (fun fmt -> F.fprintf fmt "%s")) bd in
       F.fprintf fmt "(fun (__elem__:%s),@ let %a = __elem__ in@ %a)"
         ty
-        pp_bd bd 
+        pp_let_quant_bd bd 
         pp_form body in
     F.fprintf fmt "(%s (@[<hov>%a@]) %a)"
       (if q = Game.Forall then "all" else "any")
@@ -275,6 +275,9 @@ let rec pp_instr file fmt = function
   | Irnd_int(lv,e1,e2) ->
     F.fprintf fmt "@[<hov 2>%a =@ $[%a .. %a];@]" 
       pp_lvalue lv pp_exp e1 pp_exp e2
+  | Icall([],f,e) ->
+    F.fprintf fmt "%a(@[<hov>%a@]);" 
+      pp_fun_name f (pp_list ",@ " pp_exp) e
   | Icall(lv,f,e) ->
     F.fprintf fmt "@[<hov 2>%a =@ %a(@[<hov>%a@]);@]" 
       pp_lvalue lv pp_fun_name f (pp_list ",@ " pp_exp) e
@@ -307,7 +310,7 @@ let pp_fun_def file fmt fd =
       (pp_list ",@ " (pp_pvar_decl file)) p in 
   let pp_rettyp fmt = function
     | None -> F.fprintf fmt "unit"
-    | Some(_,ty) -> pp_type file fmt ty in
+    | Some(_,ty) -> pp_gtype file fmt ty in
   let pp_vard fmt d = 
     F.fprintf fmt "var %a;" (pp_pvar_decl file) d in
   let pp_local fmt loc = 
@@ -645,7 +648,8 @@ let pp_file fmt file =
   F.fprintf fmt "require import Int.@ ";
   F.fprintf fmt "require import Real.@ ";
   F.fprintf fmt "require import ZooUtil.@ ";
-  F.fprintf fmt "require OrclTest.@ @ ";
+  F.fprintf fmt "require OrclTest.@ ";
+  F.fprintf fmt "require Guess.@ @ ";
   pp_lvars_mod fmt file.levar;
   pp_gvars_mod fmt file.grvar;
   pp_bilinear_mod file fmt file.bvar;

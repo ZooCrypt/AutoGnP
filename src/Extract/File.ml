@@ -75,10 +75,14 @@ type instr =
  | Icall of lvalue * fun_name * expr list
  | Iif   of expr * instr list * instr list
 
+type ec_type =
+  | Tzc  of ty
+  | List of ty
+
 type fun_def = {
   f_param : (pvar * ty) list;
   f_local : (pvar * ty) list;
-  f_res   : (pvar * ty) option;
+  f_res   : (pvar * ec_type) option;
   f_body  : instr list
 } 
 
@@ -90,10 +94,6 @@ type fundef = {
   f_name  : string;
   f_def   : fun_def1
 }
-
-type ec_type =
-  | Tzc  of ty
-  | List of ty
 
 type mod_body = 
   | Mod_def of mod_comp list
@@ -234,6 +234,11 @@ let f_neq f1 f2 = f_not (f_eq f1 f2)
 let f_le f1 f2 = Fapp(Ole,[f1;f2])
 let f_lt f1 f2 = Fapp(Olt,[f1;f2])
 let f_and f1 f2 = Fapp(Oand, [f1; f2])
+let f_ands fs = 
+  match fs with
+  | [] -> f_true
+  | f::fs -> List.fold_left f_and f fs
+
 let f_or f1 f2 = Fapp(Oor, [f1; f2])
 let f_rsub f1 f2 = Fapp(Osub, [f1;f2])
 let f_radd f1 f2 = Fapp(Oadd, [f1;f2])

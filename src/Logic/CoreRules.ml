@@ -1178,7 +1178,7 @@ let rguess asym fvs ju =
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,mk_Tuple [], [])];
         se_ev = { ev_quant = Forall; ev_binding = []; ev_expr = e }} } in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
-    Rguess, [ ju1 ]
+    Rguess asym, [ ju1 ]
     
   | _ ->
     tacerror "guess: not a valid event"
@@ -1212,7 +1212,7 @@ let rfind (bd,body) arg asym fvs ju =
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,arg, [])];
         se_ev = { ev_quant = Forall; ev_binding = []; ev_expr = e }} } in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
-    Rfind, [ ju1 ]
+    Rfind asym, [ ju1 ]
     
   | _ ->
     tacerror "find: not a valid event"

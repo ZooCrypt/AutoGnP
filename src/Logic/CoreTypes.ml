@@ -148,6 +148,6 @@ type rule_name =
   (* New rules for add test *)
 
   | Rguard  of ocmd_pos * expr 
-  | Rguess  (* FIXME: add arguments *)
-  | Rfind   (* FIXME: add arguments *)
+  | Rguess  of ads
+  | Rfind   of ads
 
