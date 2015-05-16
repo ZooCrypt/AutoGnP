@@ -2278,7 +2278,7 @@ let build_subst_section file auxname infob secb aA =
         Mstring.add s {mn = Format.sprintf "%s.%s" auxname s;ma = []} ms) 
         Mstring.empty secb.tosubst in
     Mstring.add infob.adv_name 
-      {mn = aA.mod_name ;ma = [adv_mod file]} ms in
+      {mn = aA ;ma = [adv_mod file]} ms in
   (* FIXME add the ms in tosubst of the current section *)
   let mc = 
     Osym.H.fold (fun o _oi mc -> 
@@ -2416,7 +2416,7 @@ let proof_guess
     ]
   } in
   add_game file `Local aGL;
-  let ms, mc = build_subst_section file auxname infob secb adv_gl in
+  let ms, mc = build_subst_section file auxname infob secb adv_gl.mod_name in
   let boundb = subst_f ms mc boundb in
   let bound = f_rmul (Frofi (Fcnst (q_oracle file orcl))) boundb in
   let pr = extract_pr file mem pft.pt_ju in
@@ -2665,7 +2665,7 @@ let proof_find
     ci_with   = []; ci_proof  = []; } in
   add_local file (Cclone clone_GL); 
 
-  let ms, mc = build_subst_section file auxname infob secb adv_gl in
+  let ms, mc = build_subst_section file auxname infob secb adv_gl.mod_name in
   let boundb = subst_f ms mc boundb in
   let bound = boundb in 
   let pr = extract_pr file mem pft.pt_ju in
@@ -2959,7 +2959,7 @@ let rec extract_proof file pft =
         proof_OrclTestM file seoc.seoc_osym pft'.pt_ju advOT tOT tests in
       add_pr_lemma file (mk_cmp pr' cmp_eq praOT2) (Some proof) in
     (* build the subtitution *)
-    let ms, mc = build_subst_section file auxname infob secb aAT in
+    let ms, mc = build_subst_section file auxname infob secb aAT.mod_name in
  
     let prMb = 
       let mb = mod_name (mOT "B") [mA] in
@@ -3176,7 +3176,7 @@ let rec extract_proof file pft =
 
   | Rguard (_opos, _tnew) -> 
     let pftb = List.hd pft.pt_children in 
-    let _auxname = init_section file "GUARD" pftb in
+    let auxname = init_section file "GUARD" pftb in
     let lemmab, prb, cmpb, boundb = extract_proof file pftb in
     let conclusion = top_name file "conclusion" in
     let _gb = get_game file pftb.pt_ju.ju_se.se_gdef in
@@ -3184,12 +3184,30 @@ let rec extract_proof file pft =
     let proof fmt () = 
       F.fprintf fmt "apply %s." lemmab in
     add_local file (Clemma(false, conclusion,body, Some proof));
-    let _infob = adv_info file in
-    let _secb = get_section file in
+    let infob = adv_info file in
+    let secb = get_section file in
     end_section file;
+    let info = adv_info file in
     let pft' = List.hd (List.tl pft.pt_children) in
-    let (_lemma', _pr',_cmp',_bound') = extract_proof file pft' in
-    default_proof file mem "guard" pft
+    (* building the proof *)
+    let auxname_Loc = auxname^"_Loc" in
+    let clone_GL = {
+      ci_local  = true; ci_import = true;
+      ci_from   = auxname^".Local"; ci_as     = auxname_Loc;
+      ci_with   = []; ci_proof  = []; } in
+    add_local file (Cclone clone_GL); 
+    add_restr_info file secb.section_name infob;
+    let ms, mc = build_subst_section file auxname infob secb info.adv_name in
+    
+    let pr  = extract_pr file mem pft.pt_ju in
+    let pr' = extract_pr file mem pft'.pt_ju in
+    let boundb = subst_f ms mc boundb in
+    let concl1 = mk_cmp (Fabs (f_rsub pr pr')) cmp_le boundb in
+    let lemma1 = 
+      add_pr_lemma file concl1 (Some (fun fmt () -> F.fprintf fmt "admit.")) in
+    extract_proof_trans "(* Guard *)" file lemma1 cmp_le boundb pft pft'
+
+
   | Rguess newasym  -> 
     let pftb = List.hd pft.pt_children in 
     let auxname = init_section file "GUESS" pftb in
