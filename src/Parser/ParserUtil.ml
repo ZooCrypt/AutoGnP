@@ -243,10 +243,11 @@ let gdef_of_parse_gdef (vmap : G.vmap) ts gd =
 
 let ev_of_parse_ev vmap ts ((quant, bd),pe) = 
   let b = 
-    List.map (fun (vs,oname) -> init_odef_params vmap ts oname vs) bd in
-  { G.ev_quant = quant; 
+    List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
+  in
+  { G.ev_quant   = quant; 
     G.ev_binding = b;
-    G.ev_expr = expr_of_parse_expr vmap ts Unqual pe }
+    G.ev_expr    = expr_of_parse_expr vmap ts Unqual pe }
 
 let se_of_parse_se (vmap : G.vmap) ts gd ev =
   let gd = gdef_of_parse_gdef vmap ts gd in

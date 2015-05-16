@@ -340,8 +340,8 @@ binding1:
 | LPAREN xs=seplist1(COMMA,ID) RPAREN IN o=ID {xs, o}
 
 binding:
-| FORALL l=termlist1(COMMA,binding1) {Game.Forall, l}
-| EXISTS l=termlist1(COMMA,binding1) {Game.Exists, l}
+| FORALL l=seplist1(COMMA,binding1) COLON {Game.Forall, l}
+| EXISTS l=seplist1(COMMA,binding1) COLON {Game.Exists, l}
 
 bind_event:
 | COLON b=binding? e=expr { Util.from_opt (Game.Forall, []) b, e }

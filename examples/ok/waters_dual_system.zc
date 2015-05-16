@@ -85,7 +85,7 @@ bound_adv
       let k  = (U^i*W^tagk*H)^r1;
       return (tagk,D1,D2,D3,D4,D5,D6,D7,k)
     };
-] : (beta = beta') (* FIXME: we cannot deal with this constraint at the moment /\ not (exists ci' in Log (KeyGen1`i), ci = ci') *).
+] : forall i in KeyGen1: (beta = beta') /\ (i <> ci).
 
 (* ================================================ *)
 (* make ciphertext semi-functional by applying DLIN *)
