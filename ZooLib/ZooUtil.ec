@@ -135,6 +135,19 @@ qed.
 lemma nosmt le_trans_sub (x y z w:real): 0%r <= z <= 1%r => x + y <= w => x + y - z <= w
 by [].
 
+(** find *)
+require import Option.
+op find (p:'a -> bool) (xs:'a list) =
+  with xs = "[]"      => None
+  with xs = (::) x xs => if p x then Some x else find p xs.
+
+lemma any_find (p:'a -> bool) (xs:'a list) :
+  any p xs => p (oget (find p xs)).
+proof.
+  elim xs;simplify any => //.
+  move=> x l Hrec Hex;case (p x) => Hx //.
+  apply Hrec;elim Hex => [x0 _];exists x0;smt.
+qed.
 
 
 

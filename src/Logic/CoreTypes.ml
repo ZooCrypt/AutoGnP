@@ -149,5 +149,5 @@ type rule_name =
 
   | Rguard  of ocmd_pos * expr 
   | Rguess  of ads
-  | Rfind   of ads
+  | Rfind   of ads * (vs list * expr)
 

@@ -40,6 +40,8 @@ type expr =
   | Ecnst  of cnst
   | Eapp   of op * expr list
   | Eif    of expr * expr * expr 
+  | Efun   of (pvar * ty) list * expr
+  | Elet   of pvar list * expr * expr 
 
 let e_pv pv = Epv pv
 let e_eq e1 e2 = Eapp(Oeq,[e1;e2])
@@ -163,12 +165,13 @@ type game_info = {
   ainfo : (Osym.t list) Asym.H.t;
 } 
 
+type restr_kind = [`Top of bool| `Global]
 
 type adv_info = {
   adv_name  : string;
   adv_ty    : string;
   adv_oty   : string;
-  mutable adv_restr : string list;
+  mutable adv_restr : (restr_kind * string) list;
   adv_ll    : string list;
   adv_g     : game_info;
 }
@@ -570,14 +573,27 @@ let find_game file g =
       with Not_found | Expr.TypeError _ -> false in
     snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
 
-let add_restr file modu =
+let add_restr_info file sname info = 
   let ai = adv_info file in
-  ai.adv_restr <- modu.mod_name :: ai.adv_restr
+  let restr = List.filter (fun (r,_) -> r <> `Global ) info.adv_restr in
+  let restr = List.map (fun (r,s) -> 
+    match r with
+    | `Top true -> `Top false, F.sprintf "%s.%s" sname s
+    | _ -> r, s) restr in
+  ai.adv_restr <- 
+    ai.adv_restr @ restr 
+
+let add_restr file local modu =
+  let ai = adv_info file in
+  match local with
+  | `Local  -> ()
+  | `Top    -> ai.adv_restr <- (`Top true, modu.mod_name) :: ai.adv_restr
+  | `Global -> ai.adv_restr <- (`Global, modu.mod_name) :: ai.adv_restr
   
 let add_game file local modu = 
   let loc = local = `Local in
   add_def file local (Cmod (loc,modu));
-  if not loc then add_restr file modu
+  add_restr file local modu
   
 let bind_game file local g modu = 
   add_game file local modu;

@@ -89,6 +89,10 @@ let rec pp_type file fmt ty =
     end
   | Int -> F.fprintf fmt "int"
 
+let pp_pvar_decl file fmt (x,ty) = 
+  F.fprintf fmt "@[<hov 2>%a:@ %a@]"
+    pp_pvar x (pp_type file) ty
+
 let pp_at_mem fmt = function
   | None -> ()
   | Some m -> F.fprintf fmt "{%s}" m
@@ -174,10 +178,10 @@ let rec pp_form_lvl outer fmt = function
     maybe_paren outer proj_lvl pp fmt ()
   | Fquant_in(q,f,log) ->
     let pp_fun fmt (bd, ty, body) = 
-      F.fprintf fmt "(fun (__elem__:%s),@ let %a = __elem__ in@ %a)"
-        ty
-        pp_let_quant_bd bd 
-        pp_form body in
+      F.fprintf fmt "fun (__elem__:%s),@ " ty;
+      List.iteri (fun i v ->
+          F.fprintf fmt "let %s = __elem__.`%i in@ " v (i+1)) bd;
+      pp_form fmt body in
     F.fprintf fmt "(%s (@[<hov>%a@]) %a)"
       (if q = Game.Forall then "all" else "any")
       pp_fun f
@@ -186,17 +190,18 @@ let rec pp_form_lvl outer fmt = function
 
 and pp_form fmt e = pp_form_lvl max_lvl fmt e
 
-let rec pp_exp_lvl outer fmt = function
+let rec pp_exp_lvl file outer fmt = function
   | Epv v         -> pp_pvar fmt v
   | Etuple es     -> 
-    F.fprintf fmt "(@[<hov 1>%a@])" (pp_list ",@ " pp_exp) es
+    F.fprintf fmt "(@[<hov 1>%a@])" (pp_list ",@ " (pp_exp file)) es
   | Eproj(i,e)    -> 
     let pp fmt e = 
-      F.fprintf fmt "%a.`%i" (pp_exp_lvl proj_lvl) e i in
+      F.fprintf fmt "%a.`%i" (pp_exp_lvl file proj_lvl) e i in
     maybe_paren outer proj_lvl pp fmt e
   | Ecnst c       -> F.fprintf fmt "%s" c
   | Eapp(op,es)   -> 
     let pp, inner = 
+      let pp_exp_lvl = pp_exp_lvl file in
       match op, es with
       | Oopp, [e] -> 
         let pp fmt () = 
@@ -228,7 +233,7 @@ let rec pp_exp_lvl outer fmt = function
             (pp_list "@ " (pp_exp_lvl (app_lvl - 1))) es in
         pp, app_lvl
       | Olength, [e] -> 
-        let pp fmt () = F.fprintf fmt "`|%a|" pp_exp e in
+        let pp fmt () = F.fprintf fmt "`|%a|" (pp_exp file) e in
         pp, min_lvl
       | Olength, _ -> assert false
  
@@ -237,10 +242,24 @@ let rec pp_exp_lvl outer fmt = function
 
   | Eif(e1,e2,e3) ->
       F.fprintf fmt "(@[<hov 2>(%a)?@ (%a) :@ (%a)@])" 
-        (pp_exp_lvl if_lvl) e1 (pp_exp_lvl if_lvl) e2 (pp_exp_lvl if_lvl) e3 
+        (pp_exp_lvl file if_lvl) e1 
+        (pp_exp_lvl file if_lvl) e2 
+        (pp_exp_lvl file if_lvl) e3 
+  | Efun(vs, e) ->
+    F.fprintf fmt "(@[<hov 2>fun %a,@ %a@])"
+      (pp_list " " 
+         (fun fmt pv-> F.fprintf fmt "(%a)" 
+           (pp_pvar_decl file) pv)) vs 
+      (pp_exp file) e
+  | Elet ([x], e1, e2) ->
+    F.fprintf fmt "@[<hov 0>(let %a = %a in@ %a)@]"
+      pp_pvar x (pp_exp file) e1 (pp_exp file) e2
+  | Elet (bd, e1, e2) ->
+    F.fprintf fmt "@[<hov 0>(let (%a) = %a in@ %a)@]"
+      (pp_list "," pp_pvar) bd (pp_exp file) e1 (pp_exp file) e2
 
 
-and pp_exp fmt e = pp_exp_lvl max_lvl fmt e
+and pp_exp file fmt e = pp_exp_lvl file max_lvl fmt e
 
 let pp_lvalue fmt lv = 
   match lv with
@@ -262,39 +281,35 @@ let pp_ty_distr file fmt ty =
 let rec pp_instr file fmt = function
   | Iasgn(lv,e) ->
     F.fprintf fmt "@[<hov 2>%a =@ %a;@]" 
-      pp_lvalue lv pp_exp e
+      pp_lvalue lv (pp_exp file) e
   | Irnd(lv,ty,[]) ->
     F.fprintf fmt "@[<hov 2>%a =@ $%a;@]" 
       pp_lvalue lv (pp_ty_distr file) ty
   | Irnd(lv,ty,[e]) -> 
     F.fprintf fmt "@[<hov 2>%a =@ $(@[%a \\@ FSet.single %a@]);@]" 
-      pp_lvalue lv (pp_ty_distr file) ty (pp_exp_lvl (app_lvl - 1)) e
+      pp_lvalue lv (pp_ty_distr file) ty (pp_exp_lvl file (app_lvl - 1)) e
   | Irnd(_lv,_ty,_l) -> 
     F.eprintf "multiple restriction not implemented@.";
     assert false
   | Irnd_int(lv,e1,e2) ->
     F.fprintf fmt "@[<hov 2>%a =@ $[%a .. %a];@]" 
-      pp_lvalue lv pp_exp e1 pp_exp e2
+      pp_lvalue lv (pp_exp file) e1 (pp_exp file) e2
   | Icall([],f,e) ->
     F.fprintf fmt "%a(@[<hov>%a@]);" 
-      pp_fun_name f (pp_list ",@ " pp_exp) e
+      pp_fun_name f (pp_list ",@ " (pp_exp file)) e
   | Icall(lv,f,e) ->
     F.fprintf fmt "@[<hov 2>%a =@ %a(@[<hov>%a@]);@]" 
-      pp_lvalue lv pp_fun_name f (pp_list ",@ " pp_exp) e
+      pp_lvalue lv pp_fun_name f (pp_list ",@ " (pp_exp file)) e
   | Iif(e,c1,c2) ->
     let pp_b2 fmt c2 = 
       if c2 <> [] then 
         F.fprintf fmt " else {@   %a@ }" (pp_block file) c2 in
     F.fprintf fmt "@[<v>if (%a) {@   %a@ }%a@]" 
-      pp_exp e (pp_block file) c1 pp_b2 c2
+      (pp_exp file) e (pp_block file) c1 pp_b2 c2
 
 and pp_block file fmt c = 
   F.fprintf fmt "@[<v>%a@]" (pp_list "@ " (pp_instr file)) c
 
-
-let pp_pvar_decl file fmt (x,ty) = 
-  F.fprintf fmt "@[<hov 2>%a:@ %a@]"
-    pp_pvar x (pp_type file) ty
 
 let pp_gtype file fmt = function
   | Tzc ty -> pp_type file fmt ty
@@ -546,7 +561,7 @@ let pp_clone file fmt info =
     | CWtype (s,ty) ->
       F.fprintf fmt "type %s <- %a" s (pp_type file) ty
     | CWop(s,None,e) ->
-      F.fprintf fmt "op %s <- %a" s pp_exp e 
+      F.fprintf fmt "op %s <- %a" s (pp_exp file) e 
     | CWop(s,Some(v,ty,vs), e) ->
       let pp_let_b fmt vs = 
         match vs with
@@ -557,7 +572,7 @@ let pp_clone file fmt info =
         "@[<v>op %s <-@   @[<v>fun (%a),@   let %a = %a in@   %a@]@]"
         s (pp_pvar_decl file) (v,ty)
         pp_let_b vs pp_pvar v
-        pp_exp e in
+        (pp_exp file) e in
 
   let pp_with fmt info =
     if info.ci_with <> [] then 
@@ -605,7 +620,7 @@ and pp_section file fmt s =
       let pp_adv_info fmt a = 
         F.fprintf fmt "declare module %s: %s { @[<hov>%a @]}."
           a.adv_name a.adv_ty
-          (pp_list ",@ " (fun fmt -> F.fprintf fmt "%s")) a.adv_restr
+          (pp_list ",@ " (fun fmt (_,s) -> F.fprintf fmt "%s" s)) a.adv_restr
       in
       F.fprintf fmt "section.@   @[<v>%a@ %a@ @ %a@]@ @ end section."
         pp_adv_info l.adv_info

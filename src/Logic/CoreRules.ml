@@ -1195,6 +1195,11 @@ let rfind (bd,body) arg asym fvs ju =
     let subst_bd = 
       L.fold_left2 (fun s v e -> Me.add (mk_V v) e s) Me.empty bd 
         (destr_Tuple_nofail arg) in
+    let fv = e_vars body in
+    let se_vs = List.fold_left (fun s v -> Se.add (mk_V v) s) Se.empty in
+    let allowed = Se.union (se_vs vs) (se_vs bd) in
+    if not (Se.subset fv allowed) then
+      tacerror "find:not a closed function";
     let e1 = e_subst subst_bd body in
     if not (e_equal e1 ev.ev_expr) then
       tacerror "find: invalid function or argument";
@@ -1212,7 +1217,7 @@ let rfind (bd,body) arg asym fvs ju =
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,arg, [])];
         se_ev = { ev_quant = Forall; ev_binding = []; ev_expr = e }} } in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
-    Rfind asym, [ ju1 ]
+    Rfind (asym, (bd,body)), [ ju1 ]
     
   | _ ->
     tacerror "find: not a valid event"
