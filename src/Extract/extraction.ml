@@ -2531,6 +2531,7 @@ let proof_guess
     let eq_gv1 = mk_eq_exprs_p file nG nG' gv1 in
     let eq_wc = mk_eq_exprs_p file nG nG' wc in
     let vcs = List.map (fun ((_,v),_) -> v) vcs in
+    let log_pos = (Util.find_at ((=) logO) vcs) + 1 in
     let eq_vcs  = mk_eq_vcs_p [nG] [nG'] vcs in
     F.fprintf fmt "conseq (_ : _ ==> %a) => //.@ "
       Printer.pp_form (f_ands [eqglob; eqlog; eq_wc; eq_vcs]);
@@ -2552,8 +2553,8 @@ let proof_guess
         F.fprintf fmt "+ conseq* (_: _ ==> %a) => //;sim.@ "
           Printer.pp_form (f_ands [eq_gv1; eq_vcs])) os;
     
-    F.fprintf fmt "swap 1 %i; wp %i %i.@ " 
-      (ninstr + nvc -2)  (ninstr + nvc -2) (ninstr + nvc -2);
+    F.fprintf fmt "swap %i %i; wp %i %i.@ " 
+      log_pos (ninstr + nvc -2)  (ninstr + nvc -2) (ninstr + nvc -2);
     
     F.fprintf fmt "sim : (%a) => //.@ "
       Printer.pp_form 
@@ -2677,7 +2678,6 @@ let proof_find
   let nG   = g.mod_name in
   let nA   = info.adv_name in
   let logO = snd (log_oracle [] orcl) in
-  
   let proof fmt () =
     F.fprintf fmt "(* Find *)@ ";
     F.fprintf fmt "move=> &m.@ ";
@@ -2724,6 +2724,7 @@ let proof_find
     let eqlog  = 
       f_eq (Fv(([nG'],logO),Some "2")) (Fv (([adv_gl.mod_name],logO),Some "2")) in
     let vcs = List.map (fun ((_,v),_) -> v) vcs in
+    let log_pos = (Util.find_at ((=) logO) vcs) + 1 in
     let eq_vcs  = mk_eq_vcs_p [nG] [nG'] vcs in
     let eq_wv = mk_eq_exprs_p file nG nG' wv in
     F.fprintf fmt "conseq (_: _ ==> %a)=> //.@ "
@@ -2758,9 +2759,8 @@ let proof_find
       else
         F.fprintf fmt "+ conseq* (_: _ ==> %a) => //;sim.@ "
           Printer.pp_form (f_ands [eq_gv1; eq_vcs])) os;
-    (* FIXME 1 => log_pos *)
-    F.fprintf fmt "swap 1 %i; wp %i %i.@ " 
-      (ninstr + nvc -2)  (ninstr + nvc -2) (ninstr + nvc -2);
+    F.fprintf fmt "swap %i %i; wp %i %i.@ " 
+      log_pos (ninstr + nvc -2)  (ninstr + nvc -2) (ninstr + nvc -2);
     
     F.fprintf fmt "sim : (%a) => //.@ "
       Printer.pp_form 
