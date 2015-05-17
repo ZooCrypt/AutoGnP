@@ -534,10 +534,13 @@ let handle_tactic ts tac =
  | PT.Rguard(opos, t) ->
    (* create symbol for new adversary *)
    let se = ju.ju_se in
-   let _, seoc = get_se_octxt se opos in
+   let seoc = 
+     if t = None then snd (get_se_octxt se opos)
+     else snd (get_se_octxt_len se opos 0)
+   in
    let vmap = vmap_in_orcl se opos in
    let oname = Id.name seoc.seoc_osym.Osym.id in
-   let t = PU.expr_of_parse_expr vmap ts (Qual oname) t in
+   let t = map_opt (PU.expr_of_parse_expr vmap ts (Qual oname)) t in
    apply (CR.t_guard opos t)
 
  | _ ->

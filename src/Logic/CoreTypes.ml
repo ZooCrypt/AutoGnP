@@ -147,7 +147,7 @@ type rule_name =
 
   (* New rules for add test *)
 
-  | Rguard  of ocmd_pos * expr 
+  | Rguard  of ocmd_pos * expr option
   | Rguess  of ads
   | Rfind   of ads * (vs list * expr)
 

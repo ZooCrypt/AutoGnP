@@ -62,23 +62,26 @@ bound_adv
   norm.
   
   (* add test to Dec1 *)
-  guard (10,1,1) (a^w = a').
+  guard (10,1,2) (a^w = a').
+    swap (10,1,2) -1.
     guess A3 a a' c d.
     bycrush.
 
   (* rnd to x2 and y2 *)
+  swap (10,1,2) -1.
   rewrite_oracle (10,1,1) <-. simp. norm. (* swap x2 b. *)
   rnd! x2 _ _. norm.
   rnd! z2 _ _. norm.
   
   (* add test to Dec2 *)
-  guard (12,1,2) (a^w = a').
+  guard (12,1,3) (a^w = a').
     last. bycrush.
   
   (* exclude hash collision *)
+  swap (12,1,3) - 1.
   simp. norm.
   case_ev H(a,a',c) = H(g^u,g^v,g^z2).
-    last. guess A3 a a' c d. bycrush.
+    last. guess A3 a a' c d. bycrush. 
   simp. norm.
   case_ev (a,a',c) = (g^u,g^v,g^z2).
     bycrush.

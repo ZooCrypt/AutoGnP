@@ -165,7 +165,7 @@ type game_info = {
   ainfo : (Osym.t list) Asym.H.t;
 } 
 
-type restr_kind = [`Top of bool| `Global]
+type restr_kind = [`Top | `Global]
 
 type adv_info = {
   adv_name  : string;
@@ -578,7 +578,7 @@ let add_restr_info file sname info =
   let restr = List.filter (fun (r,_) -> r <> `Global ) info.adv_restr in
   let restr = List.map (fun (r,s) -> 
     match r with
-    | `Top true -> `Top false, F.sprintf "%s.%s" sname s
+    | `Top -> `Top, F.sprintf "%s.%s" sname s
     | _ -> r, s) restr in
   ai.adv_restr <- 
     ai.adv_restr @ restr 
@@ -587,7 +587,7 @@ let add_restr file local modu =
   let ai = adv_info file in
   match local with
   | `Local  -> ()
-  | `Top    -> ai.adv_restr <- (`Top true, modu.mod_name) :: ai.adv_restr
+  | `Top    -> ai.adv_restr <- (`Top, modu.mod_name) :: ai.adv_restr
   | `Global -> ai.adv_restr <- (`Global, modu.mod_name) :: ai.adv_restr
   
 let add_game file local modu = 

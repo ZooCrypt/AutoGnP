@@ -1123,43 +1123,50 @@ let t_hybrid gpos oidx lcmds eret =
 
 let rguard opos tnew ju =
   let se = ju.ju_se in
-  match get_se_octxt se opos with
-  | LGuard(t), seoc ->
-    (* TODO, FIXME: check that tnew is well formed ? *)
-    assert (ty_equal tnew.e_ty mk_Bool);
-    let destr_guard lcmd =
-      match lcmd with
-      | LGuard(e) -> e
-      | _ -> tacerror "add_test: new test cannot be inserted after %a, %s"
-               (pp_lcmd ~qual:Unqual) lcmd "preceeding commands must be tests"
-    in
-    let vs = 
-      List.map (fun v -> Vsym.mk (Vsym.to_string v) v.Vsym.ty) seoc.seoc_oargs
-    in
+  let seoc,t = 
+    match tnew with
+    | None ->
+      begin match get_se_octxt se opos with
+      | (LGuard(t), seoc) -> seoc, t 
+      | _ -> tacerror "guard: given position is not a test"
+      end
+    | Some t ->
+      snd (get_se_octxt_len se opos 0), t in
+
+  assert (ty_equal t.e_ty mk_Bool);
+  let destr_guard lcmd =
+    match lcmd with
+    | LGuard(e) -> e
+    | _ -> tacerror "add_test: new test cannot be inserted after %a, %s"
+      (pp_lcmd ~qual:Unqual) lcmd "preceeding commands must be tests"
+  in
+  let vs = 
+    List.map (fun v -> Vsym.mk (Vsym.to_string v) v.Vsym.ty) seoc.seoc_oargs
+  in
     
-    let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
-    let subst =
-      L.fold_left2
-        (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
-        Me.empty seoc.seoc_oargs vs
-    in
-    
-    let seoc = { seoc with seoc_cleft = LGuard(tnew) :: seoc.seoc_cleft } in
-    let seoc_bad = 
-      { seoc with seoc_sec = 
-          { seoc.seoc_sec with
-            sec_right = [];
-            sec_ev = 
-              { ev_quant = Exists;
-                ev_binding = [vs,seoc.seoc_osym];
-                ev_expr = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]))}
-          }} in
-    let ju1 = {ju_se = set_se_octxt [LGuard(t)] seoc_bad; ju_pr = Pr_Succ } in
-    let ju2 = { ju with ju_se =  set_se_octxt [LGuard(t)] seoc } in
-    Wf.wf_se NoCheckDivZero ju1.ju_se;
-    Wf.wf_se NoCheckDivZero ju2.ju_se;
-    Rguard(opos, tnew), [ ju1; ju2 ]
-  | _ -> tacerror "guard: given position is not a test"
+  let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
+  let subst =
+    L.fold_left2
+      (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
+      Me.empty seoc.seoc_oargs vs
+  in
+
+  (* bad event *)
+  let seoc_bad = 
+    { seoc with 
+      seoc_sec = { seoc.seoc_sec with 
+        sec_right = [];
+        sec_ev = 
+          { ev_quant = Exists;
+            ev_binding = [vs,seoc.seoc_osym];
+            ev_expr = e_subst subst (mk_Land (mk_Not t::tests))}
+      }} in
+  let i = if tnew = None then [] else [LGuard t] in
+  let ju1 = {ju_se = set_se_octxt i seoc_bad; ju_pr = Pr_Succ } in
+  let ju2 = {ju with ju_se = set_se_octxt i seoc } in
+  Wf.wf_se NoCheckDivZero ju1.ju_se;
+  Wf.wf_se NoCheckDivZero ju2.ju_se;
+  Rguard(opos, tnew), [ ju1; ju2 ]
 
 let t_guard p tnew = prove_by (rguard p tnew)
 

@@ -141,13 +141,39 @@ op find (p:'a -> bool) (xs:'a list) =
   with xs = "[]"      => None
   with xs = (::) x xs => if p x then Some x else find p xs.
 
-lemma any_find (p:'a -> bool) (xs:'a list) :
+lemma nosmt any_find (p:'a -> bool) (xs:'a list) :
   any p xs => p (oget (find p xs)).
 proof.
   elim xs;simplify any => //.
   move=> x l Hrec Hex;case (p x) => Hx //.
   apply Hrec;elim Hex => [x0 _];exists x0;smt.
 qed.
+
+lemma nosmt upto2_abs (x1 x2 x3 x4 x5:real):
+   FromInt.from_int 0 <= x1 => 
+   FromInt.from_int 0 <= x3 => 
+   x1 <= x5 => 
+   x3 <= x5 => 
+   x2 = x4 =>
+   `|x1 + x2 - (x3 + x4)| <= x5 by [].
+
+lemma nosmt upto2_notbad (ev1 ev2 bad1 bad2:bool) :
+  ((bad1 <=> bad2) /\ (!bad2 => (ev1 <=> ev2))) =>
+  ((ev1 /\ !bad1) <=> (ev2 /\ !bad2)) by [].
+
+lemma nosmt upto2_imp_bad (ev1 ev2 bad1 bad2:bool) :
+  ((bad1 <=> bad2) /\ (!bad2 => (ev1 <=> ev2))) =>
+  (ev1 /\ bad1) => bad2 by [].
+
+lemma nosmt upto_bad_false (ev bad2:bool) :
+  !((ev /\ !bad2) /\ bad2) by [].
+
+lemma nosmt upto_bad_or (ev1 ev2 bad2:bool) :
+   (!bad2 => ev1 => ev2) => ev1 =>
+    ev2 /\ !bad2 \/ bad2 by [].
+
+lemma nosmt upto_bad_sub (ev bad:bool) :
+  ev /\ ! bad => ev by [].
 
 
 

@@ -165,7 +165,7 @@ type se_octxt = {
   seoc_sec : se_ctxt
 }
 
-val get_se_octxt : sec_exp -> ocmd_pos -> lcmd * se_octxt
+val get_se_octxt   : sec_exp -> ocmd_pos -> lcmd * se_octxt
 
 val get_se_octxt_len : sec_exp -> ocmd_pos -> int -> lcmd list * se_octxt
 

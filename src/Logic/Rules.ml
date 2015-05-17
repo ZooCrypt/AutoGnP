@@ -284,8 +284,10 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "false_ev"
   | Rrnd_indep(b,i) ->
     F.fprintf fmt "rnd_indep %b %i" b i
-  | Rguard ((i,j,k,otype),e) -> 
+  | Rguard ((i,j,k,otype),Some e) -> 
     F.fprintf fmt "guard (%i,%i,%i,%a) (%a)" i j k pp_exp e pp_otype otype
+  | Rguard ((i,j,k,otype),None) -> 
+    F.fprintf fmt "guard (%i,%i,%i) (%a)" i j k pp_otype otype
   | Rguess _ ->
     F.fprintf fmt "guess"
   | Rfind _ ->

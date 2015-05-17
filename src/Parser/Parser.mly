@@ -526,7 +526,7 @@ tactic :
 | RADD_TEST op=opos e=expr asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
 | RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }
-| RGUARD op=opos e=expr { Rguard(op,e) }
+| RGUARD op=opos e=expr? { Rguard(op,e) }
 | RGUESS asym=ID fvs=ID* { Rguess(asym,fvs) }
 | RFIND LPAREN bd=ID* TO body=expr RPAREN e=expr asym=ID fvs=ID*
                          { Rfind((bd,body),e,asym,fvs) }

@@ -134,7 +134,7 @@ let rec pp_form_lvl outer fmt = function
       | Oeq,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "=" e1 e2, eq_lvl
       | Ole,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "<=" e1 e2, eq_lvl
       | Olt,  [e1;e2] -> pp_infix_n pp_form_lvl eq_lvl  "<" e1 e2, eq_lvl
-      | Oiff, [e1;e2] -> pp_infix_n pp_form_lvl iff_lvl "<=>" e1 e2, iff_lvl
+      | Oiff, [e1;e2] -> pp_infix_n pp_form_lvl iff_lvl "<=>" e1 e2, max_lvl
       | Oand, [e1;e2] -> pp_infix_r pp_form_lvl and_lvl "/\\" e1 e2, and_lvl
       | Oor,  [e1;e2] -> pp_infix_r pp_form_lvl or_lvl "\\/" e1 e2, or_lvl
       | Oimp, [e1;e2] -> pp_infix_r pp_form_lvl imp_lvl "=>" e1 e2, imp_lvl

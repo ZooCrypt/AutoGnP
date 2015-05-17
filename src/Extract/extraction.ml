@@ -476,11 +476,11 @@ let flocal_ev ev =
     List.fold_left (fun se v -> Vsym.S.add v se) se vs) 
     Vsym.S.empty ev.ev_binding 
 
-let extract_ev file modm se =
+let extract_ev file modm mem se =
   let ev = se.se_ev in
   let ev = 
     if ev.ev_binding = [] then 
-      formula file modm None ev.ev_expr 
+      formula file modm mem ev.ev_expr 
     else      
       let flocal = flocal_ev ev in
       let do_bd (vs,o) body = 
@@ -490,17 +490,17 @@ let extract_ev file modm se =
           F.flush_str_formatter () in
         let bd = List.map (fun v -> snd (pvar [] v)) vs in
         Fquant_in(ev.ev_quant, (bd, ty, body), 
-                  (Fv (log_oracle modm o, None))) in
+                  (Fv (log_oracle modm o, mem))) in
       List.fold_right do_bd ev.ev_binding
-        (formula ~flocal file modm None ev.ev_expr)  in
+        (formula ~flocal file modm mem ev.ev_expr)  in
   if Game.has_assert se.se_gdef then
-    f_and (Fv((modm, assertion), None)) ev
+    f_and (Fv((modm, assertion), mem)) ev
   else ev   
 
 let extract_pr_se ?(local=`Local) file mem se =
   let modm  = game ~local file se.se_gdef in
   let modma = {mn = modm.mod_name; ma = [adv_mod file]} in
-  let ev = extract_ev file [modm.mod_name] se in
+  let ev = extract_ev file [modm.mod_name] None se in
   Fpr((modma,"main"), mem, [], ev)
 
 let extract_pr ?(local=`Local) file mem ju =
@@ -923,10 +923,11 @@ let lossless_orcl file (_,_,odecl) =
           Tac (Tstring (F.flush_str_formatter ())) in
         [tif; TSub [tacs; tacs2]] in
   match odecl with
-  | Odef (lc, _) -> aux 0 lc [Tac Auto]
+  | Odef (lc, _) -> 
+    Tac (Tstring "proc;sp 1;if;[ | auto];sp 1") :: aux 0 lc [Tac Auto]
   | Ohybrid _    -> assert false  
 
-let pr_loosless g file form i lc = 
+let pr_lossless g file form i lc = 
   let rec aux i lc tacs = 
     match lc with 
     | [] -> tacs
@@ -936,8 +937,9 @@ let pr_loosless g file form i lc =
       aux (i+1) lc ((t_rnd_loosless file ty form l) :: tacs)
     | GCall(_,a,_,odef)::lc ->
       let call = 
-        F.fprintf F.str_formatter "call (%s_ll (<:%s(%s).O))" 
-          (asym_to_string a) g.mod_name (adv_name file);
+        F.fprintf F.str_formatter "call (%s_ll (<:%s(%s).O) %a)" 
+          (asym_to_string a) g.mod_name (adv_name file)
+          (pp_list " " (fun fmt _ -> F.fprintf fmt "_")) odef;
         Tac (Tstring (F.flush_str_formatter ())) in
       let torcl = List.map (lossless_orcl file) odef in
       let tacs = 
@@ -1067,8 +1069,8 @@ let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 =
                  Tac (Tstring ("+ move=> &1 &2 [H1 H2]; move:H1; (cut -> : "^s2^
                                   "= false by rewrite neqF)=> //"));
                  tll;
-                 TSub [ pr_loosless g1 file f_true 0 lc1; 
-                        pr_loosless g2 file f_true 0 lc2]
+                 TSub [ pr_lossless g1 file f_true 0 lc1; 
+                        pr_lossless g2 file f_true 0 lc2]
                  ]] ] in
       let tacs = 
         [Tac (Seq(p1,p2,cut));
@@ -1194,12 +1196,12 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
     if assert2 = None then [] 
     else 
       let assert1 = Fv(([g1.mod_name],assertion), None) in
-      pr_loosless g1 file (f_not assert1) 0 (c1::tl1) in
+      pr_lossless g1 file (f_not assert1) 0 (c1::tl1) in
   let lossless2 = 
     if assert2 = None then [] 
     else 
       let assert2 = Fv(([g2.mod_name],assertion), None) in
-      pr_loosless g2 file (f_not assert2) 0 (drop pos ju2.ju_se.se_gdef) in
+      pr_lossless g2 file (f_not assert2) 0 (drop pos ju2.ju_se.se_gdef) in
 
   fun fmt () ->
     open_pp fmt ();
@@ -1786,7 +1788,7 @@ let extract_except file pos _l pft pft' =
   let fv = Se.diff fv flocal in
   let nA = adv_name file in
   let eqvc = mk_eq_vcs g2 adv (List.map fst vcs) in
-  let form = extract_ev file [] ju.ju_se in
+  let form = extract_ev file [] None ju.ju_se in
   let proof fmt () = 
     F.fprintf fmt "intros &m.@ ";
     F.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
@@ -2279,6 +2281,8 @@ let build_subst_section file auxname infob secb aA =
         Mstring.empty secb.tosubst in
     Mstring.add infob.adv_name 
       {mn = aA ;ma = [adv_mod file]} ms in
+  let section = get_section file in
+  Mstring.iter (fun _ m -> section.tosubst <- m.mn :: section.tosubst) ms;
   (* FIXME add the ms in tosubst of the current section *)
   let mc = 
     Osym.H.fold (fun o _oi mc -> 
@@ -3174,7 +3178,7 @@ let rec extract_proof file pft =
       F.fprintf fmt "%a@]" (pp_branch pft') dir2 in
     extract_proof_sb1 "Rw_ev" file pft pft' proof
 
-  | Rguard (_opos, _tnew) -> 
+  | Rguard (opos, _tnew) -> 
     let pftb = List.hd pft.pt_children in 
     let auxname = init_section file "GUARD" pftb in
     let lemmab, prb, cmpb, boundb = extract_proof file pftb in
@@ -3190,6 +3194,57 @@ let rec extract_proof file pft =
     let info = adv_info file in
     let pft' = List.hd (List.tl pft.pt_children) in
     (* building the proof *)
+    let pr  = extract_pr file mem pft.pt_ju in
+    let pr' = extract_pr file mem pft'.pt_ju in
+    let clone_G = {
+      ci_local  = false;   ci_import = false;
+      ci_from   = auxname; ci_as     = auxname;
+      ci_with   = 
+        Osym.H.fold (fun o _oi w -> 
+          CWop(q_oracle_i infob o, None, Ecnst (q_oracle file o)) :: w)
+          infob.adv_g.oinfo [];
+      ci_proof   = 
+        Osym.H.fold (fun o _oi p -> 
+          let ax = q_oracle_i infob o ^ "_pos" in
+          let pr = Format.sprintf "apply %s_pos"  (q_oracle file o) in
+          (ax, fun fmt () -> F.fprintf fmt "%s" pr)::p )
+          infob.adv_g.oinfo []; } in
+    add_top file (Cclone clone_G); 
+  (* build the adversary for GUARD_Loc *)
+    let arg = ([],"_arg") in
+    let res = ([],"_res") in
+    let mO = {mn="O";ma=[]} in
+    let orcls = 
+      Osym.H.fold (fun o _ l ->
+        let name = "o" ^ Osym.to_string o in
+        let body = 
+          if Osym.H.mem infob.adv_g.oinfo o then Falias (mO, name)
+          else Fbody {
+            f_param = [arg,o.Osym.dom];
+            f_local = [res,o.Osym.codom];
+            f_res   = Some(res,Tzc o.Osym.codom);
+            f_body  = [Iasgn([res],Ecnst "witness")];
+          } in
+        MCfun {f_name = name; f_def = body } :: l) info.adv_g.oinfo [] in
+    let advs = 
+      Asym.H.fold (fun a _ l ->
+        let name = asym_to_string a in
+        MCfun {f_name = name; f_def = Falias({mn="A";ma=[]},name); } :: l) 
+        infob.adv_g.ainfo [] in
+    let adv_gl = 
+      { mod_name = top_name file "ABad";
+        mod_param = [("A",info.adv_ty); ("O",F.sprintf "%s.%s" auxname infob.adv_oty)];
+        mod_body = Mod_def ([
+          MCmod {
+            mod_name = "O1"; mod_param = [];
+            mod_body = Mod_def orcls; };
+          MCmod {
+            mod_name = "A"; mod_param = [];
+            mod_body = Mod_alias({mn = "A"; ma = [{mn="O1";ma = []}]}); } ] @
+          advs) } in
+    add_game file `Top adv_gl;
+
+    (* clone the Local *)
     let auxname_Loc = auxname^"_Loc" in
     let clone_GL = {
       ci_local  = true; ci_import = true;
@@ -3197,15 +3252,128 @@ let rec extract_proof file pft =
       ci_with   = []; ci_proof  = []; } in
     add_local file (Cclone clone_GL); 
     add_restr_info file secb.section_name infob;
-    let ms, mc = build_subst_section file auxname infob secb info.adv_name in
-    
-    let pr  = extract_pr file mem pft.pt_ju in
-    let pr' = extract_pr file mem pft'.pt_ju in
+  
+    let ms, mc = build_subst_section file auxname infob secb adv_gl.mod_name in
     let boundb = subst_f ms mc boundb in
     let concl1 = mk_cmp (Fabs (f_rsub pr pr')) cmp_le boundb in
-    let lemma1 = 
-      add_pr_lemma file concl1 (Some (fun fmt () -> F.fprintf fmt "admit.")) in
-    extract_proof_trans "(* Guard *)" file lemma1 cmp_le boundb pft pft'
+    let nA   = info.adv_name in
+    let se'_bad = 
+      { pft'.pt_ju.ju_se with
+        se_ev = pftb.pt_ju.ju_se.se_ev } in
+    let pr'_bad = extract_pr_se file mem se'_bad in
+    let wc = write_gcmds pftb.pt_ju.ju_se.se_gdef in
+    let nsize2 = List.length pftb.pt_ju.ju_se.se_gdef in
+    let vcs2 = List.map (fun ((_,v),_) -> v) (log_oracles_i infob) in
+    let vcs1 = List.map fst (log_oracles file) in
+    let nG' = let (m,_),_,_,_ = destr_pr pr' in m.mn in
+    let nGb = let (m,_),_,_,_ = destr_pr prb in m.mn in
+    let g  = find_game file pft.pt_ju.ju_se.se_gdef in
+    let g'  = find_game file pft'.pt_ju.ju_se.se_gdef in
+    let bad_ev = pftb.pt_ju.ju_se in
+    let ev     = pft.pt_ju.ju_se in
+    let bad1 = extract_ev file [g.mod_name] (Some "1") bad_ev in
+    let bad1_nomem = extract_ev file [g.mod_name] None bad_ev in
+    let bad2 = extract_ev file [g'.mod_name] (Some "2") bad_ev in
+    let bad2_nomem = extract_ev file [g'.mod_name] None bad_ev in
+    let ev1 = extract_ev file [g.mod_name] (Some "1") ev in
+    let ev2 = extract_ev file [g'.mod_name] (Some "2") ev in
+
+    let lossless2 = 
+      let _, seoc = get_se_octxt pft'.pt_ju.ju_se opos in
+      pr_lossless g' file f_true 0 seoc.seoc_sec.sec_right in
+    let c1_head, c1,c2,call = 
+      let (n,_,_,_) = opos in 
+      let call, sctxt = get_se_ctxt pft.pt_ju.ju_se n in 
+      List.rev sctxt.sec_left, 
+      List.rev (call::sctxt.sec_left), sctxt.sec_right, call in
+    let lossless1 = pr_lossless g file f_true 0 c2 in
+    let wc1 = write_gcmds c1 in
+    let wc1_hd = write_gcmds c1_head in
+    let eqglob = Feqglob nA in
+    let proof1 fmt () = 
+      F.fprintf fmt "(* Upto bad *)@ ";
+      F.fprintf fmt "move=> &m.@ ";
+      let advs = Asym.H.fold (fun a os l -> (a,os)::l) infob.adv_g.ainfo [] in
+      F.fprintf fmt "cut H1 := %s.%s (<:%s(%s)) %a &%s.@ "
+        auxname_Loc conclusion adv_gl.mod_name nA 
+        (pp_list " " (fun fmt _ -> F.fprintf fmt "_")) advs
+        mem;
+      let pp_o_ll fmt o = F.fprintf fmt "H%s_ll" (Osym.to_string o) in
+      List.iter (fun (a,os) ->
+        F.fprintf fmt 
+          "+ move=> O %a; apply (a%s_ll (<: %s(%s,O).O1) %a).@ "
+          (pp_list " " pp_o_ll) os
+          (Asym.to_string a) adv_gl.mod_name nA 
+          (pp_list " " pp_o_ll) os) advs;
+      F.fprintf fmt "apply (Real.Trans _ _ _ _ H1) => {H1}.@ ";
+    
+      F.fprintf fmt "apply (Real.Trans _ %a).@ " Printer.pp_form pr'_bad;
+      F.fprintf fmt 
+        "+ cut Hequiv : equiv [@[<hov 2>%s(%s).main ~ %s(%s).main :@ ={glob %s} ==>@ %a@]].@ "
+        g.mod_name nA g'.mod_name nA nA 
+        Printer.pp_form (f_and (f_iff bad1 bad2) (f_imp (f_not bad2) (f_iff ev1 ev2)));
+      F.fprintf fmt "  + @[<v>(* upto bad *)@ proc;seq %i %i : (%a).@ "
+        (List.length vcs1 + nsize2) (List.length vcs1 + nsize2)
+        Printer.pp_form 
+        (f_and 
+           (f_iff bad1 bad2) 
+           (f_imp (f_not bad2) 
+              (f_ands [eqglob; mk_eq_exprs file g g' wc1;
+                       mk_eq_vcs g g' vcs1])));
+      F.fprintf fmt "+ @[<v>";
+      F.fprintf fmt "seq %i %i : (%a);first by sim.@ "
+        (List.length c1 - 1 + List.length vcs1) 
+        (List.length c1 - 1 + List.length vcs1) 
+        Printer.pp_form (f_ands [eqglob;mk_eq_exprs file g g' wc1_hd;
+                                 mk_eq_vcs g g' vcs1]);
+(*      F.fprintf fmt "call (_:%a,%a,%a).@ "
+        Printer.pp_form bad2_nomem
+        Printer.pp_form (f_ands [mk_eq_exprs file g g' wc1_hd;
+                                 mk_eq_vcs g g' vcs1])
+        Printer.pp_form (f_iff bad1 bad2); *)
+      F.fprintf fmt "+ admit.";
+                                 
+      F.fprintf fmt "@]@ ";
+      F.fprintf fmt "case (%a).@ " Printer.pp_form bad2;
+      F.fprintf fmt "conseq * (_: _ ==> true).@ ";
+      F.fprintf fmt "move=> &m1 &m2 [[H1 H2] H3];rewrite H1 H3 => //.@ "; 
+      F.fprintf fmt "seq %i 0 : true.@ " (List.length c2);
+      F.fprintf fmt "conseq (_: _ ==> _) (_: true ==> true: = 1%%r).@ ";
+      F.fprintf fmt "%a@ " pp_cmds lossless1;
+      F.fprintf fmt "seq 0 %i : true;last by auto.@ " (List.length c2);
+      F.fprintf fmt "conseq (_: _ ==> _) _ (_: true ==> true: = 1%%r).@ ";
+      F.fprintf fmt "%a@ " pp_cmds lossless2;
+      F.fprintf fmt "conseq * (_: _ ==> %a).@ "
+        Printer.pp_form (f_iff ev1 ev2);
+      F.fprintf fmt 
+        "move => &m1 &m2 [[H1 H2] H3];rewrite H1;move: (H2 H3) => //.@ ";
+      F.fprintf fmt "by sim;move=> &m1 &m2 [[H1 H2] H3];move:(H2 H3).";
+      F.fprintf fmt "@]@ ";
+      F.fprintf fmt "  @[<v>";
+      F.fprintf fmt "rewrite Pr [mu_split (%a)]; rewrite ZooUtil.abs_minusC.@ "
+        Printer.pp_form bad1_nomem;
+      F.fprintf fmt "rewrite Pr [mu_split (%a)]; rewrite ZooUtil.abs_minusC.@ "
+        Printer.pp_form bad2_nomem; 
+      F.fprintf fmt "apply ZooUtil.upto2_abs. smt. smt.@ ";
+      F.fprintf fmt 
+        "byequiv Hequiv=> //;move=> _ _;apply ZooUtil.upto2_imp_bad.@ ";
+      F.fprintf fmt "rewrite Pr [mu_sub]=> //.@ ";
+      F.fprintf fmt 
+        "byequiv Hequiv=> //;move=> _ _;apply ZooUtil.upto2_notbad.";
+      F.fprintf fmt "@]@ ";
+      F.fprintf fmt "byequiv (_: _ ==> _)=> //;proc.@ ";
+      F.fprintf fmt "seq %i %i : (%a);first by sim.@ "
+        (List.length vcs1 + nsize2) (List.length vcs2 + nsize2) 
+        Printer.pp_form (f_ands [mk_eq_vcs_p [nG'] [nGb] vcs2;
+                                 mk_eq_exprs_p file nG' nGb wc]);
+      F.fprintf fmt "conseq* (_:_ ==> true) (_: true ==> true : = 1%%r) => //.@ ";
+      pp_cmds fmt lossless2 in
+        
+
+
+    let lemma1 = add_pr_lemma file concl1 (Some proof1) in
+
+    extract_proof_trans "Guard" file lemma1 cmp_le boundb pft pft'
 
 
   | Rguess newasym  -> 
@@ -3251,8 +3419,8 @@ and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in
   let sw2, pft' = skip_swap pft2 in 
   extract_proof_sb1 "Conv" file pft pft' 
-(*    (fun _ fmt () -> F.fprintf fmt "admit.") *)
-    (pr_conv sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2) 
+    (fun _ fmt () -> F.fprintf fmt "admit.") 
+(*    (pr_conv sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2) *)
 
 and extract_assert file pft _p e = 
   let pft1 = List.hd pft.pt_children in 

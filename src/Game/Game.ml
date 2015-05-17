@@ -389,7 +389,7 @@ let get_se_octxt_len se (i,j,k,ootype) len =
   | GCall(vsa,asym,e,os), sec ->
     let rohd, (o,vs,od), otl = split_n j os in
     let (ms,oe) = get_obody od ootype in
-    let rhd, tl = cut_n k ms in
+    let rhd, tl = cut_n (min k (List.length ms)) ms in
     let cmds,cright = cut_n len tl in
     let obless = match ootype with
       | Ohyb (OHeq |  OHgreater) -> Some (get_obody od (Ohyb OHless))
@@ -1024,7 +1024,7 @@ let vmap_in_orcl se op =
     let rbefore, _ = cut_n i se.se_gdef in
     L.rev rbefore
   in
-  let _,seoc = get_se_octxt se op in
+  let _,seoc = get_se_octxt_len se op 0 in
   vmap_of_vss
     (Vsym.S.union
        (Vsym.S.union (gdef_global_vars gdef_before)
