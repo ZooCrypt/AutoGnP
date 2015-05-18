@@ -3400,7 +3400,8 @@ let rec extract_proof file pft =
       F.fprintf fmt "%a@]" (pp_branch pft') dir2 in
     extract_proof_sb1 "Rw_ev" file pft pft' proof
 
-  | Rguard (opos, _tnew) -> 
+  | Rguard (opos, tnew) -> 
+    assert (tnew <> None);
     let pftb = List.hd pft.pt_children in 
     let auxname = init_section file "GUARD" pftb in
     let lemmab, prb, cmpb, boundb = extract_proof file pftb in
@@ -3503,7 +3504,7 @@ let rec extract_proof file pft =
     let lossless2 = 
       let _, seoc = get_se_octxt pft'.pt_ju.ju_se opos in
       pr_lossless g' file f_true 0 seoc.seoc_sec.sec_right in
-    let c1_head, c1,c2,call = 
+    let c1_head, c1,c2, _call = 
       let (n,_,_,_) = opos in 
       let call, sctxt = get_se_ctxt pft.pt_ju.ju_se n in 
       List.rev sctxt.sec_left, 
@@ -3512,6 +3513,27 @@ let rec extract_proof file pft =
     let wc1 = write_gcmds c1 in
     let wc1_hd = write_gcmds c1_head in
     let eqglob = Feqglob nA in
+    let _, seoc = get_se_octxt_len pft.pt_ju.ju_se opos 0 in
+    assert (seoc.seoc_oright = [] && seoc.seoc_oleft = []);
+    let bad_t =
+      let ev =  pftb.pt_ju.ju_se.se_ev in 
+      let local = 
+        match ev.ev_binding with
+        | [vs,_] ->
+          List.fold_left (fun s v -> Vsym.S.add v s) 
+            Vsym.S.empty vs
+        | _ -> assert false in
+      formula file [g'.mod_name] (Some "2") ~local ev.ev_expr in
+
+    let lossless_tl = 
+      lossless_lcmds file seoc.seoc_cright in
+    let lossless_o1 =
+      let c = List.rev_append seoc.seoc_cleft seoc.seoc_cright in
+      lossless_lcmds file c in
+    let lossless_o2 = 
+      let _, seoc = get_se_octxt_len pft'.pt_ju.ju_se opos 0 in
+      let c = List.rev_append seoc.seoc_cleft seoc.seoc_cright in
+      lossless_lcmds file c in
     let proof1 fmt () = 
       F.fprintf fmt "(* Upto bad *)@ ";
       F.fprintf fmt "move=> &m.@ ";
@@ -3548,13 +3570,56 @@ let rec extract_proof file pft =
         (List.length c1 - 1 + List.length vcs1) 
         Printer.pp_form (f_ands [eqglob;mk_eq_exprs file g g' wc1_hd;
                                  mk_eq_vcs g g' vcs1]);
-(*      F.fprintf fmt "call (_:%a,%a,%a).@ "
+      F.fprintf fmt "call (_:@[<v>%a,@ %a,@ %a@]).@ "
         Printer.pp_form bad2_nomem
         Printer.pp_form (f_ands [mk_eq_exprs file g g' wc1_hd;
                                  mk_eq_vcs g g' vcs1])
-        Printer.pp_form (f_iff bad1 bad2); *)
-      F.fprintf fmt "+ admit.";
-                                 
+        Printer.pp_form bad1;
+      F.fprintf fmt "+ apply a%s_ll.@ " (Asym.to_string seoc.seoc_asym);
+      (* equiv *)
+      F.fprintf fmt "+ @[<v>proc;sp 1 1;if;[done | | by auto].@ "; 
+      F.fprintf fmt "exists* %s.%s{2}; elim* => __log__.@ " 
+         g'.mod_name (snd (log_oracle [] seoc.seoc_osym));
+      F.fprintf fmt 
+        "seq 1 1 : (@[<hov 2>={_res%a} /\\@ %s.%s{2} = (%a){2}::__log__ /\\@ %a@]);first by auto.@ "
+        (pp_list "" (fun fmt v -> F.fprintf fmt ",%s" (snd (pvar [] v))))
+        seoc.seoc_oargs
+        g'.mod_name (snd (log_oracle [] seoc.seoc_osym))
+        (pp_list "," (fun fmt v -> F.fprintf fmt "%s" (snd (pvar [] v))))
+        seoc.seoc_oargs 
+        Printer.pp_form (f_ands [mk_eq_exprs file g g' wc1_hd;
+                                 mk_eq_vcs g g' vcs1]);
+      F.fprintf fmt "conseq* (_: _ ==> %a => ={_res}).@ "
+        Printer.pp_form (f_not bad_t);
+      F.fprintf fmt "+ @[<v>progress[-split]. rewrite !any_cons /=; smt.@ ";
+      List.iter (fun _ -> F.fprintf fmt "if;[done | | done].@ ") 
+        seoc.seoc_cleft;
+      F.fprintf fmt "if{2};first by conseq (_: _ ==> ={_res});[ auto | sim].@ ";
+      F.fprintf fmt 
+        "conseq* (_ : _ ==> _) (_: true ==> true : = 1%%r);first by progress;smt.@ ";
+      F.fprintf fmt "%a@]@]@ "
+        pp_cmds lossless_tl;
+
+      F.fprintf fmt "+ @[<v>move=> _ _;proc;sp 1;if;[ | by auto].@ ";
+      F.fprintf fmt "@[<hov 2>seq 1 : true 1%%r 1%%r 0%%r _@ (%a);@ last 2 by auto.@]@ "
+        Printer.pp_form bad1_nomem;
+      F.fprintf fmt "+ by auto;progress;rewrite any_cons;right.@ ";
+      F.fprintf fmt "+ by auto.@ ";
+      F.fprintf fmt "conseq * (_: _ ==> true : = 1%%r);first by auto.@ ";
+      pp_cmds fmt lossless_o1;
+      F.fprintf fmt "@]@ ";
+      F.fprintf fmt "+ @[<v>move=> _;proc;sp 1;if;[ | by auto].@ ";
+      F.fprintf fmt "conseq* (_: _ ==> %a);first by auto.@ "
+        Printer.pp_form bad2_nomem;
+      F.fprintf fmt "@[<hov 2>seq 1 : true 1%%r 1%%r 0%%r _@ (%a);last 2 by auto@].@ "
+        Printer.pp_form bad2_nomem;
+      F.fprintf fmt "+ by auto;progress;rewrite any_cons;right.@ ";
+      F.fprintf fmt "+ by auto.@ ";
+      F.fprintf fmt "conseq * (_: _ ==> true : = 1%%r);first by auto.@ ";
+      pp_cmds fmt lossless_o2;
+      F.fprintf fmt "@]@ ";
+      F.fprintf fmt "+ skip;progress [-split];split;first by done.@ "; 
+      F.fprintf fmt "  by progress [-split];elimIF.";
       F.fprintf fmt "@]@ ";
       F.fprintf fmt "case (%a).@ " Printer.pp_form bad2;
       F.fprintf fmt "conseq * (_: _ ==> true).@ ";
@@ -3641,8 +3706,8 @@ and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in
   let sw2, pft' = skip_swap pft2 in 
   extract_proof_sb1 "Conv" file pft pft' 
-    (fun _ fmt () -> F.fprintf fmt "admit.") 
-(*    (pr_conv sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2) *)
+(*    (fun _ fmt () -> F.fprintf fmt "admit.") *)
+    (pr_conv sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2) 
 
 and extract_assert file pft _p e = 
   let pft1 = List.hd pft.pt_children in 
