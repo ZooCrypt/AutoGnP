@@ -902,14 +902,15 @@ let t_rnd_loosless file ty f l =
     Printer.pp_form f (rnd_loosless file) (ty,l);
   Tac (Tstring (F.flush_str_formatter ())) 
 
-let lossless_orcl file (_,_,odecl) = 
+let lossless_lcmds file lc =
   let rec aux i lc tacs = 
     match lc with 
-    | [] -> add_wp1 i tacs
+    | [] -> 
+      add_wp1 i tacs
     | LLet _::lc ->
       aux (i+1) lc (add_wp1 i tacs) 
     | LSamp(_,(ty,l))::lc ->
-      aux (i+i) lc ((t_rnd_loosless file ty f_true l) :: tacs)
+      aux (i+1) lc ((t_rnd_loosless file ty f_true l) :: tacs)
     | LBind _ :: _ -> assert false (* FIXME *)
     | LGuard _ :: lc ->
       let tacs2 = aux 0 lc [Tac Auto] in
@@ -922,9 +923,12 @@ let lossless_orcl file (_,_,odecl) =
           F.fprintf F.str_formatter "seq %i;[ | if;[ | auto]]" i;
           Tac (Tstring (F.flush_str_formatter ())) in
         [tif; TSub [tacs; tacs2]] in
+  aux 0 lc [Tac Auto]
+
+let lossless_orcl file (_,_,odecl) =  
   match odecl with
   | Odef (lc, _) -> 
-    Tac (Tstring "proc;sp 1;if;[ | auto];sp 1") :: aux 0 lc [Tac Auto]
+    Tac (Tstring "proc;sp 1;if;[ | auto];sp 1") :: lossless_lcmds file lc
   | Ohybrid _    -> assert false  
 
 let pr_lossless g file form i lc = 
@@ -948,6 +952,10 @@ let pr_lossless g file form i lc =
       aux (i+1) lc tacs in
   aux i lc [Tac Auto]
 
+let eq_assert g1 g2 = 
+  let assert1 = Fv(([g1.mod_name],assertion), Some "1") in
+  let assert2 = Fv(([g2.mod_name],assertion), Some "2") in
+  (f_eq assert1 assert2)
 
 let post_assert g1 g2 post = 
   let assert1 = Fv(([g1.mod_name],assertion), Some "1") in
@@ -2774,6 +2782,219 @@ let proof_find
   in 
   proof, concl, pr, bound 
 
+let proof_swap_oracle opos pft pft' file = 
+  let se = pft.pt_ju.ju_se in
+  let se' = pft'.pt_ju.ju_se in
+  let g = game file se.se_gdef in
+  let g' = game file se'.se_gdef in
+  let i,seoc = get_se_octxt se opos in
+  let lcmd1, lcmd2 = 
+    let (n,p,_,t) = opos in
+    let opos = (n,p,0,t) in
+    let _,_,(_,i,tl),_ = get_se_lcmd se opos in 
+    let _,_,(_,i',tl'),_ = get_se_lcmd se' opos in 
+    i::tl, i'::tl' in
+  let w = write_gcmds seoc.seoc_sec.sec_left in
+  let w1 = 
+    let (n,_,_,_) = opos in write_gcmds (Util.take (n + 1) se.se_gdef) in
+  let vcs = log_oracles file in
+  let eqvc = mk_eq_vcs g g' (List.map fst vcs) in
+  let eqw  = mk_eq_exprs file g g' w in
+  let eqw1  = mk_eq_exprs file g g' w1 in
+  let eqglob = Feqglob (adv_name file) in
+  let eqglob = 
+    if has_assert se.se_gdef then f_and (eq_assert g g') eqglob
+    else eqglob in
+
+  let skip1 lcmd = 
+    let rec aux r lcmd = 
+      match lcmd with
+      | LBind _::_ -> assert false 
+      | LGuard _:: _ | [] -> List.rev r, lcmd 
+      | i::lcmd -> aux (i::r) lcmd in
+    aux [] lcmd in
+
+  let rec skip i w lcmd1 lcmd2 = 
+    match lcmd1, lcmd2 with
+    | LBind _::_, _ | _, LBind _::_ -> assert false
+    | LGuard _:: _, _ -> i,w,lcmd1,lcmd2
+    | _, LGuard _:: _ -> i,w,lcmd1,lcmd2
+    | i1::lcmd1, i2::lcmd2 ->
+      assert (lcmd_equal i1 i2);
+      skip (i+1) (Se.union w (write_lcmd i1)) lcmd1 lcmd2
+    | [], [] -> i,w,lcmd1,lcmd2
+    | _, _ -> assert false in
+ 
+  let pp_wl = 
+      pp_list " " 
+        (fun fmt v -> F.fprintf fmt ",%s" (snd (pvar [] (destr_V v)))) in
+  let args = List.map mk_V seoc.seoc_oargs in
+  let local = 
+    Vsym.S.of_list
+      (seoc.seoc_oargs @ List.map destr_V (Se.elements (write_lcmds lcmd1))) in
+
+  let proof_if fmt = 
+    
+    let rec aux_true t wl lcmd1 lcmd2 = 
+      match lcmd1, lcmd2 with
+      | i1::_, _ when lcmd_equal i1 i ->
+        F.fprintf fmt "rcondt{1} 1;[by auto | sim].@ ";
+      | _, i2::_ when lcmd_equal i2 i ->
+        F.fprintf fmt "rcondt{2} 1;[by auto | sim].@ ";
+      | (LGuard _ as i1) :: lcmd1, 
+        (LGuard _ as i2) :: lcmd2 when lcmd_equal i1 i2 ->
+        F.fprintf fmt "if;[done | | done].@ ";
+          aux_true t wl lcmd1 lcmd2  
+      | _, _ -> 
+        let i,w,lcmd1, lcmd2 = skip 0 Se.empty lcmd1 lcmd2 in
+        let wl = Se.elements w @ wl in
+        F.fprintf fmt "seq %i %i : (={_res%a} /\\ %a);first by auto.@ "
+          i i pp_wl wl Printer.pp_form (f_ands [t;eqvc;eqw]);
+        aux_true t wl lcmd1 lcmd2 in
+
+    let rec aux_false t wl lcmd side =
+      match lcmd with
+      | i1::_ when lcmd_equal i1 i ->
+        F.fprintf fmt "by rcondf{%i} 1;auto.@ " side
+      | LGuard _ :: lcmd ->
+        F.fprintf fmt "if{%i};[ | by auto].@ " side;
+        aux_false t wl lcmd side
+      | _ ->
+        let lc, lcmd = skip1 lcmd in
+        let i = List.length lc in
+        let i1,i2 = if side = 1 then i,0 else 0,i in
+        F.fprintf fmt "seq %i %i : (={_res%a} /\\ %a).@ "
+          i1 i2 pp_wl wl Printer.pp_form (f_ands [t;eqvc;eqw]);
+        F.fprintf fmt 
+          "conseq* (_:_ ==> _) %s(_:true ==> true : =1%%r);first by auto.@ "
+          (if side = 1 then "" else "_ ");
+        F.fprintf fmt "  @[<v>%a@]@ " pp_cmds (lossless_lcmds file lc);
+        aux_false t wl lcmd side in
+
+    let rec aux_hd wl lcmd1 lcmd2 = 
+      match lcmd1, lcmd2 with
+      | (LGuard t as i1)::lcmd1, _ when lcmd_equal i1 i ->
+        let t = formula file [g.mod_name] (Some "1") ~local t in
+        F.fprintf fmt "if{1}.@ ";
+        F.fprintf fmt "+ @[<v>";
+        aux_true t wl lcmd1 lcmd2;
+        F.fprintf fmt "@]";
+        F.fprintf fmt "@[<v>";
+        aux_false (f_not t) wl lcmd2 2;
+        F.fprintf fmt "@]";
+
+      | _, (LGuard t as i2)::lcmd2 when lcmd_equal i2 i ->
+        let t = formula file [g'.mod_name] (Some "2") ~local t in
+        F.fprintf fmt "if{2}.@ ";
+        F.fprintf fmt "+ @[<v>";
+        aux_true t wl lcmd1 lcmd2;
+        F.fprintf fmt "@]";
+        F.fprintf fmt "@[<v>";
+        aux_false (f_not t) wl lcmd1 1;
+        F.fprintf fmt "@]";
+      | (LGuard _ as i1) :: lcmd1, 
+        (LGuard _ as i2) :: lcmd2 when lcmd_equal i1 i2 ->
+        F.fprintf fmt "if;[done | | done].@ ";
+        aux_hd wl lcmd1 lcmd2  
+      | _, _ -> 
+        let i,w,lcmd1, lcmd2 = skip 0 Se.empty lcmd1 lcmd2 in
+        let wl = Se.elements w @ wl in
+        F.fprintf fmt "seq %i %i : (={_res%a} /\\ %a);first by auto.@ "
+          i i pp_wl wl Printer.pp_form (f_ands [eqvc;eqw]);
+        aux_hd wl lcmd1 lcmd2
+    in
+    aux_hd args lcmd1 lcmd2
+  in
+
+  let proof_asgn fmt = 
+    let pp_seq i wl =
+      if i <> 0 then
+        F.fprintf fmt "seq %i %i : (={_res%a} /\\ %a);first by auto.@ "
+          i i pp_wl wl Printer.pp_form (f_ands [eqvc;eqw]) in
+
+    let pp_swap side i = 
+      if i <> 0 then
+        F.fprintf fmt "swap{%i} 1 %i.@ " side i in
+
+    let rec aux_swap side wl k lcmd1 lcmd2 = 
+      match lcmd1, lcmd2 with 
+      | i1::_, _ when lcmd_equal i1 i ->
+        assert (side = 2);
+        pp_swap side k;
+        F.fprintf fmt "by sim."
+      | _,i2::_ when lcmd_equal i2 i ->
+        assert (side = 1);
+        pp_swap side k;
+        F.fprintf fmt "by sim."
+      | (LGuard _ as i1) :: lcmd1, (LGuard _ as i2) :: lcmd2 -> 
+        assert (lcmd_equal i1 i2);
+        pp_swap side k;
+        pp_seq k wl;
+        let oside = if side = 1 then 2 else 1 in
+        F.fprintf fmt "if{%i}.@ " oside;
+        F.fprintf fmt "+ @[<v>";
+        F.fprintf fmt "rcondt{%i} 2;first by auto.@ " side;
+        aux_swap side wl 0 lcmd1 lcmd2;
+        F.fprintf fmt "@]@ ";
+        F.fprintf fmt "rcondf{%i} 2;first by auto.@ " side;
+        F.fprintf fmt 
+          "conseq * (_: _ ==> _) (_: _ ==> _ : = 1%%r);first by auto.@ ";
+        pp_cmds fmt (lossless_lcmds file [i])
+      | LBind _:: _, _ | _, LBind _::_ -> assert false
+      | i1 :: lcmd1, i2 :: lcmd2 ->
+        assert (lcmd_equal i1 i2);
+        let wl = Se.elements (write_lcmd i1) @ wl in
+        aux_swap side wl (k+1) lcmd1 lcmd2 
+      | _, _ -> assert false in
+
+
+    let rec aux_hd k wl lcmd1 lcmd2 =
+      match lcmd1, lcmd2 with
+      | (LGuard _ as i1) :: lcmd1, (LGuard _ as i2) :: lcmd2 -> 
+        assert (lcmd_equal i1 i2);
+        pp_seq k wl;
+        F.fprintf fmt "if;[done | | done]@ ";
+        aux_hd 0 wl lcmd1 lcmd2 
+      | i1::lcmd1, _ when lcmd_equal i1 i -> 
+        pp_seq k wl;
+        aux_swap 1 wl 0 lcmd1 lcmd2
+      | _, i2::lcmd2 when lcmd_equal i2 i ->
+        pp_seq k wl;
+        aux_swap 2 wl 0 lcmd1 lcmd2
+      | LBind _:: _, _ | _, LBind _::_ -> assert false
+      | i1 :: lcmd1, i2 :: lcmd2 ->
+        assert (lcmd_equal i1 i2);
+        let wl = Se.elements (write_lcmd i1) @ wl in
+        aux_hd (k+1) wl lcmd1 lcmd2 
+      | _, _ -> assert false
+    in
+    aux_hd 0 args lcmd1 lcmd2 in
+
+  let proof_o = 
+    match i with
+    | LGuard _ -> proof_if 
+    | _ -> proof_asgn in
+  let proof fmt () = 
+    F.fprintf fmt "byequiv (_:_ ==> _)=> //;proc.@ ";
+    let len = List.length vcs + List.length seoc.seoc_sec.sec_left + 1 in
+    F.fprintf fmt "seq %i %i : (%a);last by sim.@ "
+      len len 
+      Printer.pp_form (f_ands [eqglob; eqvc;eqw1]);
+      
+
+    F.fprintf fmt "call (_:%a).@ " Printer.pp_form (f_ands [eqvc;eqw]);
+    List.iter (fun _ -> F.fprintf fmt "+ by sim.@ ") seoc.seoc_oleft;
+    F.fprintf fmt "+ @[<v>proc;sp 1 1;if;[done | | done].@ ";
+    F.fprintf fmt "seq 1 1 : (={_res%a} /\\ %a);first by auto.@ "
+      pp_wl args Printer.pp_form (f_ands [eqvc;eqw]);
+    proof_o fmt; 
+    F.fprintf fmt "@]@ ";
+    List.iter (fun _ -> F.fprintf fmt "+ by sim.@ ") seoc.seoc_oright;
+    (* iter oracle *)
+    F.fprintf fmt "by conseq (_: _ ==> %a)=> //;sim."
+      Printer.pp_form (f_ands [eqglob; eqvc;eqw])
+  in proof
+    
 let rec extract_proof file pft = 
   match pft.pt_rule with
   | Rassert(p,e) -> 
@@ -2870,10 +3091,11 @@ let rec extract_proof file pft =
       (* FIXME *)
       extract_proof_sb1 "Swap" file pft pft' (pr_swap sw1 pft.pt_ju pft'.pt_ju)
     end
-  | Rswap_orcl _ ->
+  | Rswap_orcl (opos,_) ->
     pp_debug "swap oracle@.";
     let pft' = List.hd pft.pt_children in
-    extract_proof_sb1 "Swap_oracle" file pft pft' (pr_admit "swap oracle")
+    extract_proof_sb1 "Swap Oracle" file pft pft' 
+      (proof_swap_oracle opos pft pft')
 
   | Rrnd_indep (side, pos) ->
     pp_debug "rnd_indep@.";

@@ -475,31 +475,6 @@ let obinding tbl =
 let abinding tbl = 
   Asym.H.fold (fun k v l -> (k,v)::l) tbl [] 
 
-(*let pp_adv_type fmt file = 
-  
-  let pp_orcl_decl fmt (oname, oinfo) = 
-    F.fprintf fmt "@[proc %a (@[%a@]) :@ %a@]"
-      pp_oname1 oname 
-      (pp_list ",@ " (pp_var_decl file)) oinfo.oparams
-      (pp_type file) oinfo.ores.e_ty in
-  let pp_orcl_ty fmt oinfo = 
-    F.fprintf fmt "@[<v>module type Orcl = {@   @[<v>%a@]@ }.@]@ " 
-      (pp_list "@ " pp_orcl_decl) (List.rev (obinding oinfo)) in
-  let pp_adv_decl fmt (name,os) =
-    F.fprintf fmt "@[proc a%a (_ : %a) : %a {%a}@]"
-      Asym.pp name (pp_type file) name.Asym.dom (pp_type file) name.Asym.codom
-      (pp_list ",@ " pp_oname) os in
-  let pp_adv_ty fmt ainfo = 
-    F.fprintf fmt "@[<v>module type Adv (O:Orcl) = {@    @[<v>%a@]@ }.@]@ "
-      (pp_list "@ " pp_adv_decl) (List.rev (abinding ainfo))
-  in
-  let ginfo = (adv_info file).adv_g in
-  F.fprintf fmt "(** { Adversary Type. } *)@ @ ";
-  F.fprintf fmt "@[<v>%a@ %a@ @]"
-    pp_orcl_ty ginfo.oinfo
-    pp_adv_ty  ginfo.ainfo
-*)
-
 let pp_modty file fmt modt =
   let pp_modtparam fmt params =
     if params <> [] then
@@ -521,7 +496,7 @@ let pp_modty file fmt modt =
         name 
         (pp_list ",@ " pp_arg) args  
         (pp_type file) ty
-        (pp_list ",@ " pp_fun_name) restr
+        (pp_list "@ " pp_fun_name) restr
     in 
     (pp_list "@ " pp_proc) fmt procs
   in
