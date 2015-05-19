@@ -15,13 +15,13 @@ adversary A_dlin : (G * G * G * G * G) -> Bool.
 assumption dlin
   [ b1, b2, c1, c2 <-$ Fq;    b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^(b2*(c1+c2))); ]
   [ b1, b2, c1, c2, t <-$ Fq; b <- A_dlin(g^b1, g^b2, g^c1, g^(b1*c2), g^t); ].
-    
+
 adversary A_dkill : () -> Bool.
 
 assumption [inf] dkill
   [ k <-$ Fq; b <- A_dkill(); ]
   [ b <- A_dkill(); ].
-  
+
 adversary A1 : (G*G*G*G*G*G*G*G*G*G*G*G*G_t) -> (Fq * G_t * G_t).
 adversary A2 : (Fq*G_t*G*G*G*G*G*G*G*G*G) -> Bool.
 oracle KeyGen1 : Fq -> (Fq*G*G*G*G*G*G*G*G).
