@@ -3284,67 +3284,58 @@ let rec extract_proof file pft =
     let (lemma1, pr1, cmp1, bound1) = extract_proof file pft1 in
     let (lemma2, pr2, cmp2, bound2) = extract_proof file pft2 in
     let pr = extract_pr file mem pft.pt_ju in
-    let cmp = cmp1 && cmp2 in
+    let cmp = cmp_le in
     let bound = f_radd bound1 bound2 in
     let g = find_game file pft.pt_ju.ju_se.se_gdef in
   
-    let pp_end fmt () = 
-      if cmp = cmp_le then 
-        let aux fmt (cmp,lemma) =
-          if cmp = cmp_eq then
-            F.fprintf fmt 
-              "by cut H1 := %s &m; cut H := Real.eq_le _ _ H1;" lemma
+    let f,m,a,ev1 = destr_pr pr1 and _,_,_,ev2 = destr_pr pr2 in
+    let pr_or = Fpr(f,m,a,f_or ev1 ev2) in
+    let flocal = flocal_ev pft.pt_ju.ju_se.se_ev in
+    let ev = formula ~flocal file [g.mod_name] (Some "hr") e in
+    let jev =  pft.pt_ju.ju_se.se_ev in
+    let has_assert = Game.has_assert pft.pt_ju.ju_se.se_gdef in
+    let vs = match jev.ev_binding with
+      | [vs,_] -> vs
+      | [] -> []
+      | _ -> assert false in
+
+    let proof fmt () = 
+      F.fprintf fmt "(* Case event *)";
+      F.fprintf fmt "move => &m.@ ";
+      F.fprintf fmt "apply (Real.Trans _ (%a)).@ " Printer.pp_form pr_or;
+      let rw_list = 
+        if jev.ev_binding = [] then ""
+        else if jev.ev_quant = Forall then " /List.all" 
+        else " /List.any" in
+      F.fprintf fmt "+ @[<v>rewrite Pr[mu_sub]%s;[ move=> &hr | by []].@ " rw_list;
+      let pp_v fmt v = F.fprintf fmt "%s" (snd (pvar [] v)) in
+      if jev.ev_binding = [] then
+        F.fprintf fmt "by case (%a) => Hc He;[left | right];move: Hc He.@ "
+          Printer.pp_form ev
+      else if jev.ev_quant = Forall then 
+        F.fprintf fmt "@[<hov 2>by move=> %s;case (%a)=> Hc;@ [left|right];%s@ move=> [%a];move: (He (%a)) Hc.@]@ "
+          (if has_assert then "[He _]" else "He") 
+          Printer.pp_form ev 
+          (if has_assert then "(split;[ done | ]);" else "")
+          (pp_list " " pp_v) vs (pp_list "," pp_v) vs
+      else begin
+        if has_assert then F.fprintf fmt "move=> [HWa He];move:He.@ ";
+        F.fprintf fmt "@[<hov 2>by move=> [[%a]];case (%a)=> Hc He;[left | right];%sexists (%a);move: Hc He.@]@ "
+          (pp_list " " pp_v) vs Printer.pp_form ev 
+          (if has_assert then "(split;[ done | ]);" else "")
+          (pp_list "," pp_v) vs
+      end;
+      F.fprintf fmt "@]";
+      F.fprintf fmt "rewrite Pr[mu_or];apply le_trans_sub; [smt | ].@ ";
+      let aux fmt (cmp,lemma) =
+        if cmp = cmp_eq then
+          F.fprintf fmt 
+            "by cut H1 := %s &m; cut H := Real.eq_le _ _ H1." lemma
           else
-            F.fprintf fmt "by cut H:= %s &m;" lemma;
-          F.fprintf fmt 
-            "apply (real_le_trans _ _ _ _ H);rewrite Pr [mu_sub]." in
-        F.fprintf fmt "apply Real.addleM.@ ";
-        F.fprintf fmt "+ %a@ " aux (cmp1,lemma1);
-        F.fprintf fmt "%a" aux (cmp2,lemma2) 
-      else 
-        F.fprintf fmt "by rewrite (%s &m) (%s &m)." lemma1 lemma2 in
-
-    let proof = 
-      if pft.pt_ju.ju_se.se_ev.ev_binding = [] then
-        let ev = formula file [g.mod_name] None e in
-        let proof fmt () =
-          F.fprintf fmt "(* Case event *)@ ";
-          F.fprintf fmt "move=> &m.@ ";
-          F.fprintf fmt "rewrite Pr [mu_split (%a)].@ " Printer.pp_form ev;
-          pp_end fmt () in
-        proof
-      else
-        let f,m,a,ev1 = destr_pr pr1 and _,_,_,ev2 = destr_pr pr2 in
-        let pr_or = Fpr(f,m,a,f_or ev1 ev2) in
-        let flocal = flocal_ev pft.pt_ju.ju_se.se_ev in
-        let ev = formula ~flocal file [g.mod_name] (Some "hr") e in
-        let proof fmt () =
-          let vs = 
-            match pft.pt_ju.ju_se.se_ev.ev_binding with
-            | [vs, _] -> vs
-            | _ -> assert false in
-          F.fprintf fmt "move => &m.@ ";
-          F.fprintf fmt "apply (Real.Trans _ (%a)).@ " Printer.pp_form pr_or;
-          let pp_v fmt v = F.fprintf fmt "%s" (snd (pvar [] v)) in
-          F.fprintf fmt 
-            "rewrite Pr [mu_sub] /List.%s;[move=> &hr [[%a]] He | by []].@ "
-            (if pft.pt_ju.ju_se.se_ev.ev_quant = Forall then "all" else "any") 
-            (pp_list " " pp_v)
-            vs
-          ;
-          let pp_vs fmt vs = 
-            match vs with
-            | [v] -> pp_v fmt v
-            | _   -> F.fprintf fmt "(%a)" (pp_list ", " pp_v) vs in
-          F.fprintf fmt 
-            "by case (%a) => Hc;[left | right];exists %a;move: Hc He.@ "
-            Printer.pp_form ev
-            pp_vs vs;
-          F.fprintf fmt "rewrite Pr[mu_or];apply le_trans_sub; [smt | ].@ ";
-          pp_end fmt ()
-        in 
-        proof in
-
+            F.fprintf fmt "by cut H:= %s &m." lemma in
+      F.fprintf fmt "apply Real.addleM.@ ";
+      F.fprintf fmt "+ %a@ " aux (cmp1,lemma1);
+      F.fprintf fmt "%a" aux (cmp2,lemma2) in
 
     let lemma3 = add_pr_lemma file (mk_cmp pr cmp bound) (Some proof) in
     lemma3, pr, cmp, bound
