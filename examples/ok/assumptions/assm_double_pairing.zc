@@ -21,4 +21,4 @@ ctxt_ev 1 (x -> x^(1/a)); //.
 except a [].
 bycrush.
 qed.
-extract "assm_double_pairing.zc".
+extract "extraction/assm_double_pairing.ec".

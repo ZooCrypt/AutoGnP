@@ -314,6 +314,8 @@ let last xs =
   in
   go xs
 
+let drop_last n xs = L.rev xs |> drop n |> L.rev
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{String functions} *)
 

@@ -116,6 +116,10 @@ val smart_map : ('a -> 'a) -> 'a list -> 'a list
      shorter than [k], the empty list is returned. *)
 val drop : int -> 'a list -> 'a list
 
+(** [drop k l] drop last [k] elements of [l]. If [l] is
+     shorter than [k], the empty list is returned. *)
+val drop_last : int -> 'a list -> 'a list
+
 (** [take k l] takes the first [k] elements of [l]. If [l]
     is shorter than [k], then fewer elements are returned.  *)
 val take : int -> 'a list -> 'a list
