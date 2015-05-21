@@ -1687,7 +1687,7 @@ let bound_rnd_indep file pos ju =
   let evs = destr_Land_nofail ju.ju_se.se_ev.ev_expr in
   let ev = List.nth evs pos in
   if is_Eq ev then isize, ev, lemma 
-  else assert false (* FIXME exists *)
+  else assert false 
 
 let extract_rnd_indep file side pos ju = 
   let g = game file ju.ju_se.se_gdef in
@@ -3326,7 +3326,9 @@ let rec extract_proof file pft =
           (pp_list "," pp_v) vs
       end;
       F.fprintf fmt "@]";
-      F.fprintf fmt "rewrite Pr[mu_or];apply le_trans_sub; [smt | ].@ ";
+      F.fprintf fmt "rewrite Pr[mu_or];apply le_trans_sub;@ ";
+      F.fprintf fmt "  [ split;[ | move=> ____ {____}];by byphoare (_:_ ==> _);auto | ].@ ";
+
       let aux fmt (cmp,lemma) =
         if cmp = cmp_eq then
           F.fprintf fmt 
@@ -3697,8 +3699,8 @@ and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in
   let sw2, pft' = skip_swap pft2 in 
   extract_proof_sb1 "Conv" file pft pft' 
-(*    (fun _ fmt () -> F.fprintf fmt "admit.") *)
-    (pr_conv sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2) 
+    (fun _ fmt () -> F.fprintf fmt "admit.") 
+(*    (pr_conv sw1 pft.pt_ju pft1.pt_ju pft2.pt_ju pft'.pt_ju sw2) *)
 
 and extract_assert file pft _p e = 
   let pft1 = List.hd pft.pt_children in 
