@@ -16,9 +16,7 @@ bound_succ
     c <-$ Fq;
     beta <- A(g^(c*a*b + c*a + c*b + c));
   ] : beta.
-  abstract* 3 arg (g^a,g^b,g^(a*b)).
-  abstract _ res _.
-  assumption_decisional ddh -> [arg] t.
+  assumption_decisional! ddh -> t.
   admit.
 qed.
 extract "extraction/t_abstract_deduce.ec".

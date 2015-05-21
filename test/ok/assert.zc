@@ -20,9 +20,9 @@ bycrush.
 norm.
 assert 3.
   admit.
-bycrush.  
+bycrush.
 qed.
-extract "extraction/Assert.ec".
+extract "extraction/assert.ec".
 
 
   

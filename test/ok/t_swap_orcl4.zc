@@ -32,4 +32,4 @@ bound_adv [
 swap (3,2,2) 4.
 admit.
 qed.
-extract "extraction/swap_oracle4.ec".
+extract "extraction/t_swap_orcl4.ec".
