@@ -49,8 +49,8 @@ bound_adv
     };
 
   (* encryption of m with label L *)
-  beta <-$ Bool;
-  let m = beta?m0:m1;
+  bg <-$ Bool;
+  let m = bg?m0:m1;
   r <-$ Fq;
   s <-$ Fq;
   let su1 = g1^r;
@@ -62,7 +62,7 @@ bound_adv
            e(f21^r*f22^s,su2) *
            e(f31^r*f32^s,su3) *
            e(f41^r*f42^s,sc) * e(f51^r*f52^s,sL);
-  beta' <- A2(su1,su2,su3,sc,sv)  with
+  bg' <- A2(su1,su2,su3,sc,sv)  with
     Dec2(u1,u2,u3,c,v,L) = {
       (u1,u2,u3,c,v,L) <> (su1,su2,su3,sc,sv,sL);
       let v' = e(u1^b01*u2^b02*u3^b03,g) *
@@ -74,7 +74,7 @@ bound_adv
       return c / (u1^a1*u2^a2*u3^a3)
     };
 
-] : (beta = beta').
+] : (bg = bg').
 
 norm.
 
@@ -95,15 +95,22 @@ rnd! b41 _ _; //. rnd! b42 _ _; //.
 rnd! b51 _ _; //. rnd! b52 _ _; //.
 rnd! a1 _ _;  //. rnd! a2 _ _;  //.
 
-add_test (28,1,1) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A3 gu1 gu2 gu3 gc gv gL.
+guard (28,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))).
+  (* swap and simplify in both branches *)
+  swap (28,1,2) -1; rewrite_oracle (28,1,1) ->; //. last.
+  swap (28,1,2) -1; rewrite_oracle (28,1,1) ->; //. last.
+  guess A3 gu1 gu2 gu3 gc gv gL.
   bycrush.
-simp; //.
-add_test (30,1,2) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))) A4 gu1 gu2 gu3 gc gv gL.
-  last. bycrush.
-simp; //.
+guard (30,1,3) (log(u3) = (e3*((log(u1) / e1) + (log(u2) / e2)))).
+  (* swap and simplify in both branches *)
+  swap (30,1,3) -2; rewrite_oracle (30,1,1) ->; //. last.
+  swap (30,1,3) -2; rewrite_oracle (30,1,1) ->; //.
+  bycrush.
+guess A3 gu1 gu2 gu3 gc gv gL.
+swap (30,1,1) 2. simp; //.
 (* make view of adversary independent of b{1,2,3,4,5}3 *)
 rnd! b03 _ _. simp; //.
-split_ineq 1.
+split_ineq 2.
   bysimp.
   indep!.
   indep!.

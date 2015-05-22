@@ -283,7 +283,8 @@ expr6 :
 /* Oracle definitions */
 
 except_exprs :
-| BACKSLASH es=separated_nonempty_list(COMMA,expr) { es }
+| BACKSLASH LCBRACE es=separated_nonempty_list(COMMA,expr) RCBRACE { es }
+| BACKSLASH         es=separated_nonempty_list(COMMA,expr)         { es }
 
 lcmd :
 | LET i=ID EQUAL e=expr                         { [ LLet(i, e) ] }
@@ -406,19 +407,19 @@ decl :
 /* proof commands */
 
 proof_command :
-| ADMIT                          { Admit }
-| LAST                           { Last }
-| BACK                           { Back }
-| UNDOBACK b=boption(EXCL)       { UndoBack(b) }
-| QED                            { Qed }
-| EXTRACT s=STRING               { Extract s }
-| PRINTGOALS COLON i=ID          { PrintGoals(i) }
-| PRINTGOAL COLON i=ID           { PrintGoal(i) }
-| PRINTPROOF b=boption(EXCL)     { PrintProof(b) }
-| PRINTGOALS                     { PrintGoals("") }
-| PRINTDEBUG s=STRING            { Debug s }
-| PRINTGAME s=STRING             { PrintGame s }
-| PRINTGAMES s1=STRING s2=STRING { PrintGames(s1,s2) }
+| ADMIT                                { Admit }
+| LAST                                 { Last }
+| BACK                                 { Back }
+| UNDOBACK b=boption(EXCL)             { UndoBack(b) }
+| QED                                  { Qed }
+| EXTRACT s=STRING                     { Extract s }
+| PRINTGOALS COLON i=ID                { PrintGoals(i) }
+| PRINTGOAL COLON i=ID                 { PrintGoal(i) }
+| PRINTPROOF b=boption(EXCL) s=STRING? { PrintProof(b,s) }
+| PRINTGOALS                           { PrintGoals("") }
+| PRINTDEBUG s=STRING                  { Debug s }
+| PRINTGAME s=STRING                   { PrintGame s }
+| PRINTGAMES s1=STRING s2=STRING       { PrintGames(s1,s2) }
 
 /*----------------------------------------------------------------------*/
 /* tactics */

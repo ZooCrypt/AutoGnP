@@ -119,7 +119,7 @@ let t_last_random_indep ts ju =
       (t_merge_ev tomergei @>
         CR.t_ctxt_ev pos ctxt @>
         t_norm_tuple_proj  @>
-        CR.t_random_indep ) ju
+        CR.t_random_indep) ju
     end
   | _ -> CR.t_fail "The last instruction is not a sampling" ju
 

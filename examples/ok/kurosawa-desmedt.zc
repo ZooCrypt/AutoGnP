@@ -40,7 +40,7 @@ operator Kdf : G -> (BS_km * BS_ks).
 adversary A_kdf : (BS_km * BS_ks) -> Bool.
 
 assumption kdf
-  [ x <-$ Fq; res <- A_kdf(Kdf(g^x)); ]
+  [ x <-$ Fq;                   res <- A_kdf(Kdf(g^x)); ]
   [ km <-$ BS_km; ks <-$ BS_ks; res <- A_kdf(km,ks); ].
 
 (* ----------------------------------------------------------------- *)
@@ -150,27 +150,31 @@ bound_adv
   rnd! y1 _ _ g1; //.
 
   (* add test to first oracle *)
-  add_test (10,1,1) (u1^w = u2) CC tu1 tu2 te tt.
+  guard (10,1,2) (u1^w = u2).
+    guess CC tu1 tu2 te tt.
+    swap (10,1,1) 1.
     simp. unfold. norm_solve x2.
     rnd! x2 _ _. norm.
     (* apply decisional Kdf assumption *)
     swap x2 (1). assumption_decisional! kdf -> km ks; //.
     (* apply CMA0 assumption *)
     abstract*! 2 arg ().
-    abstract 13 res2 tt.
+    abstract 14 res2 tt.
     abstract res2 res1 te.
     remove_ev 1.
     assumption_computational cma0 [2].
-
+  swap (10,1,1) 1. simp. //.
   (* add test to second oracle *)
-  add_test (12,1,2) (u1^w = u2) CCC tu1 tu2 te tt.
+  guard (12,1,3) (u1^w = u2).
+    guess CCC tu1 tu2 te tt.
+    swap (12,1,3) -2. simp.
     (* handle b = b' case first *)
-    last. simp.
+    last. swap (12,1,3) -2. simp.
     (* make Kdf input random (FIXME add exceptions automatically) *)
     except w [0]. except r2 [r1].
     rnd! x2 _ _; //.
     (* apply Kdf assumption *)
-    swap x2 (1).
+    swap x2 (1). //.
     assumption_decisional! kdf -> km ks; //.
     (* apply computational CPA1 assumption *)
     swap ks (1). swap b (2). norm_unknown.
@@ -199,9 +203,9 @@ bound_adv
     abstract 2 arg1 ().
     abstract 14 res1 Enc(ks,b?m0:m1).
     abstract 15 arg2 Mac(km,res1).
-    abstract 17 res1_1 te.
-    abstract 18 res1_2 tt.
-    assumption_computational cma1 [2 14] [15 18].
+    abstract 18 res1_1 te.
+    abstract 19 res1_2 tt.
+    assumption_computational cma1 [2 14] [15 19].
 
   simp; //.
   (* Reduce hash collision case to TCR *)
@@ -215,9 +219,9 @@ bound_adv
     norm_unknown r1 r2.
     swap i (1). swap r1 (2). swap r2 (3).
     abstract 4 arg (i,g^r1,g^r2).
-    abstract 14 res1 tu1.
-    abstract 15 res2 tu2.
-    assumption_computational tcr [4 15].
+    abstract 15 res1 tu1.
+    abstract 16 res2 tu2.
+    assumption_computational tcr [4 16].
 
   (* finish proof exploiting that hashes are not equal *)
   norm.
@@ -226,7 +230,7 @@ bound_adv
   rnd! x2 _ _. norm.
   rnd! y2 _ _. norm.
   (* apply Kdf decisional assumption *)
-  swap y2 (1). remove_ev 1 3 4 5 6.
+  swap y2 (1). remove_ev 1 2 4 5 6.
   abstract _ result _.
   (* FIXME: abstract* gives floating point exception *)
   abstract 2 arg (Kdf(g^y2)). norm_unknown.
@@ -234,8 +238,8 @@ bound_adv
   (* reduce to CMA0 *)
   unfold. norm_unknown.
   abstract 2 arg ().
-  abstract 15 res1 te.
-  abstract 16 res2 tt.
+  abstract 16 res1 te.
+  abstract 17 res2 tt.
   assumption_computational cma0 [2].
 qed.
 extract "extraction/kurosawa-desmedt.ec".

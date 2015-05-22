@@ -293,43 +293,83 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   | Rfind _ ->
     F.fprintf fmt "find"
 
-let rec pp_proof_tree_verbose ?hide_admit:(hide_admit=false) fmt pt =
-  F.fprintf fmt
-    ("##########################@\n%a@\n##########################@\n"^^
-     "apply %a@\n"^^
-     "  @[<v 0>%a@\n@]%!")
-    pp_ju pt.pt_ju
-    (pp_rule ~hide_admit) pt.pt_rule
-    (pp_list "@\n" (pp_proof_tree_verbose ~hide_admit)) pt.pt_children
+let pp_path fmt path =
+  let compressed_path =
+    Util.group (=) path
+    |> L.map (fun xs -> (L.hd xs, L.length xs))
+  in
+  let pp_entry fmt (p,l) =
+    if l = 1
+    then pp_int fmt p
+    else F.fprintf fmt "%ix%i" p l
+  in
+  pp_list "_" pp_entry fmt compressed_path
 
-let pp_proof_tree_non_verbose ?hide_admit:(hide_admit=false) fmt pt =
+let pp_unit fmt () = pp_string fmt ""
+
+let wrap_info pp info =
+  let s = fsprintf "%a" pp info in
+  if s = "" then "" else "["^s^"]:"
+
+let pp_proof_tree_verbose pp_info ?hide_admit:(hide_admit=false) fmt pt =
   let rec aux n pt =
-    F.fprintf fmt "@[%s@[<v 0>%a@]@]@\n%!" (String.make n ' ')
+    F.fprintf fmt
+      ("@[%s@[<v 0>##########################@\n%a@\n##########################@\n"^^
+          "%sapply %a@]@]@\n%!")
+      (String.make n ' ')
+      pp_ju pt.pt_ju
+      (wrap_info pp_info pt.pt_info)
       (pp_rule ~hide_admit) pt.pt_rule;
-    List.iter (aux (n + 2)) pt.pt_children
+    let len = L.length pt.pt_children in
+    (* use indentation that reflects remaining proof obligations *)
+    List.iteri (fun i pt -> aux (n + (len - 1 - i)*2) pt) pt.pt_children
   in
   aux 0 pt
 
-let pp_proof_tree ?hide_admit:(hide_admit=false) verbose =
-  if verbose then pp_proof_tree_verbose ~hide_admit
-  else pp_proof_tree_non_verbose ~hide_admit
+let pp_proof_tree_non_verbose pp_info ?hide_admit:(hide_admit=false) fmt pt =
+  let rec aux n pt =
+    F.fprintf fmt "@[%s@[<v 0>%s%a@]@]@\n%!"
+      (String.make n ' ')
+      (wrap_info pp_info pt.pt_info)
+      (pp_rule ~hide_admit) pt.pt_rule;
+    let len = L.length pt.pt_children in
+    (* use indentation that reflects remaining proof obligations *)
+    List.iteri (fun i pt -> aux (n + (len - 1 - i)*2) pt) pt.pt_children
+  in
+  aux 0 pt
+
+let pp_proof_tree pp_info ?hide_admit:(hide_admit=false) verbose =
+  if verbose then pp_proof_tree_verbose pp_info ~hide_admit
+  else pp_proof_tree_non_verbose pp_info ~hide_admit
 (*i*)
-  
-let rec simplify_proof_tree pt =
-  let children = L.map simplify_proof_tree pt.pt_children in
-  let pt = pt_replace_children pt children in
-  match pt.pt_rule, pt.pt_children with
-  | Rconv,[pt1] ->
-    begin match pt1.pt_rule, pt1.pt_children with
-    | Rconv,[pt11] ->
-      (* skip intermediate judgment *)
-      let pss = t_conv true pt11.pt_ju.ju_se pt.pt_ju in
-      let ps = Nondet.first pss in
-      ps.validation [pt11]
-    | _ -> 
-      pt
-    end
-  | _ -> pt
+
+let simplify_proof_tree pt =
+  let rec simp pt =
+    let children = L.map simp pt.pt_children in
+    let pt = pt_replace_children pt children () in
+    match pt.pt_rule, pt.pt_children with
+    | Rconv,[pt1] ->
+      begin match pt1.pt_rule, pt1.pt_children with
+      | Rconv,[pt11] ->
+        (* skip intermediate judgment *)
+        let pss = t_conv true pt11.pt_ju.ju_se pt.pt_ju in
+        let ps = Nondet.first pss in
+        ps.validation [pt11]
+      | _ -> 
+        pt
+      end
+    | _ -> pt
+  in
+  simp pt
+
+let decorate_proof_tree pt =
+  let rec go pos pt =
+    let children =
+      L.mapi (fun i pt -> go (pos@[i]) pt) pt.pt_children
+    in
+    pt_replace_children pt children pos
+  in
+  go [0] pt
 
 let rec prove_by_admit s ps =
   if ps.subgoals = [] then

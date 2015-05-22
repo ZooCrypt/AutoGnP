@@ -37,9 +37,11 @@ let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 let diff_step ops nps =
   match ops with
   | Some ops ->
-    let get_pt ps = CR.get_proof (prove_by_admit "" ps) |> simplify_proof_tree in
+    let get_pt ps =
+      CR.get_proof (prove_by_admit "" ps) |> simplify_proof_tree
+    in
     fsprintf "@\n  @[%a@]"
-      (pp_list "@\n" (pp_proof_tree ~hide_admit:true false))
+      (pp_list "@\n" (pp_proof_tree pp_unit ~hide_admit:true false))
       (diff_proof_tree (get_pt ops,get_pt nps))
   | None -> ""
 
@@ -708,7 +710,7 @@ let handle_instr verbose ts instr =
     | ClosedTheory _ -> (ts, "Theory closed.")
     end
 
-  | PT.PrintProof(verbose) ->
+  | PT.PrintProof(verbose,mfile) ->
     begin match ts.ts_ps with
     | BeforeProof -> (ts, "No proof started yet.")
     | ActiveProof _ | ClosedTheory _ ->
@@ -718,11 +720,19 @@ let handle_instr verbose ts instr =
         | ClosedTheory pt          -> pt
         | ActiveProof  (ps,_,_,_)  -> CR.get_proof (prove_by_admit "" ps)
       in
-      let pt = simplify_proof_tree pt in
+      let pt = simplify_proof_tree pt |> decorate_proof_tree in
       let buf = Buffer.create 1024 in
       let fbuf = F.formatter_of_buffer buf in
       F.pp_set_margin fbuf 240;
-      F.fprintf fbuf "%a" (pp_proof_tree verbose) pt;
+      F.fprintf fbuf "%a" (pp_proof_tree pp_path verbose) pt;
+      (match mfile with
+       | Some filename ->
+         let out = open_out filename in
+         let fmt = F.formatter_of_out_channel out in
+         F.pp_set_margin fmt 240;
+         F.fprintf fmt "%a" (pp_proof_tree pp_path verbose) pt;
+         close_out out
+       | None -> ());
       (ts, Buffer.contents buf)
     end
 

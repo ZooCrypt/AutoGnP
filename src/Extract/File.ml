@@ -559,7 +559,9 @@ let init_adv_info file gdef =
 
 let find_game file g = 
   let s = get_section file in
-  try  snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
+  (* try *)
+  snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
+  (* 
   with Not_found ->
     let gdef_equal g g' = 
       try 
@@ -572,6 +574,7 @@ let find_game file g =
           Game.gdef_equal g g' && ren_injective ren
       with Not_found | Expr.TypeError _ -> false in
     snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
+  *)
 
 let add_restr_info file sname info = 
   let ai = adv_info file in

@@ -15,13 +15,17 @@ open CoreTypes
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Proof representation} *)
 
-type proof_tree = private {
-  pt_children : proof_tree list;
+type 'a iproof_tree = private {
+  pt_children : 'a iproof_tree list;
   pt_rule     : rule_name;
   pt_ju       : judgment;
+  pt_info     : 'a
 }
 
-val pt_replace_children : proof_tree -> proof_tree list -> proof_tree
+type proof_tree = unit iproof_tree
+
+val pt_replace_children :
+  'b iproof_tree -> ('a iproof_tree) list -> 'a -> 'a iproof_tree
 
 type goal = judgment
 

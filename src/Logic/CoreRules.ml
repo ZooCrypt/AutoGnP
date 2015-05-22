@@ -23,17 +23,20 @@ let _log_i ls = mk_logger "Logic.Core" Bolt.Level.INFO "CoreRules" ls
 (* \hd{Types for proofs and tactics} *)
 
 (** Proof tree. *)
-type proof_tree = {
-  pt_children : proof_tree list;
+type 'a iproof_tree = {
+  pt_children : ('a iproof_tree) list;
   pt_rule     : rule_name;
-  pt_ju       : judgment
+  pt_ju       : judgment;
+  pt_info     : 'a
 }
 
+type proof_tree = unit iproof_tree
+
 (** Replace subproofs with (possibly) different proofs of the same facts. *)
-let pt_replace_children pt pts =
+let pt_replace_children pt pts info =
   let equal_fact pt1 pt2 = ju_equal pt1.pt_ju pt2.pt_ju in
   assert (Util.list_eq_for_all2 equal_fact pt.pt_children pts);
-  { pt with pt_children = pts }
+  { pt with pt_children = pts; pt_info = info }
 
 (** A goal is just a judgment (for now). *)
 type goal = judgment
@@ -91,6 +94,7 @@ let prove_by ru g =
           { pt_ju       = g;
             pt_rule     = rn;
             pt_children = pts;
+            pt_info     = ();
           }
       }
   with
@@ -224,7 +228,7 @@ let t_fail fs _g =
 (** Tactical that fails if the given tactic returns the same proof state. *)
 let t_ensure_progress t g =
   t g >>= fun ps ->
-  guard (ps.subgoals <> [g]) >>= fun _ ->
+  guard (not (L.length ps.subgoals = 1 && ju_equal (L.hd ps.subgoals) g)) >>= fun _ ->
   ret ps
 
 (** Monadic bind for rtactics, expects that [t1] returns a single goal. *)

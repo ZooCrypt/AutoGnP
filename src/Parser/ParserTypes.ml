@@ -155,7 +155,7 @@ type instr =
   | JudgDist   of gdef * parse_ev * gdef * parse_ev
   | PrintGoal  of string
   | PrintGoals of string
-  | PrintProof of bool
+  | PrintProof of bool * string option
   | Apply      of tactic
   | Admit
   | Last

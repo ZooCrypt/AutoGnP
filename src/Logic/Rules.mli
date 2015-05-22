@@ -61,15 +61,22 @@ val t_swap_others_max : dir -> gcmd_pos -> int rtactic
 
 val simplify_proof_tree : proof_tree -> proof_tree
 
+val decorate_proof_tree : proof_tree -> (int list) iproof_tree
+
 val prove_by_admit : string -> proof_state -> proof_state
 
 val diff_proof_tree : proof_tree * proof_tree -> proof_tree list
+
+val pp_path : F.formatter -> int list -> unit
+
+val pp_unit : F.formatter -> unit -> unit
 
 val pp_let : F.formatter -> int * (vs * expr) -> unit
 
 val pp_samp : F.formatter -> gcmd_pos * (vs * (ty * expr list)) -> unit
 
 val pp_proof_tree :
-  ?hide_admit:bool -> bool -> F.formatter -> CoreRules.proof_tree -> unit
+  (F.formatter -> 'a -> unit) ->
+  ?hide_admit:bool -> bool -> F.formatter -> 'a CoreRules.iproof_tree -> unit
 
 val pp_osamp : F.formatter -> ocmd_pos * (vs * (ty * expr list)) -> unit
