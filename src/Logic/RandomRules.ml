@@ -70,7 +70,7 @@ let useful_subexprs se rv mgen e =
     match mgen with
   | None    -> mplus (ret e) (msum (L.map get_coeff fac_candidates))
   | Some ge ->
-    let lge = mk_GLog ge in
+    let lge = if is_G ge.e_ty then  mk_GLog ge else ge in
     let fac_candidates = L.filter (fun e -> not (e_equal e lge)) fac_candidates in
     msum ((get_coeff lge)::(ret e)::(L.map get_coeff fac_candidates))
 
