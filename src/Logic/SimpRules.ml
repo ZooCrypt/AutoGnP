@@ -56,10 +56,11 @@ let t_rewrite_ev_maybe mi mdir ju =
     let occ_others e' = L.exists (fun (_,e) -> e_exists (e_equal e') e) others in
     guard (is_Eq e) >>= fun _ ->
     let (a,b) = destr_Eq e in
+    let var_ord u v = not (is_V v) || e_compare u v > 0 in
     msum
-      [ if is_V a || (is_H a && is_H b && occ_others a && e_compare a b > 0)
+      [ if (is_V a && occ_others a && var_ord a b) || (is_H a && is_H b && occ_others a && e_compare a b > 0)
         then ret LeftToRight else mempty
-      ; if is_V b || (is_H a && is_H b && occ_others b && e_compare b a > 0)
+      ; if (is_V b && occ_others b && var_ord b a)|| (is_H a && is_H b && occ_others b && e_compare b a > 0)
         then ret RightToLeft else mempty ] >>= fun dir ->
     ret (i,dir)
   ) >>= fun (i,dir) ->
