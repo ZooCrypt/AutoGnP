@@ -7,7 +7,9 @@ open Util
 open Expr
 open ExprUtils
 
-let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Deduc" ls
+(* let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Deduc" ls *)
+let log_i _ = ()
+
 (*i*)
 
 exception Found of expr

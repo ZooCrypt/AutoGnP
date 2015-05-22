@@ -326,7 +326,8 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
       try
         deduce_non_tuple e
       with
-        Not_found when keep_going -> e
+      | Not_found when keep_going -> e
+      | Not_found -> tacerror "t_abstract_deduce: cannot deduce %a" pp_exp e
   in
   log_i (lazy (fsprintf "Abstracting %i lines@\n" abstract_len));
   let a_cmds = map_gdef_exp deduce a_cmds in

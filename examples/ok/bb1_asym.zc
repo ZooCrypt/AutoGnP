@@ -35,10 +35,6 @@ bound_adv
         return (g_1^(c*d + r*(d*i + h)), g_1^r)
       };
   ] : b = b'.
-  swap c (1); swap d (2); swap e' (3).
-  rnd h _ (h -> h + d*i'); //.
-  rnd_oracle (6,1,2) _ (r -> r * (i - i') + c); //.
-  rnd_oracle (8,1,2) _ (r -> r * (i - i') + c); //.
-  bycrush.
+  bycrush 20.
 qed.
 extract "extraction/bb1_asym.ec".

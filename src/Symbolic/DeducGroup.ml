@@ -11,6 +11,8 @@ open NormField
 open Norm
 (*i*)
 
+let log_i _ = ()
+
 (* NOTE: For now, we do not deal with rational functions in the
    exponent. It might be possible to generalize the current algorithm
    by performing something similar to the cross-multiplication used to

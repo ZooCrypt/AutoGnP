@@ -41,7 +41,9 @@ let useful_subexprs se rv mgen e =
   (* compute possible divisors of e: variables occuring in e that are
      not chosen by adversary, avars cannot be made non-zero usually  *)
   let evars = e_vars e in
-  let avars = Game.write_gcmds se.se_gdef in
+  let avars =
+    Se.of_list (conc_map (function GCall(vs,_,_,_) -> L.map mk_V vs | _ -> []) se.se_gdef)
+  in
   let fac_candidates =
     Se.elements (Se.diff evars avars)
     |> L.map (fun e -> if is_G e.e_ty then mk_GLog e else e)
@@ -73,7 +75,6 @@ let useful_subexprs se rv mgen e =
     let lge = if is_G ge.e_ty then  mk_GLog ge else ge in
     let fac_candidates = L.filter (fun e -> not (e_equal e lge)) fac_candidates in
     msum ((get_coeff lge)::(ret e)::(L.map get_coeff fac_candidates))
-
 
 (** Compute useful contexts from occurences of random variable *)
 let contexts se rv mgen =
