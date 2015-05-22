@@ -1138,6 +1138,9 @@ let pr_conv sw1 ju1 ju ju' ju2 sw2 file =
     pp_cmds fmt info.tacs;
     close_pp fmt ()
 
+(* --------------------------------------------------------------------- *)
+(* Certify rnd rule *)
+
 let rec auto_sim g1 g2 lc tacs = 
   match lc with 
   | [] -> tacs 
@@ -1226,7 +1229,8 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
         else F.fprintf fmt "%a %a" (mu_x_def file) ty (mu_x_def file) ty' in
       F.fprintf fmt "progress; (by rewrite %a ||@ " mu_x_def ();
       F.fprintf fmt "           by apply %a ||@ " (supp_def file) ty;
-      F.fprintf fmt "           by algebra *;elimIF;algebra * )." in
+      F.fprintf fmt "           by algebra* ||@ ";
+      F.fprintf fmt "           by elimIF;algebra* )." in
     if assert2 = None then begin
       F.fprintf fmt "sim.@ "; 
       pr_rnd fmt ();
@@ -1257,6 +1261,9 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
       pp_cmds fmt lossless2;
       close_pp fmt ()
     end
+
+(* --------------------------------------------------------------------- *)
+(* Certify rnd_oracle rule*)
         
 let pr_random_orcl (pos, inv1, inv2) ju1 ju2 file =
   let g1,g2,open_pp, close_pp = init_same false file ju1 ju2 in
