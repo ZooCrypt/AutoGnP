@@ -13,7 +13,7 @@ OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -class
 .PHONY : clean all doc test\
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
-all: zoocrypt
+all: wszoocrypt zoocrypt
 
 stubs:
 	@test -d _build/c_src || mkdir -p _build/c_src
