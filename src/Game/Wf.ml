@@ -10,7 +10,7 @@ open Game
 open Syms
 open Norm
 
-let _log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
+let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
 let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
 let _log_i ls = mk_logger "Logic.Wf" Bolt.Level.INFO "Wf" ls
 (*i*)
@@ -52,6 +52,10 @@ let ensure_varname_fresh wfs vs =
 
 let ensure_varnames_fresh wfs vs =
   List.fold_left ensure_varname_fresh wfs vs
+
+let check_binding1 wfs (vs,os) = 
+  assert (ty_equal (ty_prod_vs vs) os.Osym.dom);
+  ensure_varnames_fresh wfs vs
 
 let rec add_ineq ctype wfs e1 e2 =
   try
@@ -114,19 +118,18 @@ and check_nonzero ctype wfs e =
   )
 
 and wf_exp ctype wfs e0 =
-  let rec go e =
+  log_t (lazy (fsprintf "checking expression: %a" pp_exp e0));
+  let rec go wfs e =
     match e.e_node with
     | Cnst _ -> ()
     | V vs ->
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
         (fun () -> raise (Wf_var_undef(vs,e0,wfs.wf_bvars)))
-    (*
-    | Exists(e1,e2,(vhs)) ->
-      let wfs = ensure_varnames_fresh wfs (List.map fst vhs) in
-      wf_exp ctype wfs e2;
-      wf_exp ctype wfs e1
-    *)
-    | H(_,e1) | Proj(_,e1) -> go e1
+    | All(binds,e1) ->
+      let wfs = List.fold_left check_binding1 wfs binds in
+      assert (ty_equal mk_Bool e1.e_ty);
+      go wfs e1
+    | H(_,e1) | Proj(_,e1) -> go wfs e1
     | Nary(Land,es) ->
       let is_InEq e =
         if is_App Not e then is_App Eq (destr_Not e) else false
@@ -136,7 +139,7 @@ and wf_exp ctype wfs e0 =
       (* first check and add ineqs that are division-safe *)
       let ineqs =
         Util.move_front
-          (fun ie -> try go ie; true with _ -> false)
+          (fun ie -> try go wfs ie; true with _ -> false)
           ineqs
       in
       (* log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_exp) ineqs)); *)
@@ -144,27 +147,27 @@ and wf_exp ctype wfs e0 =
         List.fold_left
           (fun wfs e ->
             (* log_t (lazy (fsprintf "check & add ineq %a" pp_exp e)); *)
-            wf_exp ctype wfs e;
+            go wfs e;
             let e1,e2 = destr_InEq e in
             add_ineq ctype wfs e1 e2)
           wfs
           ineqs
       in
-      List.iter (wf_exp ctype wfs) others
+      List.iter (go wfs) others
     | App(FInv,[e]) ->
       assert_exc
         (check_nonzero ctype wfs e)
         (fun () -> raise (Wf_div_zero [e]));
-      go e
+      go wfs e
     | App(FDiv,[e1;e2]) ->
       assert_exc
         (check_nonzero ctype wfs e2)
         (fun () -> raise (Wf_div_zero [e2]));
-      go e1; go e2
+      go wfs e1; go wfs e2
     | Tuple(es) | Nary(_,es) | App(_,es) ->
-      L.iter go es
+      L.iter (go wfs) es
   in
-  go e0
+  go wfs e0
 
 let wf_samp ctype wfs v t es =
   assert (ty_equal v.Vsym.ty t &&
@@ -275,11 +278,9 @@ let wf_gdef ctype gdef0 =
   go (mk_wfs ()) gdef0
 
 let check_binding ctype wfs ev = 
-  let check_binding1 wfs (vs,os) = 
-    assert (ty_equal (ty_prod_vs vs) os.Osym.dom);
-    ensure_varnames_fresh wfs vs in
   let wfs = List.fold_left check_binding1 wfs ev.ev_binding in
   assert (ty_equal mk_Bool ev.ev_expr.e_ty);
+  log_t (lazy (fsprintf "checking ev-expression: %a" pp_exp ev.ev_expr));
   wf_exp ctype wfs ev.ev_expr
     
 let wf_se ctype se =

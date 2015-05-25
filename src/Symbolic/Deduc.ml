@@ -52,6 +52,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | _, _ -> ()
       end
     | Nary _ -> ()
+    | All(_,_) -> ()
   in
 
   (** Set of useful subterms that we should construct,
@@ -94,6 +95,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     match e.e_node with
     | H(_,e1)     -> add_sub e; register_subexprs false e1
     | Tuple es    -> add_sub_constr e; List.iter (register_subexprs false) es
+    | All(_,e1) -> add_sub e; register_subexprs true e1
     | Proj(_,e1)  -> add_sub e; (register_subexprs false) e1
     | App(op, es) -> 
       begin match op with
@@ -195,6 +197,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | H(h,e1)     -> construct1 e e1 (mk_H h)
     | Tuple es    -> constructn e es mk_Tuple
     | App(op,es)  -> construct_app e op es
+    | All(b,e1) -> construct1 e e1 (mk_All b)
     | Nary(op,es) ->
       begin match op with
       | Land -> constructn e es mk_Land

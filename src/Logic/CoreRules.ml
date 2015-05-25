@@ -97,7 +97,7 @@ let prove_by ru g =
             pt_info     = ();
           }
       }
-  with
+  with  
   | Invalid_rule s ->
     mfail (lazy s)
   | Wf.Wf_div_zero es ->
@@ -1108,9 +1108,31 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
             seoc_return = new_eret;
             seoc_cright = new_lcmds } }
   in
+  let ev = ju.ju_se.se_ev in
+  assert (ev.ev_binding = []);
+  let splitEv =
+    let conj = destr_Land_nofail ev.ev_expr in
+    conc_map
+      (fun e ->
+        if is_All e then (
+          match destr_All e with
+          | [(vs,o)],e1 when Osym.equal o seoc.seoc_osym ->
+            [e; e_subst (L.fold_left2
+                           (fun m e1 e2 -> Me.add (mk_V e1) (mk_V e2) m)
+                           Me.empty vs seoc.seoc_oargs) e1]
+          | _ -> [e]
+        ) else (
+          [e]
+        ) 
+      )
+      conj
+  in
   (* use hybrid oracles in first judgment *)
   let seoc_left1 =
     { seoc with
+      seoc_sec =
+        { seoc.seoc_sec with
+          sec_ev = { ev_binding = []; ev_quant = Forall; ev_expr = mk_Land splitEv } };
       seoc_obless    = Some (rename_odef new_lcmds new_eret);
       seoc_obeq      = None;
       seoc_cright    = old_lcmds;

@@ -240,6 +240,7 @@ expr :
 | e1=expr1 EQUAL e2=expr1                    { Eq(e1,e2) }
 | e1=expr1 NEQ e2=expr1                      { Not(Eq(e1,e2)) }
 | e1=expr1 QUESTION e2=expr1 COLON e3=expr1  { Ifte(e1, e2, e3) }
+| FORALL l=seplist1(COMMA,binding1) COLON e1=expr1 { All(l,e1) }
 (* | e1=expr1 IN QUERIES LPAREN oname=ID RPAREN { InLog(e1,oname) }  *)
 | e=expr1                                    { e }
 
@@ -341,11 +342,15 @@ binding1:
 | LPAREN xs=seplist1(COMMA,ID) RPAREN IN o=ID {xs, o}
 
 binding:
-| FORALL l=seplist1(COMMA,binding1) COLON {Game.Forall, l}
+(* | FORALL l=seplist1(COMMA,binding1) COLON {Game.Forall, l} *)
 | EXISTS l=seplist1(COMMA,binding1) COLON {Game.Exists, l}
 
 bind_event:
-| COLON b=binding? e=expr { Util.from_opt (Game.Forall, []) b, e }
+| COLON b=binding? e=expr
+  { match b with
+    | None                 -> (Game.Forall, []), e
+    | Some (Game.Forall,_) -> assert false
+    | Some (Game.Exists,l) -> (Game.Exists,l),e }
 
 dir:
 | LEFTARROW { Util.RightToLeft }

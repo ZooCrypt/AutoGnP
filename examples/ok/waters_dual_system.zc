@@ -85,7 +85,7 @@ bound_adv
       let k  = (U^i*W^tagk*H)^r1;
       return (tagk,D1,D2,D3,D4,D5,D6,D7,k)
     };
-] : forall i in KeyGen1: (beta = beta') /\ (i <> ci).
+] : (forall ii in KeyGen1: (ii <> ci)) /\ (beta = beta').
 
 (* ================================================ *)
 (* make ciphertext semi-functional by applying DLIN *)
@@ -110,7 +110,8 @@ trans*
   
   (* b1, b2, c1, and c2 correspond to variables in DLIN *)
   LR: rename a1 b1; rename a2 b2; swap b1 (1); swap b2 (2).
-  LR: assumption_decisional! dkill <- c2; ///=. (* new rule: add_sampling c2 Fq. *)
+  abstract _ res _.
+  LR: assumption_decisional! dkill <- c2; ///=.
   LR: assumption_decisional! dkill <- c1; ///=.
   LR: swap [c1 c2] (4).
 
@@ -144,12 +145,6 @@ hybrid (19,1)
   (* -------------------------------------------------- *)
   (* sample exponents instead of group elements to maximize deducibility for reduction *)
   LR: rnd_exp V V1 V2 W U H; ///=.
-
-  (* -------------------------------------------------- *)
-  (* side-step incomplete handling of Log(KeyGen1) *)
-  trans* [ subst 1 (beta = beta' -> (beta = beta') /\ (KeyGen1`i<>ci)) ]. admit.
-  
-  dist_sym. trans* [ subst 1 (beta = beta' -> (beta = beta') /\ (KeyGen1`i<>ci)) ]. admit. LR: // ; //=. dist_sym.
 
   (* -------------------------------------------------- *)
   (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)

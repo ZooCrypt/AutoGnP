@@ -243,4 +243,4 @@ bound_adv
   abstract 17 res2 tt.
   assumption_computational cma0 [2].
 qed.
-extract "extraction/kurosawa-desmedt2.ec".
+extract "extraction/kurosawa-desmedt.ec".

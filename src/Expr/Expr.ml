@@ -94,6 +94,7 @@ and expr_node =
   | Cnst   of cnst            (*r constants *)
   | App    of op * expr list  (*r fixed arity operators *)
   | Nary   of nop * expr list (*r variable arity AC operators *)
+  | All of (Vsym.t list * Osym.t) list * expr
 
 (** Equality hashing, and comparison for expressions. *)
 let e_equal : expr -> expr -> bool = (==) 
@@ -114,6 +115,9 @@ module Hse = Hashcons.Make (struct
     | Cnst c1, Cnst c2           -> c1 = c2
     | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
+    | All(b1,e1), All(b2,e2) ->
+      list_equal (pair_equal (list_equal Vsym.equal) Osym.equal) b1 b2 &&
+        e_equal e1 e2
     | _, _                       -> false
   (*i*)
 
@@ -126,6 +130,12 @@ module Hse = Hashcons.Make (struct
     | Cnst(c)    -> cnst_hash c
     | App(o,es)  -> Hashcons.combine_list e_hash (op_hash o) es
     | Nary(o,es) -> Hashcons.combine_list e_hash (nop_hash o) es
+    | All(b,e) ->
+      Hashcons.combine_list 
+        (fun (vs,o) ->
+          (Hashcons.combine_list Vsym.hash (Osym.hash o) vs))
+        (e_hash e)
+        b
   (*i*)
 
   let hash e = Hashcons.combine (ty_hash e.e_ty) (hash_node e.e_node)
@@ -174,6 +184,9 @@ let mk_V v = mk_e (V v) v.Vsym.ty
 let mk_H h e =
   ensure_ty_equal h.Hsym.dom e.e_ty e None (fsprintf "mk_H for %a" Hsym.pp h);
   mk_e (H(h,e)) h.Hsym.codom
+
+let mk_All b e =
+  mk_e (All(b,e)) ty_Bool
 
 let mk_Tuple es =
   match es with
@@ -235,9 +248,9 @@ let mk_FMinus a b =
   ensure_ty_equal b.e_ty ty_Fq b None "mk_FMinus";
   mk_App FMinus [a;b] ty_Fq
 
-  let mk_FInv a =
-    ensure_ty_equal a.e_ty ty_Fq a None "mk_FInv";
-    mk_App FInv [a] ty_Fq
+let mk_FInv a =
+  ensure_ty_equal a.e_ty ty_Fq a None "mk_FInv";
+  mk_App FInv [a] ty_Fq
 
 let mk_FDiv a b =
   ensure_ty_equal a.e_ty ty_Fq a None "mk_FDiv";
@@ -333,6 +346,10 @@ let sub_map g e =
       let es' = smart_map g es in
       if es == es' then e
       else mk_e (Nary(o, es')) e.e_ty
+  | All(b,e1) ->
+    let e' = g e1 in
+    if e1 == e' then e
+    else mk_All b e'
 
 let check_fun g e =
   let e' = g e in 
@@ -344,13 +361,13 @@ let e_sub_map g = sub_map (check_fun g)
 let e_sub_fold g acc e =
   match e.e_node with
   | V _ | Cnst _ -> acc
-  | H(_,e) | Proj(_, e) -> g acc e
+  | H(_,e) | Proj(_, e) | All(_,e) -> g acc e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | H(_,e) | Proj(_, e) -> g e
+  | H(_,e) | Proj(_, e) | All(_,e) -> g e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
 
 let rec e_iter g e =
@@ -407,6 +424,9 @@ let e_map_ty_maximal ty g e0 =
     | Tuple(es) ->
       let es = L.map (go ie) es in
       trans (mk_Tuple es)
+    | All (b,e) ->
+      let e = go ie e in
+      trans (mk_All b e)      
     | Proj(i,e) ->
       let e = go ie e in
       trans (mk_Proj i e)

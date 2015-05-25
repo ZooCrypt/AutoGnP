@@ -13,6 +13,7 @@ val ty_prod_vs : Vsym.t list -> ty
 
 val is_V : expr -> bool
 val is_H : expr -> bool
+val is_All : expr -> bool
 val is_Tuple : expr -> bool
 val is_Proj : expr -> bool
 val is_some_Cnst : expr -> bool
@@ -52,6 +53,7 @@ exception Destr_failure of string
 
 val destr_V      : expr -> Vsym.t
 val destr_H      : expr -> Hsym.t * expr
+val destr_All    : expr -> (Vsym.t list * Osym.t) list * expr
 val destr_Tuple  : expr -> expr list
 val destr_Proj   : expr -> int * expr
 val destr_Cnst   : expr -> cnst

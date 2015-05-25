@@ -20,6 +20,8 @@ let is_V e = match e.e_node with V _ -> true | _ -> false
 
 let is_H e = match e.e_node with H _ -> true | _ -> false
 
+let is_All e = match e.e_node with All _ -> true | _ -> false
+
 let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
 
 let is_Proj e = match e.e_node with Proj _ -> true | _ ->  false
@@ -141,6 +143,9 @@ let pp_paren hv = pp_enclose hv ~pre:"(" ~post:")"
 (** Enclose with parens depending on boolean argument. *)
 let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 
+let pp_binder fmt (vs,o) =
+  F.fprintf fmt "(%a) in %a" (pp_list "," Vsym.pp) vs Osym.pp o
+
 (** Pretty-prints expression assuming that
     the expression above is of given type. *)
 let rec pp_exp_p ~qual above fmt e =
@@ -165,6 +170,8 @@ let rec pp_exp_p ~qual above fmt e =
           es
     in
     pp_maybe_paren false (above <> PrefixApp) pp fmt es
+  | All(b,e) ->
+    F.fprintf fmt "(forall %a: %a)" (pp_list "," pp_binder) b (pp_exp_p ~qual Top) e
   | Proj(i,e)  -> 
     F.fprintf fmt "%a%s%i" (pp_exp_p ~qual Tup) e "#" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
@@ -272,6 +279,9 @@ let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
 let destr_H e = 
   match e.e_node with H(h,e) -> (h,e) | _ -> raise (Destr_failure "H")
 
+let destr_All e = 
+  match e.e_node with All(b,e) -> (b,e) | _ -> raise (Destr_failure "forall")
+
 let destr_Tuple e = 
   match e.e_node with Tuple(es) -> (es) | _ -> raise (Destr_failure "Tuple")
 
@@ -369,7 +379,7 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | H(_,e) | Proj(_,e) -> 
+    | H(_,e) | Proj(_,e) | All(_,e)-> 
       go ie e; run e0
     | Tuple(es) | App(_,es) | Nary(_,es) ->
       L.iter (go ie) es;  run e0

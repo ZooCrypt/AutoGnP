@@ -8,7 +8,7 @@ open ExprUtils
 open Syms
 open Util
 
-let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Norm" ls
+let _log_i ls = mk_logger "Norm" Bolt.Level.INFO "Norm" ls
 
 (*i*)
 
@@ -182,6 +182,7 @@ and mk_simpl_nop strong op l =
 and norm_expr ?strong:(strong=false) e =
   match e.e_node with
   | V _ -> norm_ggt e
+  | All(b,e) -> mk_All b (norm_expr ~strong e)
   | Cnst GGen ->  mk_gexp (destr_G e.e_ty) mk_FOne
   | Cnst _ -> e
   | H(h,e) -> norm_ggt (mk_H h (norm_expr ~strong e))
@@ -313,6 +314,7 @@ let norm_split_if ~nf e =
   let rec go e =
     match e.e_node with
     | V _ | Cnst _ -> Iexpr e
+    | All(b,e)     -> map_nif ~f:(mk_All b) (go e)
     | H(h,e)       -> map_nif ~f:(mk_H h) (go e)
     | Proj(i,e)    -> map_nif ~f:(mk_Proj i) (go e)
     | Tuple(es)    -> napp_nifs ~f:mk_Tuple (L.map go es)

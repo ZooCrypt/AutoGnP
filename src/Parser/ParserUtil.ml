@@ -70,8 +70,27 @@ let string_of_qvar (qual,s) =
   match qual with
   | Unqual -> s
   | Qual q -> q^"`"^s
+let init_odef_params vmap_g ts ?(qual=true) oname vs = 
+  let osym =
+    try Mstring.find oname ts.ts_odecls
+    with Not_found -> fail_parse "oracle name not declared"
+  in
+  let qual = if qual then (Qual oname) else Unqual in
+  let vs =
+    match osym.Osym.dom.Type.ty_node, vs with
+    | Type.Prod([]), [] -> []
+    | Type.Prod(tys), vs when L.length tys = L.length vs ->
+      L.map
+        (fun (v,t) -> create_var vmap_g ts qual v t)
+        (L.combine vs tys)
+    | _, [v] ->
+      [create_var vmap_g ts qual v osym.Osym.dom]
+    | _ ->
+      tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
+  in
+  vs,osym
 
-let expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
+let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
   let rec go pe =
     match pe with
     | V(vqual,s) ->
@@ -118,6 +137,13 @@ let expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
     | Exp(e1,e2)   -> E.mk_GExp (go e1) (go e2)
     | CGen(s)      -> E.mk_GGen (create_groupvar ts s)
     | CZ(s)        -> E.mk_Z (create_lenvar ts s)
+    | All(bd,pe)   ->
+      let b = 
+        List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
+      in
+      let e = expr_of_parse_expr vmap ts Unqual pe in
+      Expr.mk_All b e
+
     | Div(e1,e2)   ->
       let e1 = go e1 in
       let e2 = go e2 in
@@ -170,26 +196,6 @@ let odec_of_parse_odec vmap_g ts ~oname od =
       { G.odef_less    = obody_of_parse_obody vmap_l ts ~oname ob1;
         G.odef_eq      = obody_of_parse_obody vmap_g ts ~oname ob2;
         G.odef_greater = obody_of_parse_obody vmap_l ts ~oname ob3; }
-
-let init_odef_params vmap_g ts ?(qual=true) oname vs = 
-  let osym =
-    try Mstring.find oname ts.ts_odecls
-    with Not_found -> fail_parse "oracle name not declared"
-  in
-  let qual = if qual then (Qual oname) else Unqual in
-  let vs =
-    match osym.Osym.dom.Type.ty_node, vs with
-    | Type.Prod([]), [] -> []
-    | Type.Prod(tys), vs when L.length tys = L.length vs ->
-      L.map
-        (fun (v,t) -> create_var vmap_g ts qual v t)
-        (L.combine vs tys)
-    | _, [v] ->
-      [create_var vmap_g ts qual v osym.Osym.dom]
-    | _ ->
-      tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
-  in
-  vs,osym
   
 let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
   let vs,osym = init_odef_params vmap_g ts oname vs in

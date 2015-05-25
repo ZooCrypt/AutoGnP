@@ -51,6 +51,7 @@ and expr_node =
   | Cnst of cnst
   | App of op * expr list
   | Nary of nop * expr list
+  | All of (Vsym.t list * Osym.t) list * expr
 
 val e_equal : expr -> expr -> bool
 val e_hash : expr -> int
@@ -73,6 +74,7 @@ val mk_V      : Vsym.t -> expr
 val mk_App    : op -> expr list -> ty -> expr
 val mk_Nary   : nop -> expr list -> expr
 val mk_H      : Hsym.t -> expr -> expr
+val mk_All    : (Vsym.t list * Osym.t) list -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
 val mk_GGen   : Groupvar.id -> expr
