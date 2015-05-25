@@ -1,12 +1,3 @@
-# Toolchain
-
-Most required software can be locally installed in
-the source directory using 'make toolchain'.
-
-Note that on debian, the following packages must
-be installed:
-  curl libssl-dev make libpcre3-dev m4
-
 # C(++) libraries
 
 To get the required C(++) library, follow these instructions.
@@ -26,17 +17,40 @@ http://www.mathematik.uni-kl.de/ftp/pub/Math/Factory/factory-4.0.1.tar.gz
 ./configure --disable-streamio --without-Singular --disable-static
 sudo make install
 
-# Compile ZooCrypt
+# Ocaml libraries
 
-Then, the websocket server can be compiled
-with 'make'.
-
-It is also possible to use a global Ocaml
-installation and install the following libraries
-yourself, e.g., using the opam package package
-manager for OCaml (see http://opam.ocamlpro.com/):
+It is probably easiest to install the following ocaml dependencies
+using the opam manager for OCaml (see http://opam.ocamlpro.com/):
 - ounit
 - yojson
 - websocket
 - ctypes
+- ctypes-foreign
+- bolt
 - ... (and their dependencies)
+
+
+# Compile ZooCrypt
+
+Then, the websocket server can be compiled
+with 'make wszoocrypt' and the batch tool
+can be compiled with .
+
+# Examples
+
+The examples can be found in 'examples/ok'.
+
+They can stepped through using a web interface
+by executing './wszoocrypt.native file' and following
+the instructions.
+
+They can be all executed by running 'make test-examples'.
+This also creates the EasyCrypt 'ec' files in extraction.
+These files can be checked with the bundled version of
+EasyCrypt
+
+# Limitations
+
+Extraction for the Waters'09 examples is not enabled since
+the support for extracting Hybrid arguments is still
+incomplete.
