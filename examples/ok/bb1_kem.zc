@@ -31,16 +31,15 @@ bound_adv
     let C1 = g^e';
     let C2 = (pk2^i'*pk3)^e';
 
-    (* FIXME: required for proof, implement insert rule *)
-    xxx <-$ Fq;
     b' <- A2(pk1,pk2,pk3,Kb,C1,C2)  with
       Kg(i) = {
         i<>i';
         r <-$ Fq;
         return (g^(c*d + r*(d*i + h)), g^r)
       };
-  ] : b = b'.                                          (* 1: initial game*)
-  //.                                                  (* 2. unfold definitions and simplify (we want to see polynomials *)
+  ] : b = b'.                                          (* 0: initial game*)
+  //.                                                  (* 1. unfold definitions and simplify (we want to see polynomials *)
+  rnd_exp (K1 k1). //.                                 (* 2. sample exponent of K1 *)
   norm_solve h.
      (* We want to apply dbdh, but cannot since c*d required in Kg,
         IDEA: r fresh random variable in every query, use 'rnd' to make Kg indep of c*g
@@ -51,11 +50,12 @@ bound_adv
               *)
 
   rnd! h _ (h -> h + d*i'); //.                        (* 3. redefine mpk such that coeff of r is (h  *)
-  rnd_oracle (9,1,2) _ (r -> r * (i - i') + c); //.
+  rnd_oracle (8,1,2) _ (r -> r * (i - i') + c); //.
   swap c (1); swap d (2); swap e' (3).
   assumption_decisional! dbdh -> tt; //.
+  
   (* BEGIN: if tt <-$ Fq; K1 <-$ G_t; return (b?g^tt:K1) equivalent to K1 <-$ G_t; return K1 *)
-  rnd! tt (tt -> tt + xxx) _; //. rnd! K1  (K1 -> K1 * g_t^xxx)   _. //.
+  rnd! k1 _ (k1 -> k1 - tt); //. rnd! tt _ _.
   (* END: *)
   bycrush.
 qed.

@@ -58,12 +58,16 @@ let useful_subexprs se rv mgen e =
     log_t (lazy (fsprintf "trying factor_out=%a" pp_exp d));
     match polys_of_field_expr (CAS.norm id e) with
     | (fe, None) ->
-      let (g,_h) = factor_out d fe in
-      let e' = exp_of_poly g in
-      guard (not (e_equal re e')) >>= fun _ ->
-      guard (Se.mem re (e_vars e')) >>= fun _ ->
-      log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'));
-      ret e'
+      begin try
+        let (g,_h) = factor_out d fe in
+        let e' = exp_of_poly g in
+        guard (not (e_equal re e')) >>= fun _ ->
+        guard (Se.mem re (e_vars e')) >>= fun _ ->
+        log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'));
+        ret e'
+      with
+        Not_found -> mempty
+      end
     | _ -> mempty
   in
 
@@ -274,3 +278,9 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
     (* FIXME: for CS bycrush, we excluded contexts rv -> - rv *)
   ) >>= fun ((v1,e1),(v2,e2)) ->
   CR.t_rnd_oracle (i,j,k,ootype) (v1,e1) (v2,e2) ju
+
+
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Rule for handling b?r1:r2 where r1 and r2 are not used anywhere else} *)
+
+

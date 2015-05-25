@@ -98,7 +98,10 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
   let ias = psi.psi_assms in
   let irvs = psi.psi_rvars in
   let iorvs = psi.psi_rvars in
-  (* let icases = psi.psi_cases in *)
+  let icases = psi.psi_cases in
+  let count_except ju =
+    L.length (L.filter (function GSamp(_,(_,excs)) -> excs<>[] | _ -> false) ju.ju_se.se_gdef)
+  in
   (*i let t_norm_xor_id = t_norm ~fail_eq:true @|| CR.t_id in i*)
   let t_after_simp ju =
     let (ses,unqstates,is_old) =
@@ -130,14 +133,20 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
         @> (t_norm ~fail_eq:true @|| CR.t_id))
   in
   let t_close ju =
-    ( (t_random_indep ts false @> t_log "random_indep")
-      (* @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp") *) ) ju 
+    ((CR.t_try (GuardRules.t_guess_maybe ts None None)
+      @> (t_random_indep ts false @> t_log "random_indep"))
+     @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp")) ju
   in
   let t_progress = 
        (t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None None
         @> t_log "\nassm_dec")
+    @| (fun ju
+        -> if count_except ju < 3 then (t_rexcept_maybe None None @> t_log "\nrexcept") ju
+           else CR.t_id ju)
     @| (t_rnd_maybe ~i_rvars:irvs ts false None None None None @> t_log "\nrnd")
-    @| (t_rexcept_maybe None None @> t_log "\nrexcept")
+    @| (fun ju
+        -> if count_except ju >= 3 then (t_rexcept_maybe None None @> t_log "\nrexcept") ju
+           else CR.t_id ju)
     @| (t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None @> t_log "\nrnd_oracle")
     @| (t_add_test_maybe @> t_log "\nadd_test")
     @| (t_case_ev_maybe @> t_log "\ncase_ev")

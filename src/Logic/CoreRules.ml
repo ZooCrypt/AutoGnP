@@ -869,17 +869,25 @@ let t_random_indep = prove_by rrandom_indep
 (*i ----------------------------------------------------------------------- i*)
 (** {\bf Apply computational assumption} *)
 
-let ensure_ranges_cover_gdef rn rngs pref_len gdef =
+let pp_range fmt (i,j) =
+  F.fprintf fmt "%i - %i" i j
+
+let ensure_ranges_cover_gdef rn rngs0 pref_len gdef =
   let gdef_len = L.length gdef in
   let rec go covered_upto rngs =
     match rngs with
     | [] ->
-      covered_upto = gdef_len
+      if covered_upto <> gdef_len then
+        tacerror "%s: ranges %a cover only up to to line %i, must cover up to %i"
+          rn
+          (pp_list "," pp_range) rngs0
+          covered_upto gdef_len
     | (i,j)::rngs ->
-      if i = covered_upto then go (j + 1) rngs else false
+      if i = covered_upto then go (j + 1) rngs
+      else
+        tacerror "%s: start %i of range should be %i" rn i covered_upto
   in
-  if not (go pref_len rngs) then
-    tacerror "%s: ranges do not cover the whole game" rn
+  go pref_len rngs0
 
 let ensure_res_lets rn vres cres =
   assert (L.length vres = L.length cres);
@@ -1134,7 +1142,7 @@ let rguard opos tnew ju =
       | (LGuard(t), seoc) -> seoc, t 
       | _ -> tacerror "guard: given position is not a test"
       end
-    | Some t ->
+   | Some t ->
       snd (get_se_octxt_len se opos 0), t in
 
   assert (ty_equal t.e_ty mk_Bool);
@@ -1205,15 +1213,16 @@ let rfind (bd,body) arg asym fvs ju =
     assert (ty_equal (ty_prod_vs bd) arg.e_ty);
     let subst_bd = 
       L.fold_left2 (fun s v e -> Me.add (mk_V v) e s) Me.empty bd 
-        (destr_Tuple_nofail arg) in
+        (if L.length bd > 1 then destr_Tuple_nofail arg else [arg]) in
     let fv = e_vars body in
     let se_vs = List.fold_left (fun s v -> Se.add (mk_V v) s) Se.empty in
     let allowed = Se.union (se_vs vs) (se_vs bd) in
     if not (Se.subset fv allowed) then
-      tacerror "find:not a closed function";
+      tacerror "find not a closed function: %a contains variables not in %a"
+        pp_exp body (pp_list "," pp_exp) (Se.elements allowed);
     let e1 = e_subst subst_bd body in
     if not (e_equal e1 ev.ev_expr) then
-      tacerror "find: invalid function or argument";
+      tacerror "find: invalid function or argument: %a vs %a" pp_exp e1 pp_exp ev.ev_expr;
     (* check that the function is PPT *)
     if not (is_ppt body) then 
       tacerror "find: the function is not ppt";

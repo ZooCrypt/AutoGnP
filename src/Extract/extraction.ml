@@ -67,20 +67,6 @@ let op_of_op file ty = function
   | Ifte    -> assert false
   | EMap bm -> Ostr  ((bvar_mod file bm) ^ ".e")
 
-(*
-let string_of_nop file ty = function
-  | FPlus -> "F.(+)"
-  | FMult -> "F.( * )"
-  | Xor   -> 
-    begin match ty.ty_node with 
-    | BS lv -> lvar_mod file lv ^ ".(^)" 
-    | Bool  -> assert false
-    | _     -> assert false
-    end
-  | Land -> "(/\\)" 
-  | GMult -> gvar_mod file (destr_G ty) ^ ".( * )"
-*)
-
 let op_of_nop ty = function
   | FPlus -> Oadd
   | FMult -> Omul
@@ -639,16 +625,16 @@ let add_rnd cont =
 
 let t_algebra = TSeq[Algebra; 
                      Tstring 
-                       "rewrite ?supp_def ?FSet.mem_single;progress;algebra *";
-                     Smt]
+                       "rewrite ?supp_def ?FSet.mem_single;progress;algebra *"
+                    (* ; Smt *)
+                    ]
 let t_spa = TSeq [Skip;Progress [];t_algebra]
-let t_apa = TSeq [Auto;Progress [];t_algebra]
-let t_pa  = TSeq [Progress [];t_algebra]
 let t_aa  = TSeq [Auto;t_algebra]
 let t_id  = TSeq []
 
 let t_pr_if = 
-  Tstring "by progress;algebra *;smt"
+  (* Tstring "by progress;algebra *;smt" *)
+  Tstring "by progress;algebra *"
 
 let pp_congr_quant ~semi fmt ev = 
   match ev.ev_binding with
@@ -1023,7 +1009,7 @@ let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 =
           "by apply (in_excepted_diff %a)" 
           (Printer.pp_ty_distr file) ty;
         let s = F.flush_str_formatter () in
-        Tstring s :: l) ds [Tstring "by algebra *;elimIF;algebra *" ] in
+        Tstring s :: l) ds [Tstring "by algebra *;(try done);elimIF;algebra *" ] in
     if ts = [] then [] else [TOr ts] in
   
   let rec aux lc1 lc2 info = 
@@ -1095,9 +1081,9 @@ let pr_conv sw1 ju1 ju ju' ju2 sw2 file =
   let forpost = 
     if ExprUtils.is_False ju1.ju_se.se_ev.ev_expr 
        || ExprUtils.is_False ju2.ju_se.se_ev.ev_expr then
-      "progress[not];algebra*;elimIF;algebra*"
+      "progress[not];algebra*;(try done);elimIF;algebra*"
     else
-      "progress;algebra*;elimIF;algebra*" in
+      "progress;algebra*;(try done);elimIF;algebra*" in
   let forpost = 
     if ju.ju_se.se_ev.ev_binding = [] then forpost
     else 
@@ -1215,8 +1201,7 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
         else F.fprintf fmt "%a %a" (mu_x_def file) ty (mu_x_def file) ty' in
       F.fprintf fmt "progress; (by rewrite %a ||@ " mu_x_def ();
       F.fprintf fmt "           by apply %a ||@ " (supp_def file) ty;
-      F.fprintf fmt "           by algebra* ||@ ";
-      F.fprintf fmt "           by elimIF;algebra* )." in
+      F.fprintf fmt "           by algebra*;(try done);elimIF;algebra* )." in
     if assert2 = None then begin
       F.fprintf fmt "sim.@ "; 
       pr_rnd fmt ();

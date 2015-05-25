@@ -10,9 +10,9 @@ open Game
 open Syms
 open Norm
 
-let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
+let _log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
 let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
-let log_i ls = mk_logger "Logic.Wf" Bolt.Level.INFO "Wf" ls
+let _log_i ls = mk_logger "Logic.Wf" Bolt.Level.INFO "Wf" ls
 (*i*)
 
 exception Wf_var_undef of Vsym.t * expr * Vsym.S.t
@@ -90,11 +90,11 @@ let rec add_ineq ctype wfs e1 e2 =
 and check_nonzero ctype wfs e =
   if ctype = NoCheckDivZero then true
   else (
-    log_t (lazy (fsprintf "check nonzero %a" pp_exp e));
+    (* log_t (lazy (fsprintf "check nonzero %a" pp_exp e)); *)
     let check e =
       match wfs.wf_nzero with
       | Some nz ->
-        log_i (lazy (fsprintf "nonzero assumption: %a" pp_exp nz));
+        (* log_i (lazy (fsprintf "nonzero assumption: %a" pp_exp nz)); *)
         CAS.check_nz ~is_nz:nz e
       | None    -> false
     in
@@ -143,7 +143,7 @@ and wf_exp ctype wfs e0 =
       let wfs =
         List.fold_left
           (fun wfs e ->
-            log_t (lazy (fsprintf "check & add ineq %a" pp_exp e));
+            (* log_t (lazy (fsprintf "check & add ineq %a" pp_exp e)); *)
             wf_exp ctype wfs e;
             let e1,e2 = destr_InEq e in
             add_ineq ctype wfs e1 e2)

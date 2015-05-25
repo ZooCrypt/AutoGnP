@@ -135,7 +135,7 @@ let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
   let arg_v = Vsym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
   let pref_len = L.length assm_samps in
   if ju.ju_se.se_ev.ev_binding <> [] then 
-    tacerror "t_assm_dec: not quantificator allowed";
+    tacerror "t_assm_dec: no quantifier allowed";
   let ev = ju.ju_se.se_ev.ev_expr in
   let ev_v = 
     Vsym.mk (CR.mk_name ~name:"re" ju.ju_se) ev.e_ty in
@@ -281,7 +281,7 @@ let t_assm_dec
 (*i ----------------------------------------------------------------------- i*)
 (* \subsection{Derived tactics for dealing with computational assumptions} *)
 
-let _e_eqs e =
+let e_eqs e =
   let comm_eq e =
     guard (is_Eq e) >>= fun _ ->
     ret e
@@ -293,15 +293,18 @@ let _e_eqs e =
     comm_eq e
   )
 
-let _match_expr (var : vs) pat e =
-  let binding_v = ref None in
+let match_expr (vars : Vsym.t list) pat e =
+  let vars_set = Vsym.S.of_list vars in
+  let sigma = Vsym.H.create 17 in
   let ensure c =
     if not c then raise Not_found
   in
-  let inst e =
-    match !binding_v with
-    | None    -> binding_v := Some e
-    | Some e' -> ensure (e_equal e e')
+  let inst v (e : expr) =
+    try
+      let e' = Vsym.H.find sigma v in
+      ensure (e_equal e e')
+    with
+      Not_found -> Vsym.H.add sigma v e
   in
   let rec pmatchl es1 es2 =
     ensure (L.length es1 = L.length es2);
@@ -309,7 +312,7 @@ let _match_expr (var : vs) pat e =
   and pmatch p e =
     match p.e_node, e.e_node with
     | V(vs1),_
-      when Vsym.equal vs1 var       -> inst e
+      when Vsym.S.mem vs1 vars_set  -> inst vs1 e
     | V(vs1),        V(vs2)         -> ensure (Vsym.equal vs1 vs2)
     | H(hs1,e1),     H(hs2,e2)      -> ensure (Hsym.equal hs1 hs2); pmatch e1 e2
     | Tuple(es1),    Tuple(es2)     -> pmatchl es1 es2
@@ -321,27 +324,30 @@ let _match_expr (var : vs) pat e =
   in
   try
     pmatch pat e;
-    begin match !binding_v with
-    | None   -> mempty
-    | Some e -> ret e
-    end
+    let bvars = Vsym.H.fold (fun k _ acc -> Vsym.S.add k acc) sigma Vsym.S.empty in
+    if Vsym.S.equal vars_set bvars then
+      ret (L.map (fun v -> (v,Vsym.H.find sigma v)) vars)
+    else
+      mempty
   with
     Not_found ->
       mempty
 
-let _match_exprs_assm _ju _assm =
-  failwith "undefined"
-  (*
-  let jev = ju.ju_ev in
+let assm_acall assm =
+  match assm.ac_acalls with
+  | [(_,vs,e)] -> ret (vs,e)
+  | _ -> mempty
+
+let match_exprs_assm ju assm =
+  let jev = ju.ju_se.se_ev in
   let aev = assm.ac_event in
-  let av = assm.ac_event_var in
-  let eav = mk_V av in
+  assm_acall assm >>= fun (avs,_) ->
+  let eavs = L.map mk_V avs in
   (* we first collect all equalities in aev and jev *)
-  e_eqs aev >>= fun aeq ->
-  guard (Se.mem eav (e_vars aeq)) >>= fun _ ->
-  e_eqs jev >>= fun jeq ->
+  e_eqs aev.ev_expr >>= fun aeq ->
+  guard (not (Se.is_empty (Se.inter (Se.of_list eavs) (e_vars aeq)))) >>= fun _ ->
+  e_eqs jev.ev_expr >>= fun jeq ->
   ret (aeq,jeq)
-  *)
 
 let tries = ref 0
 
@@ -350,57 +356,88 @@ let conj_type e =
     let (a,_) = destr_Eq e in
     Some (true,a.e_ty)
   ) else if is_Not e then (
-    let e = destr_Not e in
-    if is_Eq e then (
-      let (a,_) = destr_Eq e in
-      Some (false,a.e_ty)
-    ) else (
-      None
-    )
+      let e = destr_Not e in
+      if is_Eq e then (
+        let (a,_) = destr_Eq e in
+        Some (false,a.e_ty)
+      ) else (
+        None
+      )
   ) else (
     None
   )
 
-let t_assm_comp_match ?icases:(_icases=Se.empty) _before_t_assm _assm _subst _mev_e _ju =
-  mfail (lazy "undefined")
-  (*
-  let assm = ac_inst subst assm in
+let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_e ju =
+  let assm = inst_comp subst assm in
+  assm_acall assm >>= fun (avars,aarg) ->
   (match mev_e with
   | Some e -> ret e
   | None   ->
     match_exprs_assm ju assm >>= fun (pat,e) ->
-    match_expr assm.ac_event_var pat e
-  ) >>= fun ev_e ->
-  let sassm = Assumption.ac_inst subst assm in
-  let sassm_ev = e_replace (mk_V sassm.ac_event_var) ev_e sassm.ac_event in
-  let assm_ju = { ju_gdef = sassm.ac_prefix; ju_ev = sassm_ev } in
-  let assm_ju = norm_ju ~norm:(fun x -> x) assm_ju in
-  let conjs = destr_Land assm_ju.ju_ev in
+    log_t (lazy (fsprintf "assm_comp_match: %a %a" pp_exp e pp_exp pat));
+    match_expr avars pat e
+  ) >>= fun ev_mapping ->
+  let sassm = Assumption.inst_comp subst assm in
+  log_t (lazy (fsprintf "matching %a" (pp_list "," (pp_pair Vsym.pp pp_exp)) ev_mapping));
+  let ev_me = me_of_list (L.map (fun (v,e) -> (mk_V v,e)) ev_mapping) in
+  let sassm_ev = e_subst ev_me sassm.ac_event.ev_expr in
+  let assm_se =
+    { se_gdef = sassm.ac_prefix;
+      se_ev = {ev_quant=Exists; ev_binding=[]; ev_expr = sassm_ev } }
+  in
+  let assm_se = norm_se ~norm:(fun x -> x) assm_se in
+  let conjs = destr_Land assm_se.se_ev.ev_expr in
   let ineq = L.hd (L.filter is_Not conjs) in
-  let nineq = norm_expr_def (mk_Not ineq) in
+  let nineq = Norm.norm_expr_nice (mk_Not ineq) in
   guard (not (Se.mem nineq icases)) >>= fun _ ->
+  let assm_len = L.length assm.ac_prefix in
+  let ev_mapping' =
+    L.map
+      (fun (v,e) -> (Vsym.mk ((Id.name v.Vsym.id)^"__") v.Vsym.ty, e))
+      ev_mapping
+  in
+  let subst =
+    L.fold_left2
+      (fun s (vs1,_) (vs2,_) -> Vsym.M.add vs1 vs2 s)
+      subst
+      ev_mapping
+      ev_mapping'
+  in
+  let get_bind bindings = match bindings with [(vs,_)] -> vs | _ -> tacerror "fail" in
+  let argv = Vsym.mk "arg" aarg.e_ty in
   let assm_tac = 
     (    CR.t_case_ev ~flip:true nineq
-     @>> [ (* t_print "before_remove_ev" *)
-                before_t_assm
-             @> CR.t_assm_comp assm ev_e subst
+     @>> [ before_t_assm
+           @> (fun ju ->
+               t_abstract_deduce ~keep_going:false ts assm_len argv aarg (Some (L.length ju.ju_se.se_gdef - 1)) ju)
+           @> (fun ju ->
+               let ev = ju.ju_se.se_ev in
+               let vs = get_bind ev.ev_binding in
+               let asym = Asym.mk "CC" argv.Vsym.ty (mk_Prod (L.map (fun v -> v.Vsym.ty) vs))  in
+               let v = Vsym.mk "f_arg" aarg.e_ty in
+               CR.t_find ([v],e_replace aarg (mk_V v) ev.ev_expr) aarg asym vs ju)
+           @> (t_seq_fold
+                (L.map (fun (v,e) ju -> t_let_abstract (L.length ju.ju_se.se_gdef) v e None false ju) ev_mapping'))
+           @> t_print log_i ("before_comp_assm")
+           @> (fun ju ->
+               let argv = Vsym.mk "arg__" aarg.e_ty in
+               t_abstract_deduce ~keep_going:false ts assm_len argv aarg (Some (L.length ju.ju_se.se_gdef - 1)) ju)
+           @> (fun ju -> CR.t_assm_comp assm [assm_len,L.length ju.ju_se.se_gdef - 1] subst ju)
          ; CR.t_id])
   in
   let sconjs = destr_Land sassm_ev in
   let sineq = L.hd (L.filter is_Not sconjs) in
   let snineq = Norm.abbrev_ggen sineq in
-  if is_Land ju.ju_ev &&
+  if is_Land ju.ju_se.se_ev.ev_expr &&
      L.exists (fun e ->
-       e_equal (Norm.abbrev_ggen e) snineq) (destr_Land ju.ju_ev)
-  then CR.t_assm_comp assm ev_e subst ju >>= fun ps -> ret (None,ps)
+       e_equal (Norm.abbrev_ggen e) snineq) (destr_Land ju.ju_se.se_ev.ev_expr)
+  then CR.t_assm_comp assm [] subst ju >>= fun ps -> ret (None,ps)
   else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
-  *)
 
-let t_assm_comp_aux ?icases:(icases=Se.empty) _ts before_t_assm assm mev_e ju =
+let t_assm_comp_aux ?icases:(icases=Se.empty) ts before_t_assm assm mev_e ju =
   let se = ju.ju_se in
   let assm_cmds = assm.ac_prefix in
   let samp_assm = samplings assm_cmds in
-  let lets_assm = lets assm_cmds in
   let samp_gdef = samplings se.se_gdef |> Util.take (L.length samp_assm) in
   guard
     (list_eq_for_all2 (fun (_,(_,(t1,_))) (_,(_,(t2,_))) -> ty_equal t1 t2)
@@ -415,21 +452,11 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) _ts before_t_assm assm mev_e ju =
   in
   log_t (lazy (fsprintf "subst %a"
     (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
-  let ltac subst (i,((vs:Vsym.t),(e:expr))) =
-    let name = CR.mk_name se in
-    let vs'  = Vsym.mk name vs.Vsym.ty in
-    let e'   = Game.subst_v_e (fun vs -> Vsym.M.find vs subst) e in
-    (Vsym.M.add vs vs' subst
-    ,t_let_abstract i vs' (Norm.norm_expr_weak e') None false)
-  in
-  let (subst, let_abstrs) = map_accum ltac subst lets_assm in
   incr tries;
-  let t_before = t_seq_fold let_abstrs in
-     (* @> t_debug (fsprintf "assm_comp_auto tried %i combinations so far@\n" !tries) *)
   try
-    t_before ju >>= fun ps ->
+    CR.t_id ju >>= fun ps ->
     CR.rapply_all
-      (t_assm_comp_match ~icases (before_t_assm @> t_before) assm subst mev_e) ps
+      (t_assm_comp_match ~icases ts (before_t_assm) assm subst mev_e) ps
   with
     Invalid_rule s -> log_d (lazy s); mempty
 
@@ -463,7 +490,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
         (fun (old_p,delta) ->
           if delta = 0 then None else Some (CR.t_swap old_p delta))
   in
-  let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) match_samps in
+  (* let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) match_samps in *)
   let excepts =
     filter_map
       (fun (i,(_,(_,es))) -> if es<>[] then Some (CR.t_except i []) else None)
@@ -471,8 +498,10 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
   in
   (* FIXME: use case_ev and rfalse to handle case with missing events *)
   assert (assm.ac_event.ev_binding = []);
+  (*
   if (se.se_ev.ev_binding <> []) then 
     tacerror " t_assm_comp_auto: quantifier not allowed";
+  *)
   let aev = assm.ac_event.ev_expr in
   let ev = se.se_ev.ev_expr in
   let remove_events =
@@ -487,7 +516,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
   in
   let before_t_assm =
     CR.t_remove_ev remove_events
-    @> t_norm_unknown ts priv_exprs
+    (* @> t_norm_unknown ts priv_exprs *)
     @> t_seq_fold excepts
     @> t_seq_fold swaps
   in

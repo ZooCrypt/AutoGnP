@@ -6,6 +6,10 @@ open Type
 open Expr
 open ExprUtils
 open Syms
+open Util
+
+let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Norm" ls
+
 (*i*)
 
 let mk_gexp gv p = mk_GExp (mk_GGen gv) p
@@ -88,11 +92,27 @@ let rec mk_simpl_op _strong op l =
     if is_True e1 then e2
     else if is_False e1 then e3
     else if e_equal e2 e3 then e2
-    else if is_FPlus e2 && is_FPlus e3 then (
-      let e2s = destr_FPlus e2 in
-      let e3s = destr_FPlus e3 in
+    else if is_FPlus e2 || is_FPlus e3 then (
+      let destr_nofail e =
+        if is_FPlus e then destr_FPlus e else [e]
+      in
+      let mk_nofail = function
+        | [] -> mk_FZ
+        | [e] -> e
+        | es  -> mk_FPlus es
+      in
+      let e2s = destr_nofail e2 in
+      let e3s = destr_nofail e3 in
       let common,e2s,e3s = common_diff e2s e3s in
-      mk_FPlus ((mk_Ifte_simp e1 (mk_FPlus e2s) (mk_FPlus e3s))::common)
+      if common = []
+      then norm_ggt (mk_Ifte e1 e2 e3)
+      else mk_nofail ((mk_Ifte_simp e1 (mk_nofail e2s) (mk_nofail e3s))::common)
+      (*
+      log_i (lazy (fsprintf "common: %a, left: %a, right: %a"
+                     (pp_list "," pp_exp) common
+                     (pp_list "," pp_exp) e2s
+                     (pp_list "," pp_exp) e3s));
+      *)
     ) else if is_GExp e2 && is_GExp e3 then (
       let (e2_1,e2_2) = destr_GExp e2 in
       let (e3_1,e3_2) = destr_GExp e3 in

@@ -162,7 +162,7 @@ type assm_comp = {
   ac_inf        : bool;         (*r information-theoretic assumption *)
   ac_type       : assm_type;
   ac_prefix     : gdef;         (*r prefix of assumption *)
-  ac_event      : ev;    (*r event expression *)
+  ac_event      : ev;           (*r event expression *)
   ac_acalls     : (Asym.t * Vsym.t list * expr) list;
    (*r adversary calls: asym, returned variables, and argument *)
   ac_symvars    : vs list list; (*r symmetric in given variables *)

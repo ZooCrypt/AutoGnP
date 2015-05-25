@@ -126,11 +126,12 @@ let rewrite_exps ts unknown e0 =
       assert (is_GGen a);
       let gen = a in
       let (ies,ce) = split_exponent ts b gv unknown in
+      (*
       let to_exp (a,b,c) =
         mk_GExp (mk_GExp (from_opt gen a) b) (from_opt mk_FOne c)
-      in
-      log_t (lazy (fsprintf "norm_unknown: %a, ce = %a" (pp_list ", " pp_exp)
-                     (L.map to_exp ies) (pp_opt pp_exp) ce));
+      in *)
+      (* log_t (lazy (fsprintf "norm_unknown: %a, ce = %a" (pp_list ", " pp_exp)
+                     (L.map to_exp ies) (pp_opt pp_exp) ce)); *)
       let get_gen og = match og with None -> gen | Some a -> a in
       let expio b ie moe =
         let g = get_gen b in
@@ -331,8 +332,12 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   in
   log_i (lazy (fsprintf "Abstracting %i lines@\n" abstract_len));
   let a_cmds = map_gdef_exp deduce a_cmds in
-  let sec = {sec with sec_ev = 
-               { sec.sec_ev with ev_expr = deduce sec.sec_ev.ev_expr }} in
+  let se_ev =
+    match mupto with
+    | None   -> { sec.sec_ev with ev_expr = deduce sec.sec_ev.ev_expr }
+    | Some _ -> sec.sec_ev
+  in
+  let sec = {sec with sec_ev = se_ev} in
   t_conv true (set_se_ctxt (GLet(v,e)::a_cmds) sec) ju
 
   

@@ -18,7 +18,7 @@ open NormField
 module Ht = Hashtbl
 module CR = CoreRules
 
-let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
+let _log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
 (*i*)
 
@@ -260,48 +260,36 @@ let simp_eq_group e =
   in
   Norm.norm_expr_strong res
 
-let case_vars = ref []
+(* let case_vars = ref [] *)
 
 let t_add_test_maybe ju =
   let se = ju.ju_se in
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
   let cases = get_cases fbuf ju in
-  let destr_prod oty = match oty.ty_node with
-    | Prod(tys) -> tys
-    | _ -> [oty]
-  in
   let except =
     L.map
       (function AppAddTest(opos,e,aty,oty) -> Some(opos,e,aty,oty) | _ -> None)
       cases
     |> catSome
   in
-  mconcat except >>= fun (opos,t,aty,oty) ->
-  let tys = destr_prod oty in
+  mconcat except >>= fun (opos,t,_aty,_oty) ->
+  let (i,j,k,l) = opos in
+  let rec get_k k =
+    try
+      match get_se_lcmd ju.ju_se (i,j,k,l) with
+      | _,_,(_,LGuard _,_),_ -> get_k (k+1)
+      | _ -> k
+    with
+      _ -> k
+  in
+  let k = get_k k in
+  let opos = (i,j,k,l) in
   let wvars = write_gcmds se.se_gdef in
   (* test must contain oracle arguments, otherwise useless for type
      of examples we consider *)
   guard (not (Se.subset (e_vars t) wvars)) >>= fun _ ->
   let test = simp_eq_group t in
-  let (asym,vars) =
-    try
-      let (_,(asym,vars)) =
-        L.find
-          (fun ((opos',test'),_v) -> opos = opos' && e_equal test test')
-          !case_vars
-      in
-      log_t (lazy "found case_ev already!");
-      if not (Se.is_empty
-                (Se.inter (se_of_list (L.map mk_V vars)) (write_gcmds se.se_gdef)))
-      then raise Not_found;
-      if L.mem asym (asym_gcmds se.se_gdef) then raise Not_found;
-      log_t (lazy "occurs check OK!@\n%!");
-      (asym,vars)
-    with Not_found ->
-      let asym = Asym.mk "BBB" aty oty in
-      let vars = L.mapi (fun i ty -> Vsym.mk (mk_name ~name:("s"^string_of_int i) se) ty) tys in
-      case_vars := ((opos,test),(asym,vars))::!case_vars;
-      (asym,vars)
-  in
-  CoreRules.t_add_test opos test asym vars ju
+  (CoreRules.t_guard opos (Some (Norm.norm_expr_nice test))
+   @> CoreRules.t_swap_oracle opos (-k)
+   @> CoreRules.t_rewrite_oracle opos LeftToRight) ju
