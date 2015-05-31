@@ -7,6 +7,7 @@ http://www.shoup.net/ntl/ntl-6.2.1.tar.gz
 
 cd src
 ./configure NTL_GMP_LIP=on SHARED=on
+make
 sudo make install
 (on OS X, you have to install glibtool (e.g., using homebrew) and use
  ./configure NTL_GMP_LIP=on SHARED=on LIBTOOL="glibtool --tag" )
