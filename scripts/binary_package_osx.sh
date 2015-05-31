@@ -8,13 +8,19 @@ DEST=/var/chroot/zoocrypt
 
 test -d $DEST && exit 1
 mkdir $DEST
-cp wszoocrypt.native $DEST
-cp zoocrypt.native $DEST
+mkdir $DEST/bin
+mkdir $DEST/etc
+mkdir $DEST/myexamples
+mkdir $DEST/extraction
+
+cp wszoocrypt.native $DEST/bin
+cp zoocrypt.native $DEST/bin
+cp scripts/wszoocrypt $DEST
+cp etc/log_bolt.config $DEST/etc
 cp -a examples $DEST
 cp -a test $DEST
 cp -a web $DEST
 cp -a ZooLib $DEST
-mkdir $DEST/extraction
 
 cd $DEST
 mkdir lib
@@ -32,35 +38,36 @@ cp /usr/local/lib/libfactory-4.0.1.dylib \
    /usr/local/opt/libffi/lib/libffi.6.dylib \
    lib
 
+LIBDIR="@executable_path/../lib/"
+
 # wszoocrypt
-install_name_tool -change /usr/local/opt/libffi/lib/libffi.6.dylib @executable_path/lib/libffi.6.dylib wszoocrypt.native
-install_name_tool -change /usr/local/lib/libgmp.10.dylib @executable_path/lib/libgmp.10.dylib wszoocrypt.native
-install_name_tool -change /usr/local/lib/libfactory-4.0.1.dylib @executable_path/lib/libfactory-4.0.1.dylib wszoocrypt.native
-install_name_tool -change _build/c_src/libfactorystubs.so @executable_path/lib/libfactorystubs.so wszoocrypt.native
+install_name_tool -change /usr/local/opt/libffi/lib/libffi.6.dylib $LIBDIR/libffi.6.dylib bin/wszoocrypt.native
+install_name_tool -change /usr/local/lib/libgmp.10.dylib           $LIBDIR/libgmp.10.dylib bin/wszoocrypt.native
+install_name_tool -change /usr/local/lib/libfactory-4.0.1.dylib    $LIBDIR/libfactory-4.0.1.dylib bin/wszoocrypt.native
+install_name_tool -change _build/c_src/libfactorystubs.so          $LIBDIR/libfactorystubs.so bin/wszoocrypt.native
 
 # zoocrypt
-install_name_tool -change /usr/local/opt/libffi/lib/libffi.6.dylib @executable_path/lib/libffi.6.dylib zoocrypt.native
-install_name_tool -change /usr/local/lib/libgmp.10.dylib @executable_path/lib/libgmp.10.dylib zoocrypt.native
-install_name_tool -change /usr/local/lib/libfactory-4.0.1.dylib @executable_path/lib/libfactory-4.0.1.dylib zoocrypt.native
-install_name_tool -change _build/c_src/libfactorystubs.so @executable_path/lib/libfactorystubs.so zoocrypt.native
+install_name_tool -change /usr/local/opt/libffi/lib/libffi.6.dylib $LIBDIR/libffi.6.dylib bin/zoocrypt.native
+install_name_tool -change /usr/local/lib/libgmp.10.dylib           $LIBDIR/libgmp.10.dylib bin/zoocrypt.native
+install_name_tool -change /usr/local/lib/libfactory-4.0.1.dylib    $LIBDIR/libfactory-4.0.1.dylib bin/zoocrypt.native
+install_name_tool -change _build/c_src/libfactorystubs.so          $LIBDIR/libfactorystubs.so bin/zoocrypt.native
 
 # libfactorystub
-install_name_tool -change /usr/local/lib/libfactory-4.0.1.dylib @executable_path/lib/libfactory-4.0.1.dylib lib/libfactorystubs.so
+install_name_tool -change /usr/local/lib/libfactory-4.0.1.dylib $LIBDIR/libfactory-4.0.1.dylib lib/libfactorystubs.so
 
 # libfactory
 for L in libflint.dylib libmpfr.4.dylib libntl.5.dylib libgmp.10.dylib; do 
   for M in libfactory-4.0.1.dylib libflint.dylib libmpfr.4.dylib libntl.5.dylib libgmp.10.dylib; do
-    install_name_tool -change /usr/local/lib/$L @executable_path/lib/$L lib/$M
+    install_name_tool -change /usr/local/lib/$L $LIBDIR/$L lib/$M
   done
 done
 
 # test that zoocrypt works
-chroot . ./zoocrypt.native examples/ok/cramer_shoup_crush.zc
+chroot . ./bin/zoocrypt.native examples/ok/cramer_shoup_crush.zc
 
 # create tarball
 rm -rf $DEST/usr
 cd $DEST/..
 DATE=`date "+%d-%m-%y"`
 tar cfz /tmp/zoocrypt-$DATE.tar.gz zoocrypt
-
 
