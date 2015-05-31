@@ -12,23 +12,23 @@ mkdir $DEST/bin
 mkdir $DEST/etc
 mkdir $DEST/myexamples
 mkdir $DEST/extraction
+mkdir $DEST/lib
 
 cp wszoocrypt.native $DEST/bin
 cp zoocrypt.native $DEST/bin
 cp scripts/wszoocrypt $DEST
 cp etc/log_bolt.config $DEST/etc
+cp $ZOODIR/_build/c_src/libfactorystubs.so lib
 cp -a examples $DEST
 cp -a test $DEST
 cp -a web $DEST
 cp -a ZooLib $DEST
 
 cd $DEST
-mkdir lib
 mkdir usr
 cp -a /usr/lib usr
 
 # copy over libraries
-cp $ZOODIR/_build/c_src/libfactorystubs.so lib
 
 cp /usr/local/lib/libfactory-4.0.1.dylib \
    /usr/local/lib/libgmp.10.dylib \
