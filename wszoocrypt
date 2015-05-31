@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export BOLT_CONFIG=log_bolt.config
+export BOLT_CONFIG=etc/log_bolt.config
 if [ -z ${@} ]; then
   ./wszoocrypt.native examples/ok/*.zc examples/ok/**/*.zc test/**/*.zc -new_dir examples/new
 else

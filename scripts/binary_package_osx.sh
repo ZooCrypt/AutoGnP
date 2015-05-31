@@ -18,7 +18,7 @@ cp wszoocrypt.native $DEST/bin
 cp zoocrypt.native $DEST/bin
 cp scripts/wszoocrypt $DEST
 cp etc/log_bolt.config $DEST/etc
-cp $ZOODIR/_build/c_src/libfactorystubs.so lib
+cp $ZOODIR/_build/c_src/libfactorystubs.so $DEST/lib
 cp -a examples $DEST
 cp -a test $DEST
 cp -a web $DEST
@@ -69,5 +69,5 @@ chroot . ./bin/zoocrypt.native examples/ok/cramer_shoup_crush.zc
 rm -rf $DEST/usr
 cd $DEST/..
 DATE=`date "+%d-%m-%y"`
-tar cfz /tmp/zoocrypt-$DATE.tar.gz zoocrypt
+tar cfz /tmp/zoocrypt-mac-$DATE.tar.gz zoocrypt
 

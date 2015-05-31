@@ -2,7 +2,7 @@
 
 export BOLT_CONFIG=etc/log_bolt.config
 if [ -z ${@} ]; then
-  ./bin/wszoocrypt.native examples/ok/*.zc examples/ok/**/*.zc -new_dir myexamples
+  ./bin/wszoocrypt.native examples/ok/*.zc examples/ok/**/*.zc myexamples/*.zc -new_dir myexamples
 else
   ./bin/wszoocrypt.native $@
 fi
