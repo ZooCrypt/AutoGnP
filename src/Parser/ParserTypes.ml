@@ -163,6 +163,7 @@ type instr =
   | Back
   | UndoBack   of bool
   | Qed
+  | Restart
   | Extract    of string
   | Debug      of string
   | PrintGame  of string

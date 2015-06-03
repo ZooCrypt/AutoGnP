@@ -115,6 +115,8 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
     in
     let s = fsprintf "%a" pp_ju ju in
     stats := { nstates = !stats.nstates + 1; unqstates = unqstates; ses = ses };
+    if !stats.nstates > 20 then
+      tacerror "Ressource bounds exhausted, please install ZooCrypt locally";
     if log_games then (
       Util.output_file (F.sprintf "%s/g%i.zc" gdir !stats.nstates)
         (s^(F.sprintf "\n depth %i\n" depth))

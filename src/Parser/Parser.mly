@@ -28,6 +28,7 @@
 %left  STAR
 %token LPAREN
 %token RPAREN
+%token RESTART
 
 /*----------------------------------------------------------------------*/
 /* Tokens for expressions */
@@ -417,6 +418,7 @@ proof_command :
 | BACK                                 { Back }
 | UNDOBACK b=boption(EXCL)             { UndoBack(b) }
 | QED                                  { Qed }
+| RESTART                              { Restart }
 | EXTRACT s=STRING                     { Extract s }
 | PRINTGOALS COLON i=ID                { PrintGoals(i) }
 | PRINTGOAL COLON i=ID                 { PrintGoal(i) }

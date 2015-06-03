@@ -16,6 +16,7 @@
       ; "admit", ADMIT
       ; "last", LAST
       ; "qed", QED
+      ; "restart", RESTART
       ; "back", BACK
       ; "oracle",ORACLE
       ; "operator", OPERATOR
@@ -94,6 +95,7 @@ let newline = '\n'
 rule lex = parse
   | blank+  { lex lexbuf }
   | "(*"    { comment lexbuf; lex lexbuf }
+  | "(**"    { comment lexbuf; lex lexbuf }
   | "\"" { STRING (Buffer.contents (string (Buffer.create 0) lexbuf)) }
   | [' ' '\t']
   | newline { Lexing.new_line lexbuf; lex lexbuf }

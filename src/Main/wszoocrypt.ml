@@ -86,6 +86,7 @@ let process_save filename content =
       frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else if (!new_dir <> "") then (
         output_file (!new_dir^filename) content;
+        ps_files := (!new_dir^filename) :: !ps_files;
         frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else (
         frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
@@ -97,7 +98,7 @@ let process_load s =
   ps_file := if s = "" then !ps_file else s;
   F.printf "Loading %s\n%!" !ps_file;
   let s =
-    if Sys.file_exists !ps_file && List.mem !ps_file !ps_files then input_file !ps_file
+    if Sys.file_exists !ps_file (* && List.mem !ps_file !ps_files *) then input_file !ps_file
     else "(* Enter proof script below *)"
   in
   let res = `Assoc [("cmd", `String "setProof");

@@ -749,6 +749,15 @@ let handle_instr verbose ts instr =
     | ClosedTheory _ -> (ts, "Proof finished.")
     end
 
+  | PT.Restart ->
+    begin match ts.ts_ps with
+    | ActiveProof(ps,_uback,_back,_) ->
+      let prf = CR.get_proof (prove_by_admit "" ps) in
+      ({ts with ts_ps = ClosedTheory (ps.CR.validation [])}, "Restarted proof.")
+    | BeforeProof    -> (ts, "No proof started yet.")
+    | ClosedTheory _ -> (ts, "Proof finished.")
+    end
+
   | PT.Qed ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_uback,_back,_) ->

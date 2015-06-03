@@ -43,7 +43,7 @@ let pp_ju fmt ju =
       (pp_gdef ~nonum:false) ju.ju_se.se_gdef pp_ev ju.ju_se.se_ev
   | Pr_Adv -> 
     F.fprintf fmt
-      "2*Pr[ G : E ] - 1 negligible where@\nG : E := @\n@[<hv 2>  %a@\n  : %a@]"
+      "Pr[ G : E ] - 1/2 negligible where@\nG : E := @\n@[<hv 2>  %a@\n  : %a@]"
       (pp_gdef ~nonum:false) ju.ju_se.se_gdef pp_ev ju.ju_se.se_ev
   | Pr_Dist se -> 
     F.fprintf fmt
