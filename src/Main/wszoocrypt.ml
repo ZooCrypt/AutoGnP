@@ -85,8 +85,8 @@ let process_save filename content =
       output_file filename content;
       frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else if (!new_dir <> "") then (
-        output_file (!new_dir^filename) content;
-        ps_files := (!new_dir^filename) :: !ps_files;
+        output_file (!new_dir^"/"^filename) content;
+        ps_files := (!new_dir^"/"^filename) :: !ps_files;
         frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveOK")]))
     ) else (
         frame_of_string (YS.to_string (`Assoc [("cmd", `String "saveFAILED")]))
