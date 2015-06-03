@@ -52,7 +52,7 @@ factory : stubs
 
 wszoocrypt : stubs
 	@ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wszoocrypt.native
-	-@killall wszoocrypt.native
+	#-@killall wszoocrypt.native
 
 ##########################################################################
 # Build PDF from literate program using ocamlweb and pdflatex
