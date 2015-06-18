@@ -10,7 +10,7 @@ module Lenvar : IdType.ID
 (** identifier for different groups *)
 module Groupvar : IdType.ID
 
-type ty = { ty_node : ty_node; ty_tag : int; }
+type ty = private { ty_node : ty_node; ty_tag : int; }
 and ty_node =
     BS of Lenvar.id
   | Bool
