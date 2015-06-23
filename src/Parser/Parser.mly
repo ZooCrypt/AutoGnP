@@ -105,6 +105,7 @@
 %token ADVERSARY
 %token ORACLE
 %token OPERATOR
+%token PERMUTATION
 %token ASSUMPTION
 %token ASSUMPTION_DECISIONAL
 %token ASSUMPTION_COMPUTATIONAL
@@ -392,6 +393,7 @@ decl :
 | ADVERSARY i=ID  COLON t1=typ TO t2=typ    { ADecl(i, t1, t2) } 
 | ORACLE    i=ID  COLON t1=typ TO t2=typ    { ODecl(i, t1, t2) }
 | RANDOM ORACLE i=ID COLON t1=typ TO t2=typ { RODecl(i, true, t1, t2) }
+| PERMUTATION ORACLE i=ID COLON t1=typ TO t2=typ { assert false }
 | OPERATOR i=ID COLON t1=typ TO t2=typ      { RODecl(i, false, t1, t2) }
 | BILINEAR MAP i=ID COLON
     g1=TG STAR g2=TG TO g3=TG               { EMDecl(i, g1, g2, g3) }
