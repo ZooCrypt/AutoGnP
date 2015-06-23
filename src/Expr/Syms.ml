@@ -190,3 +190,33 @@ module Esym = struct
 
   let name hs = Id.name hs.id
 end
+
+
+module Psym = struct
+  type t = { 
+      id : Id.id;
+      ty : ty;
+      pid : Permvar.id;
+  }
+
+  type tt = t
+
+  let hash ps = Id.hash ps.id 
+  let equal ps1 ps2 = Id.equal ps1.id ps2.id
+
+  module Ps = StructMake (struct
+    type t = tt
+    let tag = hash
+  end) 
+
+  module M = Ps.M
+  module S = Ps.S
+  module H = Ps.H
+
+  let mk name ty pid =
+    { id = Id.mk name; ty; pid}
+
+  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
+
+  let name hs = Id.name hs.id
+end

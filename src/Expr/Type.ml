@@ -8,7 +8,8 @@ open Util
 (** Identifier for (bitstring) length and group variables. *)
 module Lenvar : IdType.ID = Id
 module Groupvar : IdType.ID = Id
-
+module Permvar : IdType.ID = Id
+			       
 (** Types and type nodes. *)
 type ty = {
   ty_node : ty_node;
@@ -21,6 +22,9 @@ and ty_node =
   | Fq
   | Prod of ty list
   | Int 
+  | KeyPair of Permvar.id
+  | PKey of Permvar.id
+  | SKey of Permvar.id
 
 (** Type equality and hashing. *)
 let ty_equal : ty -> ty -> bool = (==)
@@ -35,6 +39,9 @@ module Hsty = Hashcons.Make (struct
     | BS lv1, BS lv2     -> Lenvar.equal lv1 lv2
     | Bool, Bool         -> true
     | G gv1, G gv2       -> Groupvar.equal gv1 gv2
+    | KeyPair pv1, KeyPair pv2
+    | PKey pv1, PKey pv2
+    | SKey pv1, SKey pv2   -> Permvar.equal pv1 pv2
     | Fq, Fq             -> true
     | Prod ts1, Prod ts2 -> list_eq_for_all2 ty_equal ts1 ts2
     | _                  -> false
@@ -46,6 +53,9 @@ module Hsty = Hashcons.Make (struct
     | Fq      -> 4
     | Prod ts -> Hashcons.combine_list ty_hash 3 ts
     | Int     -> 6
+    | KeyPair pv -> Hashcons.combine 7 (Permvar.hash pv)
+    | PKey pv    -> Hashcons.combine 8 (Permvar.hash pv)
+    | SKey pv    -> Hashcons.combine 9 (Permvar.hash pv)
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -68,6 +78,9 @@ let mk_ty n = Hsty.hashcons {
 (** Create types: bitstring, group, field, boolean, tuple. *)
 let mk_BS lv = mk_ty (BS lv)
 let mk_G gv = mk_ty (G gv)
+let mk_KeyPair pv = mk_ty (KeyPair pv)
+let mk_PKey pv = mk_ty (PKey pv)
+let mk_SKey pv = mk_ty (SKey pv)
 let mk_Fq = mk_ty Fq
 let mk_Bool = mk_ty Bool
 let mk_Int = mk_ty Int
@@ -92,6 +105,14 @@ let destr_BS ty =
   match ty.ty_node with
   | BS lv -> lv
   | _     -> assert false
+
+let destr_P ty = 
+  match ty.ty_node with
+  | KeyPair lv -> lv
+  | PKey lv -> lv
+  | SKey lv -> lv
+  | _     -> assert false
+
 let destr_Prod ty = match ty.ty_node with
   | Prod ts -> ts
   | _ -> assert false
@@ -139,5 +160,8 @@ let rec pp_ty fmt ty =
     F.fprintf fmt "G" 
   | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
   | Int     -> F.fprintf fmt "Int"
+  | KeyPair pv    -> F.fprintf fmt "KeyPair_%s" (Permvar.name pv)
+  | PKey pv    -> F.fprintf fmt "PK_%s" (Permvar.name pv)
+  | SKey pv    -> F.fprintf fmt "SK_%s" (Permvar.name pv)
 
 (*i*)

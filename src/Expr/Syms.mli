@@ -96,3 +96,22 @@ module Esym : sig
   module S : Set.S with type elt = t
   module H : Hashtbl.S with type key = t
 end
+
+module Psym : sig
+  type t = private { 
+      id : Id.id;
+      ty : ty;
+      pid : Permvar.id;
+  }
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val mk : string -> ty -> Permvar.id -> t
+  val pp : F.formatter -> t -> unit
+  val name : t -> string
+
+  module M : Map.S with type key = t
+  module S : Set.S with type elt = t
+  module H : Hashtbl.S with type key = t
+end
+	    
