@@ -11,7 +11,7 @@
   let _ =
     List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
       [ "split_ineq", RSPLIT_INEQ
-      ; "permutation", PERMUTATION
+      ; "permutation", PERMUTATION (* test *)
       ; "case_ev", RCASE_EV
       ; "adversary", ADVERSARY
       ; "admit", ADMIT
