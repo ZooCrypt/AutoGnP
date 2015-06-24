@@ -95,7 +95,7 @@ and expr_node =
   | App    of op * expr list  (*r fixed arity operators *)
   | Nary   of nop * expr list (*r variable arity AC operators *)
   | All of (Vsym.t list * Osym.t) list * expr
-  | Perm of Psym.t * bool * expr (*r OW permutation (_,false) and its inverse (_,true) *)
+  | Perm of Psym.t * bool * expr (*r OW permutation (_,false,_) and its inverse (_,true,_) *)
   | GetPK of Psym.t           (*r Public Key from given Permutation *)  
   | GetSK of Psym.t           (*r Secret Key from given Permutation *)
 	       
@@ -122,8 +122,8 @@ module Hse = Hashcons.Make (struct
     | All(b1,e1), All(b2,e2) ->
       list_equal (pair_equal (list_equal Vsym.equal) Osym.equal) b1 b2 &&
         e_equal e1 e2
-    | Perm(p1,b1,e1), Perm(p2,b2,e2)   -> Psym.equal p1 p2 && b1=b2 && e_equal e1 e2
-    | GetPK p1, GetSK p2 | GetSK p1, GetSK p2 -> Psym.equal p1 p2
+    | Perm(f1,b1,e1), Perm(f2,b2,e2)   -> Psym.equal f1 f2 && b1=b2 && e_equal e1 e2
+    | GetPK f1, GetSK f2 | GetSK f1, GetSK f2 -> Psym.equal f1 f2
     | _, _                       -> false
   (*i*)
 
@@ -131,10 +131,10 @@ module Hse = Hashcons.Make (struct
     function
     | V(v)       -> Vsym.hash v
     | H(f,e)     -> Hashcons.combine (Hsym.hash f) (e_hash e)
-    | Perm(p,true,e)  -> Hashcons.combine 1 (Hashcons.combine (Psym.hash p) (e_hash e))
-    | Perm(p,false,e) -> Hashcons.combine 2 (Hashcons.combine (Psym.hash p) (e_hash e))
-    | GetPK(p)   -> Hashcons.combine 1 (Psym.hash p)
-    | GetSK(p)   -> Hashcons.combine 2 (Psym.hash p)				     
+    | Perm(f,true,e)  -> Hashcons.combine 1 (Hashcons.combine (Psym.hash f) (e_hash e))
+    | Perm(f,false,e) -> Hashcons.combine 2 (Hashcons.combine (Psym.hash f) (e_hash e))
+    | GetPK(f)   -> Hashcons.combine 1 (Psym.hash f)
+    | GetSK(f)   -> Hashcons.combine 2 (Psym.hash f)				     
     | Tuple(es)  -> Hashcons.combine_list e_hash 3 es
     | Proj(i,e)  -> Hashcons.combine i (e_hash e)
     | Cnst(c)    -> cnst_hash c
@@ -179,13 +179,13 @@ let ensure_ty_equal ty1 ty2 e1 e2 s =
 
 let ensure_ty_PKey ty s =
   match ty.ty_node with
-  | PKey pv -> pv
+  | PKey pid -> pid
   | _    ->
     failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
 let ensure_ty_SKey ty s =
   match ty.ty_node with
-  | SKey pv -> pv
+  | SKey pid -> pid
   | _    ->
     failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
@@ -196,9 +196,9 @@ let ensure_ty_G ty s =
     failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
 let ty_G gv = mk_ty (G gv)
-let ty_KeyPair pv = mk_ty (KeyPair pv)
-let ty_PKey pv = mk_ty (PKey pv)
-let ty_SKey pv = mk_ty (SKey pv)
+let ty_KeyPair pid = mk_ty (KeyPair pid)
+let ty_PKey pid = mk_ty (PKey pid)
+let ty_SKey pid = mk_ty (SKey pid)
 let ty_Fq = mk_ty Fq
 let ty_Bool = mk_ty Bool
 let ty_BS lv = mk_ty (BS lv)
@@ -210,20 +210,20 @@ let mk_H h e =
   ensure_ty_equal h.Hsym.dom e.e_ty e None (fsprintf "mk_H for %a" Hsym.pp h);
   mk_e (H(h,e)) h.Hsym.codom
 
-let mk_Perm p is_inverse e = match e.e_node with
+let mk_Perm f is_inverse e = match e.e_node with
   | Tuple([e1;e2])
-       when ((not is_inverse) && p.Psym.pid = (ensure_ty_PKey e1.e_ty "mk_Perm : direct requires PKey")) ->
-     ensure_ty_equal p.Psym.dom e2.e_ty e None (fsprintf "mk_Perm (direct) for %a" Psym.pp p);
-     mk_e (Perm(p,false,e)) p.Psym.dom
+       when ((not is_inverse) && f.Psym.pid = (ensure_ty_PKey e1.e_ty "mk_Perm : direct requires PKey")) ->
+     ensure_ty_equal f.Psym.dom e2.e_ty e None (fsprintf "mk_Perm (direct) for %a" Psym.pp f);
+     mk_e (Perm(f,false,e)) f.Psym.dom
   | Tuple([e1;e2])
-       when (is_inverse && p.Psym.pid = (ensure_ty_SKey e1.e_ty "mk_Perm : inverse requires SKey")) ->
-     ensure_ty_equal p.Psym.dom e2.e_ty e None (fsprintf "mk_Perm (inverse) for %a" Psym.pp p);
-     mk_e (Perm(p,true,e)) p.Psym.dom
+       when (is_inverse && f.Psym.pid = (ensure_ty_SKey e1.e_ty "mk_Perm : inverse requires SKey")) ->
+     ensure_ty_equal f.Psym.dom e2.e_ty e None (fsprintf "mk_Perm (inverse) for %a" Psym.pp f);
+     mk_e (Perm(f,true,e)) f.Psym.dom
   | _ ->
      raise (TypeError(e.e_ty,e.e_ty,e,None,"mk_Perm requires a Tuple (Key expr, expr)"))
 
-let mk_GetPK p = mk_e (GetPK p) p.Psym.dom
-let mk_GetSK p = mk_e (GetSK p) p.Psym.dom	      
+let mk_GetPK f = mk_e (GetPK f) f.Psym.dom
+let mk_GetSK f = mk_e (GetSK f) f.Psym.dom	      
        
 let mk_All b e =
   mk_e (All(b,e)) ty_Bool
