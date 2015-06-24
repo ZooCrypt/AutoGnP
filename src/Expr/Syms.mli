@@ -100,7 +100,7 @@ end
 module Psym : sig
   type t = private { 
       id : Id.id;
-      ty : ty;
+      dom : ty;
       pid : Permvar.id;
   }
 

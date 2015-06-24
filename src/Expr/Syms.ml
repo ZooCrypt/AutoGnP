@@ -195,7 +195,7 @@ end
 module Psym = struct
   type t = { 
       id : Id.id;
-      ty : ty;
+      dom : ty;
       pid : Permvar.id;
   }
 
@@ -213,8 +213,8 @@ module Psym = struct
   module S = Ps.S
   module H = Ps.H
 
-  let mk name ty pid =
-    { id = Id.mk name; ty; pid}
+  let mk name dom pid =
+    { id = Id.mk name; dom; pid}
 
   let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
 
