@@ -52,9 +52,9 @@ and expr_node =
   | App of op * expr list
   | Nary of nop * expr list
   | All of (Vsym.t list * Osym.t) list * expr
-  | Perm of Psym.t * bool * expr (*r OW permutation (_,false) and its inverse (_,true) *)
-  | GetPK of Psym.t           (*r Public Key from given Permutation *)  
-  | GetSK of Psym.t           (*r Secret Key from given Permutation *)
+  | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
+  | GetPK of Psym.t           (*r Public Key of f required by f *)  
+  | GetSK of Psym.t           (*r Secret Key of f required by f_inv *)
 
 
 val e_equal : expr -> expr -> bool
@@ -78,7 +78,7 @@ val mk_V      : Vsym.t -> expr
 val mk_App    : op -> expr list -> ty -> expr
 val mk_Nary   : nop -> expr list -> expr
 val mk_H      : Hsym.t -> expr -> expr
-val mk_Perm   : Psym.t -> bool -> expr -> expr
+val mk_Perm   : Psym.t -> bool -> expr -> expr -> expr
 val mk_GetPK  : Psym.t -> expr
 val mk_GetSK  : Psym.t -> expr			    
 val mk_All    : (Vsym.t list * Osym.t) list -> expr -> expr

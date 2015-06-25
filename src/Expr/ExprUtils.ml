@@ -20,6 +20,8 @@ let is_V e = match e.e_node with V _ -> true | _ -> false
 
 let is_H e = match e.e_node with H _ -> true | _ -> false
 
+let is_Perm e = match e.e_node with Perm _ -> true | _ -> false
+
 let is_All e = match e.e_node with All _ -> true | _ -> false
 
 let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
@@ -36,6 +38,10 @@ let is_FZ e = match e.e_node with Cnst (FNat 0) -> true | _ -> false
 
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
+let is_PKey f e = e.e_node = GetPK f
+
+let is_SKey f e = e.e_node = GetSK f
+				     
 let is_True e = is_Cnst (B true) e
 
 let is_False e = is_Cnst (B false) e
@@ -155,6 +161,7 @@ let rec pp_exp_p ~qual above fmt e =
     F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
   | H(h,e)     -> 
     F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p ~qual PrefixApp) e
+  | Perm(f,_,_,_) | GetPK f | GetSK f -> (* FIXME *) ()
   | Tuple(es) -> 
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -279,6 +286,21 @@ let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
 let destr_H e = 
   match e.e_node with H(h,e) -> (h,e) | _ -> raise (Destr_failure "H")
 
+let destr_Perm e =
+  match e.e_node with
+  | Perm(f,is_inverse,k,e) -> (f,is_inverse,k,e)
+  | _ -> raise (Destr_failure "Perm")
+
+let destr_PKey e =
+  match e.e_node with
+  | GetPK f -> f
+  | _ -> raise (Destr_failure "PKey")
+
+let destr_SKey e =
+  match e.e_node with
+  | GetSK f -> f
+  | _ -> raise (Destr_failure "SKey")
+	       
 let destr_All e = 
   match e.e_node with All(b,e) -> (b,e) | _ -> raise (Destr_failure "forall")
 
@@ -379,6 +401,8 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
+    | GetPK _ | GetSK _ -> ()
+    | Perm(_,_,_,e) -> go ie e; run e0
     | H(_,e) | Proj(_,e) | All(_,e)-> 
       go ie e; run e0
     | Tuple(es) | App(_,es) | Nary(_,es) ->

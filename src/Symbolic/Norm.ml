@@ -186,6 +186,28 @@ and norm_expr ?strong:(strong=false) e =
   | Cnst GGen ->  mk_gexp (destr_G e.e_ty) mk_FOne
   | Cnst _ -> e
   | H(h,e) -> norm_ggt (mk_H h (norm_expr ~strong e))
+  | Perm(f,false,k1,e1) ->
+      begin
+	let k1_norm = norm_expr ~strong k1 and
+	    e1_norm = norm_expr ~strong e1 in
+	match e1_norm.e_node with
+	| Perm(f,true,k2_norm,e2_norm)
+	     when ((is_PKey f k1_norm) && (is_SKey f k2_norm))
+	  -> e2_norm (* f(PKey,f_inv(SKey,e)) = e *)
+	| _ -> mk_Perm f false k1_norm e1_norm
+      end	
+  | Perm(f,true,k1,e1) ->
+     begin
+      let k1_norm = norm_expr ~strong k1 and
+	  e1_norm = norm_expr ~strong e1 in
+      match e1_norm.e_node with
+      | Perm(f,false,k2_norm,e2_norm)
+	   when ((is_SKey f k1_norm) && (is_PKey f k2_norm))
+	-> e2_norm (* f_inv(SKey,f(PKey,e)) = e *)
+      | _ -> mk_Perm f true k1_norm e1_norm
+     end
+  | GetPK _ -> e
+  | GetSK _ -> e
   | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
   | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)
   | App (op, l) ->

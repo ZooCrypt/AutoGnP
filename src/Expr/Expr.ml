@@ -18,6 +18,7 @@ type cnst =
   | FNat of int (*r Natural number in field, always $\geq 0$ *)
   | Z           (*r $0$ bitstring (type defines length) *)
   | B of bool   (*r boolean value *)
+(* | PermKey of bool (*r permutation key (type defines Perm) *) *)
 
 
 (** Hash constants. *)
@@ -27,6 +28,7 @@ let cnst_hash = (*c ... *) (*i*)
   | FNat n -> Hashcons.combine 2 n
   | Z      -> 3
   | B b    -> if b then 5 else 6
+(*  | Permkey is_secret -> if is_secret then 7 else 8 *)
 (*i*)
 
 
@@ -95,9 +97,9 @@ and expr_node =
   | App    of op * expr list  (*r fixed arity operators *)
   | Nary   of nop * expr list (*r variable arity AC operators *)
   | All of (Vsym.t list * Osym.t) list * expr
-  | Perm of Psym.t * bool * expr (*r OW permutation (_,false,_) and its inverse (_,true,_) *)
-  | GetPK of Psym.t           (*r Public Key from given Permutation *)  
-  | GetSK of Psym.t           (*r Secret Key from given Permutation *)
+  | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
+  | GetPK of Psym.t           (*r Public Key of f required by f *)  
+  | GetSK of Psym.t           (*r Secret Key of f required by f_inv *)
 	       
 
 (** Equality hashing, and comparison for expressions. *)
@@ -122,8 +124,9 @@ module Hse = Hashcons.Make (struct
     | All(b1,e1), All(b2,e2) ->
       list_equal (pair_equal (list_equal Vsym.equal) Osym.equal) b1 b2 &&
         e_equal e1 e2
-    | Perm(f1,b1,e1), Perm(f2,b2,e2)   -> Psym.equal f1 f2 && b1=b2 && e_equal e1 e2
-    | GetPK f1, GetSK f2 | GetSK f1, GetSK f2 -> Psym.equal f1 f2
+    | Perm(f1,b1,k1,e1), Perm(f2,b2,k2,e2)
+      -> Psym.equal f1 f2 && b1=b2 && e_equal k1 k2 && e_equal e1 e2
+    | GetPK f1, GetPK f2 | GetSK f1, GetSK f2 -> Psym.equal f1 f2
     | _, _                       -> false
   (*i*)
 
@@ -131,8 +134,8 @@ module Hse = Hashcons.Make (struct
     function
     | V(v)       -> Vsym.hash v
     | H(f,e)     -> Hashcons.combine (Hsym.hash f) (e_hash e)
-    | Perm(f,true,e)  -> Hashcons.combine 1 (Hashcons.combine (Psym.hash f) (e_hash e))
-    | Perm(f,false,e) -> Hashcons.combine 2 (Hashcons.combine (Psym.hash f) (e_hash e))
+    | Perm(f,b,k,e) -> let hc = Hashcons.combine in
+		       hc (if b then 1 else 2) (hc (Psym.hash f) (hc (e_hash k) (e_hash e)))
     | GetPK(f)   -> Hashcons.combine 1 (Psym.hash f)
     | GetSK(f)   -> Hashcons.combine 2 (Psym.hash f)				     
     | Tuple(es)  -> Hashcons.combine_list e_hash 3 es
@@ -210,18 +213,19 @@ let mk_H h e =
   ensure_ty_equal h.Hsym.dom e.e_ty e None (fsprintf "mk_H for %a" Hsym.pp h);
   mk_e (H(h,e)) h.Hsym.codom
 
-let mk_Perm f is_inverse e = match e.e_node with
-  | Tuple([e1;e2])
-       when ((not is_inverse) && f.Psym.pid = (ensure_ty_PKey e1.e_ty "mk_Perm : direct requires PKey")) ->
-     ensure_ty_equal f.Psym.dom e2.e_ty e None (fsprintf "mk_Perm (direct) for %a" Psym.pp f);
-     mk_e (Perm(f,false,e)) f.Psym.dom
-  | Tuple([e1;e2])
-       when (is_inverse && f.Psym.pid = (ensure_ty_SKey e1.e_ty "mk_Perm : inverse requires SKey")) ->
-     ensure_ty_equal f.Psym.dom e2.e_ty e None (fsprintf "mk_Perm (inverse) for %a" Psym.pp f);
-     mk_e (Perm(f,true,e)) f.Psym.dom
-  | _ ->
-     raise (TypeError(e.e_ty,e.e_ty,e,None,"mk_Perm requires a Tuple (Key expr, expr)"))
+let mk_Perm f is_inverse k e =
+    let k_pid = if is_inverse then
+		     ensure_ty_SKey k.e_ty "mk_Perm : inverse requires SKey"
+		   else
+		     ensure_ty_PKey k.e_ty "mk_Perm : direct requires PKey"
+    in
+    assert(f.Psym.pid = k_pid);
+    ensure_ty_equal e.e_ty f.Psym.dom
+		    e (Some k)
+		    (fsprintf "mk_Perm (inverse) for %a" Psym.pp f);
+    mk_e (Perm(f,is_inverse,k,e)) f.Psym.dom
 
+	 
 let mk_GetPK f = mk_e (GetPK f) f.Psym.dom
 let mk_GetSK f = mk_e (GetSK f) f.Psym.dom	      
        
@@ -370,6 +374,11 @@ let sub_map g e =
       let e1' = g e1 in
       if e1 == e1' then e
       else mk_e (H(h, e1')) e.e_ty
+  | Perm(f,is_inverse,k,e1) ->
+     let e1' = g e1 in
+     if e1 == e1' then e
+     else mk_e (Perm(f,is_inverse,k,e1')) e.e_ty
+  | GetPK _ | GetSK _ -> e
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
@@ -407,6 +416,8 @@ let e_sub_fold g acc e =
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
+  | GetPK _ | GetSK _ -> ()
+  | Perm(_,_,_,e) -> g e 
   | H(_,e) | Proj(_, e) | All(_,e) -> g e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
 
@@ -458,6 +469,10 @@ let e_map_ty_maximal ty g e0 =
     let trans = if me then g else id in
     match e.e_node with
     | V(_) | Cnst(_) -> e
+    | GetPK _ | GetSK _ -> e
+    | Perm(f,is_inverse,k,e) ->
+       let e = go ie e in
+       trans (mk_Perm f is_inverse k e)
     | H(f,e) ->
       let e = go ie e in
       trans (mk_H f e)

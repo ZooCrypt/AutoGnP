@@ -13,11 +13,14 @@ val ty_prod_vs : Vsym.t list -> ty
 
 val is_V : expr -> bool
 val is_H : expr -> bool
+val is_Perm : expr -> bool
 val is_All : expr -> bool
 val is_Tuple : expr -> bool
 val is_Proj : expr -> bool
 val is_some_Cnst : expr -> bool
 val is_Cnst : cnst -> expr -> bool
+val is_PKey : Psym.t -> expr -> bool
+val is_SKey : Psym.t -> expr -> bool
 val is_FNat : expr -> bool
 val is_FOne : expr -> bool
 val is_FZ : expr -> bool
@@ -57,6 +60,9 @@ val destr_All    : expr -> (Vsym.t list * Osym.t) list * expr
 val destr_Tuple  : expr -> expr list
 val destr_Proj   : expr -> int * expr
 val destr_Cnst   : expr -> cnst
+val destr_Perm   : expr -> Psym.t*bool*expr*expr
+val destr_PKey   : expr -> Psym.t
+val destr_SKey   : expr -> Psym.t
 val destr_FNat   : expr -> int
 val destr_App    : expr -> op * expr list
 val destr_GMult  : expr -> (expr) list
