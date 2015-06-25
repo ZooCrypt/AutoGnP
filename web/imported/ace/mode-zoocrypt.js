@@ -110,7 +110,7 @@ ace.define('ace/mode/zoocrypt_highlight_rules', ['require', 'exports', 'module' 
       "assumption_decisional|adversary|oracle|prove|bilinear|return|split_ineq|guess|" +
         "rewrite_oracle|norm_nounfold|bound_adv|bound_succ|bound_dist|guard|find|"  +
         "norm|norm_unknown|abstract|swap|indep|last|add_test|admit|operator|conv|" +
-        "simp|rnd|rnd_oracle|norm_unkown|let|random|field_exprs|except_oracle|rnd_exp|" +
+        "simp|rnd|rnd_oracle|norm_unkown|let|random|permutation|field_exprs|except_oracle|rnd_exp|" +
         "undo_back|bad|ctxt_ev|norm_solve|subst|assumption|bysimp|dist_eq|insert|" +
         "dist_sym|swap_main|hybrid|rename|print_game|print_games|trans|assert|" +
         "print_proof|extract|except|assumption_computational|qed|back|crush|bycrush|" +
