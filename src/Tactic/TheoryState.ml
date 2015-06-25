@@ -12,7 +12,9 @@ module G = Game
 let mk_ts () = {
   ts_lvars      = Hashtbl.create 20;
   ts_gvars      = Hashtbl.create 20;
+  ts_permvars   = Hashtbl.create 20;
   ts_rodecls    = Mstring.empty;
+  ts_permdecls  = Mstring.empty;
   ts_odecls     = Mstring.empty;
   ts_adecls     = Mstring.empty;
   ts_emdecls    = Mstring.empty;
@@ -52,3 +54,11 @@ let create_groupvar ps s =
     let gv = T.Groupvar.mk s in
     Ht.add ps.ts_gvars s gv;
     gv
+
+      
+let create_permvar ps s =
+  try Ht.find ps.ts_permvars s
+  with Not_found ->
+    let pid = T.Permvar.mk s in
+    Ht.add ps.ts_permvars s pid;
+    pid

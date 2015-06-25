@@ -23,6 +23,7 @@ type parse_expr =
   | V of string qual * string
   | SApp of string * parse_expr list
   | Tuple of parse_expr list
+  | ParsePerm of string * bool * parse_expr * parse_expr
   | Proj of int * parse_expr
   | CB of bool
   | CZ of string
@@ -145,6 +146,7 @@ type tactic =
   | Rfind          of (string list * parse_expr) * parse_expr * string * string list
 
 type instr =
+  | PermDecl   of string * parse_ty
   | RODecl     of string * bool * parse_ty * parse_ty
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty

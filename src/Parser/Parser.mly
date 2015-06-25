@@ -34,6 +34,7 @@
 /* Tokens for expressions */
 
 %token <string> ID
+%token <string> F_INV				
 %token PLUS
 %left PLUS
 %token XOR
@@ -281,6 +282,7 @@ expr6 :
 | NOT e=expr6                    { Not(e) }
 | LOG LPAREN e1=expr RPAREN      { Log(e1) }
 | l=paren_list0(COMMA,expr)      { mk_Tuple l }
+| s=F_INV LPAREN k1=expr COMMA e1=expr { ParsePerm(s,true,k1,e1) }
 
 /*======================================================================*/
 /* Oracle definitions */
@@ -392,8 +394,8 @@ atype:
 decl :
 | ADVERSARY i=ID  COLON t1=typ TO t2=typ    { ADecl(i, t1, t2) } 
 | ORACLE    i=ID  COLON t1=typ TO t2=typ    { ODecl(i, t1, t2) }
-| RANDOM ORACLE i=ID COLON t1=typ TO t2=typ { RODecl(i, true, t1, t2) }
-| PERMUTATION ORACLE i=ID COLON t1=typ TO t2=typ { assert false }
+| RANDOM ORACLE i=ID COLON t1=typ TO t2=typ { RODecl(i, true, t1, t2) } (* Shouldn't it be RRND_ORACLE instead ? *)
+| PERMUTATION i=ID COLON k=TBS { PermDecl(i, BS(k)) } (* { assert false } *) (* permutation f : BS_k *)
 | OPERATOR i=ID COLON t1=typ TO t2=typ      { RODecl(i, false, t1, t2) }
 | BILINEAR MAP i=ID COLON
     g1=TG STAR g2=TG TO g3=TG               { EMDecl(i, g1, g2, g3) }

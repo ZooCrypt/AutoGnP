@@ -35,8 +35,10 @@ type theory_state = {
   (* implicitly defined and shared *)
   ts_lvars      : (string,Lenvar.id)   Hashtbl.t;
   ts_gvars      : (string,Groupvar.id) Hashtbl.t;
+  ts_permvars   : (string,Permvar.id) Hashtbl.t;
 
   (* explicitly defined *)
+  ts_permdecls  : Psym.t      Mstring.t;
   ts_rodecls    : Hsym.t      Mstring.t;
   ts_odecls     : Osym.t      Mstring.t;
   ts_adecls     : Asym.t      Mstring.t;

@@ -133,6 +133,11 @@ rule lex = parse
   | "g_"(['a'-'z''0'-'9']* as s) { GEN(s) }
   | "G" { TG("") }
   | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
+  | (['a'-'z' 'A'-'Z' ]
+       ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)"_inv" (* Parsing 'f_inv'-like patterns *)
+      { try Hashtbl.find keyword_table (s ^ "_inv")
+      with Not_found -> F_INV s }
+  (*  (((['a'-'z'])(['a'-'z''0'-'9']* )) as s)"_inv" { F_INV(s) } (*Test *) *)
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z' 'A'-'Z' ]
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s
