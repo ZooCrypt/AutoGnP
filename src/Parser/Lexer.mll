@@ -141,14 +141,14 @@ rule lex = parse
 		['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PK s}
   | "GetSK_"((['a'-'z' 'A'-'Z' ]
 	    ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {SK s}	 
+  | "KeyPair_"((['a'-'z' 'A'-'Z' ]
+		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}
   (*  (((['a'-'z'])(['a'-'z''0'-'9']* )) as s)"_inv" { F_INV(s) } (*Test *) *)
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z' 'A'-'Z' ]
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s
     { try Hashtbl.find keyword_table s
       with Not_found -> ID s }
-  | "KeyPair_"((['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}
   | ":"     { COLON }
   | ";"     { SEMICOLON }
   | "?"     { QUESTION }
