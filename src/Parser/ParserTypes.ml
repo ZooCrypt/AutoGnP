@@ -24,6 +24,8 @@ type parse_expr =
   | SApp of string * parse_expr list
   | Tuple of parse_expr list
   | ParsePerm of string * bool * parse_expr * parse_expr
+  | ParseGetPK of string
+  | ParseGetSK of string
   | Proj of int * parse_expr
   | CB of bool
   | CZ of string
@@ -51,6 +53,7 @@ type parse_ctx = string * parse_ty option * parse_expr
 type lcmd =
     LLet of string * parse_expr
   | LBind of string list * string
+(*  | LSampKP of string * parse_ty * parse_expr list *)
   | LSamp of string * parse_ty * parse_expr list
   | LGuard of parse_expr
 

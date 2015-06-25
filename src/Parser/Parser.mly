@@ -34,7 +34,10 @@
 /* Tokens for expressions */
 
 %token <string> ID
-%token <string> F_INV				
+%token <string> F_INV
+		(** %token <string> KEYPAIR *)
+%token <string> PK
+%token <string> SK						  
 %token PLUS
 %left PLUS
 %token XOR
@@ -282,7 +285,10 @@ expr6 :
 | NOT e=expr6                    { Not(e) }
 | LOG LPAREN e1=expr RPAREN      { Log(e1) }
 | l=paren_list0(COMMA,expr)      { mk_Tuple l }
-| s=F_INV LPAREN k1=expr COMMA e1=expr { ParsePerm(s,true,k1,e1) }
+| s=F_INV LPAREN k1=expr COMMA e1=expr RPAREN { ParsePerm(s,true,k1,e1) }
+| s=PK LPAREN RPAREN             { ParseGetPK(s) }
+| s=SK LPAREN RPAREN             { ParseGetSK(s) }
+       
 
 /*======================================================================*/
 /* Oracle definitions */
@@ -294,6 +300,8 @@ except_exprs :
 lcmd :
 | LET i=ID EQUAL e=expr                         { [ LLet(i, e) ] }
 | is=seplist0(COMMA,ID) LEFTARROW hsym=LIST     { [ LBind(is, hsym) ] }
+(*| i=KEYPAIR SAMP t=typ
+    es=loption(except_exprs)                    { LSampKP(i, t, es) }*)
 | is=seplist1(COMMA,ID) SAMP t=typ
     es=loption(except_exprs)                    { L.map (fun i -> LSamp(i, t, es)) is }
 | e=expr                                        { [ LGuard(e) ] }

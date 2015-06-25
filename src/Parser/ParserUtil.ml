@@ -110,7 +110,20 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (L.map go es)
+    | ParsePerm(s,b,k,e) ->
+       let f = Mstring.find s ts.ts_permdecls in
+       E.mk_Perm f b (go k) (go e)
+    | ParseGetPK s when Mstring.mem s ts.ts_permdecls ->
+       let f = Mstring.find s ts.ts_permdecls in
+       E.mk_GetPK f
+    | ParseGetSK s when Mstring.mem s ts.ts_permdecls ->
+       let f = Mstring.find s ts.ts_permdecls in
+       E.mk_GetSK f
+    | ParseGetPK s | ParseGetSK s -> tacerror "Undefined permutation %s" s
     | Proj(i,e) -> E.mk_Proj i (go e)
+    | SApp(s,[k;e]) when Mstring.mem s ts.ts_permdecls ->
+       let f = Mstring.find s ts.ts_permdecls in
+       E.mk_Perm f false (go k) (go e)
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (L.map go es) in
@@ -122,21 +135,21 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       fail_parse (F.sprintf "bilinear map %s expects two arguments" s)
     | SApp(s,_) ->
       fail_parse (F.sprintf "undefined function symbol %s" s)
-    | CFNat(i)     -> E.mk_FNat i
-    | CB b         -> E.mk_B b
-    | Plus(e1,e2)  -> E.mk_FPlus [go e1; go e2]
-    | Minus(e1,e2) -> E.mk_FMinus (go e1) (go e2)
-    | Land(e1,e2)  -> E.mk_Land [go e1; go e2]
-    | Xor(e1,e2)   -> E.mk_Xor [go e1; go e2]
-    | Eq(e1,e2)    -> E.mk_Eq (go e1) (go e2)
-    | Ifte(e1,e2,e3) -> E.mk_Ifte (go e1) (go e2) (go e3)
-    | Opp(e)       -> E.mk_FOpp (go e)
-    | Inv(e)       -> E.mk_FInv (go e)
-    | Not(e)       -> E.mk_Not (go e)
-    | Log(e)       -> E.mk_GLog (go e)
-    | Exp(e1,e2)   -> E.mk_GExp (go e1) (go e2)
-    | CGen(s)      -> E.mk_GGen (create_groupvar ts s)
-    | CZ(s)        -> E.mk_Z (create_lenvar ts s)
+    | CFNat(i)		-> E.mk_FNat i
+    | CB b		-> E.mk_B b
+    | Plus(e1,e2)	-> E.mk_FPlus [go e1; go e2]
+    | Minus(e1,e2)	-> E.mk_FMinus (go e1) (go e2)
+    | Land(e1,e2)	-> E.mk_Land [go e1; go e2]
+    | Xor(e1,e2)	-> E.mk_Xor [go e1; go e2]
+    | Eq(e1,e2)		-> E.mk_Eq (go e1) (go e2)
+    | Ifte(e1,e2,e3)	-> E.mk_Ifte (go e1) (go e2) (go e3)
+    | Opp(e)		-> E.mk_FOpp (go e)
+    | Inv(e)		-> E.mk_FInv (go e)
+    | Not(e)		-> E.mk_Not (go e)
+    | Log(e)		-> E.mk_GLog (go e)
+    | Exp(e1,e2)	-> E.mk_GExp (go e1) (go e2)
+    | CGen(s)		-> E.mk_GGen (create_groupvar ts s)
+    | CZ(s)		-> E.mk_Z (create_lenvar ts s)
     | All(bd,pe)   ->
       let b = 
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
@@ -170,6 +183,12 @@ let lcmd_of_parse_lcmd (vmap : G.vmap) ts ~oname lcmd =
     let e = expr_of_parse_expr vmap ts qual e in
     let v = create_var vmap ts qual s e.E.e_ty in
     G.LLet(v,e)
+(*  | LSampKP(s,t,es) when (Mstring.mem s ts.ts_permdecls) ->
+     let t = ty_of_parse_ty t and
+	 es = L.map (expr_of_parse_expr vmap ts qual) es and
+	 pid = create_permvar ts s in
+     let v = create_var vmap ts qual ("KeyPair_"^s) (T.mk_KeyPair pid) in
+     G.LSamp(v,(t,es)) (* Aborted because t != KeyPair _ *) *)
   | LSamp(s,t,es) ->
     let t = ty_of_parse_ty ts t in
     let es = L.map (expr_of_parse_expr vmap ts qual) es in
