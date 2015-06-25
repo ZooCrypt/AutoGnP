@@ -232,7 +232,7 @@
 
 typ :
 | i=TBS                              { BS(i) }
-| i=KEYPAIR                          { KeyPair(i) }
+| s=KEYPAIR                          { KeyPair(s) }
 | TBOOL                              { Bool }
 | i=TG                               { G(i) }
 | TFQ                                { Fq }

@@ -134,21 +134,21 @@ rule lex = parse
   | "G" { TG("") }
   | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
   | ((['a'-'z' 'A'-'Z' ]
-	['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* ) as s)"_inv" (* Parsing 'f_inv'-like patterns *)
+	['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s)"_inv" (* Parsing 'f_inv'-like patterns *)
       { try Hashtbl.find keyword_table (s ^ "_inv")
       with Not_found -> F_INV s }
   | "GetPK_"((['a'-'z' 'A'-'Z' ]
-		['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* ) as s) {PK s}
+		['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PK s}
   | "GetSK_"((['a'-'z' 'A'-'Z' ]
-	    ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* ) as s) {SK s}	 
+	    ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {SK s}	 
   (*  (((['a'-'z'])(['a'-'z''0'-'9']* )) as s)"_inv" { F_INV(s) } (*Test *) *)
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z' 'A'-'Z' ]
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s
     { try Hashtbl.find keyword_table s
       with Not_found -> ID s }
- (* | "KeyPair_"(['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s) {KEYPAIR s}*)
+  | "KeyPair_"((['a'-'z' 'A'-'Z' ]
+		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}
   | ":"     { COLON }
   | ";"     { SEMICOLON }
   | "?"     { QUESTION }
