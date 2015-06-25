@@ -184,13 +184,13 @@ let ensure_ty_PKey ty s =
   match ty.ty_node with
   | PKey pid -> pid
   | _    ->
-    failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
+    failwith (fsprintf "%s: expected PKey _, got %a" s pp_ty ty)
 
 let ensure_ty_SKey ty s =
   match ty.ty_node with
   | SKey pid -> pid
   | _    ->
-    failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
+    failwith (fsprintf "%s: expected SKey _, got %a" s pp_ty ty)
 
 let ensure_ty_G ty s =
   match ty.ty_node with
@@ -226,8 +226,8 @@ let mk_Perm f is_inverse k e =
     mk_e (Perm(f,is_inverse,k,e)) f.Psym.dom
 
 	 
-let mk_GetPK f = mk_e (GetPK f) f.Psym.dom
-let mk_GetSK f = mk_e (GetSK f) f.Psym.dom	      
+let mk_GetPK f = mk_e (GetPK f) (ty_PKey f.Psym.pid)
+let mk_GetSK f = mk_e (GetSK f) (ty_SKey f.Psym.pid)	      
        
 let mk_All b e =
   mk_e (All(b,e)) ty_Bool
