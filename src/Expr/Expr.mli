@@ -71,6 +71,9 @@ module Me : Map.S with type key = expr
 (* \hd{Constructor functions} *)
 
 val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
+val ensure_ty_KeyPair : Type.ty -> string -> Type.Permvar.id
+val ensure_ty_PKey : Type.ty -> string -> Type.Permvar.id
+val ensure_ty_SKey : Type.ty -> string -> Type.Permvar.id
 
 exception TypeError of (ty *  ty * expr * expr option * string)
 

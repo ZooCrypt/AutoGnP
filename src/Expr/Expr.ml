@@ -180,6 +180,11 @@ exception TypeError of (ty * ty * expr * expr option * string)
 let ensure_ty_equal ty1 ty2 e1 e2 s =
   ignore (ty_equal ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
+let ensure_ty_KeyPair ty s =
+  match ty.ty_node with
+  | KeyPair pid -> pid
+  | _ -> failwith (fsprintf "%s: expected KeyPair _, got%a" s pp_ty ty)
+                  
 let ensure_ty_PKey ty s =
   match ty.ty_node with
   | PKey pid -> pid

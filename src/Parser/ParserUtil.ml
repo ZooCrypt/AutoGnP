@@ -120,13 +120,19 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
     | ParsePerm(s,b,k,e) ->
        let f = Mstring.find s ts.ts_permdecls in
        E.mk_Perm f b (go k) (go e)
-    | ParseGetPK s when Mstring.mem s ts.ts_permdecls ->
-       let f = Mstring.find s ts.ts_permdecls in
+    | ParseGetPK(s,e) when Mstring.mem s ts.ts_permdecls ->
+       let f = Mstring.find s ts.ts_permdecls and
+       e2 = go e in
+       if (f.Psym.pid <> E.ensure_ty_KeyPair e2.e_ty "GetPK") then
+         tacerror "GetPK and KeyPair can't work with different permutations.";
        E.mk_GetPK f
-    | ParseGetSK s when Mstring.mem s ts.ts_permdecls ->
-       let f = Mstring.find s ts.ts_permdecls in
+    | ParseGetSK(s,e) when Mstring.mem s ts.ts_permdecls ->
+       let f = Mstring.find s ts.ts_permdecls and
+       e2 = go e in
+       if (f.Psym.pid <> E.ensure_ty_KeyPair e2.e_ty "GetSK") then
+         tacerror "GetSK and KeyPair can't work with different permutations.";
        E.mk_GetSK f
-    | ParseGetPK s | ParseGetSK s -> tacerror "Undefined permutation %s" s
+    | ParseGetPK(s,_) | ParseGetSK(s,_) -> tacerror "Undefined permutation %s" s
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SApp(s,es) when Mstring.mem s ts.ts_permdecls ->
        begin

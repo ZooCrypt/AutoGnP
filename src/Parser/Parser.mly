@@ -287,8 +287,8 @@ expr6 :
 | LOG LPAREN e1=expr RPAREN      { Log(e1) }
 | l=paren_list0(COMMA,expr)      { mk_Tuple l }
 | s=F_INV LPAREN k1=expr COMMA e1=expr RPAREN { ParsePerm(s,true,k1,e1) }
-| s=PK LPAREN RPAREN             { ParseGetPK(s) }
-| s=SK LPAREN RPAREN             { ParseGetSK(s) }
+| s=PK LPAREN e=expr RPAREN             { ParseGetPK(s,e) }
+| s=SK LPAREN e=expr RPAREN             { ParseGetSK(s,e) }
        
 
 /*======================================================================*/
