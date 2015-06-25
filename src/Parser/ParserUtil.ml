@@ -45,6 +45,13 @@ let ty_of_parse_ty ts pty =
     | Fq        -> T.mk_Fq
     | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
+    | KeyPair s ->
+       begin try
+         let f = Mstring.find s ts.ts_permdecls in
+           T.mk_KeyPair f.Psym.pid
+         with _ -> tacerror "Undefined permutation %s" s
+       end
+         
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
   go pty
@@ -121,9 +128,14 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
        E.mk_GetSK f
     | ParseGetPK s | ParseGetSK s -> tacerror "Undefined permutation %s" s
     | Proj(i,e) -> E.mk_Proj i (go e)
-    | SApp(s,[k;e]) when Mstring.mem s ts.ts_permdecls ->
-       let f = Mstring.find s ts.ts_permdecls in
-       E.mk_Perm f false (go k) (go e)
+    | SApp(s,es) when Mstring.mem s ts.ts_permdecls ->
+       begin
+         match es with
+         | [k;e] ->
+            let f = Mstring.find s ts.ts_permdecls in
+            E.mk_Perm f false (go k) (go e)
+         | _ -> fail_parse (F.sprintf "Permutation %s expects  2 arguments" s)
+       end
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (L.map go es) in

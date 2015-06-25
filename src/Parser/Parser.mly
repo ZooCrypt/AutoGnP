@@ -35,7 +35,7 @@
 
 %token <string> ID
 %token <string> F_INV
-		(** %token <string> KEYPAIR *)
+%token <string> KEYPAIR
 %token <string> PK
 %token <string> SK						  
 %token PLUS
@@ -232,6 +232,7 @@
 
 typ :
 | i=TBS                              { BS(i) }
+| i=KEYPAIR                          { KeyPair(i) }
 | TBOOL                              { Bool }
 | i=TG                               { G(i) }
 | TFQ                                { Fq }

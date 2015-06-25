@@ -129,6 +129,8 @@ and wf_exp ctype wfs e0 =
       let wfs = List.fold_left check_binding1 wfs binds in
       assert (ty_equal mk_Bool e1.e_ty);
       go wfs e1
+    | Perm(_,_,_,e1) -> go wfs e1
+    | GetPK _ | GetSK _ -> ()
     | H(_,e1) | Proj(_,e1) -> go wfs e1
     | Nary(Land,es) ->
       let is_InEq e =

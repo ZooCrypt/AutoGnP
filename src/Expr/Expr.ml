@@ -409,8 +409,8 @@ let e_sub_map g = sub_map (check_fun g)
 
 let e_sub_fold g acc e =
   match e.e_node with
-  | V _ | Cnst _ -> acc
-  | H(_,e) | Proj(_, e) | All(_,e) -> g acc e
+  | V _ | Cnst _ | GetPK _ | GetSK _ -> acc
+  | Perm(_,_,_,e) | H(_,e) | Proj(_, e) | All(_,e) -> g acc e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 

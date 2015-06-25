@@ -11,6 +11,7 @@ open Util
 (* \hd{Types for parsed types, expressions, and games} *)
 
 type parse_ty =
+  | KeyPair of string
   | BS of string
   | Bool
   | G of string
