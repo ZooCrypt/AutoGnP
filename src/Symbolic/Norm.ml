@@ -11,6 +11,9 @@ open Util
 let _log_i ls = mk_logger "Norm" Bolt.Level.INFO "Norm" ls
 
 (*i*)
+let mk_Perm_with_expr_list f is_inverse = function
+  | [k;e] -> mk_Perm f is_inverse k e
+  | _ -> failwith "[k;e] expected"
 
 let mk_gexp gv p = mk_GExp (mk_GGen gv) p
 
@@ -27,6 +30,8 @@ let rec norm_ggt e =
   | G gv -> mk_gexp gv (mk_GLog e)   (*i g ^ (log x) i*)
 
   | Fq | Bool | Int | BS _ -> e
+
+  | KeyPair _ | PKey _ | SKey _ -> e
 
   | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_ggt (mk_Proj i e)) lt)
 
@@ -186,28 +191,28 @@ and norm_expr ?strong:(strong=false) e =
   | Cnst GGen ->  mk_gexp (destr_G e.e_ty) mk_FOne
   | Cnst _ -> e
   | H(h,e) -> norm_ggt (mk_H h (norm_expr ~strong e))
-  | Perm(f,false,k1,e1) ->
-      begin
-	let k1_norm = norm_expr ~strong k1 and
-	    e1_norm = norm_expr ~strong e1 in
-	match e1_norm.e_node with
-	| Perm(f,true,k2_norm,e2_norm)
-	     when ((is_PKey f k1_norm) && (is_SKey f k2_norm))
-	  -> e2_norm (* f(PKey,f_inv(SKey,e)) = e *)
-	| _ -> mk_Perm f false k1_norm e1_norm
-      end	
-  | Perm(f,true,k1,e1) ->
-     begin
-      let k1_norm = norm_expr ~strong k1 and
-	  e1_norm = norm_expr ~strong e1 in
-      match e1_norm.e_node with
-      | Perm(f,false,k2_norm,e2_norm)
-	   when ((is_SKey f k1_norm) && (is_PKey f k2_norm))
-	-> e2_norm (* f_inv(SKey,f(PKey,e)) = e *)
-      | _ -> mk_Perm f true k1_norm e1_norm
-     end
-  | GetPK _ -> e
-  | GetSK _ -> e
+  | Perm(f,false,k1,e1) -> (
+    let k1_norm = norm_expr ~strong k1 and
+	e1_norm = norm_expr ~strong e1 in
+    match e1_norm.e_node with
+    | Perm(f,true,k2_norm,e2_norm)
+	 when ((is_PKey f k1_norm) && (is_SKey f k2_norm))
+      -> e2_norm (* f(PKey,f_inv(SKey,e)) = e *)
+    | _ -> mk_Perm f false k1_norm e1_norm )
+  | Perm(f,true,k1,e1) -> (
+    let k1_norm = norm_expr ~strong k1 and
+	e1_norm = norm_expr ~strong e1 in
+    match e1_norm.e_node with
+    | Perm(f,false,k2_norm,e2_norm)
+	 when ((is_SKey f k1_norm) && (is_PKey f k2_norm))
+      -> e2_norm (* f_inv(SKey,f(PKey,e)) = e *)
+    | _ -> mk_Perm f true k1_norm e1_norm )
+  | GetPK(f,kp) ->
+     let kp_norm = norm_expr ~strong kp in
+     mk_GetPK f kp_norm
+  | GetSK(f,kp) ->
+     let kp_norm = norm_expr ~strong kp in
+     mk_GetSK f kp_norm
   | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
   | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)
   | App (op, l) ->
@@ -338,6 +343,9 @@ let norm_split_if ~nf e =
     | V _ | Cnst _ -> Iexpr e
     | All(b,e)     -> map_nif ~f:(mk_All b) (go e)
     | H(h,e)       -> map_nif ~f:(mk_H h) (go e)
+    | Perm(f,b,k,e) ->
+       napp_nifs ~f:(mk_Perm_with_expr_list f b) (L.map go [k;e])
+    | GetPK _ | GetSK _ -> Iexpr e
     | Proj(i,e)    -> map_nif ~f:(mk_Proj i) (go e)
     | Tuple(es)    -> napp_nifs ~f:mk_Tuple (L.map go es)
     | App(_,_) when is_Ifte e ->
@@ -367,3 +375,4 @@ let destr_Neq_norm e =
   match e.e_node with
   | App(Not,[e1]) -> destr_Eq_norm e1
   | _             -> None
+

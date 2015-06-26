@@ -161,7 +161,7 @@ let rec pp_ty fmt ty =
   | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
   | Int     -> F.fprintf fmt "Int"
   | KeyPair pv    -> F.fprintf fmt "KeyPair_%s" (Permvar.name pv)
-  | PKey pv    -> F.fprintf fmt "PK_%s" (Permvar.name pv)
-  | SKey pv    -> F.fprintf fmt "SK_%s" (Permvar.name pv)
+  | PKey pv    -> F.fprintf fmt "PKey_%s" (Permvar.name pv)
+  | SKey pv    -> F.fprintf fmt "SKey_%s" (Permvar.name pv)
 
 (*i*)

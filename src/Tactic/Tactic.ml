@@ -559,7 +559,7 @@ let handle_instr verbose ts instr =
        tacerror "Permutation with the same name already declared.";
      let f = Psym.mk s (PU.ty_of_parse_ty ts t) (create_permvar ts s) in
      let ts = { ts with ts_permdecls = Mstring.add s f ts.ts_permdecls } in
-     (ts, fsprintf "Declared Permutation %s" s)
+     (ts, fsprintf "Declared permutation %s : " s)
   | PT.RODecl(s,ro,t1,t2) ->
     let oname = if ro then "random oracle" else "operator" in
     if Mstring.mem s ts.ts_rodecls then

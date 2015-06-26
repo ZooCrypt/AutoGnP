@@ -46,11 +46,10 @@ let ty_of_parse_ty ts pty =
     | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
     | KeyPair s ->
-       begin try
+       (try
          let f = Mstring.find s ts.ts_permdecls in
            T.mk_KeyPair f.Psym.pid
-         with _ -> tacerror "Undefined permutation %s" s
-       end
+         with Not_found -> tacerror "Undefined permutation %s" s)
          
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
@@ -120,18 +119,14 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
     | ParsePerm(s,b,k,e) ->
        let f = Mstring.find s ts.ts_permdecls in
        E.mk_Perm f b (go k) (go e)
-    | ParseGetPK(s,e) when Mstring.mem s ts.ts_permdecls ->
+    | ParseGetPK(s,kp) when Mstring.mem s ts.ts_permdecls ->
        let f = Mstring.find s ts.ts_permdecls and
-       e2 = go e in
-       if (f.Psym.pid <> E.ensure_ty_KeyPair e2.e_ty "GetPK") then
-         tacerror "GetPK and KeyPair can't work with different permutations.";
-       E.mk_GetPK f
-    | ParseGetSK(s,e) when Mstring.mem s ts.ts_permdecls ->
+       parsed_kp = go kp in
+       E.mk_GetPK f parsed_kp
+    | ParseGetSK(s,kp) when Mstring.mem s ts.ts_permdecls ->
        let f = Mstring.find s ts.ts_permdecls and
-       e2 = go e in
-       if (f.Psym.pid <> E.ensure_ty_KeyPair e2.e_ty "GetSK") then
-         tacerror "GetSK and KeyPair can't work with different permutations.";
-       E.mk_GetSK f
+       parsed_kp = go kp in
+       E.mk_GetSK f parsed_kp
     | ParseGetPK(s,_) | ParseGetSK(s,_) -> tacerror "Undefined permutation %s" s
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SApp(s,es) when Mstring.mem s ts.ts_permdecls ->

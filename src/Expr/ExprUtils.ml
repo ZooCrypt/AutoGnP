@@ -38,9 +38,9 @@ let is_FZ e = match e.e_node with Cnst (FNat 0) -> true | _ -> false
 
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
-let is_PKey f e = e.e_node = GetPK f
-
-let is_SKey f e = e.e_node = GetSK f
+let is_PKey f e = match e.e_node with GetPK(f2,_) when f=f2 -> true | _ -> false
+(* FIXME *) (* Could we use == instead ? i.e., is f instanciated only once ? *)
+let is_SKey f e = match e.e_node with GetSK(f2,_) when f=f2 -> true | _ -> false
 				     
 let is_True e = is_Cnst (B true) e
 
@@ -161,7 +161,12 @@ let rec pp_exp_p ~qual above fmt e =
     F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
   | H(h,e)     -> 
     F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p ~qual PrefixApp) e
-  | Perm(f,_,_,_) | GetPK f | GetSK f -> (* FIXME *) ()
+  | Perm(f,false,k,e) ->
+     F.fprintf fmt "@[<hov>%a(%a,%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) k (pp_exp_p ~qual PrefixApp) e
+  | Perm(f,true,k,e) ->
+     F.fprintf fmt "@[<hov>%a_inv(%a,%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) k (pp_exp_p ~qual PrefixApp) e
+  | GetPK(f,kp) -> F.fprintf fmt "@[<hov>GetPK_%a(%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) kp
+  | GetSK(f,kp) -> F.fprintf fmt "@[<hov>GetSK_%a(%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) kp
   | Tuple(es) -> 
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -293,12 +298,12 @@ let destr_Perm e =
 
 let destr_PKey e =
   match e.e_node with
-  | GetPK f -> f
+  | GetPK(f,kp) -> (f,kp)
   | _ -> raise (Destr_failure "PKey")
 
 let destr_SKey e =
   match e.e_node with
-  | GetSK f -> f
+  | GetSK(f,kp) -> (f,kp)
   | _ -> raise (Destr_failure "SKey")
 	       
 let destr_All e = 
@@ -401,7 +406,7 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | GetPK _ | GetSK _ -> ()
+    | GetPK(_,kp) | GetSK(_,kp) -> go ie kp; run e0
     | Perm(_,_,_,e) -> go ie e; run e0
     | H(_,e) | Proj(_,e) | All(_,e)-> 
       go ie e; run e0
@@ -453,7 +458,7 @@ let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 
 let sub t = 
   let rec aux e1 e2 = 
-    match e2.e_ty.ty_node with
+    match e2.e_ty.ty_node with (* FIXME *) (* TODO : Permutations handling *)
     | Bool -> mk_Xor [e1;e2], mk_False
     | BS t -> mk_Xor [e1;e2], mk_Z t
     | G  id -> 

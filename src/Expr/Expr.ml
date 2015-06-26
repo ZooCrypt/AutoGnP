@@ -98,8 +98,8 @@ and expr_node =
   | Nary   of nop * expr list (*r variable arity AC operators *)
   | All of (Vsym.t list * Osym.t) list * expr
   | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
-  | GetPK of Psym.t           (*r Public Key of f required by f *)  
-  | GetSK of Psym.t           (*r Secret Key of f required by f_inv *)
+  | GetPK of Psym.t * expr          (*r Public Key of f required by f *)  
+  | GetSK of Psym.t * expr          (*r Secret Key of f required by f_inv *)
 	       
 
 (** Equality hashing, and comparison for expressions. *)
@@ -126,7 +126,8 @@ module Hse = Hashcons.Make (struct
         e_equal e1 e2
     | Perm(f1,b1,k1,e1), Perm(f2,b2,k2,e2)
       -> Psym.equal f1 f2 && b1=b2 && e_equal k1 k2 && e_equal e1 e2
-    | GetPK f1, GetPK f2 | GetSK f1, GetSK f2 -> Psym.equal f1 f2
+    | GetPK(f1,kp1), GetPK(f2,kp2) | GetPK(f1,kp1), GetPK(f2,kp2) ->
+        (Psym.equal f1 f2) && e_equal kp1 kp2
     | _, _                       -> false
   (*i*)
 
@@ -136,8 +137,8 @@ module Hse = Hashcons.Make (struct
     | H(f,e)     -> Hashcons.combine (Hsym.hash f) (e_hash e)
     | Perm(f,b,k,e) -> let hc = Hashcons.combine in
 		       hc (if b then 1 else 2) (hc (Psym.hash f) (hc (e_hash k) (e_hash e)))
-    | GetPK(f)   -> Hashcons.combine 1 (Psym.hash f)
-    | GetSK(f)   -> Hashcons.combine 2 (Psym.hash f)				     
+    | GetPK(f,e)   -> Hashcons.combine 1 (Hashcons.combine (e_hash e) (Psym.hash f))
+    | GetSK(f,e)   -> Hashcons.combine 2 (Hashcons.combine (e_hash e) (Psym.hash f))
     | Tuple(es)  -> Hashcons.combine_list e_hash 3 es
     | Proj(i,e)  -> Hashcons.combine i (e_hash e)
     | Cnst(c)    -> cnst_hash c
@@ -183,19 +184,19 @@ let ensure_ty_equal ty1 ty2 e1 e2 s =
 let ensure_ty_KeyPair ty s =
   match ty.ty_node with
   | KeyPair pid -> pid
-  | _ -> failwith (fsprintf "%s: expected KeyPair _, got%a" s pp_ty ty)
+  | _ -> failwith (fsprintf "%s: KeyPair arg expected, got %a instead" s pp_ty ty)
                   
 let ensure_ty_PKey ty s =
   match ty.ty_node with
   | PKey pid -> pid
   | _    ->
-    failwith (fsprintf "%s: expected PKey _, got %a" s pp_ty ty)
+    failwith (fsprintf "%s: PubKey expected, got %a instead" s pp_ty ty)
 
 let ensure_ty_SKey ty s =
   match ty.ty_node with
   | SKey pid -> pid
   | _    ->
-    failwith (fsprintf "%s: expected SKey _, got %a" s pp_ty ty)
+    failwith (fsprintf "%s: SecretKey expected, got %a instead" s pp_ty ty)
 
 let ensure_ty_G ty s =
   match ty.ty_node with
@@ -220,19 +221,29 @@ let mk_H h e =
 
 let mk_Perm f is_inverse k e =
     let k_pid = if is_inverse then
-		     ensure_ty_SKey k.e_ty "mk_Perm : inverse requires SKey"
+		     ensure_ty_SKey k.e_ty "mk_Perm (inverse) - key"
 		   else
-		     ensure_ty_PKey k.e_ty "mk_Perm : direct requires PKey"
+		     ensure_ty_PKey k.e_ty "mk_Perm (direct) - key"
     in
-    assert(f.Psym.pid = k_pid);
+    if (not (f.Psym.pid = k_pid)) then
+      failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." Psym.pp f);
     ensure_ty_equal e.e_ty f.Psym.dom
 		    e (Some k)
-		    (fsprintf "mk_Perm (inverse) for %a" Psym.pp f);
+		    (fsprintf "mk_Perm for %a : expected arg of type %a" Psym.pp f pp_ty e.e_ty);
     mk_e (Perm(f,is_inverse,k,e)) f.Psym.dom
-
+                  
 	 
-let mk_GetPK f = mk_e (GetPK f) (ty_PKey f.Psym.pid)
-let mk_GetSK f = mk_e (GetSK f) (ty_SKey f.Psym.pid)	      
+let mk_GetPK f kp =
+  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetPK" in
+    if (not (f.Psym.pid = kp_pid)) then
+      failwith (fsprintf "mk_GetPK: The permutation of given KeyPair is not %a." Psym.pp f);  
+    mk_e (GetPK (f,kp)) (ty_PKey f.Psym.pid)
+
+let mk_GetSK f kp =
+  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetSK" in
+    if (not (f.Psym.pid = kp_pid)) then
+      failwith (fsprintf "mk_GetSK: The permutation of given KeyPair is not %a." Psym.pp f);  
+    mk_e (GetSK (f,kp)) (ty_SKey f.Psym.pid)
        
 let mk_All b e =
   mk_e (All(b,e)) ty_Bool
@@ -414,14 +425,15 @@ let e_sub_map g = sub_map (check_fun g)
 
 let e_sub_fold g acc e =
   match e.e_node with
-  | V _ | Cnst _ | GetPK _ | GetSK _ -> acc
+  | V _ | Cnst _ -> acc
+  | GetPK (_,kp) | GetSK(_,kp) -> g acc kp
   | Perm(_,_,_,e) | H(_,e) | Proj(_, e) | All(_,e) -> g acc e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | GetPK _ | GetSK _ -> ()
+  | GetPK(_,kp) | GetSK(_,kp) -> g e
   | Perm(_,_,_,e) -> g e 
   | H(_,e) | Proj(_, e) | All(_,e) -> g e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
@@ -474,7 +486,12 @@ let e_map_ty_maximal ty g e0 =
     let trans = if me then g else id in
     match e.e_node with
     | V(_) | Cnst(_) -> e
-    | GetPK _ | GetSK _ -> e
+    | GetPK(f,kp) ->
+       let kp = go ie kp in
+       trans (mk_GetPK f kp)
+    | GetSK(f,kp) ->
+       let kp = go ie kp in
+       trans (mk_GetSK f kp)
     | Perm(f,is_inverse,k,e) ->
        let e = go ie e in
        trans (mk_Perm f is_inverse k e)

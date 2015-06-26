@@ -61,8 +61,8 @@ val destr_Tuple  : expr -> expr list
 val destr_Proj   : expr -> int * expr
 val destr_Cnst   : expr -> cnst
 val destr_Perm   : expr -> Psym.t*bool*expr*expr
-val destr_PKey   : expr -> Psym.t
-val destr_SKey   : expr -> Psym.t
+val destr_PKey   : expr -> Psym.t*expr
+val destr_SKey   : expr -> Psym.t*expr
 val destr_FNat   : expr -> int
 val destr_App    : expr -> op * expr list
 val destr_GMult  : expr -> (expr) list
