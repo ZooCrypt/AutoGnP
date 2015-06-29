@@ -184,7 +184,7 @@ let pp_binding1 fmt (vs,os) =
     match vs with
     | [v] -> Vsym.pp fmt v
     | _   -> F.fprintf fmt "(%a)" (pp_list "," Vsym.pp) vs in
-  F.fprintf fmt "%a in %a,"
+  F.fprintf fmt "%a in %a:"
   pp_bdecl vs Osym.pp os
 
 let pp_binding = pp_list "" pp_binding1 
