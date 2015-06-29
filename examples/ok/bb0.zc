@@ -1,0 +1,79 @@
+(* One-Way Permutations Trapdoors *)
+
+permutation f : BS_k.
+
+adversary A_comp : (PKey_f * BS_k) -> BS_k.
+adversary A_dec : (PKey_f * BS_k^2) -> Bool.
+
+(* Computational assumption *)
+assumption OW_comp succ
+  [ kp <-$ KeyPair_f; m <-$ BS_k; 
+    m' <- A_comp(GetPK_f(kp),f(GetPK_f(kp),m)); ] 
+    : m' = m.
+    
+(* Decisional assumption    
+assumption dec_assm ([c,kp])
+
+  [ kp <-$ KeyPair_f; c <-$ BS_k;      let m = f_inv(GetSK_f(kp),c); 
+  b <- A_dec(GetPK_f(kp),(c,m)); ]
+  
+  [ kp <-$ KeyPair_f; c <-$ BS_k;          m <-$ BS_k; 
+  b <- A_dec(GetPK_f(kp),(c,m)); ]. *)
+  
+random oracle H : BS_k -> BS_l. 
+adversary Afind : () -> (BS_l * BS_l).
+adversary A : (BS_l * BS_k) -> Bool.  
+oracle Ha : BS_k -> BS_l.
+bound_succ
+  [ b <-$ Bool;
+    KPair <-$ KeyPair_f;
+    let PK = GetPK_f(KPair);
+    let SK = GetSK_f(KPair);
+    r <-$ BS_k;
+    r' <-$ BS_l;
+    (M0,M1) <- Afind();
+    let Mb = (b?M1:M0);
+    let Cb = r' ++ Mb ;
+    b' <- A(Cb,f(PK,r)) with 
+      Ha(x) = {
+        return H(x);
+        };
+  ] : exists y in Ha: y = r.
+  
+  norm.
+  guess A3 yy.
+  swap KPair (1). swap r (2).
+  abstract 3 arg (GetPK_f(KPair), f(GetPK_f(KPair),r)).
+  abstract 9 res yy.
+  assumption_computational OW_comp [3 9].
+  
+  
+  
+
+
+(* WITH ORACLE
+oracle Enc : BS_k^2 -> BS_k.
+adversary A : PKey_f -> Bool.
+
+    
+bound_adv
+  [ b <-$ Bool;
+    KPair <-$ KeyPair_f;
+    let PK = GetPK_f(KPair);
+    let SK = GetSK_f(KPair);
+    b' <- A(PK) with
+      Enc(M0, M1) = {
+        b2 <-$ Bool;
+        return f(PK,b?M1:M0);
+      };
+  ] : b = b'. 
+  
+
+  norm.
+  hybrid (3,1) { C <-$ BS_k; return C; }.
+  last. indep!.
+  swap_main (3,1,1) b3; //.
+  
+assumption_computational! comp_assm.
+
+*)
