@@ -25,6 +25,19 @@ let destr_gexp gv g =
   assert (e_equal g1 (mk_GGen gv));
   p
 
+(*let rec norm_var e =
+  match e.e_ty.ty_node with
+  | G gv -> norm_ggt e
+
+  | Fq | Bool | Int | BS _ -> e
+
+  | KeyPair pv -> E.mk_KeyPair
+
+  | PKey _ | SKey _ -> e
+
+  | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_var (mk_Proj i e)) lt)
+ *)
+    
 let rec norm_ggt e =
   match e.e_ty.ty_node with
   | G gv -> mk_gexp gv (mk_GLog e)   (*i g ^ (log x) i*)
@@ -198,7 +211,7 @@ and norm_expr ?strong:(strong=false) e =
     | Perm(f,true,k2_norm,e2_norm)
 	 when ((is_PKey f k1_norm) && (is_SKey f k2_norm))
       -> e2_norm (* f(PKey,f_inv(SKey,e)) = e *)
-    | _ -> mk_Perm f false k1_norm e1_norm )
+    | _ -> mk_Perm f false k1_norm e1_norm)
   | Perm(f,true,k1,e1) -> (
     let k1_norm = norm_expr ~strong k1 and
 	e1_norm = norm_expr ~strong e1 in

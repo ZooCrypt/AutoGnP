@@ -138,11 +138,15 @@ rule lex = parse
       { try Hashtbl.find keyword_table (s ^ "_inv")
       with Not_found -> F_INV s }
   | "GetPK_"((['a'-'z' 'A'-'Z' ]
-		['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PK s}
+		['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {GETPK s}
   | "GetSK_"((['a'-'z' 'A'-'Z' ]
-	    ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {SK s}	 
+	    ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {GETSK s}	 
   | "KeyPair_"((['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}
+		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}	 
+  | "PKey_"((['a'-'z' 'A'-'Z' ]
+		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PKEY s}	 
+  | "SKey_"((['a'-'z' 'A'-'Z' ]
+		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {SKEY s}
   (*  (((['a'-'z'])(['a'-'z''0'-'9']* )) as s)"_inv" { F_INV(s) } (*Test *) *)
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z' 'A'-'Z' ]

@@ -50,7 +50,16 @@ let ty_of_parse_ty ts pty =
          let f = Mstring.find s ts.ts_permdecls in
            T.mk_KeyPair f.Psym.pid
          with Not_found -> tacerror "Undefined permutation %s" s)
-         
+    | PKey s ->
+       (try
+         let f = Mstring.find s ts.ts_permdecls in
+           T.mk_PKey f.Psym.pid
+         with Not_found -> tacerror "Undefined permutation %s" s)
+    | SKey s ->
+       (try
+         let f = Mstring.find s ts.ts_permdecls in
+           T.mk_SKey f.Psym.pid
+         with Not_found -> tacerror "Undefined permutation %s" s)         
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
   go pty

@@ -12,6 +12,8 @@ open Util
 
 type parse_ty =
   | KeyPair of string
+  | PKey of string
+  | SKey of string
   | BS of string
   | Bool
   | G of string
