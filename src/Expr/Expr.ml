@@ -28,7 +28,6 @@ let cnst_hash = (*c ... *) (*i*)
   | FNat n -> Hashcons.combine 2 n
   | Z      -> 3
   | B b    -> if b then 5 else 6
-(*  | Permkey is_secret -> if is_secret then 7 else 8 *)
 (*i*)
 
 
@@ -126,7 +125,7 @@ module Hse = Hashcons.Make (struct
         e_equal e1 e2
     | Perm(f1,b1,k1,e1), Perm(f2,b2,k2,e2)
       -> Psym.equal f1 f2 && b1=b2 && e_equal k1 k2 && e_equal e1 e2
-    | GetPK(f1,kp1), GetPK(f2,kp2) | GetPK(f1,kp1), GetPK(f2,kp2) ->
+    | GetPK(f1,kp1), GetPK(f2,kp2) | GetSK(f1,kp1), GetSK(f2,kp2) ->
         (Psym.equal f1 f2) && e_equal kp1 kp2
     | _, _                       -> false
   (*i*)
@@ -392,8 +391,9 @@ let sub_map g e =
       else mk_e (H(h, e1')) e.e_ty
   | Perm(f,is_inverse,k,e1) ->
      let e1' = g e1 in
-     if e1 == e1' then e
-     else mk_e (Perm(f,is_inverse,k,e1')) e.e_ty
+     let k' = g k in
+     if e1 == e1' && k' == k then e
+     else mk_e (Perm(f,is_inverse,k',e1')) e.e_ty
   | GetPK _ | GetSK _ -> e
   | Tuple(es) ->
       let es' = smart_map g es in
@@ -518,7 +518,7 @@ let e_map_ty_maximal ty g e0 =
 
 let e_map_top f = 
   let tbl = He.create 103 in
-  let rec aux e = 
+  let rec aux e =
     try He.find tbl e 
     with Not_found ->
       let e' = try check_fun f e with Not_found -> sub_map aux e in
@@ -530,5 +530,5 @@ let e_map_top f =
 let e_replace e1 e2 = 
   e_map_top (fun e -> if e_equal e e1 then e2 else raise Not_found)
 
-let e_subst s = 
+let e_subst s =
   e_map_top (fun e -> Me.find e s)

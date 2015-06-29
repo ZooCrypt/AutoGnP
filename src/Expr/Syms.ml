@@ -214,6 +214,7 @@ module Psym = struct
   module H = Ps.H
 
   let mk name dom pid =
+    assert (name = Permvar.name pid);
     { id = Id.mk name; dom; pid}
 
   let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
