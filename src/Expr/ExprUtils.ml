@@ -38,9 +38,9 @@ let is_FZ e = match e.e_node with Cnst (FNat 0) -> true | _ -> false
 
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
-let is_PKey f e = match e.e_node with GetPK(f2,_) when f=f2 -> true | _ -> false
+let is_PKey f e = match e.e_node with GetPK(f2,_) when (Psym.equal f f2) -> true | _ -> false
 (* FIXME *) (* Could we use == instead ? i.e., is f instanciated only once ? *)
-let is_SKey f e = match e.e_node with GetSK(f2,_) when f=f2 -> true | _ -> false
+let is_SKey f e = match e.e_node with GetSK(f2,_) when (Psym.equal f f2) -> true | _ -> false
 				     
 let is_True e = is_Cnst (B true) e
 
