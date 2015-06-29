@@ -394,7 +394,14 @@ let sub_map g e =
      let k' = g k in
      if e1 == e1' && k' == k then e
      else mk_e (Perm(f,is_inverse,k',e1')) e.e_ty
-  | GetPK _ | GetSK _ -> e
+  | GetPK(f,e1) ->
+     let e1' = g e1 in
+     if e1 == e1' then e
+     else mk_e (GetPK(f,e1')) e.e_ty
+  | GetSK(f,e1) ->
+     let e1' = g e1 in
+     if e1 == e1' then e
+     else mk_e (GetSK(f,e1')) e.e_ty
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
