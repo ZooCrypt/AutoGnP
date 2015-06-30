@@ -160,6 +160,71 @@ module Hsym = struct
   let is_ro hs = hs.ro
 end
 
+
+module Oracle = struct
+  type t =
+    | RO of Hsym.t
+    |  O of Osym.t
+
+
+  type tt = t
+
+  let hash = function
+    | RO hs -> Hsym.hash hs
+    |  O os -> Osym.hash os
+                         
+  let equal_aux = function
+    | (RO hs1, RO hs2) -> Hsym.equal hs1 hs2
+    | ( O os1,  O os2) -> Osym.equal os1 os2
+    | _ -> false
+
+  let equal ors1 ors2 = equal_aux (ors1,ors2)
+                
+  module Ors = StructMake (struct
+    type t = tt
+    let tag = hash
+  end) 
+
+  module M = Ors.M
+  module S = Ors.S
+  module H = Ors.H
+
+  let mk name ro dom codom =
+    if ro then
+      RO({ Hsym.id = Id.mk name; ro; dom; codom })
+    else
+      O( { Osym.id = Id.mk name;     dom; codom })
+
+  let pp fmt = function
+    | RO hs -> Hsym.pp fmt hs
+    |  O os -> Osym.pp fmt os
+       
+  let to_string = function
+    | RO hs -> Hsym.to_string hs
+    |  O os -> Osym.to_string os
+
+  let is_ro = function
+    | RO hs when hs.Hsym.ro -> true
+    | _ -> false
+
+  let get_id = function
+    | RO hs -> hs.Hsym.id
+    |  O os -> os.Osym.id
+  let get_codom = function
+    | RO hs -> hs.Hsym.codom
+    |  O os -> os.Osym.codom
+  let get_dom = function
+    | RO hs -> hs.Hsym.dom
+    |  O os -> os.Osym.dom            
+  let destr_as_Hsym_t = function
+    | RO hs -> hs
+    | _ -> failwith "Oracle.destr_as_Hsym_t cast failure: received NON RANDOM Oracle"    
+  let destr_as_Osym_t = function
+    | O os -> os
+    | _ -> failwith "Oracle.destr_as_Osym_t cast failure: received RANDOM Oracle"
+                 
+end
+                            
 module Esym = struct
   type t = { 
     id : Id.id;

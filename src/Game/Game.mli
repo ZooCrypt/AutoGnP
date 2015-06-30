@@ -14,7 +14,8 @@ type vs  = Vsym.t
 type ads = Asym.t
 type os  = Osym.t
 type hs  = Hsym.t
-
+type ors = Oracle.t
+             
 type distr = Type.ty * expr list
 
 type lcmd =
@@ -50,7 +51,7 @@ type gdef = gcmd list
 
 (** An event is just an quantified expression. *)
 type quant = Forall | Exists
-type ev = { ev_quant: quant; ev_binding: (vs list * os)list; ev_expr:expr }
+type ev = { ev_quant: quant; ev_binding: (vs list * ors)list; ev_expr:expr }
 
 (** A security experiment consists of a game and an event. *)
 type sec_exp = { se_gdef : gdef; se_ev : ev }

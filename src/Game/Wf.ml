@@ -53,8 +53,8 @@ let ensure_varname_fresh wfs vs =
 let ensure_varnames_fresh wfs vs =
   List.fold_left ensure_varname_fresh wfs vs
 
-let check_binding1 wfs (vs,os) = 
-  assert (ty_equal (ty_prod_vs vs) os.Osym.dom);
+let check_binding1 wfs (vs,ors) =
+  assert (ty_equal (ty_prod_vs vs) (Oracle.get_dom ors));
   ensure_varnames_fresh wfs vs
 
 let rec add_ineq ctype wfs e1 e2 =

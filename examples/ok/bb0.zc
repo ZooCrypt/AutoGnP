@@ -30,7 +30,7 @@ bound_succ
     let PK = GetPK_f(KPair);
     let SK = GetSK_f(KPair);
     r <-$ BS_k;
-    r' <-$ BS_l;
+    let r' = H(r);
     (M0,M1) <- Afind();
     let Mb = (b?M1:M0);
     let Cb = r' ++ Mb ;
@@ -40,12 +40,14 @@ bound_succ
         };
   ] : exists y in Ha: y = r.
   
+  bad 6 r'.
   norm.
   guess A3 yy.
   swap KPair (1). swap r (2).
   abstract 3 arg (GetPK_f(KPair), f(GetPK_f(KPair),r)).
   abstract 9 res yy.
   assumption_computational OW_comp [3 9].
+qed.
   
   
   

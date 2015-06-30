@@ -51,7 +51,7 @@ and expr_node =
   | Cnst of cnst
   | App of op * expr list
   | Nary of nop * expr list
-  | All of (Vsym.t list * Osym.t) list * expr
+  | All of (Vsym.t list * Oracle.t) list * expr
   | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
   | GetPK of Psym.t * expr           (*r Public Key of f required by f *)  
   | GetSK of Psym.t * expr           (*r Secret Key of f required by f_inv *)
@@ -84,7 +84,7 @@ val mk_H      : Hsym.t -> expr -> expr
 val mk_Perm   : Psym.t -> bool -> expr -> expr -> expr
 val mk_GetPK  : Psym.t -> expr -> expr
 val mk_GetSK  : Psym.t -> expr -> expr			    
-val mk_All    : (Vsym.t list * Osym.t) list -> expr -> expr
+val mk_All    : (Vsym.t list * Oracle.t) list -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr
 val mk_GGen   : Groupvar.id -> expr

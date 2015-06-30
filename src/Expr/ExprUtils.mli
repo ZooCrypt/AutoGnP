@@ -56,7 +56,7 @@ exception Destr_failure of string
 
 val destr_V      : expr -> Vsym.t
 val destr_H      : expr -> Hsym.t * expr
-val destr_All    : expr -> (Vsym.t list * Osym.t) list * expr
+val destr_All    : expr -> (Vsym.t list * Oracle.t) list * expr
 val destr_Tuple  : expr -> expr list
 val destr_Proj   : expr -> int * expr
 val destr_Cnst   : expr -> cnst

@@ -49,6 +49,8 @@ exception NoOpenGoal
 
 val get_proof : proof_state -> proof_tree
 val mk_name : ?name:string -> sec_exp -> string
+val prove_by : rule -> goal -> proof_state nondet
+                                           
 val merge_proof_states :
   proof_state list -> (proof_tree list -> proof_tree) -> proof_state
 

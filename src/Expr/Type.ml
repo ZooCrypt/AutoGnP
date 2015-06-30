@@ -39,9 +39,9 @@ module Hsty = Hashcons.Make (struct
     | BS lv1, BS lv2     -> Lenvar.equal lv1 lv2
     | Bool, Bool         -> true
     | G gv1, G gv2       -> Groupvar.equal gv1 gv2
-    | KeyPair pv1, KeyPair pv2
-    | PKey pv1, PKey pv2
-    | SKey pv1, SKey pv2   -> Permvar.equal pv1 pv2
+    | KeyPair pid1, KeyPair pid2
+    | PKey pid1, PKey pid2
+    | SKey pid1, SKey pid2   -> Permvar.equal pid1 pid2
     | Fq, Fq             -> true
     | Prod ts1, Prod ts2 -> list_eq_for_all2 ty_equal ts1 ts2
     | _                  -> false
@@ -53,9 +53,9 @@ module Hsty = Hashcons.Make (struct
     | Fq      -> 4
     | Prod ts -> Hashcons.combine_list ty_hash 3 ts
     | Int     -> 6
-    | KeyPair pv -> Hashcons.combine 7 (Permvar.hash pv)
-    | PKey pv    -> Hashcons.combine 8 (Permvar.hash pv)
-    | SKey pv    -> Hashcons.combine 9 (Permvar.hash pv)
+    | KeyPair pid -> Hashcons.combine 7 (Permvar.hash pid)
+    | PKey pid    -> Hashcons.combine 8 (Permvar.hash pid)
+    | SKey pid    -> Hashcons.combine 9 (Permvar.hash pid)
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -78,9 +78,9 @@ let mk_ty n = Hsty.hashcons {
 (** Create types: bitstring, group, field, boolean, tuple. *)
 let mk_BS lv = mk_ty (BS lv)
 let mk_G gv = mk_ty (G gv)
-let mk_KeyPair pv = mk_ty (KeyPair pv)
-let mk_PKey pv = mk_ty (PKey pv)
-let mk_SKey pv = mk_ty (SKey pv)
+let mk_KeyPair pid = mk_ty (KeyPair pid)
+let mk_PKey pid = mk_ty (PKey pid)
+let mk_SKey pid = mk_ty (SKey pid)
 let mk_Fq = mk_ty Fq
 let mk_Bool = mk_ty Bool
 let mk_Int = mk_ty Int
@@ -160,8 +160,8 @@ let rec pp_ty fmt ty =
     F.fprintf fmt "G" 
   | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
   | Int     -> F.fprintf fmt "Int"
-  | KeyPair pv    -> F.fprintf fmt "KeyPair_%s" (Permvar.name pv)
-  | PKey pv    -> F.fprintf fmt "PKey_%s" (Permvar.name pv)
-  | SKey pv    -> F.fprintf fmt "SKey_%s" (Permvar.name pv)
+  | KeyPair pid    -> F.fprintf fmt "KeyPair_%s" (Permvar.name pid)
+  | PKey pid    -> F.fprintf fmt "PKey_%s" (Permvar.name pid)
+  | SKey pid    -> F.fprintf fmt "SKey_%s" (Permvar.name pid)
 
 (*i*)

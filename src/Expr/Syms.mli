@@ -78,6 +78,30 @@ module Hsym : sig
   module H : Hashtbl.S with type key = t
 end
 
+module Oracle : sig
+  type t =
+    | RO of Hsym.t
+    |  O of Osym.t
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val mk : string -> bool -> ty -> ty -> t
+  val pp : F.formatter -> t -> unit
+  val to_string : t -> string
+  val is_ro : t -> bool
+  val get_id : t -> Id.id
+  val get_dom : t -> ty
+  val get_codom : t -> ty
+  val destr_as_Osym_t : t -> Osym.t
+  val destr_as_Hsym_t : t -> Hsym.t
+                               
+
+  module M : Map.S with type key = t
+  module S : Set.S with type elt = t
+  module H : Hashtbl.S with type key = t
+end
+
+            
 module Esym : sig
   type t = private {
     id : Id.id;

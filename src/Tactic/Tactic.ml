@@ -18,6 +18,7 @@ open RandomRules
 open RindepRules
 open CrushRules
 open CaseRules
+open UpToRules       
 open Game
 
 module Ht = Hashtbl
@@ -419,8 +420,9 @@ let handle_tactic ts tac =
     | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) | PT.Rguard _ ->
       tacerror "add_test and debugging tactics cannot be combined with ';'"
     
-    | PT.Rbad(_i,_sx) ->
-      tacerror "not implemented"
+    | PT.Rbad(p,_sx) ->
+       let vsx = Ht.find vmap_g (Unqual,_sx) in
+        CR.prove_by (rbad p vsx) ju; (* tacerror "not implemented" *)
 
     | PT.Rguess(aname, fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then

@@ -103,7 +103,7 @@ let init_odef_params vmap_g ts ?(qual=true) oname vs =
     | _ ->
       tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
   in
-  vs,osym
+  vs,(Oracle.O osym)
 
 let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
   let rec go pe =
@@ -239,7 +239,9 @@ let odec_of_parse_odec vmap_g ts ~oname od =
         G.odef_greater = obody_of_parse_obody vmap_l ts ~oname ob3; }
   
 let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
-  let vs,osym = init_odef_params vmap_g ts oname vs in
+  let vs,osym = match init_odef_params vmap_g ts oname vs with
+    | vs,(Oracle.O osym) -> vs,osym
+    | _ -> tacerror "This should not be happening..." in
   let od = odec_of_parse_odec vmap_g ts ~oname odec in
   (osym, vs, od)
 

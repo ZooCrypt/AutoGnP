@@ -463,7 +463,8 @@ let extract_ev file modm mem se =
       formula file modm mem ev.ev_expr 
     else      
       let flocal = flocal_ev ev in
-      let do_bd (vs,o) body = 
+      let do_bd (vs,ors) body =
+        let o = Oracle.destr_as_Osym_t ors in
         let ty = mk_Prod (List.map (fun v -> v.Vsym.ty) vs) in
         let ty = 
           Printer.pp_type file F.str_formatter ty;
@@ -1790,7 +1791,7 @@ let extract_except file pos _l pft pft' =
       let s = snd (pvar [] v) in
       F.fprintf fmt "  let %s = g.`%s.%s in@ "
         s adv.mod_name (exclude_private s)) (Se.elements fv);
-    List.iter (fun (_,o) ->
+    List.iter (fun (_,Oracle.O o) ->
       let s = snd (log_oracle [] o) in
       F.fprintf fmt "  let %s = g.`%s.%s in@ "
         s adv.mod_name (exclude_private s)) ju.ju_se.se_ev.ev_binding;
@@ -1888,7 +1889,7 @@ let proof_guess
     (* build the adversary for GUESS *)
   let vs, orcl = 
     match pft.pt_ju.ju_se.se_ev.ev_binding with
-    | [vs,o] -> vs, o
+    | [vs,Oracle.O o] -> vs, o
     | _ -> assert false in 
   
   let log = log_oracle [] orcl in
@@ -2168,7 +2169,7 @@ let proof_find
     (* build the adversary for FIND *)
   let vs, orcl = 
     match pft.pt_ju.ju_se.se_ev.ev_binding with
-    | [vs,o] -> vs, o
+    | [vs,Oracle.O o] -> vs, o
     | _ -> assert false in 
   
   let log = log_oracle [] orcl in

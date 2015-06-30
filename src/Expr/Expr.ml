@@ -95,7 +95,7 @@ and expr_node =
   | Cnst   of cnst            (*r constants *)
   | App    of op * expr list  (*r fixed arity operators *)
   | Nary   of nop * expr list (*r variable arity AC operators *)
-  | All of (Vsym.t list * Osym.t) list * expr
+  | All of (Vsym.t list * Oracle.t) list * expr
   | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
   | GetPK of Psym.t * expr          (*r Public Key of f required by f *)  
   | GetSK of Psym.t * expr          (*r Secret Key of f required by f_inv *)
@@ -121,7 +121,7 @@ module Hse = Hashcons.Make (struct
     | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | All(b1,e1), All(b2,e2) ->
-      list_equal (pair_equal (list_equal Vsym.equal) Osym.equal) b1 b2 &&
+      list_equal (pair_equal (list_equal Vsym.equal) Oracle.equal) b1 b2 &&
         e_equal e1 e2
     | Perm(f1,b1,k1,e1), Perm(f2,b2,k2,e2)
       -> Psym.equal f1 f2 && b1=b2 && e_equal k1 k2 && e_equal e1 e2
@@ -146,7 +146,7 @@ module Hse = Hashcons.Make (struct
     | All(b,e) ->
       Hashcons.combine_list 
         (fun (vs,o) ->
-          (Hashcons.combine_list Vsym.hash (Osym.hash o) vs))
+          (Hashcons.combine_list Vsym.hash (Oracle.hash o) vs))
         (e_hash e)
         b
   (*i*)

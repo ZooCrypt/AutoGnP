@@ -18,6 +18,7 @@ type vs  = Vsym.t
 type ads = Asym.t
 type os  = Osym.t
 type hs  = Hsym.t
+type ors = Oracle.t
 
 (** (Excepted) Distributions for sampling. *)
 type distr = ty * expr list  (*r uniform distribution over type $t$ except for given values *)
@@ -59,7 +60,7 @@ type gdef = gcmd list
 
 (** An event is just a quantified expression. *)
 type quant = Forall | Exists
-type ev = { ev_quant: quant; ev_binding: (vs list * os) list; ev_expr:expr }
+type ev = { ev_quant: quant; ev_binding: (vs list * ors) list; ev_expr:expr }
 
 (** A security experiment consists of a game and an event. *)
 type sec_exp = { se_gdef : gdef; se_ev : ev }
@@ -179,13 +180,13 @@ let pp_quant fmt = function
   | Forall -> F.fprintf fmt "forall"
   | Exists -> F.fprintf fmt "exists"
 
-let pp_binding1 fmt (vs,os) = 
+let pp_binding1 fmt (vs,ors) = 
   let pp_bdecl fmt vs = 
     match vs with
     | [v] -> Vsym.pp fmt v
     | _   -> F.fprintf fmt "(%a)" (pp_list "," Vsym.pp) vs in
   F.fprintf fmt "%a in %a:"
-  pp_bdecl vs Osym.pp os
+            pp_bdecl vs Oracle.pp ors
 
 let pp_binding = pp_list "" pp_binding1 
 
@@ -631,8 +632,8 @@ let gcmd_equal i1 i2 =
 let gdef_equal c1 c2 = list_eq_for_all2 gcmd_equal c1 c2
 
 let ev_equal ev1 ev2 =
-  let b_equal (xs1,o1) (xs2,o2) = 
-    Osym.equal o1 o2 &&
+  let b_equal (xs1,ors1) (xs2,ors2) =
+    (Oracle.equal ors1 ors2) &&
     try List.for_all2 Vsym.equal xs1 xs2
     with Invalid_argument _ -> false in
   ev1.ev_quant = ev2.ev_quant &&

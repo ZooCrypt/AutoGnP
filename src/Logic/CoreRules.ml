@@ -1116,7 +1116,7 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
       (fun e ->
         if is_All e then (
           match destr_All e with
-          | [(vs,o)],e1 when Osym.equal o seoc.seoc_osym ->
+          | [(vs,Oracle.O o)],e1 when Osym.equal o seoc.seoc_osym ->
             [e; e_subst (L.fold_left2
                            (fun m e1 e2 -> Me.add (mk_V e1) (mk_V e2) m)
                            Me.empty vs seoc.seoc_oargs) e1]
@@ -1192,7 +1192,7 @@ let rguard opos tnew ju =
         sec_right = [];
         sec_ev = 
           { ev_quant = Exists;
-            ev_binding = [vs,seoc.seoc_osym];
+            ev_binding = [vs,Oracle.O seoc.seoc_osym];
             ev_expr = e_subst subst (mk_Land (mk_Not t::tests))}
       }} in
   let i = if tnew = None then [] else [LGuard t] in
