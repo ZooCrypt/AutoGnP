@@ -40,7 +40,7 @@ bound_succ
         };
   ] : exists y in Ha: y = r.
   
-  bad 6 r'.
+  bad 6 rr. admit.
   norm.
   guess A3 yy.
   swap KPair (1). swap r (2).

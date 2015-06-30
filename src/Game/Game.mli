@@ -252,6 +252,7 @@ val asym_gcmds : gcmd list -> ads list
 
 val read_se : sec_exp -> Se.t
 
+val expr_vars : expr -> Vsym.S.t
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Variable occurences} *)
 

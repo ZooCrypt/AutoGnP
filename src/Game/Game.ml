@@ -185,7 +185,7 @@ let pp_binding1 fmt (vs,ors) =
     match vs with
     | [v] -> Vsym.pp fmt v
     | _   -> F.fprintf fmt "(%a)" (pp_list "," Vsym.pp) vs in
-  F.fprintf fmt "%a in %a:"
+  F.fprintf fmt "%a in Queries(%a):"
             pp_bdecl vs Oracle.pp ors
 
 let pp_binding = pp_list "" pp_binding1 
