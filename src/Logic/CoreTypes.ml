@@ -98,7 +98,7 @@ type rule_name =
   | Radd_test of ocmd_pos * expr * ads * vs list
 
   (* $Rbad(p,v)$: Replace hash call at position $p$ by random variable $v$. *)
-  | Rbad      of gcmd_pos * vs
+  | Rbad      of int * gcmd_pos * vs
 
   (* \hd{Implication rules for events} *)
 

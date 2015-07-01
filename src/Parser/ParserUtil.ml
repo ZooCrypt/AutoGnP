@@ -23,6 +23,8 @@ module S = String
 (** Parser error with explanation. *)
 exception ParseError of string
 
+type bad_version = UpToBad | CaseDist
+                               
 let fail_parse s = raise (ParseError s)
 
 let create_var (vmap : G.vmap) ts (qual : string qual) s ty =

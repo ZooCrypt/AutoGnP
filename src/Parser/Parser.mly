@@ -150,7 +150,8 @@
 %token BYCRUSH
 %token RSIMP  
 %token BYSIMP
-%token RBAD
+%token RBAD1
+%token RBAD2
 %token RCASE_EV
 %token RFALSE_EV
 %token RREWRITE_EV
@@ -547,7 +548,8 @@ tactic :
 /* oracles */
 | RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Rrnd_orcl(op,c1,c2) }
 | RREWRITE_ORACLE op=opos d=dir                       { Rrewrite_orcl(op,d) }
-| RBAD i=NAT s=ID                                     { Rbad (i-1,s) }
+| RBAD1 i=NAT s=ID                                     { Rbad (1,i-1,s) }
+| RBAD2 i=NAT s=ID                                     { Rbad (2,i-1,s) }
 | RADD_TEST op=opos e=expr asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
 | RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }

@@ -11,6 +11,8 @@ open ParserTypes
 
 exception ParseError of string
 
+type bad_version = UpToBad | CaseDist
+                               
 val fail_parse : string -> 'a
 
 val create_var : vmap -> theory_state -> string qual -> string -> ty -> Vsym.t

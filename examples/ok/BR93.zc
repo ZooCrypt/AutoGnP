@@ -1,0 +1,30 @@
+(* Enter proof script below *)
+
+random oracle H : BS_k1 -> BS_k2.
+
+permutation f : BS_k1.
+
+adversary Afind : PKey_f -> BS_k2 ˆ 2.
+
+adversary Aguess : (PKey_f * (BS_k1*BS_k2)) -> Bool.
+
+(* Computational assumption *)
+adversary Acomp : (PKey_f * BS_k1) -> BS_k1.
+assumption OW_comp succ
+  [ kp <-$ KeyPair_f; m <-$ BS_k1; 
+    m' <- Acomp(GetPK_f(kp),f(GetPK_f(kp),m)); ] 
+    : m' = m.
+    
+bound_adv
+  [ b <-$ Bool;
+    KPair <-$ KeyPair_f;
+    r <-$ BS_k1;
+    let r'= H(r);
+    let PKey = GetPK_f(KPair);
+    let SKey = GetSK_f(KPair);
+    (M0,M1) <- Afind(PKey);
+    let Mb = b?M1:M0;
+    let Cb = (f(PKey,r),r' ++ Mb);
+    b'<- Aguess(PKey,Cb);
+    ] : b = b'.
+    

@@ -11,8 +11,8 @@ module PU = ParserUtil
 (*open Nondet*)
 
 module CR = CoreRules
-           
-let rbad p vsx_name vmap ts ju = (* TODO : Add boolean flag to work with Fail2 rule *)
+
+let rbad which_bad p vsx_name vmap ts ju = 
   
   (* fail_if_occur vsx ju "rbad"; FIXME : why is this needed ?*)
   let se = ju.ju_se in
@@ -28,25 +28,33 @@ let rbad p vsx_name vmap ts ju = (* TODO : Add boolean flag to work with Fail2 r
        tacerror "Error, the function \'%a\' is not a random oracle" Hsym.pp h;
 
      (* Checking that h is only used here *)
-     let all_other_hash_calls = Hsym.S.union (* FIXME : all OR global ? *)
-                              (gdef_global_hash_calls se_ctxt.sec_left)
-                              (gdef_global_hash_calls se_ctxt.sec_right) in
+     let all_other_hash_calls = Hsym.S.union
+                              (gdef_all_hash_calls se_ctxt.sec_left)
+                              (gdef_all_hash_calls se_ctxt.sec_right) in
      if (Hsym.S.mem h all_other_hash_calls) then
        tacerror "Error, there must not be other \'%a\' calls in main game to apply the bad rule" Hsym.pp h;
-    
-     (*i TODO : CHECK THAT calls are guarded in oracle i*)
      
      let cmds = [ GSamp(vs, (e'.e_ty,[]) )] in
      let ju1 = {ju with ju_se = (set_se_ctxt cmds se_ctxt) } in
-     let ev = { ev_quant   = Exists;
-                ev_binding = [[vsx],Oracle.RO(h)];
-                ev_expr    = mk_Eq (mk_V vsx) e  } in
-     let ju2 = { ju_pr = Pr_Succ;
-                 ju_se = {ju1.ju_se with se_ev = ev} } in
-     Rbad(p,vsx), [ju1;ju2]
+     let bad_ev_expr = mk_Eq (mk_V vsx) e in
+     ( match which_bad with
+       | PU.UpToBad ->
+          let conj_ev = { ev_quant   = Exists;
+                         ev_binding = ([vsx],Oracle.RO(h)) :: (se.se_ev.ev_binding);
+                         ev_expr    = insert_Land bad_ev_expr se.se_ev.ev_expr } in
+          let ju2 = {ju with ju_se = {se with se_ev = conj_ev} } in
+          Rbad(2,p,vsx), [ju1;ju2]
+       | PU.CaseDist ->
+          let bad_ev = { ev_quant   = Exists;
+                         ev_binding = [[vsx],Oracle.RO(h)];
+                         ev_expr    = bad_ev_expr } in
+          let ju2 = { ju_pr = Pr_Succ;
+                      ju_se = {ju1.ju_se with se_ev = bad_ev} } in
+          Rbad(1,p,vsx), [ju1;ju2] )
   | _ ->
      tacerror "Cannot apply BAD rule : \'Let var(s) = H(expr)\' required."
 
+              
 (*
 let rbad_old p vsx ju =
   fail_if_occur vsx ju "rbad";

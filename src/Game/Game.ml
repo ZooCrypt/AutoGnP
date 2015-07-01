@@ -185,15 +185,15 @@ let pp_binding1 fmt (vs,ors) =
     match vs with
     | [v] -> Vsym.pp fmt v
     | _   -> F.fprintf fmt "(%a)" (pp_list "," Vsym.pp) vs in
-  F.fprintf fmt "%a in L_%a:"
+  F.fprintf fmt "%a in L_%a"
             pp_bdecl vs Oracle.pp ors
 
-let pp_binding = pp_list "" pp_binding1 
+let pp_binding = pp_list ", " pp_binding1 
 
 let pp_ev fmt ev = 
   if ev.ev_binding = [] then pp_exp fmt ev.ev_expr 
   else
-    F.fprintf fmt "@[<hov>%a %a@ %a@]"
+    F.fprintf fmt "@[<hov>%a (%a):@ %a@]"
       pp_quant ev.ev_quant
       pp_binding ev.ev_binding
       pp_exp ev.ev_expr
@@ -732,15 +732,15 @@ let fold_union_hc f hcs =
   L.fold_right Hsym.S.union (L.map f hcs) Hsym.S.empty
 
 let expr_hash_calls e =
-  let fst (a,b) = a in          
+  let fst (a,_) = a in          
   Se.fold (fun e s -> Hsym.S.add (fst(destr_H e)) s) (e_hash_calls e) Hsym.S.empty
 
 let exprs_hash_calls es = fold_union_hc expr_hash_calls es
 
 let lcmd_hash_calls = function 
-  | LLet(v,e)   -> expr_hash_calls e
-  | LSamp(v,d)  -> exprs_hash_calls (snd d)
-  | LBind(vs,_) -> Hsym.S.empty
+  | LLet(_,e)   -> expr_hash_calls e
+  | LSamp(_,d)  -> exprs_hash_calls (snd d)
+  | LBind _ -> Hsym.S.empty
   | LGuard(e)   -> expr_hash_calls e
 
 let lcmds_hash_calls c = fold_union_hc lcmd_hash_calls c
@@ -758,13 +758,13 @@ let odecl_hash_calls od =
   | Ohybrid oh -> ohybrid_hash_calls oh
 
 let odef_hash_calls (_,vs,odecl) =
-  odecl_hash_calls odecl
+  odecl_hash_calls odecl 
 
 let gcmd_all_hash_calls = function
-  | GLet(v,e)  -> expr_hash_calls e
+  | GLet(_,e)  -> expr_hash_calls e
   | GAssert(e) -> expr_hash_calls e
-  | GSamp(v,d) -> exprs_hash_calls (snd d)
-  | GCall(vs,_,e,odefs) ->
+  | GSamp(_,d) -> exprs_hash_calls (snd d)
+  | GCall(_,_,e,odefs) ->
     Hsym.S.union
       (fold_union_hc odef_hash_calls odefs)
       (expr_hash_calls e)
@@ -784,10 +784,10 @@ let odef_global_hash_calls (_,vs,odecl) =
     ohybrid_global_hash_calls oh
 
 let gcmd_global_hash_calls = function
-  | GLet(v,e)  -> expr_hash_calls e
+  | GLet(_,e)  -> expr_hash_calls e
   | GAssert(e) -> expr_hash_calls e
-  | GSamp(v,d) -> exprs_hash_calls (snd d)
-  | GCall(vs,_,e,odefs) ->
+  | GSamp(_,d) -> exprs_hash_calls (snd d)
+  | GCall(_,_,e,odefs) ->
     Hsym.S.union
       (fold_union_hc odef_global_hash_calls odefs)
       (expr_hash_calls e) 

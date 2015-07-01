@@ -419,9 +419,12 @@ let handle_tactic ts tac =
 
     | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) | PT.Rguard _ ->
       tacerror "add_test and debugging tactics cannot be combined with ';'"
-    
-    | PT.Rbad(p,vsx) ->
-        CR.prove_by (rbad p vsx vmap_g ts) ju; (* tacerror "not implemented" *)
+
+    | PT.Rbad(1,p,vsx) ->
+       CR.prove_by (rbad PU.CaseDist p vsx vmap_g ts) ju;
+    | PT.Rbad(2,p,vsx) ->
+       CR.prove_by (rbad PU.UpToBad  p vsx vmap_g ts) ju;
+    | PT.Rbad _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
 
     | PT.Rguess(aname, fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then

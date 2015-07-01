@@ -79,7 +79,8 @@
       ; "trans", RTRANS
       ; "indep", RINDEP
       ; "rnd_oracle", RRND_ORACLE
-      ; "bad", RBAD
+      ; "bad1", RBAD1
+      ; "bad2", RBAD2
       ; "undo_back", UNDOBACK
       ; "ctxt_ev", RCTXT_EV
       ; "extract", EXTRACT
@@ -158,6 +159,7 @@ rule lex = parse
   | "?"     { QUESTION }
   | ","     { COMMA }
   | "^"     { CARET }
+  | "ˆ"     { CARET }
   | "/"     { SLASH }
   | "//"    { SLASH2 }
   | "/="    { SLASHEQ }
