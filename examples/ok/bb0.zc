@@ -36,11 +36,12 @@ bound_succ
     let Cb = r' ++ Mb ;
     b' <- A(Cb,f(PK,r)) with 
       Ha(x) = {
-        return H(x);
+        ru <-$ BS_l;
+        return ru;
         };
   ] : exists y in L_Ha: y = r.
   
-  bad 6 rr. admit.
+  bad2 6 rr. admit.
   norm.
   guess A3 yy.
   swap KPair (1). swap r (2).
