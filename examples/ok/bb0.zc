@@ -38,7 +38,7 @@ bound_succ
       Ha(x) = {
         return H(x);
         };
-  ] : exists y in Ha: y = r.
+  ] : exists y in L_Ha: y = r.
   
   bad 6 rr. admit.
   norm.

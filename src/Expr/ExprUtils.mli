@@ -105,7 +105,8 @@ val e_iter_ty_maximal : ty -> (expr -> unit) -> expr -> unit
 
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
-
+val e_hash_calls : expr -> Se.t
+                             
 val has_log : expr -> bool
 
 val is_ppt : expr -> bool

@@ -355,8 +355,8 @@ int:
 | MINUS i=NAT {-i}
 
 binding1:
-| x=ID IN o=ID {[x], o}
-| LPAREN xs=seplist1(COMMA,ID) RPAREN IN o=ID {xs, o}
+| x=ID IN o=LIST {[x], o}
+| LPAREN xs=seplist1(COMMA,ID) RPAREN IN o=LIST {xs, o}
 
 binding:
 (* | FORALL l=seplist1(COMMA,binding1) COLON {Game.Forall, l} *)

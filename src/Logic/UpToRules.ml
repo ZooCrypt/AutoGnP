@@ -11,14 +11,10 @@ module PU = ParserUtil
 (*open Nondet*)
 
 module CR = CoreRules
-
-type oracle =
-  | RO of Hsym.t
-  | O of Osym.t
            
 let rbad p vsx_name vmap ts ju = (* TODO : Add boolean flag to work with Fail2 rule *)
   
-  (* fail_if_occur vsx ju "rbad"; WHY  IS THIS NEEDED ?*)
+  (* fail_if_occur vsx ju "rbad"; FIXME : why is this needed ?*)
   let se = ju.ju_se in
   match get_se_ctxt se p with
   | GLet(vs,e'), se_ctxt when is_H e' ->
@@ -29,10 +25,17 @@ let rbad p vsx_name vmap ts ju = (* TODO : Add boolean flag to work with Fail2 r
      if (Vsym.S.mem vsx (expr_vars e)) then (* checking vsx not in fv(e) *)
        tacerror "Error, var \'%a\' appears in expr \'%a\'" Vsym.pp vsx pp_exp e;     
      if not (Hsym.is_ro h) then
-       tacerror "the function %a is not a random oracle" Hsym.pp h;
-    (*i TODO CHECK THAT h is only used here, and that call are guarded in
-       oracle i*)
+       tacerror "Error, the function \'%a\' is not a random oracle" Hsym.pp h;
+
+     (* Checking that h is only used here *)
+     let all_other_hash_calls = Hsym.S.union (* FIXME : all OR global ? *)
+                              (gdef_global_hash_calls se_ctxt.sec_left)
+                              (gdef_global_hash_calls se_ctxt.sec_right) in
+     if (Hsym.S.mem h all_other_hash_calls) then
+       tacerror "Error, there must not be other \'%a\' calls in main game to apply the bad rule" Hsym.pp h;
     
+     (*i TODO : CHECK THAT calls are guarded in oracle i*)
+     
      let cmds = [ GSamp(vs, (e'.e_ty,[]) )] in
      let ju1 = {ju with ju_se = (set_se_ctxt cmds se_ctxt) } in
      let ev = { ev_quant   = Exists;

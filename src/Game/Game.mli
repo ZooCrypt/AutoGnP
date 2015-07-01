@@ -252,10 +252,20 @@ val asym_gcmds : gcmd list -> ads list
 
 val read_se : sec_exp -> Se.t
 
-val expr_vars : expr -> Vsym.S.t
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Variable occurences} *)
 
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Hash_calls occurences} *)
+val expr_hash_calls : expr -> Hsym.S.t
+                          
+val gcmd_all_hash_calls : gcmd -> Hsym.S.t
+
+val gdef_all_hash_calls : gdef -> Hsym.S.t
+
+val gdef_global_hash_calls : gdef -> Hsym.S.t
+
+(* \hd{Variable occurences} *)
+val expr_vars : expr -> Vsym.S.t
+                          
 val gcmd_all_vars : gcmd -> Vsym.S.t
 
 val gdef_all_vars : gdef -> Vsym.S.t

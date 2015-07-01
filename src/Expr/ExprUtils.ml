@@ -416,6 +416,7 @@ let e_iter_ty_maximal ty g e0 =
   go false e0
 
 let e_vars = e_find_all is_V
+let e_hash_calls = e_find_all is_H                        
 
 let has_log e = e_exists (fun e -> is_GLog e) e
 
