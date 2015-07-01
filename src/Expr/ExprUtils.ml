@@ -433,7 +433,7 @@ let typeError_to_string (ty1,ty2,e1,me2,s) =
   | None ->
     fsprintf
       "expected type `%a', got  `%a' for Expression `%a': %s"
-      pp_ty ty1 pp_ty ty2 pp_exp e1 s
+      pp_ty ty2 pp_ty ty1 pp_exp e1 s
 
 let catch_TypeError f =
   try f()
@@ -488,6 +488,15 @@ let rec is_Zero e =
   | App(GExp _, [e1;e2]) -> is_Zero e2 || is_Zero e1
   | _                    -> false
 
+let insert_Land e1 e2 =
+  let ty_Bool = mk_ty Bool in
+  if( not(ty_equal e1.e_ty ty_Bool) ) then
+    raise (TypeError(e1.e_ty, ty_Bool, e1, None,
+                     "insert_Land failed, expr of type Bool expected."));
+  match e2.e_node with
+  | Nary(Land,es) -> mk_Land (e1::es)
+  | _ -> mk_Land [e1;e2]
+                 
 type inverter = I of expr
 
 let expr_of_inverter (I e) = e

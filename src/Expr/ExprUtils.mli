@@ -137,6 +137,8 @@ val is_Zero : expr -> bool
 
 val mk_Zero   : ty -> expr
 
+val insert_Land : expr -> expr -> expr
+
 val typeError_to_string : ty * ty * expr * expr option * string -> string
 
 val catch_TypeError : (unit -> 'a) -> 'a
