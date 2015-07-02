@@ -57,13 +57,14 @@ bad1 4 rr.
     norm. swap b (6).
     indep.
 
-    (* Guessing Hash argument r would mean breaking the 
+    (* Guessing (hash argument) r would mean breaking the 
        computational assumption of f -> goal -2- *)    
     norm.
-    guess A_guesser rr'.
+    (*guess A_guesser rr'.*)
     swap KPair (1). swap r (2).
     abstract 3 A_comp_args (GetPK_f(KPair),f(GetPK_f(KPair),r)).
-    abstract 9 r_A rr'.
+    find ( x -> rr = x) r A_finder rr.
+    abstract 9 r_A rr.
     assumption_computational OW_comp_assm [3 9].
     
 qed.
