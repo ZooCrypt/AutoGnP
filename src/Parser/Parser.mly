@@ -548,7 +548,9 @@ tactic :
 /* oracles */
 | RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Rrnd_orcl(op,c1,c2) }
 | RREWRITE_ORACLE op=opos d=dir                       { Rrewrite_orcl(op,d) }
+| RBAD1 op=opos s=ID                                   { RbadOracle (1,op,s) }
 | RBAD1 i=NAT s=ID                                     { Rbad (1,i-1,s) }
+| RBAD2 op=opos s=ID                                   { RbadOracle (2,op,s) }
 | RBAD2 i=NAT s=ID                                     { Rbad (2,i-1,s) }
 | RADD_TEST op=opos e=expr asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }

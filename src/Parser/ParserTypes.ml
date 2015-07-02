@@ -134,6 +134,7 @@ type tactic =
   | Rindep         of bool
   | Rcrush         of bool * int option
   | Rbad           of int * int * string
+  | RbadOracle     of int * ocmd_pos * string
   | Rexcept        of assgn_pos option * (parse_expr list) option 
   | Rexcept_orcl   of ocmd_pos * parse_expr list
   | Radd_test      of ocmd_pos option * parse_expr option * string option *

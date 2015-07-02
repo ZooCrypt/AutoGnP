@@ -99,6 +99,7 @@ type rule_name =
 
   (* $Rbad(p,v)$: Replace hash call at position $p$ by random variable $v$. *)
   | Rbad      of int * gcmd_pos * vs
+  | RbadOracle of int * ocmd_pos * vs
 
   (* \hd{Implication rules for events} *)
 

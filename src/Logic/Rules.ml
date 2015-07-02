@@ -262,7 +262,7 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "add_test (%i,%i,%i,%a) (%a)" i j k pp_exp e pp_otype otype
   | Rcase_ev(_,e)   ->
     F.fprintf fmt "case @[<v 2>%a@]" pp_exp e
-  | Rbad(i,_pos,_vs) ->
+  | Rbad(i,_,_) | RbadOracle(i,_,_) ->
     F.fprintf fmt "bad%i" i
   | Rctxt_ev(_i,_c) ->
     F.fprintf fmt "ctxt"

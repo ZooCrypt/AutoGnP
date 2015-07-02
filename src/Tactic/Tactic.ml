@@ -424,7 +424,11 @@ let handle_tactic ts tac =
        CR.prove_by (rbad PU.CaseDist p vsx vmap_g ts) ju;
     | PT.Rbad(2,p,vsx) ->
        CR.prove_by (rbad PU.UpToBad  p vsx vmap_g ts) ju;
-    | PT.Rbad _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
+    | PT.RbadOracle(1,opos,vsx) ->
+       CR.prove_by (rbad_oracle PU.CaseDist opos vsx ts) ju;
+    | PT.RbadOracle(2,opos,vsx) ->
+       CR.prove_by (rbad_oracle PU.UpToBad  opos vsx ts) ju;
+    | PT.Rbad _ | PT.RbadOracle _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
 
     | PT.Rguess(aname, fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
@@ -436,12 +440,14 @@ let handle_tactic ts tac =
         | _ ->  tacerror "rguess: invalid binding" in
       let asym = Asym.mk aname (mk_Prod []) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
-        tacerror "number of given variables does not match type";
+        tacerror "Error, \'guess\' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
+(*"number of given variables does not match type";*)
       let vmap = vmap_of_globals ju.ju_se.se_gdef in
       let fvs = 
         L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
           fvs vs in
       CR.t_guess asym fvs ju
+                 
     | PT.Rfind((bd,body),arg,aname,fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
@@ -449,11 +455,11 @@ let handle_tactic ts tac =
       let vs = 
         match ev.ev_binding with
         | [vs,_] -> vs
-        | _ ->  tacerror "rguess: invalid binding" in
+        | _ ->  tacerror "rfind: invalid binding" in
       let arg = parse_e arg in
       let asym = Asym.mk aname (arg.e_ty) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
-        tacerror "number of given variables does not match type";
+        tacerror "Error, \'find\' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
       let vmap = vmap_of_globals ju.ju_se.se_gdef in
       let fvs = 
         L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
