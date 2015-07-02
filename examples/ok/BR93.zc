@@ -1,44 +1,70 @@
-(* Enter proof script below *)
+(* 
+   CPA-IND Security of the BR93 scheme in the Random
+   Oracle Model (ROM) under the assumption of a 
+   computationally secure trapdoor permutation.  
+*)
 
-random oracle H : BS_k1 -> BS_k2.
 
+         (* Trapdoor permutation *)
 permutation f : BS_k1.
 
-adversary Afind : PKey_f -> BS_k2 ˆ 2.
-
-adversary Aguess : (PKey_f * (BS_k1*BS_k2)) -> Bool.
-
-(* Computational assumption *)
-adversary Acomp : (PKey_f * BS_k1) -> BS_k1.
-assumption OW_comp succ
-  [ kp <-$ KeyPair_f; m <-$ BS_k1; 
-    m' <- Acomp(GetPK_f(kp),f(GetPK_f(kp),m)); ] 
-    : m' = m.
+        (* Computational assumption *)
+adversary A_comp : (PKey_f * BS_k1) -> BS_k1.
+assumption OW_comp_assm succ
+  [ kp <-$ KeyPair_f; r <-$ BS_k1; 
+    r_A <- A_comp(GetPK_f(kp),f(GetPK_f(kp),r)); ] 
+    : r_A = r.
     
+    
+  (* Hash function modelled as an ideal RO *)
+random oracle H : BS_k1 -> BS_k2. 
+
+
+             (* CPA-IND Game *)
+adversary A_find : PKey_f -> (BS_k2 * BS_k2).
+adversary A_guess : (PKey_f * (BS_k1*BS_k2)) -> Bool.
 bound_adv
   [ b <-$ Bool;
     KPair <-$ KeyPair_f;
     r <-$ BS_k1;
     let PKey = GetPK_f(KPair);
-    let SKey = GetSK_f(KPair);
-    (M0,M1) <- Afind(PKey);
+    let SKey = GetSK_f(KPair); (* Not used *)
+    (M0,M1) <- A_find(PKey);
     let Mb = b?M1:M0;
-    let Cb = (f(PKey,r),H(r) ++ Mb);
-    b'<- Aguess(PKey,Cb);
+    let Cb = (f(PKey,r),H(r) ++ Mb); (* Cypher text *)
+    b'<- A_guess(PKey,Cb);
     ] : b = b'.
     
-    abstract 4 r' H(r).
-    bad1 4 rr.
+    
+    
+                 (* Proof *)
+(* 
+   Idea : 
+   -1- exploit the randomness of ideal RO hash function H
+   that 'ensures' the secrecy of H(r) XOR Mb (OTP-like)
+   as long as its argument r remains secret ; 
+   -2- 'r' secrecy results immediately from the computational
+   assumption of the trapdoor permutation.
+*)   
+
+(* Splitting the game into -1- and -2- (sub)goals *)
+abstract 4 r' H(r).
+bad1 4 rr.
+    
+    (* OTP perfect secrecy for goal -1- *)    
     norm. swap r' 1.
     rnd! r' (r' -> (b?M1:M0) ++ r') (r' -> (b?M1:M0) ++ r').
     norm. swap b (6).
     indep.
-    
+
+    (* Guessing Hash argument r would mean breaking the 
+       computational assumption of f -> goal -2- *)    
     norm.
-    guess A_comp_breaker rr'.
+    guess A_guesser rr'.
     swap KPair (1). swap r (2).
-    abstract 3 OW_comp_args (GetPK_f(KPair),f(GetPK_f(KPair),r)).
-    abstract 9 res rr'.
-    assumption_computational OW_comp [3 9].
+    abstract 3 A_comp_args (GetPK_f(KPair),f(GetPK_f(KPair),r)).
+    abstract 9 r_A rr'.
+    assumption_computational OW_comp_assm [3 9].
+    
 qed.
     
