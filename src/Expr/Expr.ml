@@ -118,6 +118,8 @@ module Hse = Hashcons.Make (struct
     | Tuple es1, Tuple es2       -> list_eq_for_all2 e_equal es1 es2
     | Proj(i1,e1), Proj(i2,e2)   -> i1 = i2 && e_equal e1 e2
     | Cnst c1, Cnst c2           -> c1 = c2
+    | App(Eq,[e11;e12]), App(Eq,[e21;e22]) -> (* commutativity *)
+       (e_equal e11 e21 && e_equal e12 e22) || (e_equal e11 e22 && e_equal e12 e21)
     | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | All(b1,e1), All(b2,e2) ->
