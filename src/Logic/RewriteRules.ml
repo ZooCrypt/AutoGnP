@@ -250,6 +250,38 @@ let t_let_abstract p vs e0 mupto do_norm_expr ju =
   in
   t_conv true new_se ju
 
+         
+let t_let_abstract_oracle opos vs e0 len do_norm_expr ju =
+  let se = ju.ju_se in
+  let v = mk_V vs in
+  let e = if do_norm_expr then norm_expr_nice e0 else e0 in
+  let subst a =
+    if is_Tuple e then (
+      let subst =
+        me_of_list (L.mapi (fun i a -> (a,mk_Proj i v)) (destr_Tuple e))
+      in
+      e_subst subst a
+    ) else (
+      e_replace e v a
+    )
+  in
+  log_t (lazy (fsprintf "t_let_abstr_oracle: %a" pp_exp e0));
+  let nlen = match len with Some nlen -> nlen | _ -> 0 in
+  let cmds,octxt = try get_se_octxt_len se opos nlen
+                   with _ -> tacerror "Error, couldn't get octxt, probably due to given opos being wrong." in
+  let cur_scope_cmds,out_of_scope_cmds = if (len <> None)
+                    then cmds,octxt.seoc_cright
+                    else octxt.seoc_cright,[] in
+  let new_cmds = LLet(vs,e0)::(L.map (map_lcmd_exp subst) cur_scope_cmds) in
+  let new_seoc_return = if (len = None)
+                        then subst octxt.seoc_return
+                        else octxt.seoc_return in
+  let new_octxt = {octxt with seoc_cright = out_of_scope_cmds;
+                              seoc_return = new_seoc_return} in
+  let new_se = set_se_octxt new_cmds new_octxt in
+  t_conv true new_se ju
+
+         
 let t_rename v1 v2 ju =
   let se = ju.ju_se in
   let new_se = subst_v_se (fun v -> if Vsym.equal v v1 then v2 else v) se in

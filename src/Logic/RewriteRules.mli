@@ -5,6 +5,7 @@ open Expr
 open CoreRules
 open TheoryTypes
 open Syms
+open Game
 (*i*)
 
 val t_norm : ?fail_eq:bool -> tactic
@@ -21,6 +22,8 @@ val t_norm_solve : expr -> tactic
 
 val t_let_abstract : int -> Vsym.t -> expr -> int option -> bool -> tactic 
 
+val t_let_abstract_oracle : ocmd_pos -> Vsym.t -> expr -> int option -> bool -> tactic 
+                                                                     
 val t_let_unfold : int -> tactic
 
 val t_norm_tuple_proj : tactic

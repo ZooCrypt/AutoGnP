@@ -484,6 +484,10 @@ id_pair:
 maybe_upto:
 | COLON ap=assgn_pos { ap }
 
+maybe_len:
+| COLON ap=int { ap }
+
+                     
 tactic :
 
 /* norm variants */
@@ -509,6 +513,9 @@ tactic :
 | RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
           i1=ID e1=uopt(expr) mupto=maybe_upto?
   { Rlet_abstract(i,i1,e1,mupto,excl=None) }
+| RLET_ABSTRACT excl=EXCL? op=opos 
+          i1=ID e1=expr len=maybe_len?
+  { Rlet_abstract_oracle(op,i1,e1,len,excl=None) }
 | RLET_ABSTRACT_DEDUCE excl=EXCL? i=assgn_pos
           i1=ID e1=expr mupto=maybe_upto?
   { Rlet_abstract_deduce(excl<>None,i,i1,e1,mupto) }
