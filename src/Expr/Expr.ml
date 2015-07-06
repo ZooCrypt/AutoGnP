@@ -206,7 +206,7 @@ let ensure_ty_G ty s =
     failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
 let ty_G gv = mk_ty (G gv)
-let ty_KeyPair pid = mk_ty (KeyPair pid)
+(*let ty_KeyPair pid = mk_ty (KeyPair pid) *)
 let ty_PKey pid = mk_ty (PKey pid)
 let ty_SKey pid = mk_ty (SKey pid)
 let ty_Fq = mk_ty Fq
