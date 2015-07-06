@@ -62,10 +62,14 @@ bad1 4 rr.
     norm.
     (*guess A_guesser rr'.*)
     swap KPair (1). swap r (2).
-    abstract 3 A_comp_args (GetPK_f(KPair),f(GetPK_f(KPair),r)).
-    find ( x -> rr = x) r A_finder rr.
+    abstract 3 A_comp_args 
+    (  GetPK_f(KPair) , f(GetPK_f(KPair),r)  ).
+    $$ find (x -> x = rr) r A_cheater rr.
+    find (pk f_r -> (f(pk,rr) = f_r)) (GetPK_f(KPair), f(GetPK_f(KPair),r))
+    A_finder rr.
     abstract 9 r_A rr.
     assumption_computational OW_comp_assm [3 9].
     
 qed.
+print_proof!.
     
