@@ -127,7 +127,7 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (L.map go es)
-    | ParsePerm(s,b,k,e) ->
+    | ParsePerm(s,b,k,e) when Mstring.mem s ts.ts_permdecls ->
        let f = Mstring.find s ts.ts_permdecls in
        E.mk_Perm f b (go k) (go e)
     | ParseGetPK(s,kp) when Mstring.mem s ts.ts_permdecls ->
@@ -138,7 +138,8 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
        let f = Mstring.find s ts.ts_permdecls and
        parsed_kp = go kp in
        E.mk_GetSK f parsed_kp
-    | ParseGetPK(s,_) | ParseGetSK(s,_) -> tacerror "Undefined permutation %s" s
+    | ParsePerm(s,_,_,_) | ParseGetPK(s,_) | ParseGetSK(s,_) ->
+                                              tacerror "Undefined permutation %s" s
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SApp(s,es) when Mstring.mem s ts.ts_permdecls ->
        begin
