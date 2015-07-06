@@ -442,7 +442,7 @@ let e_sub_fold g acc e =
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | GetPK(_,kp) | GetSK(_,kp) -> g e
+  | GetPK(_,kp) | GetSK(_,kp) -> g kp
   | Perm(_,_,_,e) -> g e 
   | H(_,e) | Proj(_, e) | All(_,e) -> g e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
