@@ -44,7 +44,7 @@ let get_oname_from_opos (se : G.sec_exp) (opos : G.ocmd_pos) : string =
      let (_,od,_) = split_n j os in
      let (os,_,_) = od in
      Id.name os.Osym.id
-  | _ -> tacerror "Error, no Oracle call at line %i" (i+1)
+  | _ -> tacerror "Error, no Oracle definition at line %i" (i+1)
 
                   
 (*i ----------------------------------------------------------------------- i*)
