@@ -37,6 +37,16 @@ let create_var (vmap : G.vmap) ts (qual : string qual) s ty =
     v
   )
 
+let get_oname_from_opos (se : G.sec_exp) (opos : G.ocmd_pos) : string = 
+  let (i,j,_,_) = opos in
+  match G.get_se_ctxt se i with
+  | G.GCall(_,_,_,os), _ ->
+     let (_,od,_) = split_n j os in
+     let (os,_,_) = od in
+     Id.name os.Osym.id
+  | _ -> tacerror "Error, no Oracle call at line %i" (i+1)
+
+                  
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Conversion functions for parser-types} *)
 

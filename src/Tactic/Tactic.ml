@@ -215,9 +215,11 @@ let handle_tactic ts tac =
       t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm) ju
                      
     | PT.Rlet_abstract_oracle(opos,sv,se,len,no_norm) ->
-       let vmap = vmap_in_orcl ju.ju_se opos in
-       let e = PU.expr_of_parse_expr vmap ts Unqual se in
-       let v = mk_new_var sv e.e_ty in
+       let vmap_o = vmap_in_orcl ju.ju_se opos in
+       let qual = Qual (PU.get_oname_from_opos ju.ju_se opos) in
+       let e = PU.expr_of_parse_expr vmap_o ts qual se in
+       let v = PU.create_var vmap_o ts qual sv e.e_ty in
+       (*let v = mk_new_var sv e.e_ty in*)
        t_let_abstract_oracle opos v e len (not no_norm) ju
 
     | PT.Rlet_abstract_deduce(keep_going,i,sv,se,mupto) ->
