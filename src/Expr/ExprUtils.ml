@@ -502,3 +502,16 @@ type inverter = I of expr
 let expr_of_inverter (I e) = e
 
 let pp_inverter fmt i = pp_exp fmt (expr_of_inverter i)
+
+let e_eq_remove_eventual_perms e =
+  let e1,e2 = destr_Eq e in
+  match (e1.e_node,e2.e_node) with
+  | (Perm(f1,b1,k1,e11), Perm(f2,b2,k2,e22) )
+       when (Psym.equal f1 f2 && b1 = b2 && e_equal k1 k2) ->
+     mk_Eq e11 e22
+  | _ -> e
+           
+let e_equivalent_eqs e1 e2 =
+  let e11 = if (is_Eq e1) then e_eq_remove_eventual_perms e1 else e1 in
+  let e22 = if (is_Eq e2) then e_eq_remove_eventual_perms e2 else e2 in
+  e_equal e11 e22
