@@ -1,82 +1,76 @@
-(* One-Way Permutations Trapdoors *)
+adversary A_ddh : (G * G * G) -> Bool.
 
-permutation f : BS_k.
+assumption ddh ([x,y])
+  [ x, y <-$ Fq;   b <- A_ddh(g^x,g^y,g^(x*y)); ]
+  [ x,y, z <-$ Fq; b <- A_ddh(g^x,g^y,g^z); ].
 
-adversary A_comp : (PKey_f * BS_k) -> BS_k.
-adversary A_dec : (PKey_f * BS_k^2) -> Bool.
+operator H : (G * G * G) -> Fq.
 
-(* Computational assumption *)
-assumption OW_comp succ
-  [ kp <-$ KeyPair_f; m <-$ BS_k; 
-    m' <- A_comp(GetPK_f(kp),f(GetPK_f(kp),m)); ] 
-    : m' = m.
-    
-(* Decisional assumption    
-assumption dec_assm ([c,kp])
+adversary A_tcr : (G * G * G) -> (G * G * G).
 
-  [ kp <-$ KeyPair_f; c <-$ BS_k;      let m = f_inv(GetSK_f(kp),c); 
-  b <- A_dec(GetPK_f(kp),(c,m)); ]
-  
-  [ kp <-$ KeyPair_f; c <-$ BS_k;          m <-$ BS_k; 
-  b <- A_dec(GetPK_f(kp),(c,m)); ]. *)
-  
-random oracle H : BS_k -> BS_l. 
-adversary Afind : () -> (BS_l * BS_l).
-adversary A : (BS_l * BS_k) -> Bool.  
-oracle Ha : BS_k -> BS_l.
-bound_succ
-  [ b <-$ Bool;
-    KPair <-$ KeyPair_f;
-    let PK = GetPK_f(KPair);
-    let SK = GetSK_f(KPair);
-    r <-$ BS_k;
-    let r' = H(r);
-    (M0,M1) <- Afind();
-    let Mb = (b?M1:M0);
-    let Cb = r' ++ Mb ;
-    b' <- A(Cb,f(PK,r)) with 
-      Ha(x) = {
-        ru <-$ BS_l;
-        return ru;
-        };
-  ] : exists y in L_Ha: y = r.
-  
-  bad2 6 rr. admit.
-  norm.
-  guess A3 yy.
-  swap KPair (1). swap r (2).
-  abstract 3 arg (GetPK_f(KPair), f(GetPK_f(KPair),r)).
-  abstract 9 res yy.
-  assumption_computational OW_comp [3 9].
-qed.
-  
-  
-  
+assumption tcr succ
+  [ a, b, c <-$ Fq; (x1,x2,x3) <- A_tcr(g^a,g^b,g^c); ]
+  : (H(x1,x2,x3) = H(g^a,g^b,g^c)) /\ not ((x1,x2,x3) = (g^a,g^b,g^c)).
 
+adversary A1 : (G * G * G * G) -> (G * G).
+adversary A2 : (G * G * G * G) -> Bool.
+oracle Dec1 : (G * G * G * G) -> G.
+oracle Dec2 : (G * G * G * G) -> G.
 
-(* WITH ORACLE
-oracle Enc : BS_k^2 -> BS_k.
-adversary A : PKey_f -> Bool.
-
-    
 bound_adv
-  [ b <-$ Bool;
-    KPair <-$ KeyPair_f;
-    let PK = GetPK_f(KPair);
-    let SK = GetSK_f(KPair);
-    b' <- A(PK) with
-      Enc(M0, M1) = {
-        b2 <-$ Bool;
-        return f(PK,b?M1:M0);
+  [ (* secret key is x1, x2, y1, y2, z1, z2 *)
+    w, x1, x2, y1, y2, z1, z2 <-$ Fq;
+    let p1 = g^(x1+w*x2);
+    let p2 = g^(y1+w*y2);
+    let p3 = g^(z1+w*z2);
+    let p4 = g^w;
+    
+    (m0,m1) <- A1(p1,p2,p3,p4) with
+      Dec1(a,a',c,d) = {
+        a=a';
+        d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2);
+        return c * (a^z1 * a' ^z2)^(-1)
       };
-  ] : b = b'. 
-  
 
+    b <-$ Bool;
+    let mb = (b?m0:m1);
+    (* randomness for encryption is u *)
+    u <-$ Fq;
+    let sa  = g^u;
+    let sa' = p4^u;
+    let sc  = mb * p3^u;
+    let sd  = p1^u * p2^(u*H(sa,sa',sc));
+
+    b' <- A2(sa,sa',sc,sd) with
+      Dec2(a,a',c,d) = {
+        (a,a',c,d) <> (sa,sa',sc,sd);
+        d = a^(x1+H(a,a',c)*y1) * a'^(x2+H(a,a',c)*y2);
+        return c * (a^z1 * a'^z2)^(-1)
+      };
+
+  ] : b = b'.
+  
   norm.
-  hybrid (3,1) { C <-$ BS_k; return C; }.
-  last. indep!.
-  swap_main (3,1,1) b3; //.
-  
-assumption_computational! comp_assm.
+  norm_unknown u w.
+  swap 10 -8.
+  abstract 3 arg (g^w, g^u, g^(w*u)).
+  abstract 13 res (b=b').
+  assumption_decisional! ddh -> [3 13] v.
+  norm. except 3 [u*w].
+  crush 3. norm.
 
-*)
+  (* if a^w = a' for all queries, b not used in game anymore *)
+  add_test (10,1,1) (a^w = a') A3 ga ga' gc gd.``` admit. bycrush 1.
+  crush 2. norm.
+
+  add_test (12,1,2) (a^w = a') A4 ea ea' ec ed. last. bycrush 1.
+  simp.
+
+  case_ev  H(ea,ea',ec) = H(g ^ u,g ^ v,g ^ z2). last. bycrush 1.
+  norm.
+  assumption_computational! tcr.
+  bycrush.
+
+  qed.
+  print_proof.
+  extract "extraction/cramer_shoup.ec".

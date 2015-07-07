@@ -262,6 +262,14 @@ val gcmd_all_hash_calls : gcmd -> Hsym.S.t
 val gdef_all_hash_calls : gdef -> Hsym.S.t
 
 val gdef_global_hash_calls : gdef -> Hsym.S.t
+                                       
+val expr_hash_calls_h : Hsym.t -> expr -> Se.t
+                          
+val gcmd_all_hash_calls_h : Hsym.t -> gcmd -> Se.t
+
+val gdef_all_hash_calls_h : Hsym.t -> gdef -> Se.t
+
+val gdef_global_hash_calls_h : Hsym.t -> gdef -> Se.t
 
 (* \hd{Variable occurences} *)
 val expr_vars : expr -> Vsym.S.t
