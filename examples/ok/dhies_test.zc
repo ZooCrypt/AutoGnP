@@ -1,0 +1,52 @@
+random oracle mac : (G * BS_l) -> BS_l.
+random oracle h : G -> BS_l.
+
+adversary Af : G -> (BS_l * BS_l).
+
+adversary Ag : (G * BS_l * BS_l) -> Bool.
+
+oracle Dec1 : (G * BS_l * BS_l) -> (BS_l).
+oracle Dec2 : (G * BS_l * BS_l) -> (BS_l).
+
+bound_adv [
+  a,x <-$ Fq;
+  let A = gˆa;
+  (m1,m0) <- Af(A) 
+    (*with
+    Dec1(X,c,t) = {
+      (t = mac(X^a,c));
+      return (c ++ h(Xˆa))
+    }*);
+  b <-$ Bool;
+  let k = Aˆx;
+  let mb = b?m1:m0;
+  let cb = mb ++ h(k);
+  let ct' = (gˆx,cb,mac(k,cb));
+  b' <- Ag(ct') with
+    Dec2(X,c,t) = {
+      ( ((X,c,t) <> ct') );
+      ((t = mac(Xˆa,c)) );
+      return (c ++ h(Xˆa))
+    };
+  ] : b=b'.
+  
+
+  abstract 9 tmac mac(k,cb). 
+  add_test (11,1,1) (not (forall x in L_mac: x <> (X^a,c) /\ x <> (k,cb))) AA XX cc tt.
+  
+  
+  add_test (11,1,1) ((X^a,c) = (k,cb)) Ag2 X2 c2 t2.
+  print_goals.
+  abstract (11,1,2) tmac_dec2 mac(X^a,c).
+  unfold A.
+  unfold k.
+  unfold cb.
+  bad1 (3,1,1) tmac.
+
+  admit.
+  
+  guess Aguess tt.
+  
+  
+  
+  
