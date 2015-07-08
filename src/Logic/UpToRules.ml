@@ -37,39 +37,35 @@ let rbad which_bad p vsx_name vmap ts ju =
                               (gdef_all_hash_calls_h h se_ctxt.sec_right) in
      if (Se.mem e all_other_hash_calls_args) then
        tacerror "Error, there cannot be other \'%a\' calls in main game querying the same expression \'%a\'" Hsym.pp h pp_exp e;
-     
-     let check_other_hc_expr_es = Se.fold (fun ei es -> (mk_Eq e ei)::es) (* event : e = ei ? *)
-                                          all_other_hash_calls_args [] in
-     let create_ju e0 =
+     let create_ju ei =
        { ju_pr = Pr_Succ ;
          ju_se = { ju1.ju_se with se_ev =
                                     { ev_quant = Forall;
                                       ev_binding = [];
-                                      ev_expr = e0 } } } in
-     let check_other_hc_expr_jus = List.fold_left
-                                     ( fun jus e0 -> (create_ju e0)::jus )
-                                     [] check_other_hc_expr_es in
+                                      ev_expr = (mk_Eq e ei) } } } in
+     let check_other_hc_expr_eq_jus = List.rev (Se.fold
+                                     ( fun ei jus -> (create_ju ei)::jus )
+                                     all_other_hash_calls_args []) in
      let bad_ev_expr = mk_Eq (mk_V vsx) e and
          bad_ev_binding = ([vsx],Oracle.RO(h)) in
+     let bad_n,ju2 = match which_bad with
      (* ju2 is ju1 where event = bad_event + main_event when UpToBad, 
                               or bad_event only when CaseDist *)
-     ( match which_bad with
        | PU.UpToBad ->
           let conj_ev = { ev_quant   = Exists;
 
                           ev_binding = bad_ev_binding :: se.se_ev.ev_binding;
                           ev_expr    = insert_Land bad_ev_expr se.se_ev.ev_expr } in
-          let ju2 = {ju_pr = Pr_Succ; ju_se = {ju1.ju_se with se_ev = conj_ev} } in
-          CoreTypes.Rbad(2,p,vsx), ju1::ju2::check_other_hc_expr_jus
+          2, {ju_pr = Pr_Succ; ju_se = {ju1.ju_se with se_ev = conj_ev} }
        | PU.CaseDist ->
           let bad_ev = { ev_quant   = Exists;
                          ev_binding = [[vsx],Oracle.RO(h)];
                          ev_expr    = bad_ev_expr } in
-          let ju2 = { ju_pr = Pr_Succ;
-                      ju_se = {ju1.ju_se with se_ev = bad_ev} } in
-          CoreTypes.Rbad(1,p,vsx), ju1::ju2::check_other_hc_expr_jus )
-  | _ ->
-     tacerror "Cannot apply BAD rule : \'Let var(s) = H(expr)\' required."
+          1, {ju_pr = Pr_Succ; ju_se = {ju1.ju_se with se_ev = bad_ev} }
+     in
+     CoreTypes.Rbad(bad_n,p,vsx), ju1::ju2::check_other_hc_expr_eq_jus
+  | _ -> tacerror "cannot apply \'bad\' rule at pos %i\n<< \'Let var = H(expr)\' required >>\n(remember you can use the \'abstract\' rule to fold a hash call into a variable)." (p+1)
+     
 
 
 
