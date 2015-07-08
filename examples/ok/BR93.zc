@@ -61,7 +61,9 @@ bad1 4 rr.
        computational assumption of f -> goal -2- *)    
     norm.
     swap KPair (1). swap r (2).
-    find (pk f_r -> (f(pk,rr) = f_r)) (GetPK_f(KPair), f(GetPK_f(KPair),r)) A_finder rr.
+    find (pk f_r -> (f(pk,rr) = f_r)) 
+         (GetPK_f(KPair), f(GetPK_f(KPair),r)) 
+         A_finder rr.
     (*guess A_guesser rr.*)
     abstract 3 A_comp_args 
     (  GetPK_f(KPair) , f(GetPK_f(KPair),r)  ).
