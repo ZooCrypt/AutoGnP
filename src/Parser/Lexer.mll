@@ -159,7 +159,6 @@ rule lex = parse
   | "?"     { QUESTION }
   | ","     { COMMA }
   | "^"     { CARET }
-  | "ˆ"     { CARET }
   | "/"     { SLASH }
   | "//"    { SLASH2 }
   | "/="    { SLASHEQ }
