@@ -38,8 +38,8 @@
 %token <string> KEYPAIR
 %token <string> PKEY
 %token <string> SKEY
-%token <string> GETPK
-%token <string> GETSK						  
+%token GETPK
+%token GETSK						  
 %token PLUS
 %left PLUS
 %token XOR
@@ -292,8 +292,8 @@ expr6 :
 | LOG LPAREN e1=expr RPAREN      { Log(e1) }
 | l=paren_list0(COMMA,expr)      { mk_Tuple l }
 | s=F_INV LPAREN k1=expr COMMA e1=expr RPAREN { ParsePerm(s,true,k1,e1) }
-| s=GETPK LPAREN e=expr RPAREN             { ParseGetPK(s,e) }
-| s=GETSK LPAREN e=expr RPAREN             { ParseGetSK(s,e) }
+| GETPK LPAREN e=expr RPAREN             { ParseGetPK(e) }
+| GETSK LPAREN e=expr RPAREN             { ParseGetSK(e) }
        
 
 /*======================================================================*/

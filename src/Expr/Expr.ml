@@ -97,8 +97,8 @@ and expr_node =
   | Nary   of nop * expr list (*r variable arity AC operators *)
   | All of (Vsym.t list * Oracle.t) list * expr
   | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
-  | GetPK of Psym.t * expr          (*r Public Key of f required by f *)  
-  | GetSK of Psym.t * expr          (*r Secret Key of f required by f_inv *)
+  | GetPK of  expr          (*r Public Key of f required by f *)  
+  | GetSK of  expr          (*r Secret Key of f required by f_inv *)
 	       
 
 (** Equality hashing, and comparison for expressions. *)
@@ -127,8 +127,7 @@ module Hse = Hashcons.Make (struct
         e_equal e1 e2
     | Perm(f1,b1,k1,e1), Perm(f2,b2,k2,e2)
       -> Psym.equal f1 f2 && b1=b2 && e_equal k1 k2 && e_equal e1 e2
-    | GetPK(f1,kp1), GetPK(f2,kp2) | GetSK(f1,kp1), GetSK(f2,kp2) ->
-        (Psym.equal f1 f2) && e_equal kp1 kp2
+    | (GetPK kp1), (GetPK kp2) | (GetSK kp1), (GetSK kp2) -> e_equal kp1 kp2
     | _, _                       -> false
   (*i*)
 
@@ -138,8 +137,8 @@ module Hse = Hashcons.Make (struct
     | H(f,e)     -> Hashcons.combine (Hsym.hash f) (e_hash e)
     | Perm(f,b,k,e) -> let hc = Hashcons.combine in
 		       hc (if b then 1 else 2) (hc (Psym.hash f) (hc (e_hash k) (e_hash e)))
-    | GetPK(f,e)   -> Hashcons.combine 1 (Hashcons.combine (e_hash e) (Psym.hash f))
-    | GetSK(f,e)   -> Hashcons.combine 2 (Hashcons.combine (e_hash e) (Psym.hash f))
+    | GetPK kp  -> Hashcons.combine 1 (e_hash kp)
+    | GetSK kp  -> Hashcons.combine 2 (e_hash kp)
     | Tuple(es)  -> Hashcons.combine_list e_hash 3 es
     | Proj(i,e)  -> Hashcons.combine i (e_hash e)
     | Cnst(c)    -> cnst_hash c
@@ -234,17 +233,19 @@ let mk_Perm f is_inverse k e =
     mk_e (Perm(f,is_inverse,k,e)) f.Psym.dom
                   
 	 
-let mk_GetPK f kp =
+let mk_GetPK kp =
   let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetPK" in
-    if (not (f.Psym.pid = kp_pid)) then
-      failwith (fsprintf "mk_GetPK: The permutation of given KeyPair is not %a." Psym.pp f);  
-    mk_e (GetPK (f,kp)) (ty_PKey f.Psym.pid)
+  mk_e (GetPK kp) (ty_PKey kp_pid)
+       
+let mk_GetSK kp =
+  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetSK" in
+    mk_e (GetSK kp) (ty_PKey kp_pid)
 
-let mk_GetSK f kp =
+(* let mk_GetSK f kp =
   let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetSK" in
     if (not (f.Psym.pid = kp_pid)) then
       failwith (fsprintf "mk_GetSK: The permutation of given KeyPair is not %a." Psym.pp f);  
-    mk_e (GetSK (f,kp)) (ty_SKey f.Psym.pid)
+    mk_e (GetSK (f,kp)) (ty_SKey f.Psym.pid) *)
        
 let mk_All b e =
   mk_e (All(b,e)) ty_Bool
@@ -396,14 +397,14 @@ let sub_map g e =
      let k' = g k in
      if e1 == e1' && k' == k then e
      else mk_e (Perm(f,is_inverse,k',e1')) e.e_ty
-  | GetPK(f,e1) ->
+  | GetPK e1 ->
      let e1' = g e1 in
      if e1 == e1' then e
-     else mk_e (GetPK(f,e1')) e.e_ty
-  | GetSK(f,e1) ->
+     else mk_e (GetPK e1') e.e_ty
+  | GetSK e1 ->
      let e1' = g e1 in
      if e1 == e1' then e
-     else mk_e (GetSK(f,e1')) e.e_ty
+     else mk_e (GetSK e1') e.e_ty
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
@@ -435,14 +436,14 @@ let e_sub_map g = sub_map (check_fun g)
 let e_sub_fold g acc e =
   match e.e_node with
   | V _ | Cnst _ -> acc
-  | GetPK (_,kp) | GetSK(_,kp) -> g acc kp
+  | GetPK (kp) | GetSK(kp) -> g acc kp
   | Perm(_,_,_,e) | H(_,e) | Proj(_, e) | All(_,e) -> g acc e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | GetPK(_,kp) | GetSK(_,kp) -> g kp
+  | GetPK(kp) | GetSK(kp) -> g kp
   | Perm(_,_,_,e) -> g e 
   | H(_,e) | Proj(_, e) | All(_,e) -> g e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
@@ -495,12 +496,12 @@ let e_map_ty_maximal ty g e0 =
     let trans = if me then g else id in
     match e.e_node with
     | V(_) | Cnst(_) -> e
-    | GetPK(f,kp) ->
+    | GetPK(kp) ->
        let kp = go ie kp in
-       trans (mk_GetPK f kp)
-    | GetSK(f,kp) ->
+       trans (mk_GetPK kp)
+    | GetSK(kp) ->
        let kp = go ie kp in
-       trans (mk_GetSK f kp)
+       trans (mk_GetSK kp)
     | Perm(f,is_inverse,k,e) ->
        let e = go ie e in
        trans (mk_Perm f is_inverse k e)

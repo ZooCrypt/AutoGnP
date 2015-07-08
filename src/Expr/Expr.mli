@@ -53,8 +53,8 @@ and expr_node =
   | Nary of nop * expr list
   | All of (Vsym.t list * Oracle.t) list * expr
   | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
-  | GetPK of Psym.t * expr           (*r Public Key of f required by f *)  
-  | GetSK of Psym.t * expr           (*r Secret Key of f required by f_inv *)
+  | GetPK of expr           (*r Public Key of f required by f *)  
+  | GetSK of expr           (*r Secret Key of f required by f_inv *)
 
 
 val e_equal : expr -> expr -> bool
@@ -82,8 +82,8 @@ val mk_App    : op -> expr list -> ty -> expr
 val mk_Nary   : nop -> expr list -> expr
 val mk_H      : Hsym.t -> expr -> expr
 val mk_Perm   : Psym.t -> bool -> expr -> expr -> expr
-val mk_GetPK  : Psym.t -> expr -> expr
-val mk_GetSK  : Psym.t -> expr -> expr			    
+val mk_GetPK  : expr -> expr
+val mk_GetSK  : expr -> expr			    
 val mk_All    : (Vsym.t list * Oracle.t) list -> expr -> expr
 val mk_Tuple  : expr list -> expr
 val mk_Proj   : int -> expr -> expr

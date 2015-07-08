@@ -220,12 +220,12 @@ and norm_expr ?strong:(strong=false) e =
 	 when ((is_SKey f k1_norm) && (is_PKey f k2_norm))
       -> e2_norm (* f_inv(SKey,f(PKey,e)) = e *)
     | _ -> mk_Perm f true k1_norm e1_norm )
-  | GetPK(f,kp) ->
+  | GetPK(kp) ->
      let kp_norm = norm_expr ~strong kp in
-     mk_GetPK f kp_norm
-  | GetSK(f,kp) ->
+     mk_GetPK kp_norm
+  | GetSK(kp) ->
      let kp_norm = norm_expr ~strong kp in
-     mk_GetSK f kp_norm
+     mk_GetSK kp_norm
   | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
   | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)
   | App (op, l) ->

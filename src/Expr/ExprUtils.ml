@@ -38,9 +38,15 @@ let is_FZ e = match e.e_node with Cnst (FNat 0) -> true | _ -> false
 
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
-let is_PKey f e = match e.e_node with GetPK(f2,_) when (Psym.equal f f2) -> true | _ -> false
-(* FIXME *) (* Could we use == instead ? i.e., is f instanciated only once ? *)
-let is_SKey f e = match e.e_node with GetSK(f2,_) when (Psym.equal f f2) -> true | _ -> false
+let is_PKey f e = match e.e_node with
+  | GetPK(kp) -> let kp_ty = mk_ty (KeyPair f.Psym.pid) in
+                 ty_equal kp.e_ty kp_ty
+  | _ -> false
+         
+let is_SKey f e = match e.e_node with
+  | GetSK(kp) -> let kp_ty = mk_ty (KeyPair f.Psym.pid) in
+                 ty_equal kp.e_ty kp_ty
+  | _ -> false
 				     
 let is_True e = is_Cnst (B true) e
 
@@ -165,8 +171,8 @@ let rec pp_exp_p ~qual above fmt e =
      F.fprintf fmt "@[<hov>%a(%a,%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) k (pp_exp_p ~qual PrefixApp) e
   | Perm(f,true,k,e) ->
      F.fprintf fmt "@[<hov>%a_inv(%a,%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) k (pp_exp_p ~qual PrefixApp) e
-  | GetPK(f,kp) -> F.fprintf fmt "@[<hov>GetPK_%a(%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) kp
-  | GetSK(f,kp) -> F.fprintf fmt "@[<hov>GetSK_%a(%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) kp
+  | GetPK(kp) -> F.fprintf fmt "@[<hov>get_pk(%a)@]" (pp_exp_p ~qual PrefixApp) kp
+  | GetSK(kp) -> F.fprintf fmt "@[<hov>get_sk(%a)@]" (pp_exp_p ~qual PrefixApp) kp
   | Tuple(es) -> 
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -298,12 +304,12 @@ let destr_Perm e =
 
 let destr_PKey e =
   match e.e_node with
-  | GetPK(f,kp) -> (f,kp)
+  | GetPK kp -> kp
   | _ -> raise (Destr_failure "PKey")
 
 let destr_SKey e =
   match e.e_node with
-  | GetSK(f,kp) -> (f,kp)
+  | GetSK kp -> kp
   | _ -> raise (Destr_failure "SKey")
 	       
 let destr_All e = 
@@ -406,7 +412,7 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | GetPK(_,kp) | GetSK(_,kp) -> go ie kp; run e0
+    | GetPK(kp) | GetSK(kp) -> go ie kp; run e0
     | Perm(_,_,_,e) -> go ie e; run e0
     | H(_,e) | Proj(_,e) | All(_,e)-> 
       go ie e; run e0

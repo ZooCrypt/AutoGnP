@@ -138,10 +138,8 @@ rule lex = parse
 	['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s)"_inv" (* Parsing 'f_inv'-like patterns *)
       { try Hashtbl.find keyword_table (s ^ "_inv")
       with Not_found -> F_INV s }
-  | "GetPK_"((['a'-'z' 'A'-'Z' ]
-		['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {GETPK s}
-  | "GetSK_"((['a'-'z' 'A'-'Z' ]
-	    ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {GETSK s}	 
+  | "get_pk" {GETPK}
+  | "get_sk" {GETSK}	 
   | "KeyPair_"((['a'-'z' 'A'-'Z' ]
 		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}	 
   | "PKey_"((['a'-'z' 'A'-'Z' ]

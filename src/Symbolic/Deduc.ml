@@ -97,7 +97,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     match e.e_node with
     | H(_,e1)     -> add_sub e; register_subexprs false e1
     | Perm(_,_,k,e1) -> add_sub k; add_sub e1; register_subexprs false e1
-    | GetPK(_,kp) | GetSK(_,kp) -> add_sub kp; register_subexprs false kp;
+    | GetPK(kp) | GetSK(kp) -> add_sub kp; register_subexprs false kp;
     | Tuple es    -> add_sub_constr e; List.iter (register_subexprs false) es
     | All(_,e1) -> add_sub e; register_subexprs true e1
     | Proj(_,e1)  -> add_sub e; (register_subexprs false) e1
@@ -200,8 +200,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Proj(i, e1) -> construct1 e e1 (mk_Proj i)
     | H(h,e1)     -> construct1 e e1 (mk_H h)
     | Perm(f,b,k,e1) -> construct2 e k e1 (mk_Perm f b)
-    | GetPK(f,kp) -> construct1 e kp (mk_GetPK f)
-    | GetSK(f,kp) -> construct1 e kp (mk_GetSK f)                                
+    | GetPK(kp) -> construct1 e kp mk_GetPK
+    | GetSK(kp) -> construct1 e kp mk_GetSK                                
     | Tuple es    -> constructn e es mk_Tuple
     | App(op,es)  -> construct_app e op es
     | All(b,e1) -> construct1 e e1 (mk_All b)
