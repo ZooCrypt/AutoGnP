@@ -20,9 +20,9 @@ let is_V e = match e.e_node with V _ -> true | _ -> false
 
 let is_H e = match e.e_node with H _ -> true | _ -> false
 
-let is_Perm e = match e.e_node with Perm _ -> true | _ -> false
-
-let is_All e = match e.e_node with All _ -> true | _ -> false
+let is_Quant q e = match e.e_node with Quant(q',_,_) when q=q' -> true | _ -> false
+let is_SomeQuant e = match e.e_node with Quant(q,_,_) -> true | _ -> false
+let is_All = is_Quant All and is_Exists = is_Quant Exists
 
 let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
 
@@ -38,14 +38,9 @@ let is_FZ e = match e.e_node with Cnst (FNat 0) -> true | _ -> false
 
 let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
 
-let is_PKey f e = match e.e_node with
-  | GetPK(kp) -> let kp_ty = mk_ty (KeyPair f.Psym.pid) in
-                 ty_equal kp.e_ty kp_ty
-  | _ -> false
-         
-let is_SKey f e = match e.e_node with
-  | GetSK(kp) -> let kp_ty = mk_ty (KeyPair f.Psym.pid) in
-                 ty_equal kp.e_ty kp_ty
+let is_ProjPermKey ke f e = match e.e_node with
+  | ProjPermKey(ke', kp) when ke = ke' ->
+     let kp_ty = mk_ty (KeyPair f.Psym.pid) in ty_equal kp.e_ty kp_ty
   | _ -> false
 				     
 let is_True e = is_Cnst (B true) e
@@ -59,6 +54,13 @@ let is_GOne e = is_G e.e_ty && e_equal e (mk_GOne (destr_G e.e_ty))
 let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
 let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
+
+let is_Perm e =  match e.e_node with
+  | App(o',_) ->
+     (match o' with
+       | Perm _ -> true
+       | _ -> false)
+  | _ -> false
 
 let is_FDiv e = is_App FDiv e
 
@@ -91,7 +93,7 @@ let is_Not e = is_App Not e
 
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
-  | GExp _ | GLog _ | GInv | EMap _
+  | GExp _ | GLog _ | GInv | EMap _ | Perm _
   | Eq | Ifte | Not -> false 
 
 let is_field_nop = function
@@ -167,12 +169,9 @@ let rec pp_exp_p ~qual above fmt e =
     F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
   | H(h,e)     -> 
     F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p ~qual PrefixApp) e
-  | Perm(f,false,k,e) ->
-     F.fprintf fmt "@[<hov>%a(%a,%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) k (pp_exp_p ~qual PrefixApp) e
-  | Perm(f,true,k,e) ->
-     F.fprintf fmt "@[<hov>%a_inv(%a,%a)@]" Psym.pp f (pp_exp_p ~qual PrefixApp) k (pp_exp_p ~qual PrefixApp) e
-  | GetPK(kp) -> F.fprintf fmt "@[<hov>get_pk(%a)@]" (pp_exp_p ~qual PrefixApp) kp
-  | GetSK(kp) -> F.fprintf fmt "@[<hov>get_sk(%a)@]" (pp_exp_p ~qual PrefixApp) kp
+  | ProjPermKey(ke,kp) -> F.fprintf fmt "@[<hov>get_%s(%a)@]"
+                                    (if ke = PKey then "pk" else "sk")
+                                    (pp_exp_p ~qual PrefixApp) kp
   | Tuple(es) -> 
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -188,8 +187,9 @@ let rec pp_exp_p ~qual above fmt e =
           es
     in
     pp_maybe_paren false (above <> PrefixApp) pp fmt es
-  | All(b,e) ->
-    F.fprintf fmt "(forall %a: %a)" (pp_list "," pp_binder) b (pp_exp_p ~qual Top) e
+  | Quant(q,b,e) ->
+     F.fprintf fmt "(%s %a: %a)" (if q = All then "forall" else "exists")
+               pp_binder b (pp_exp_p ~qual Top) e
   | Proj(i,e)  -> 
     F.fprintf fmt "%a%s%i" (pp_exp_p ~qual Tup) e "#" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
@@ -248,6 +248,9 @@ and pp_op_p ~qual above fmt (op, es) =
   | EMap es,[a;b] ->
     let ppe i = pp_exp_p ~qual (Infix(EMap es,i)) in
     F.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
+  | Perm(ptype,f), [proj_ke;arg] -> F.fprintf fmt
+     "%a%s(%a,%a)" Psym.pp f (if ptype = IsInv then "_inv" else "")
+                   (pp_exp_p ~qual above) proj_ke (pp_exp_p ~qual above) arg
   | Ifte, [a;b;d] ->
     let ppe i = pp_exp_p ~qual (Infix(Ifte,i)) in
     let pp fmt () =
@@ -299,22 +302,23 @@ let destr_H e =
 
 let destr_Perm e =
   match e.e_node with
-  | Perm(f,is_inverse,k,e) -> (f,is_inverse,k,e)
+  | App(o,[k;e]) ->
+     (match o with
+      | Perm(ptype,f) -> (f,ptype,k,e)
+      | _ -> raise (Destr_failure "Perm"))
   | _ -> raise (Destr_failure "Perm")
 
-let destr_PKey e =
+let destr_ProjPermKey e =
   match e.e_node with
-  | GetPK kp -> kp
-  | _ -> raise (Destr_failure "PKey")
+  | ProjPermKey (ke,kp) -> (ke,kp)
+  | _ -> raise (Destr_failure "ProjPermKey")
 
-let destr_SKey e =
-  match e.e_node with
-  | GetSK kp -> kp
-  | _ -> raise (Destr_failure "SKey")
-	       
+let destr_Quant e = 
+  match e.e_node with Quant(q,b,e) -> (q,b,e) | _ -> raise (Destr_failure "Quant")
+                                                           
 let destr_All e = 
-  match e.e_node with All(b,e) -> (b,e) | _ -> raise (Destr_failure "forall")
-
+  match e.e_node with Quant(All,b,e) -> (b,e) | _ -> raise (Destr_failure "forall")
+                                                           
 let destr_Tuple e = 
   match e.e_node with Tuple(es) -> (es) | _ -> raise (Destr_failure "Tuple")
 
@@ -412,9 +416,8 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | GetPK(kp) | GetSK(kp) -> go ie kp; run e0
-    | Perm(_,_,_,e) -> go ie e; run e0
-    | H(_,e) | Proj(_,e) | All(_,e)-> 
+    | ProjPermKey(ke,kp) -> go ie kp; run e0
+    | H(_,e) | Proj(_,e) | Quant(_,_,e)-> 
       go ie e; run e0
     | Tuple(es) | App(_,es) | Nary(_,es) ->
       L.iter (go ie) es;  run e0
@@ -511,11 +514,14 @@ let pp_inverter fmt i = pp_exp fmt (expr_of_inverter i)
 
 let e_eq_remove_eventual_perms e =
   let e1,e2 = destr_Eq e in
-  match (e1.e_node,e2.e_node) with
-  | (Perm(f1,b1,k1,e11), Perm(f2,b2,k2,e22) )
-       when (Psym.equal f1 f2 && b1 = b2 && e_equal k1 k2) ->
-     mk_Eq e11 e22
-  | _ -> e
+  ( try
+    let ( (f1,ptype1,k1,e11), (f2,ptype2,k2,e22) ) =
+      destr_Perm e1, destr_Perm e2 in
+    if (Psym.equal f1 f2 && ptype1 = ptype2 && e_equal k1 k2)
+    then mk_Eq e11 e22
+    else e
+  with
+  | Destr_failure _ -> e )
            
 let e_equivalent_eqs e1 e2 =
   let e11 = if (is_Eq e1) then e_eq_remove_eventual_perms e1 else e1 in

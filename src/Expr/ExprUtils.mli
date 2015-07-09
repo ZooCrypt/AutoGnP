@@ -11,77 +11,79 @@ val ty_prod_vs : Vsym.t list -> ty
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Indicator functions} *)
 
-val is_V : expr -> bool
-val is_H : expr -> bool
-val is_Perm : expr -> bool
-val is_All : expr -> bool
-val is_Tuple : expr -> bool
-val is_Proj : expr -> bool
-val is_some_Cnst : expr -> bool
-val is_Cnst : cnst -> expr -> bool
-val is_PKey : Psym.t -> expr -> bool
-val is_SKey : Psym.t -> expr -> bool
-val is_FNat : expr -> bool
-val is_FOne : expr -> bool
-val is_FZ : expr -> bool
-val is_True : expr -> bool
-val is_False : expr -> bool
-val is_GGen : expr -> bool
-val is_GOne : expr -> bool
-val is_GLog : expr -> bool
-val is_GLog_gv : Groupvar.id -> expr -> bool
-val is_some_App : expr -> bool
-val is_App : op -> expr -> bool
-val is_FDiv : expr -> bool
-val is_FOpp : expr -> bool
-val is_GExp : expr -> bool
-val is_Ifte : expr -> bool
-val is_some_Nary : expr -> bool
-val is_Nary : nop -> expr -> bool
-val is_FPlus : expr -> bool
-val is_FMult : expr -> bool
-val is_Xor : expr -> bool  
-val is_Eq    : expr -> bool
-val is_InEq  : expr -> bool
-val is_Not : expr -> bool
-val is_field_op : op -> bool
-val is_field_nop : nop -> bool
-val is_field_exp : expr -> bool
-val is_Land : expr -> bool
+val is_V           : expr -> bool
+val is_H           : expr -> bool
+val is_Perm        : expr -> bool
+val is_Quant       : quant -> expr -> bool
+val is_SomeQuant   : expr -> bool
+val is_All         : expr -> bool
+val is_Exists      : expr -> bool
+val is_Tuple       : expr -> bool
+val is_Proj        : expr -> bool
+val is_some_Cnst   : expr -> bool
+val is_Cnst        : cnst -> expr -> bool
+val is_ProjPermKey : key_elem -> Psym.t -> expr -> bool
+val is_FNat        : expr -> bool
+val is_FOne        : expr -> bool
+val is_FZ          : expr -> bool
+val is_True        : expr -> bool
+val is_False       : expr -> bool
+val is_GGen        : expr -> bool
+val is_GOne        : expr -> bool
+val is_GLog        : expr -> bool
+val is_GLog_gv     : Groupvar.id -> expr -> bool
+val is_some_App    : expr -> bool
+val is_App         : op -> expr -> bool
+val is_FDiv        : expr -> bool
+val is_FOpp        : expr -> bool
+val is_GExp        : expr -> bool
+val is_Ifte        : expr -> bool
+val is_some_Nary   : expr -> bool
+val is_Nary        : nop -> expr -> bool
+val is_FPlus       : expr -> bool
+val is_FMult       : expr -> bool
+val is_Xor         : expr -> bool  
+val is_Eq          : expr -> bool
+val is_InEq        : expr -> bool
+val is_Not         : expr -> bool
+val is_field_op    : op -> bool
+val is_field_nop   : nop -> bool
+val is_field_exp   : expr -> bool
+val is_Land        : expr -> bool
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Destructor functions} *)
 
 exception Destr_failure of string
 
-val destr_V      : expr -> Vsym.t
-val destr_H      : expr -> Hsym.t * expr
-val destr_All    : expr -> (Vsym.t list * Oracle.t) list * expr
-val destr_Tuple  : expr -> expr list
-val destr_Proj   : expr -> int * expr
-val destr_Cnst   : expr -> cnst
-val destr_Perm   : expr -> Psym.t*bool*expr*expr
-val destr_PKey   : expr -> expr
-val destr_SKey   : expr -> expr
-val destr_FNat   : expr -> int
-val destr_App    : expr -> op * expr list
-val destr_GMult  : expr -> (expr) list
-val destr_GExp   : expr -> expr * expr
-val destr_GLog   : expr -> expr
-val destr_EMap   : expr -> Esym.t * expr * expr
-val destr_FOpp   : expr -> expr
-val destr_FMinus : expr -> expr * expr
-val destr_FInv   : expr -> expr
-val destr_FDiv   : expr -> expr * expr
-val destr_Eq     : expr -> expr * expr
-val destr_Not    : expr -> expr
-val destr_Ifte   : expr -> expr * expr * expr
-val destr_FPlus  : expr -> expr list
-val destr_FMult  : expr -> expr list
-val destr_Xor    : expr -> expr list
-val destr_Land   : expr -> expr list
-val destr_Xor_nofail : expr -> expr list
-val destr_Land_nofail : expr -> expr list
+val destr_V            : expr -> Vsym.t
+val destr_H            : expr -> Hsym.t * expr
+val destr_Quant        : expr -> quant * (Vsym.t list * Oracle.t) * expr
+val destr_All        : expr -> (Vsym.t list * Oracle.t) * expr
+val destr_Tuple        : expr -> expr list
+val destr_Proj         : expr -> int * expr
+val destr_Cnst         : expr -> cnst
+val destr_Perm         : expr -> Psym.t * perm_type * expr * expr
+val destr_ProjPermKey  : expr -> key_elem * expr
+val destr_FNat         : expr -> int
+val destr_App          : expr -> op * expr list
+val destr_GMult        : expr -> (expr) list
+val destr_GExp         : expr -> expr * expr
+val destr_GLog         : expr -> expr
+val destr_EMap         : expr -> Esym.t * expr * expr
+val destr_FOpp         : expr -> expr
+val destr_FMinus       : expr -> expr * expr
+val destr_FInv         : expr -> expr
+val destr_FDiv         : expr -> expr * expr
+val destr_Eq           : expr -> expr * expr
+val destr_Not          : expr -> expr
+val destr_Ifte         : expr -> expr * expr * expr
+val destr_FPlus        : expr -> expr list
+val destr_FMult        : expr -> expr list
+val destr_Xor          : expr -> expr list
+val destr_Land         : expr -> expr list
+val destr_Xor_nofail   : expr -> expr list
+val destr_Land_nofail  : expr -> expr list
 val destr_Tuple_nofail : expr -> expr list
 
 (*i ----------------------------------------------------------------------- i*)

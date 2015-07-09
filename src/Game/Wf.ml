@@ -125,12 +125,11 @@ and wf_exp ctype wfs e0 =
     | V vs ->
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
         (fun () -> raise (Wf_var_undef(vs,e0,wfs.wf_bvars)))
-    | All(binds,e1) ->
-      let wfs = List.fold_left check_binding1 wfs binds in
+    | Quant(q,bind,e1) ->
+      let wfs = check_binding1 wfs bind in
       assert (ty_equal mk_Bool e1.e_ty);
       go wfs e1
-    | Perm(_,_,_,e1) -> go wfs e1
-    | GetPK _ | GetSK _ -> ()
+    | ProjPermKey(ke,kp) -> go wfs kp
     | H(_,e1) | Proj(_,e1) -> go wfs e1
     | Nary(Land,es) ->
       let is_InEq e =

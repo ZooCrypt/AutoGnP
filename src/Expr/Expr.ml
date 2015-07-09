@@ -264,7 +264,7 @@ let mk_Perm f ptype k e =
     e (Some k)
     (fsprintf "mk_Perm for %a : expected arg of type %a" Psym.pp f pp_ty e.e_ty);
   let p = Perm(ptype,f) in
-  mk_App p [k;e]
+  mk_App p [k;e] e.e_ty
                   
 let mk_GOne gn =
   mk_GExp (mk_GGen gn) mk_FZ

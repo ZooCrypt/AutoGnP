@@ -65,12 +65,12 @@ let ty_of_parse_ty ts pty =
     | PKey s ->
        (try
          let f = Mstring.find s ts.ts_permdecls in
-           T.mk_PKey f.Psym.pid
+           T.mk_KeyElem T.PKey f.Psym.pid
          with Not_found -> tacerror "Undefined permutation %s" s)
     | SKey s ->
        (try
          let f = Mstring.find s ts.ts_permdecls in
-           T.mk_SKey f.Psym.pid
+           T.mk_KeyElem T.SKey f.Psym.pid
          with Not_found -> tacerror "Undefined permutation %s" s)         
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
@@ -139,9 +139,10 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
     | Tuple(es) -> E.mk_Tuple (L.map go es)
     | ParsePerm(s,b,k,e) when Mstring.mem s ts.ts_permdecls ->
        let f = Mstring.find s ts.ts_permdecls in
-       E.mk_Perm f b (go k) (go e)
-    | ParseGetPK(kp) -> E.mk_GetPK (go kp)
-    | ParseGetSK(kp) -> E.mk_GetSK (go kp)
+       let ptype = if b then E.IsInv else E.NotInv in
+       E.mk_Perm f ptype (go k) (go e)
+    | ParseGetPK(kp) -> E.mk_ProjPermKey T.PKey (go kp)
+    | ParseGetSK(kp) -> E.mk_ProjPermKey T.SKey (go kp)
     | ParsePerm(s,_,_,_) -> tacerror "Undefined permutation %s" s
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SApp(s,es) when Mstring.mem s ts.ts_permdecls ->
@@ -149,7 +150,7 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
          match es with
          | [k;e] ->
             let f = Mstring.find s ts.ts_permdecls in
-            E.mk_Perm f false (go k) (go e)
+            E.mk_Perm f E.NotInv (go k) (go e)
          | _ -> fail_parse (F.sprintf "Permutation %s expects  2 arguments" s)
        end
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
@@ -183,7 +184,7 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
       in
       let e = expr_of_parse_expr vmap ts Unqual pe in
-      Expr.mk_All b e
+      List.fold_left (fun acc x -> Expr.mk_All x acc) e b
 
     | Div(e1,e2)   ->
       let e1 = go e1 in

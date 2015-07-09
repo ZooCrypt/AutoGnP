@@ -1116,7 +1116,7 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
       (fun e ->
         if is_All e then (
           match destr_All e with
-          | [(vs,Oracle.O o)],e1 when Osym.equal o seoc.seoc_osym ->
+          | (vs,Oracle.O o),e1 when Osym.equal o seoc.seoc_osym ->
             [e; e_subst (L.fold_left2
                            (fun m e1 e2 -> Me.add (mk_V e1) (mk_V e2) m)
                            Me.empty vs seoc.seoc_oargs) e1]
