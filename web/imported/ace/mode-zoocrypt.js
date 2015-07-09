@@ -114,7 +114,8 @@ ace.define('ace/mode/zoocrypt_highlight_rules', ['require', 'exports', 'module' 
         "undo_back|bad|ctxt_ev|norm_solve|subst|assumption|bysimp|dist_eq|insert|" +
         "dist_sym|swap_main|hybrid|rename|print_game|print_games|trans|assert|" +
         "print_proof|extract|except|assumption_computational|qed|back|crush|bycrush|" +
-        "unfold|remove_ev|case_ev|split_ev|rewrite_ev|false_ev|print_debug"
+        "unfold|remove_ev|case_ev|split_ev|rewrite_ev|false_ev|print_debug|" +
+        "bad1|bad2"
       );
 
     var builtinConstants = ("true|false|Fq");

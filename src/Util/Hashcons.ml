@@ -28,3 +28,6 @@ module Make(H : HashedType) : (S with type t = H.t) =
 let combine acc n = n * 65599 + acc
 let combine2 acc n1 n2 = combine acc (combine n1 n2)
 let combine_list f = List.fold_left (fun acc x -> combine acc (f x))
+let combine_hashes = function
+  | [] -> assert false
+  | h::hs -> List.fold_left (fun acc h -> combine acc h) h hs

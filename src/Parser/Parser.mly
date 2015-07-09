@@ -408,8 +408,8 @@ atype:
 decl :
 | ADVERSARY i=ID  COLON t1=typ TO t2=typ    { ADecl(i, t1, t2) } 
 | ORACLE    i=ID  COLON t1=typ TO t2=typ    { ODecl(i, t1, t2) }
-| RANDOM ORACLE i=ID COLON t1=typ TO t2=typ { RODecl(i, true, t1, t2) } (* Shouldn't it be RRND_ORACLE instead ? *)
-| PERMUTATION i=ID COLON k=TBS { PermDecl(i, BS(k)) } (* { assert false } *) (* permutation f : BS_k *)
+| RANDOM ORACLE i=ID COLON t1=typ TO t2=typ { RODecl(i, true, t1, t2) }
+| PERMUTATION i=ID COLON t=typ              { PermDecl(i, t) }
 | OPERATOR i=ID COLON t1=typ TO t2=typ      { RODecl(i, false, t1, t2) }
 | BILINEAR MAP i=ID COLON
     g1=TG STAR g2=TG TO g3=TG               { EMDecl(i, g1, g2, g3) }

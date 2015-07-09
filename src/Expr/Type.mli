@@ -13,6 +13,11 @@ module Permvar : IdType.ID
 (** identifier for different groups *)
 module Groupvar : IdType.ID
 
+type key_elem = SKey | PKey
+
+val hash_key_elem : key_elem -> int
+val string_of_key_elem : key_elem -> string
+
 type ty = private { ty_node : ty_node; ty_tag : int; }
 and ty_node =
     BS of Lenvar.id
@@ -22,9 +27,7 @@ and ty_node =
   | Prod of ty list
   | Int (* used during extraction *)
   | KeyPair of Permvar.id
-  | PKey of Permvar.id
-  | SKey of Permvar.id
-			     
+  | KeyElem of key_elem * Permvar.id
       
 val ty_equal : ty -> ty -> bool
 val ty_hash : ty -> int
@@ -41,8 +44,7 @@ val mk_ty : ty_node -> Hsty.t
 val mk_BS : Lenvar.id -> ty
 val mk_G : Groupvar.id -> ty
 val mk_KeyPair : Permvar.id -> ty
-val mk_PKey : Permvar.id -> ty
-val mk_SKey : Permvar.id -> ty
+val mk_KeyElem : key_elem -> Permvar.id -> ty
 val mk_Fq : ty
 val mk_Bool : ty
 val mk_Prod : ty list -> ty
@@ -52,7 +54,8 @@ val is_G : ty -> bool
 val is_Fq : ty -> bool
 val destr_G : ty -> Groupvar.id
 val destr_BS : ty -> Lenvar.id
-val destr_P : ty -> Permvar.id
+val destr_KeyPair : ty -> Permvar.id
+val destr_KeyElem : ty -> (key_elem * Permvar.id)
 val destr_Prod : ty -> ty list
 
 val pp_group : F.formatter -> Groupvar.id -> unit

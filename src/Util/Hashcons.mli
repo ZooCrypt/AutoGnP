@@ -20,3 +20,6 @@ val combine2 : int -> int -> int -> int
 
 (** Combine list of integers for hash. *)
 val combine_list : ('a -> int) -> int -> 'a list -> int
+
+(** Combine list of integers for hash. *)
+val combine_hashes : int list -> int

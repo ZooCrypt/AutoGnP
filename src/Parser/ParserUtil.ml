@@ -142,10 +142,6 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
        E.mk_Perm f b (go k) (go e)
     | ParseGetPK(kp) -> E.mk_GetPK (go kp)
     | ParseGetSK(kp) -> E.mk_GetSK (go kp)
-(*  | ParseGetSK(s,kp) when Mstring.mem s ts.ts_permdecls ->
-       let f = Mstring.find s ts.ts_permdecls and
-       parsed_kp = go kp in
-       E.mk_GetSK f parsed_kp *)
     | ParsePerm(s,_,_,_) -> tacerror "Undefined permutation %s" s
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SApp(s,es) when Mstring.mem s ts.ts_permdecls ->

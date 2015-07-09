@@ -12,14 +12,22 @@ open Syms
 
 type proj_type = ty * ty * ty
 
+type perm_type = IsInv | NotInv
+
+let hash_perm_type = function
+  | IsInv  -> 1
+  | NotInv -> 2
+
+let key_elem_of_perm_type = function
+  | IsInv  -> SKey
+  | NotInv -> PKey
+
 (** Constants. *)
 type cnst =
     GGen        (*r generator of $\group$ (type defines group) *)
   | FNat of int (*r Natural number in field, always $\geq 0$ *)
   | Z           (*r $0$ bitstring (type defines length) *)
   | B of bool   (*r boolean value *)
-(* | PermKey of bool (*r permutation key (type defines Perm) *) *)
-
 
 (** Hash constants. *)
 let cnst_hash = (*c ... *) (*i*)
@@ -27,29 +35,29 @@ let cnst_hash = (*c ... *) (*i*)
   | GGen   -> 1
   | FNat n -> Hashcons.combine 2 n
   | Z      -> 3
-  | B b    -> if b then 5 else 6
+  | B b    -> if b then 4 else 5
 (*i*)
-
 
 (** Operators with fixed arity. *)
 type op =
-    GExp of Groupvar.id  (*r exponentiation in $\group_i$ *)
-  | GLog of Groupvar.id  (*r discrete logarithm in $\group_i$ *)
-  | GInv                 (* inverse in group *)
-  | FOpp                 (*r additive inverse in $\field$ *)
-  | FMinus               (*r subtraction in $\field$ *)
-  | FInv                 (*r mult. inverse in $\field$ *)
-  | FDiv                 (*r division in $\field$ *)
-  | Eq                   (*r equality *)
-  | Not                  (*r negation *)
-  | Ifte                 (*r if then else *)
-  | EMap of Esym.t       (*r bilinear map *)
+ | GExp of Groupvar.id        (*r exponentiation in $\group_i$ *)
+ | GLog of Groupvar.id        (*r discrete logarithm in $\group_i$ *)
+ | GInv                       (* inverse in group *)
+ | FOpp                       (*r additive inverse in $\field$ *)
+ | FMinus                     (*r subtraction in $\field$ *)
+ | FInv                       (*r mult. inverse in $\field$ *)
+ | FDiv                       (*r division in $\field$ *)
+ | Eq                         (*r equality *)
+ | Not                        (*r negation *)
+ | Ifte                       (*r if then else *)
+ | EMap of Esym.t             (*r bilinear map *)
+ | Perm of perm_type * Psym.t (*r permutation or inverse *)
 
 (** Hash operators. *)
 let op_hash = (*c ... *) (*i*)
   function
-  | GExp gv  -> Hashcons.combine 1 (Groupvar.hash gv)
-  | GLog gv  -> Hashcons.combine 2 (Groupvar.hash gv)
+  | GExp gv  -> hcomb 1 (Groupvar.hash gv)
+  | GLog gv  -> hcomb 2 (Groupvar.hash gv)
   | GInv     -> 3
   | FOpp     -> 4
   | FMinus   -> 5
@@ -58,9 +66,9 @@ let op_hash = (*c ... *) (*i*)
   | Eq       -> 8
   | Not      -> 9
   | Ifte     -> 10
-  | EMap es  -> Hashcons.combine 11 (Esym.hash es)
+  | EMap es  -> hcomb 11 (Esym.hash es)
+  | Perm(pt,f) -> hcomb (hash_perm_type pt) (Psym.hash f)
   (*i*)
-
 
 (** N-ary/associative operators with variable arity. *)
 type nop =
@@ -80,6 +88,11 @@ let nop_hash = (*c ... *) (*i*)
   | GMult  -> 5
 (*i*)
 
+type quant = All | Exists
+
+let hash_quant = function
+  | All    -> 1
+  | Exists -> 2
 
 (** Expressions and expression nodes. *)
 type expr = {
@@ -88,18 +101,15 @@ type expr = {
   e_tag  : int
 }
 and expr_node =
-  | V      of Vsym.t          (*r variables (program, logical, random, ...) *)
-  | H      of Hsym.t * expr   (*r hash function application *)
-  | Tuple  of expr list       (*r tuples *)
-  | Proj   of int * expr      (*r projection *)
-  | Cnst   of cnst            (*r constants *)
-  | App    of op * expr list  (*r fixed arity operators *)
-  | Nary   of nop * expr list (*r variable arity AC operators *)
-  | All of (Vsym.t list * Oracle.t) list * expr
-  | Perm of Psym.t * bool * expr * expr  (*r OW permutation (f,is_inverse,Key,e) *)
-  | GetPK of  expr          (*r Public Key of f required by f *)  
-  | GetSK of  expr          (*r Secret Key of f required by f_inv *)
-	       
+  | V           of Vsym.t          (*r variables (program, logical, random, ...) *)
+  | H           of Hsym.t * expr   (*r hash function application *)
+  | Tuple       of expr list       (*r tuples *)
+  | Proj        of int * expr      (*r projection *)
+  | Cnst        of cnst            (*r constants *)
+  | App         of op * expr list  (*r fixed arity operators *)
+  | Nary        of nop * expr list (*r variable arity AC operators *)
+  | Quant       of quant * (Vsym.t list * Oracle.t) * expr
+  | ProjPermKey of key_elem * expr	       
 
 (** Equality hashing, and comparison for expressions. *)
 let e_equal : expr -> expr -> bool = (==) 
@@ -118,41 +128,36 @@ module Hse = Hashcons.Make (struct
     | Tuple es1, Tuple es2       -> list_eq_for_all2 e_equal es1 es2
     | Proj(i1,e1), Proj(i2,e2)   -> i1 = i2 && e_equal e1 e2
     | Cnst c1, Cnst c2           -> c1 = c2
-    | App(Eq,[e11;e12]), App(Eq,[e21;e22]) -> (* commutativity *)
-       (e_equal e11 e21 && e_equal e12 e22) || (e_equal e11 e22 && e_equal e12 e21)
     | App(o1,es1), App(o2,es2)   -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
     | Nary(o1,es1), Nary(o2,es2) -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
-    | All(b1,e1), All(b2,e2) ->
-      list_equal (pair_equal (list_equal Vsym.equal) Oracle.equal) b1 b2 &&
+    | Quant(q1,b1,e1), Quant(q2,b2,e2) ->
+      q1 = q2 &&
+        (pair_equal (list_equal Vsym.equal) Oracle.equal) b1 b2 &&
         e_equal e1 e2
-    | Perm(f1,b1,k1,e1), Perm(f2,b2,k2,e2)
-      -> Psym.equal f1 f2 && b1=b2 && e_equal k1 k2 && e_equal e1 e2
-    | (GetPK kp1), (GetPK kp2) | (GetSK kp1), (GetSK kp2) -> e_equal kp1 kp2
-    | _, _                       -> false
+    | ProjPermKey(ke1,e1), ProjPermKey(ke2,e2) ->
+      ke1 = ke2 && e_equal e1 e2
+    | _, _ -> false
   (*i*)
 
   let hash_node = (*c ... *) (*i*)
     function
     | V(v)       -> Vsym.hash v
-    | H(f,e)     -> Hashcons.combine (Hsym.hash f) (e_hash e)
-    | Perm(f,b,k,e) -> let hc = Hashcons.combine in
-		       hc (if b then 1 else 2) (hc (Psym.hash f) (hc (e_hash k) (e_hash e)))
-    | GetPK kp  -> Hashcons.combine 1 (e_hash kp)
-    | GetSK kp  -> Hashcons.combine 2 (e_hash kp)
-    | Tuple(es)  -> Hashcons.combine_list e_hash 3 es
-    | Proj(i,e)  -> Hashcons.combine i (e_hash e)
+    | H(f,e)     -> hcomb (Hsym.hash f) (e_hash e)
+    | ProjPermKey(ke,e) -> hcomb 2 (hcomb (Type.hash_key_elem ke) (e_hash e))
+    | Tuple(es)  -> hcomb_l e_hash 3 es
+    | Proj(i,e)  -> hcomb i (e_hash e)
     | Cnst(c)    -> cnst_hash c
-    | App(o,es)  -> Hashcons.combine_list e_hash (op_hash o) es
-    | Nary(o,es) -> Hashcons.combine_list e_hash (nop_hash o) es
-    | All(b,e) ->
-      Hashcons.combine_list 
-        (fun (vs,o) ->
-          (Hashcons.combine_list Vsym.hash (Oracle.hash o) vs))
-        (e_hash e)
-        b
+    | App(o,es)  -> hcomb_l e_hash (op_hash o) es
+    | Nary(o,es) -> hcomb_l e_hash (nop_hash o) es
+    | Quant(q,(vs,o),e) ->
+      hcomb_h
+        [ hash_quant q
+        ; hcomb_h (List.map Vsym.hash vs)
+        ; Oracle.hash o
+        ; e_hash e ]
   (*i*)
 
-  let hash e = Hashcons.combine (ty_hash e.e_ty) (hash_node e.e_node)
+  let hash e = hcomb (ty_hash e.e_ty) (hash_node e.e_node)
 
   let tag n e = { e with e_tag = n }
 end)
@@ -185,18 +190,12 @@ let ensure_ty_KeyPair ty s =
   match ty.ty_node with
   | KeyPair pid -> pid
   | _ -> failwith (fsprintf "%s: KeyPair arg expected, got %a instead" s pp_ty ty)
-                  
-let ensure_ty_PKey ty s =
+              
+let ensure_ty_KeyElem ke ty s =
   match ty.ty_node with
-  | PKey pid -> pid
-  | _    ->
-    failwith (fsprintf "%s: PubKey expected, got %a instead" s pp_ty ty)
-
-let ensure_ty_SKey ty s =
-  match ty.ty_node with
-  | SKey pid -> pid
-  | _    ->
-    failwith (fsprintf "%s: SecretKey expected, got %a instead" s pp_ty ty)
+  | KeyElem(ke',pid) when ke = ke' -> pid
+  | _ ->
+    failwith (fsprintf "%s: %s expected, got %a instead" s (string_of_key_elem ke) pp_ty ty)
 
 let ensure_ty_G ty s =
   match ty.ty_node with
@@ -204,56 +203,27 @@ let ensure_ty_G ty s =
   | _    ->
     failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
-let ty_G gv = mk_ty (G gv)
-(*let ty_KeyPair pid = mk_ty (KeyPair pid) *)
-let ty_PKey pid = mk_ty (PKey pid)
-let ty_SKey pid = mk_ty (SKey pid)
-let ty_Fq = mk_ty Fq
-let ty_Bool = mk_ty Bool
-let ty_BS lv = mk_ty (BS lv)
-let ty_Prod tys = mk_ty (Prod tys)
-
 let mk_V v = mk_e (V v) v.Vsym.ty
   
 let mk_H h e =
   ensure_ty_equal h.Hsym.dom e.e_ty e None (fsprintf "mk_H for %a" Hsym.pp h);
   mk_e (H(h,e)) h.Hsym.codom
-
-let mk_Perm f is_inverse k e =
-    let k_pid = if is_inverse then
-		     ensure_ty_SKey k.e_ty "mk_Perm (inverse) - key"
-		   else
-		     ensure_ty_PKey k.e_ty "mk_Perm (direct) - key"
-    in
-    if (not (f.Psym.pid = k_pid)) then
-      failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." Psym.pp f);
-    ensure_ty_equal e.e_ty f.Psym.dom
-		    e (Some k)
-		    (fsprintf "mk_Perm for %a : expected arg of type %a" Psym.pp f pp_ty e.e_ty);
-    mk_e (Perm(f,is_inverse,k,e)) f.Psym.dom
-                  
 	 
-let mk_GetPK kp =
-  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetPK" in
-  mk_e (GetPK kp) (ty_PKey kp_pid)
+let mk_ProjPermKey ke kp =
+  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_ProjPermKey" in
+  mk_e (ProjPermKey(ke,kp)) (mk_KeyElem ke kp_pid)
        
-let mk_GetSK kp =
-  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetSK" in
-    mk_e (GetSK kp) (ty_PKey kp_pid)
+let mk_Quant q b e =
+  mk_e (Quant(q,b,e)) mk_Bool
 
-(* let mk_GetSK f kp =
-  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_GetSK" in
-    if (not (f.Psym.pid = kp_pid)) then
-      failwith (fsprintf "mk_GetSK: The permutation of given KeyPair is not %a." Psym.pp f);  
-    mk_e (GetSK (f,kp)) (ty_SKey f.Psym.pid) *)
-       
-let mk_All b e =
-  mk_e (All(b,e)) ty_Bool
+let mk_All = mk_Quant All
+
+let mk_Exists = mk_Quant Exists
 
 let mk_Tuple es =
   match es with
   | [e] -> e
-  | _   -> mk_e (Tuple es) (ty_Prod (L.map (fun e -> e.e_ty) es))
+  | _   -> mk_e (Tuple es) (mk_Prod (L.map (fun e -> e.e_ty) es))
 
 let mk_Proj i e = 
   match e.e_ty.ty_node with
@@ -269,12 +239,12 @@ let mk_Proj i e =
   
 let mk_Cnst c ty = mk_e (Cnst c) ty
 
-let mk_GGen gv = mk_Cnst GGen (ty_G gv)
-let mk_FNat n = assert (n >= 0); mk_Cnst (FNat n) ty_Fq
-let mk_FOne = mk_Cnst (FNat 1) ty_Fq
-let mk_FZ = mk_Cnst (FNat 0) ty_Fq
-let mk_Z lv = mk_Cnst Z (ty_BS lv)
-let mk_B  b = mk_Cnst (B b) ty_Bool
+let mk_GGen gv = mk_Cnst GGen (mk_G gv)
+let mk_FNat n = assert (n >= 0); mk_Cnst (FNat n) mk_Fq
+let mk_FOne = mk_Cnst (FNat 1) mk_Fq
+let mk_FZ = mk_Cnst (FNat 0) mk_Fq
+let mk_Z lv = mk_Cnst Z (mk_BS lv)
+let mk_B  b = mk_Cnst (B b) mk_Bool
 let mk_True = mk_B true
 let mk_False = mk_B false
 
@@ -282,53 +252,64 @@ let mk_App o es ty = mk_e (App(o,es)) ty
 
 let mk_GExp a b =
   let gv = ensure_ty_G a.e_ty "mk_GExp" in
-  ensure_ty_equal b.e_ty ty_Fq b None "mk_GExp";
+  ensure_ty_equal b.e_ty mk_Fq b None "mk_GExp";
   mk_App (GExp gv) [a;b] a.e_ty
 
+let mk_Perm f ptype k e =
+  let ke = key_elem_of_perm_type ptype in
+  let k_pid = ensure_ty_KeyElem ke k.e_ty "mk_Perm - key" in
+  if (not (f.Psym.pid = k_pid)) then
+    failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." Psym.pp f);
+  ensure_ty_equal e.e_ty f.Psym.dom
+    e (Some k)
+    (fsprintf "mk_Perm for %a : expected arg of type %a" Psym.pp f pp_ty e.e_ty);
+  let p = Perm(ptype,f) in
+  mk_App p [k;e]
+                  
 let mk_GOne gn =
   mk_GExp (mk_GGen gn) mk_FZ
 
 let mk_GLog a =
   let gv = ensure_ty_G a.e_ty "mk_GLog" in
-  mk_App (GLog gv) [a] ty_Fq
+  mk_App (GLog gv) [a] mk_Fq
 
 let mk_GInv a =
   let _gv = ensure_ty_G a.e_ty "mk_GInv" in
   mk_App GInv  [a] a.e_ty
 
 let mk_EMap es a b =
-  ensure_ty_equal a.e_ty (ty_G es.Esym.source1) a None "mk_EMap";
-  ensure_ty_equal b.e_ty (ty_G es.Esym.source2) b None "mk_EMap";
-  mk_App (EMap es) [a;b] (ty_G es.Esym.target)
+  ensure_ty_equal a.e_ty (mk_G es.Esym.source1) a None "mk_EMap";
+  ensure_ty_equal b.e_ty (mk_G es.Esym.source2) b None "mk_EMap";
+  mk_App (EMap es) [a;b] (mk_G es.Esym.target)
 
 let mk_FOpp a =
-  ensure_ty_equal a.e_ty ty_Fq a None "mk_FOpp";
-  mk_App FOpp [a] ty_Fq
+  ensure_ty_equal a.e_ty mk_Fq a None "mk_FOpp";
+  mk_App FOpp [a] mk_Fq
 
 let mk_FMinus a b =
-  ensure_ty_equal a.e_ty ty_Fq a None "mk_FMinus";
-  ensure_ty_equal b.e_ty ty_Fq b None "mk_FMinus";
-  mk_App FMinus [a;b] ty_Fq
+  ensure_ty_equal a.e_ty mk_Fq a None "mk_FMinus";
+  ensure_ty_equal b.e_ty mk_Fq b None "mk_FMinus";
+  mk_App FMinus [a;b] mk_Fq
 
 let mk_FInv a =
-  ensure_ty_equal a.e_ty ty_Fq a None "mk_FInv";
-  mk_App FInv [a] ty_Fq
+  ensure_ty_equal a.e_ty mk_Fq a None "mk_FInv";
+  mk_App FInv [a] mk_Fq
 
 let mk_FDiv a b =
-  ensure_ty_equal a.e_ty ty_Fq a None "mk_FDiv";
-  ensure_ty_equal b.e_ty ty_Fq b None "mk_FDiv";
-  mk_App FDiv [a;b] ty_Fq
+  ensure_ty_equal a.e_ty mk_Fq a None "mk_FDiv";
+  ensure_ty_equal b.e_ty mk_Fq b None "mk_FDiv";
+  mk_App FDiv [a;b] mk_Fq
 
 let mk_Eq a b =
   ensure_ty_equal a.e_ty b.e_ty a (Some b) "mk_Eq";
-  mk_App Eq [a;b] ty_Bool
+  mk_App Eq [a;b] mk_Bool
 
 let mk_Not a =
-  ensure_ty_equal a.e_ty ty_Bool a None "mk_Not";
-  mk_App Not [a] ty_Bool
+  ensure_ty_equal a.e_ty mk_Bool a None "mk_Not";
+  mk_App Not [a] mk_Bool
 
 let mk_Ifte a b c =
-  ensure_ty_equal a.e_ty ty_Bool a None "mk_Ifte";
+  ensure_ty_equal a.e_ty mk_Bool a None "mk_Ifte";
   ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
   mk_App Ifte [a;b;c] b.e_ty
 
@@ -350,9 +331,9 @@ let mk_nary s sort o es ty =
     L.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
     mk_e (Nary(o,es)) ty
 
-let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es ty_Fq 
+let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq 
 
-let mk_FMult es = mk_nary "mk_FMult" true FMult es ty_Fq
+let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
 let mk_Xor es =
   match es with
@@ -363,13 +344,13 @@ let mk_Xor es =
     end
   | _ -> failwith "mk_Xor: expected non-empty list"
 
-let mk_Land es = mk_nary "mk_Land" false Land es ty_Bool
+let mk_Land es = mk_nary "mk_Land" false Land es mk_Bool
 
 let mk_GMult es =
   match es with
   | e::_ ->
     begin match e.e_ty.ty_node with
-    | G gv -> mk_nary "mk_GMult" true GMult es (ty_G gv)
+    | G gv -> mk_nary "mk_GMult" true GMult es (mk_G gv)
     | _ -> assert false
     end
   | _ -> assert false
@@ -392,19 +373,10 @@ let sub_map g e =
       let e1' = g e1 in
       if e1 == e1' then e
       else mk_e (H(h, e1')) e.e_ty
-  | Perm(f,is_inverse,k,e1) ->
-     let e1' = g e1 in
-     let k' = g k in
-     if e1 == e1' && k' == k then e
-     else mk_e (Perm(f,is_inverse,k',e1')) e.e_ty
-  | GetPK e1 ->
+  | ProjPermKey(ke,e1) ->
      let e1' = g e1 in
      if e1 == e1' then e
-     else mk_e (GetPK e1') e.e_ty
-  | GetSK e1 ->
-     let e1' = g e1 in
-     if e1 == e1' then e
-     else mk_e (GetSK e1') e.e_ty
+     else mk_e (ProjPermKey(ke,e1')) e.e_ty
   | Tuple(es) ->
       let es' = smart_map g es in
       if es == es' then e
@@ -421,10 +393,10 @@ let sub_map g e =
       let es' = smart_map g es in
       if es == es' then e
       else mk_e (Nary(o, es')) e.e_ty
-  | All(b,e1) ->
+  | Quant(q,b,e1) ->
     let e' = g e1 in
     if e1 == e' then e
-    else mk_All b e'
+    else mk_Quant q b e'
 
 let check_fun g e =
   let e' = g e in 
@@ -436,16 +408,13 @@ let e_sub_map g = sub_map (check_fun g)
 let e_sub_fold g acc e =
   match e.e_node with
   | V _ | Cnst _ -> acc
-  | GetPK (kp) | GetSK(kp) -> g acc kp
-  | Perm(_,_,_,e) | H(_,e) | Proj(_, e) | All(_,e) -> g acc e
+  | ProjPermKey(_,e) | H(_,e) | Proj(_, e) | Quant(_,_,e) -> g acc e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
 let e_sub_iter g e = 
   match e.e_node with
   | V _ | Cnst _ -> ()
-  | GetPK(kp) | GetSK(kp) -> g kp
-  | Perm(_,_,_,e) -> g e 
-  | H(_,e) | Proj(_, e) | All(_,e) -> g e
+  | ProjPermKey(_,e) | H(_,e) | Proj(_, e) | Quant(_,_,e) -> g e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.iter g es
 
 let rec e_iter g e =
@@ -496,24 +465,18 @@ let e_map_ty_maximal ty g e0 =
     let trans = if me then g else id in
     match e.e_node with
     | V(_) | Cnst(_) -> e
-    | GetPK(kp) ->
+    | ProjPermKey(ke,kp) ->
        let kp = go ie kp in
-       trans (mk_GetPK kp)
-    | GetSK(kp) ->
-       let kp = go ie kp in
-       trans (mk_GetSK kp)
-    | Perm(f,is_inverse,k,e) ->
-       let e = go ie e in
-       trans (mk_Perm f is_inverse k e)
+       trans (mk_ProjPermKey ke kp)
     | H(f,e) ->
       let e = go ie e in
       trans (mk_H f e)
     | Tuple(es) ->
       let es = L.map (go ie) es in
       trans (mk_Tuple es)
-    | All (b,e) ->
+    | Quant (q,b,e) ->
       let e = go ie e in
-      trans (mk_All b e)      
+      trans (mk_Quant q b e)      
     | Proj(i,e) ->
       let e = go ie e in
       trans (mk_Proj i e)

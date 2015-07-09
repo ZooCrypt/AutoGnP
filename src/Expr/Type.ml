@@ -9,7 +9,17 @@ open Util
 module Lenvar : IdType.ID = Id
 module Groupvar : IdType.ID = Id
 module Permvar : IdType.ID = Id
-			       
+
+type key_elem = SKey | PKey
+
+let hash_key_elem = function
+  | SKey -> 1
+  | PKey -> 2
+
+let string_of_key_elem = function
+  | SKey -> "Secret Key"
+  | PKey -> "Public Key"
+
 (** Types and type nodes. *)
 type ty = {
   ty_node : ty_node;
@@ -23,8 +33,7 @@ and ty_node =
   | Prod of ty list
   | Int 
   | KeyPair of Permvar.id
-  | PKey of Permvar.id
-  | SKey of Permvar.id
+  | KeyElem of key_elem * Permvar.id
 
 (** Type equality and hashing. *)
 let ty_equal : ty -> ty -> bool = (==)
@@ -35,27 +44,27 @@ let ty_compare t1 t2 = t1.ty_tag - t2.ty_tag
 module Hsty = Hashcons.Make (struct
   type t = ty
 
-  let equal t1 t2 = match t1.ty_node, t2.ty_node with
-    | BS lv1, BS lv2     -> Lenvar.equal lv1 lv2
-    | Bool, Bool         -> true
-    | G gv1, G gv2       -> Groupvar.equal gv1 gv2
-    | KeyPair pid1, KeyPair pid2
-    | PKey pid1, PKey pid2
-    | SKey pid1, SKey pid2   -> Permvar.equal pid1 pid2
-    | Fq, Fq             -> true
-    | Prod ts1, Prod ts2 -> list_eq_for_all2 ty_equal ts1 ts2
-    | _                  -> false
+  let equal t1 t2 =
+    match t1.ty_node, t2.ty_node with
+    | BS lv1, BS lv2                 -> Lenvar.equal lv1 lv2
+    | Bool, Bool                     -> true
+    | G gv1, G gv2                   -> Groupvar.equal gv1 gv2
+    | KeyPair p1, KeyPair p2         -> Permvar.equal p1 p2
+    | KeyElem(k1,p1), KeyElem(k2,p2) -> k1 = k2 && Permvar.equal p1 p2
+    | Fq, Fq                         -> true
+    | Prod ts1, Prod ts2             -> list_eq_for_all2 ty_equal ts1 ts2
+    | _                              -> false
 
-  let hash t = match t.ty_node with
-    | BS lv   -> Hashcons.combine 1 (Lenvar.hash lv)
-    | Bool    -> 2
-    | G gv    -> Hashcons.combine 3 (Groupvar.hash gv)
-    | Fq      -> 4
-    | Prod ts -> Hashcons.combine_list ty_hash 3 ts
-    | Int     -> 6
-    | KeyPair pid -> Hashcons.combine 7 (Permvar.hash pid)
-    | PKey pid    -> Hashcons.combine 8 (Permvar.hash pid)
-    | SKey pid    -> Hashcons.combine 9 (Permvar.hash pid)
+  let hash t =
+    match t.ty_node with
+    | BS lv         -> hcomb 1 (Lenvar.hash lv)
+    | Bool          -> 2
+    | G gv          -> hcomb 3 (Groupvar.hash gv)
+    | Fq            -> 4
+    | Prod ts       -> hcomb_l ty_hash 3 ts
+    | Int           -> 6
+    | KeyPair p     -> hcomb 7 (Permvar.hash p)
+    | KeyElem(ke,p) -> hcomb 8 (hcomb (hash_key_elem ke) (Permvar.hash p))
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -79,8 +88,7 @@ let mk_ty n = Hsty.hashcons {
 let mk_BS lv = mk_ty (BS lv)
 let mk_G gv = mk_ty (G gv)
 let mk_KeyPair pid = mk_ty (KeyPair pid)
-let mk_PKey pid = mk_ty (PKey pid)
-let mk_SKey pid = mk_ty (SKey pid)
+let mk_KeyElem ke pid = mk_ty (KeyElem(ke,pid))
 let mk_Fq = mk_ty Fq
 let mk_Bool = mk_ty Bool
 let mk_Int = mk_ty Int
@@ -106,42 +114,20 @@ let destr_BS ty =
   | BS lv -> lv
   | _     -> assert false
 
-let destr_P ty = 
+let destr_KeyPair ty = 
   match ty.ty_node with
   | KeyPair lv -> lv
-  | PKey lv -> lv
-  | SKey lv -> lv
   | _     -> assert false
 
-let destr_Prod ty = match ty.ty_node with
+let destr_KeyElem ty = 
+  match ty.ty_node with
+  | KeyElem(ke,lv) -> (ke,lv)
+  | _              -> assert false
+
+let destr_Prod ty =
+  match ty.ty_node with
   | Prod ts -> ts
   | _ -> assert false
-
-(*
-(*i ----------------------------------------------------------------------- i*)
-(** Check size equality of type *)
-type size = {
-  mutable s_BS : Id.S.t;
-  mutable s_B  : int;
-  mutable s_G  : Id.S.t;
-  mutable s_Fq : int
-}
-
-let size_of t = 
-  let s = { s_Bs = Id.S.empty; s_B = 0; s_G = Id.S.empty;s_Fq = 0 } in
-  let rec aux ty = 
-    match ty.ty_node with
-    | BS id  -> s.s_Bs <- Id.S.add id s.s_Bs 
-    | Bool   -> s.s_B  <- 1 + s.s_B
-    | G id   -> s.s_G  <- Id.S.add id s.s_G
-    | Fq     -> s.s_Fq <- 1 + s.s_Fq
-    | Prod l -> List.iter aux l
-    | Int    -> assert false in
-  aux ty;
-  s
-*)
-
-(*i ----------------------------------------------------------------------- i*)
 
 (*i*)
 
@@ -152,16 +138,17 @@ let pp_group fmt gv =
 
 let rec pp_ty fmt ty =
   match ty.ty_node with
-  | BS lv   -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
-  | Bool    -> F.fprintf fmt "Bool"
-  | Fq      -> F.fprintf fmt "Fq"
-  | Prod ts -> F.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts
-  | G gv when Groupvar.name gv = "" ->
-    F.fprintf fmt "G" 
-  | G gv    -> F.fprintf fmt "G_%s" (Groupvar.name gv)
-  | Int     -> F.fprintf fmt "Int"
-  | KeyPair pid    -> F.fprintf fmt "KeyPair_%s" (Permvar.name pid)
-  | PKey pid    -> F.fprintf fmt "PKey_%s" (Permvar.name pid)
-  | SKey pid    -> F.fprintf fmt "SKey_%s" (Permvar.name pid)
+  | BS lv             -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
+  | Bool              -> F.fprintf fmt "Bool"
+  | Fq                -> F.fprintf fmt "Fq"
+  | Prod ts           -> F.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts
+  | Int               -> F.fprintf fmt "Int"
+  | KeyPair pid       -> F.fprintf fmt "KeyPair_%s" (Permvar.name pid)
+  | KeyElem(SKey,pid) -> F.fprintf fmt "PKey_%s" (Permvar.name pid)
+  | KeyElem(PKey,pid) -> F.fprintf fmt "SKey_%s" (Permvar.name pid)
+  | G gv ->
+    if Groupvar.name gv = ""
+    then F.fprintf fmt "G" 
+    else F.fprintf fmt "G_%s" (Groupvar.name gv)
 
 (*i*)
