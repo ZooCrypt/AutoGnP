@@ -134,10 +134,6 @@ rule lex = parse
   | "g_"(['a'-'z''0'-'9']* as s) { GEN(s) }
   | "G" { TG("") }
   | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
-  | ((['a'-'z' 'A'-'Z' ]
-	['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s)"_inv" (* Parsing 'f_inv'-like patterns *)
-      { try Hashtbl.find keyword_table (s ^ "_inv")
-      with Not_found -> F_INV s }
   | "get_pk" {GETPK}
   | "get_sk" {GETSK}	 
   | "KeyPair_"((['a'-'z' 'A'-'Z' ]

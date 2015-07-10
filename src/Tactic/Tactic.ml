@@ -572,11 +572,11 @@ let handle_tactic ts tac =
 
 let handle_instr verbose ts instr =
   match instr with
-  | PT.PermDecl(s,t) ->
-     if Mstring.mem s ts.ts_permdecls then
-       tacerror "Permutation with the same name already declared.";
+  | PT.PermDecl(s,t) -> let s_inv = s ^ "_inv" in
+     if Mstring.mem s_inv ts.ts_permdecls then
+       tacerror "Permutation with the same name \'%s\' already declared." s;
      let f = Psym.mk s (PU.ty_of_parse_ty ts t) (create_permvar ts s) in
-     let ts = { ts with ts_permdecls = Mstring.add s f ts.ts_permdecls } in
+     let ts = { ts with ts_permdecls = Mstring.add s_inv f ts.ts_permdecls } in
      (ts, fsprintf "Declared permutation %s : " s)
   | PT.RODecl(s,ro,t1,t2) ->
     let oname = if ro then "random oracle" else "operator" in

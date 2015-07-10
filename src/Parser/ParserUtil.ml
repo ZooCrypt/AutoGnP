@@ -59,17 +59,17 @@ let ty_of_parse_ty ts pty =
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
     | KeyPair s ->
        (try
-         let f = Mstring.find s ts.ts_permdecls in
+         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
            T.mk_KeyPair f.Psym.pid
          with Not_found -> tacerror "Undefined permutation %s" s)
     | PKey s ->
        (try
-         let f = Mstring.find s ts.ts_permdecls in
+         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
            T.mk_KeyElem T.PKey f.Psym.pid
          with Not_found -> tacerror "Undefined permutation %s" s)
     | SKey s ->
        (try
-         let f = Mstring.find s ts.ts_permdecls in
+         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
            T.mk_KeyElem T.SKey f.Psym.pid
          with Not_found -> tacerror "Undefined permutation %s" s)         
     | G(s)      -> T.mk_G(create_groupvar ts s)
@@ -137,26 +137,29 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (L.map go es)
-    | ParsePerm(s,b,k,e) when Mstring.mem s ts.ts_permdecls ->
-       let f = Mstring.find s ts.ts_permdecls in
-       let ptype = if b then E.IsInv else E.NotInv in
-       E.mk_Perm f ptype (go k) (go e)
-    | ParseGetPK(kp) -> E.mk_ProjPermKey T.PKey (go kp)
-    | ParseGetSK(kp) -> E.mk_ProjPermKey T.SKey (go kp)
-    | ParsePerm(s,_,_,_) -> tacerror "Undefined permutation %s" s
+    | ParseProjPermKey(ke,kp) -> E.mk_ProjPermKey ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
-    | SApp(s,es) when Mstring.mem s ts.ts_permdecls ->
+    | SApp(s,es) when Mstring.mem (s ^ "_inv") ts.ts_permdecls ->
        begin
          match es with
          | [k;e] ->
-            let f = Mstring.find s ts.ts_permdecls in
+            let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
             E.mk_Perm f E.NotInv (go k) (go e)
          | _ -> fail_parse (F.sprintf "Permutation %s expects  2 arguments" s)
+       end
+    | SApp(s_inv,es) when Mstring.mem s_inv ts.ts_permdecls ->
+       begin
+         match es with
+         | [k;e] ->
+            let f = Mstring.find s_inv ts.ts_permdecls in
+            E.mk_Perm f E.IsInv (go k) (go e)
+         | _ -> fail_parse (F.sprintf "Permutation %s expects  2 arguments" s_inv)
        end
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (L.map go es) in
       E.mk_H h es
+             
     | SApp(s,[a;b]) when Mstring.mem s ts.ts_emdecls ->
       let es = Mstring.find s ts.ts_emdecls in
       E.mk_EMap es (go a) (go b)
@@ -212,12 +215,6 @@ let lcmd_of_parse_lcmd (vmap : G.vmap) ts ~oname lcmd =
     let e = expr_of_parse_expr vmap ts qual e in
     let v = create_var vmap ts qual s e.E.e_ty in
     G.LLet(v,e)
-(*  | LSampKP(s,t,es) when (Mstring.mem s ts.ts_permdecls) ->
-     let t = ty_of_parse_ty t and
-	 es = L.map (expr_of_parse_expr vmap ts qual) es and
-	 pid = create_permvar ts s in
-     let v = create_var vmap ts qual ("KeyPair_"^s) (T.mk_KeyPair pid) in
-     G.LSamp(v,(t,es)) (* Aborted because t != KeyPair _ *) *)
   | LSamp(s,t,es) ->
     let t = ty_of_parse_ty ts t in
     let es = L.map (expr_of_parse_expr vmap ts qual) es in

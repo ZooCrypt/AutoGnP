@@ -26,9 +26,7 @@ type parse_expr =
   | V of string qual * string
   | SApp of string * parse_expr list
   | Tuple of parse_expr list
-  | ParsePerm of string * bool * parse_expr * parse_expr
-  | ParseGetPK of parse_expr
-  | ParseGetSK of parse_expr
+  | ParseProjPermKey of Type.key_elem * parse_expr
   | Proj of int * parse_expr
   | CB of bool
   | CZ of string
