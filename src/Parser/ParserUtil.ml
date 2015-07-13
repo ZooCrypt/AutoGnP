@@ -139,22 +139,24 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
     | Tuple(es) -> E.mk_Tuple (L.map go es)
     | ParseProjPermKey(ke,kp) -> E.mk_ProjPermKey ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
+                             
     | SApp(s,es) when Mstring.mem (s ^ "_inv") ts.ts_permdecls ->
        begin
+         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
          match es with
-         | [k;e] ->
-            let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-            E.mk_Perm f E.NotInv (go k) (go e)
-         | _ -> fail_parse (F.sprintf "Permutation %s expects  2 arguments" s)
+         | [k;e] -> E.mk_Perm f E.NotInv (go k) (go e)
+         | k::es -> E.mk_Perm f E.NotInv (go k) (E.mk_Tuple (L.map go es))
+         | _ -> fail_parse (F.sprintf "Permutation %s expects 2 arguments" s)
        end
     | SApp(s_inv,es) when Mstring.mem s_inv ts.ts_permdecls ->
        begin
+         let f = Mstring.find s_inv ts.ts_permdecls in
          match es with
-         | [k;e] ->
-            let f = Mstring.find s_inv ts.ts_permdecls in
-            E.mk_Perm f E.IsInv (go k) (go e)
-         | _ -> fail_parse (F.sprintf "Permutation %s expects  2 arguments" s_inv)
+         | [k;e] -> E.mk_Perm f E.IsInv (go k) (go e)
+         | k::es -> E.mk_Perm f E.IsInv (go k) (E.mk_Tuple (L.map go es))
+         | _ -> fail_parse (F.sprintf "Permutation %s expects 2 arguments" s_inv)
        end
+         
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (L.map go es) in

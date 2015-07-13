@@ -10,21 +10,21 @@ random oracle H1 : (BS_km * BS_kr) -> BS_kh.
 random oracle H2 : BS_kh -> (BS_km * BS_kr).
 
          (* Trapdoor permutation *)
-permutation f : (BS_kh * (BS_km * BS_kr)).
+permutation f : (BS_kh * BS_km * BS_kr).
 
         (* Computational assumption *)
 adversary A_comp :
-  (PKey_f *  (BS_kh * (BS_km * BS_kr))) ->  (BS_kh * (BS_km * BS_kr)).
+  (PKey_f *  (BS_kh * BS_km * BS_kr)) ->  (BS_kh * BS_km * BS_kr).
 assumption OW_comp_assm succ
-  [ kp <-$ KeyPair_f; r <-$  (BS_kh * (BS_km * BS_kr)); 
+  [ kp <-$ KeyPair_f; r <-$  (BS_kh * BS_km * BS_kr); 
     r_A <- A_comp(get_pk(kp),f(get_pk(kp),r)); ] 
     : r_A = r.
 
              (* IND-CPA Game *)
 adversary A_find  : PKey_f -> (BS_km * BS_km).
-adversary A_guess : (BS_kh * (BS_km * BS_kr)) -> Bool.
+adversary A_guess : (BS_kh * BS_km * BS_kr) -> Bool.
 
-oracle Dec : (BS_kh * (BS_km * BS_kr)) -> BS_km.
+oracle Dec : (BS_kh * BS_km * BS_kr) -> BS_km.
 
 bound_adv
   [ b <-$ Bool;
@@ -37,52 +37,22 @@ bound_adv
     let cs = H1(mb,r);
     let ch2 = H2(cs);
     let ct = ((ch2#0) ++ mb, (ch2#1) ++ r);
-    let cb = f(pk,(cs,ct));
-    b'<- A_guess(cb) with
-      Dec(c) = {
+    let cb = f(pk,cs,ct);
+    b'<- A_guess(cb#0,cb#1,cb#2) with
+      Dec(ch,cm,cr) = {
+        let c = (ch,cm,cr);
         let st = f_inv(sk,c);
         let s = st#0;
-        let t = st#1;
-        let x = H2(s) ++ t;
+        let t1 = st#1;
+        let t2 = st#2;
+        let h2s = H2(s);
+        let x = (((h2s#0) ++ t1),((h2s#1) ++ t2));
         s = H1(x);
-        return x#1;
+        return x#0;
       };
     ] : b = b'.
     
-    
-    
-                 (* Proof *)
-(* 
-   Idea : 
-   -1- exploit the randomness of ideal RO hash function H
-   that 'ensures' the secrecy of H(r) XOR Mb (OTP-like)
-   as long as its argument r remains secret ; 
-   -2- 'r' secrecy results immediately from the computational
-   assumption of the trapdoor permutation.
-*)   
-
-(* Splitting the game into -1- and -2- (sub)goals *)
-abstract 4 r' H(r).
-bad1 4 rr.
-    
-    (* OTP perfect secrecy for goal -1- *)    
-    norm. swap r' 1.
-    rnd! r' (r' -> (b?M1:M0) ++ r') (r' -> (b?M1:M0) ++ r').
-    norm. swap b (6).
-    indep.
-
-    (* Finding (hash argument) r would mean breaking the 
-       computational assumption of f -> goal -2- *)    
     norm.
-    swap KPair (1). swap r (2).
-    find (pk f_r -> (f(pk,rr) = f_r)) 
-         (get_pk(KPair), f(get_pk(KPair),r)) 
-         A_finder rr.
-    (*guess A_guesser rr.*)
-    abstract 3 A_comp_args 
-    (  get_pk(KPair) , f(get_pk(KPair),r)  ).
-    abstract 9 r_A rr.
-    assumption_computational OW_comp_assm [3 9].
-    
-qed.
-print_proof!.
+    abstract 5 mb (b?m1:m0).
+    abstract 6 cs H1(mb,r).
+    add_test (7,1,1) ((f_inv(get_sk(kp),c)#0) <> cs) AA gc1 gc2.
