@@ -339,7 +339,7 @@ let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
    Every base type must be either Bool or BS, and
    if there ever is a product (stored in acc_option), 
    all the remaining ty_nodes must be of the same type *)
-let rec valid_Xor_type ?acc_option = function
+let rec valid_Xor_type ?acc_option : ty list -> bool = function
   | [] -> true
   | ty::tys when acc_option = None ->
      (match ty.ty_node with
@@ -351,7 +351,7 @@ let rec valid_Xor_type ?acc_option = function
      (match ty.ty_node with
       | Prod tys2 ->
          (List.fold_left (fun b1 b2 -> b1 && b2) true (List.map2 ty_equal acc tys2))
-       (* The previous check implicitly runs 'valid_Xor_type tys2' due to wf of acc *)
+       (* The previous check also implicitly runs 'valid_Xor_type tys2' due to wf of acc *)
          && (valid_Xor_type ?acc_option tys)
       | _ -> false)
                     
