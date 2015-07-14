@@ -41,6 +41,7 @@ bound_adv
     let cb = f(pk,(cs,ct));
     b'<- A_guess(cb) with
       Dec(c) = {
+        true;
         let st = f_inv(sk,c);
         let s = st#0;
         let t = st#1;
@@ -56,4 +57,6 @@ bound_adv
     norm.
     abstract 5 mb (b?m1:m0).
     abstract 6 cs H1(mb,r).
+    add_test (7,1,1) false AA gc.
+    
     add_test (7,1,1) ((f_inv(get_sk(kp),c)#0) <> cs) AA gc1 gc2.

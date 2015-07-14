@@ -496,7 +496,7 @@ let handle_tactic ts tac =
    let oname = Id.name seoc.seoc_osym.Osym.id in
    let t = PU.expr_of_parse_expr vmap ts (Qual oname) t in
    let oty = seoc.seoc_osym.Osym.dom in
-   let destr_prod ty = match oty.ty_node with (* FIXME : shouldn't it be ty.ty_node ? *)
+   let destr_prod ty = match ty.ty_node with
      | Prod(tys) -> tys
      | _ -> [ty]
    in
@@ -506,9 +506,13 @@ let handle_tactic ts tac =
    let adecls = Mstring.add aname asym ts.ts_adecls in
    let tys = destr_prod oty in
    (* create variables for returned values *)
-   if not (L.length fvs = L.length tys) then
+   if not (L.length fvs = L.length seoc.seoc_oargs) then
      tacerror "number of given variables does not match type";
-   let fvs = L.map2 (fun v ty -> PU.create_var vmap ts Unqual v ty) fvs tys in
+   let fvs =
+     match fvs with
+     | [fv] -> [ PU.create_var vmap ts Unqual fv oty ]
+     | _    -> L.map2 (fun v ty -> PU.create_var vmap ts Unqual v ty) fvs tys
+   in
    apply ~adecls (CR.t_add_test opos t asym fvs)
   
  | PT.Radd_test(None,None,None,None) ->
