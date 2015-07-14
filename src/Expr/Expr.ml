@@ -335,15 +335,32 @@ let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
-let mk_Xor es =
-  match es with
-  | e::_ ->
-    begin match e.e_ty.ty_node with
-    | BS _ | Bool -> mk_nary "mk_Xor" true Xor es e.e_ty
-    | _ -> failwith "mk_Xor: expected bitstring argument"
-    end
+(* Helper to check the validity of the type of expressions when calling mk_Xor :
+   Every base type must be either Bool or BS, and
+   if there ever is a product (stored in acc_option), 
+   all the remaining ty_nodes must be of the same type *)
+let rec valid_Xor_type ?acc_option = function
+  | [] -> true
+  | ty::tys when acc_option = None ->
+     (match ty.ty_node with
+     | BS _ | Bool -> valid_Xor_type tys
+     | Prod tys2 -> (valid_Xor_type tys2) && (valid_Xor_type ~acc_option:tys2 tys)
+     | _ -> false)
+  | ty::tys ->
+     let Some acc = acc_option in
+     (match ty.ty_node with
+      | Prod tys2 ->
+         (List.fold_left (fun b1 b2 -> b1 && b2) true (List.map2 ty_equal acc tys2))
+       (* The previous check implicitly runs 'valid_Xor_type tys2' due to wf of acc *)
+         && (valid_Xor_type ?acc_option tys)
+      | _ -> false)
+                    
+let mk_Xor = function
+  | e::_ as es -> if ( valid_Xor_type (List.map (fun e -> e.e_ty) es) )
+                  then mk_nary "mk_Xor" true Xor es e.e_ty
+                  else failwith "mk_Xor: type mismatch"
   | _ -> failwith "mk_Xor: expected non-empty list"
-
+                                  
 let mk_Land es = mk_nary "mk_Land" false Land es mk_Bool
 
 let mk_GMult es =
