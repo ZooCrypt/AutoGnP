@@ -746,10 +746,10 @@ let rctxt_ev i c ju =
       mk_Eq (inst_ctxt c e1) (inst_ctxt c e2)
     else tacerror "ctxt_ev: bad event, expected equality"
   in
-  let ev = mk_Land (L.rev_append l (b::r)) in
+  let ev = {se.se_ev with ev_expr = mk_Land (L.rev_append l (b::r))} in
   let wfs = wf_gdef NoCheckDivZero (se.se_gdef) in
-  wf_exp NoCheckDivZero wfs ev;
-  let new_ju = { se with se_ev = { se.se_ev with ev_expr = ev } } in
+  wf_ev NoCheckDivZero wfs ev;
+  let new_ju = { se with se_ev = ev } in
   Rctxt_ev(i,c), [ { ju with ju_se = new_ju } ]
 
 let t_ctxt_ev i c = prove_by (rctxt_ev i c)

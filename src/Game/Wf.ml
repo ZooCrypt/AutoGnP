@@ -278,13 +278,13 @@ let wf_gdef ctype gdef0 =
   in
   go (mk_wfs ()) gdef0
 
-let check_binding ctype wfs ev = 
+let wf_ev ctype wfs ev = 
   let wfs = List.fold_left check_binding1 wfs ev.ev_binding in
   assert (ty_equal mk_Bool ev.ev_expr.e_ty);
   log_t (lazy (fsprintf "checking ev-expression: %a" pp_exp ev.ev_expr));
   wf_exp ctype wfs ev.ev_expr
-    
+
 let wf_se ctype se =
   let wfs = wf_gdef ctype se.se_gdef in
-  check_binding ctype wfs se.se_ev
+  wf_ev ctype wfs se.se_ev
 
