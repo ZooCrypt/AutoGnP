@@ -19,6 +19,12 @@ assumption OW_comp_assm succ
   [ kp <-$ KeyPair_f; r <-$  (BS_kh * (BS_km * BS_kr)); 
     r_A <- A_comp(get_pk(kp),f(get_pk(kp),r)); ] 
     : r_A = r.
+adversary A_comp1 : 
+  (PKey_f *  (BS_kh * (BS_km * BS_kr))) -> BS_kh.
+assumption OW_comp_assm1 succ
+  [ kp <-$ KeyPair_f; r <-$  (BS_kh * (BS_km * BS_kr)); 
+    r_A_0 <- A_comp1(get_pk(kp),f(get_pk(kp),r)); ] 
+    : r_A_0 = (r#0).
 
              (* IND-CPA Game *)
 adversary A_find  : PKey_f -> (BS_km * BS_km).
@@ -54,9 +60,45 @@ bound_adv
       };
     ] : b = b'.
     
-    guard (13,1,1) ((f_inv(sk,c)#0) <> cs).
-    ctxt_ev 1 ( s -> f(pk,(s,ct)) ).
-    find (pk0 f_cs_ct -> (c <> f_cs_ct)) 
+    norm.
+    abstract 5 mb (b?m1:m0).
+    abstract 6 cs H1(mb,r).
+    abstract 7 ch2 H2(cs).
+    abstract 8 ct (ch2 ++ (mb,r)).
+    abstract 9 pk get_pk(kp).
+    abstract 10 sk get_sk(kp).
+    guard (11,1,3) ((f_inv(sk,c)#0) <> cs).
+    norm_nounfold.
+    abstract (11,1,1) st f_inv(sk,c).
+    abstract (11,1,2) s st#0.
+    abstract (11,1,3) t st#1.
+    abstract (11,1,4) ct' (t ++ H2(s)).
+    norm_nounfold.
+    case_ev (f_inv(sk,c) <> (cs,ct)).
+      rewrite_ev 1 <-.
+      case_ev (((f_inv(sk,c))#1) <> ct).
+        admit.
+        
+        norm_nounfold.
+        rewrite_ev 5 <-.
+        norm_nounfold. (*It fails here *)
+    
+    
+      norm_nounfold.
+      ctxt_ev 4 (cc -> f(pk,cc)).
+      norm.
+      rewrite_ev 4 .
+      norm.
+      false_ev.
+    
+    rewrite_ev 1 <-.
+    norm_nounfold.
+    case_ev 
+    subst 11 ( (f_inv(sk,c)#0,ct) -> f_inv(sk,c )
+    ctxt_ev 2 ( ss -> f_inv(sk,ss) ).
+    rewrite_ev 2.
+    norm.
+    find (pk0 f_cs_ct -> (c = f_cs_ct)) 
          (pk, cb) 
          A_finder c.
     
