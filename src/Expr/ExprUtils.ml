@@ -512,18 +512,40 @@ let expr_of_inverter (I e) = e
 
 let pp_inverter fmt i = pp_exp fmt (expr_of_inverter i)
 
-let e_eq_remove_eventual_perms e =
+let rec e_eq_remove_eventual_perms e =
   let e1,e2 = destr_Eq e in
   ( try
     let ( (f1,ptype1,k1,e11), (f2,ptype2,k2,e22) ) =
       destr_Perm e1, destr_Perm e2 in
     if (Psym.equal f1 f2 && ptype1 = ptype2 && e_equal k1 k2)
-    then mk_Eq e11 e22
+    then e_eq_remove_eventual_perms (mk_Eq e11 e22)
     else e
   with
   | Destr_failure _ -> e )
-           
-let e_equivalent_eqs e1 e2 =
-  let e11 = if (is_Eq e1) then e_eq_remove_eventual_perms e1 else e1 in
-  let e22 = if (is_Eq e2) then e_eq_remove_eventual_perms e2 else e2 in
-  e_equal e11 e22
+
+let eqs_equal e1 e2 =
+  let ((e11,e12),(e21,e22)) = (destr_Eq e1,destr_Eq e2) in
+  (e_equal e11 e21 && e_equal e12 e22) ||
+    (e_equal e12 e21 && e_equal e11 e22)
+                        
+let rec e_equivalent_eqs ?strong:(strong = true) e1 e2 =
+  if (is_Eq e1 && is_Eq e2) then (
+    let e1' = e_eq_remove_eventual_perms e1
+    and e2' = e_eq_remove_eventual_perms e2 in
+    let ((e11,e12),(e21,e22)) = (destr_Eq e1',destr_Eq e2') in
+    if strong && (is_Perm e11 <> is_Perm e12) && (is_Perm e21 <> is_Perm e22)
+    then (
+      let ((f1,ptype1,k1,e11),e12) =
+        if is_Perm e11 then (destr_Perm e11,e12)
+        else (destr_Perm e12, e11)
+      and ((f2,ptype2,k2,e21),e22) =
+        if is_Perm e21 then (destr_Perm e21,e22)
+        else (destr_Perm e22, e21) in
+      if (ptype1 <> ptype2) then
+        e_equivalent_eqs ~strong:false (mk_Eq e11 (mk_Perm f1 ptype2 k1 e12)) e2'
+      else
+        eqs_equal e1' e2'
+    ) else
+      eqs_equal e1' e2'
+  ) else
+    e_equal e1 e2

@@ -54,7 +54,16 @@ bound_adv
       };
     ] : b = b'.
     
+    guard (13,1,1) ((f_inv(sk,c)#0) <> cs).
+    ctxt_ev 1 ( s -> f(pk,(s,ct)) ).
+    find (pk0 f_cs_ct -> (c <> f_cs_ct)) 
+         (pk, cb) 
+         A_finder c.
+    
     norm.
     abstract 5 mb (b?m1:m0).
     abstract 6 cs H1(mb,r).
+    (* s <> cs *)
+
     add_test (7,1,1) ((f_inv(get_sk(kp),c)#0) <> cs) AA gc.
+    

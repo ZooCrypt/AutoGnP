@@ -153,5 +153,5 @@ val pp_inverter : F.formatter -> inverter -> unit
 
 (*val e_eq_remove_eventual_perms : expr -> expr*)
 
-val e_equivalent_eqs : expr -> expr -> bool
+val e_equivalent_eqs : ?strong:bool -> expr -> expr -> bool
 
