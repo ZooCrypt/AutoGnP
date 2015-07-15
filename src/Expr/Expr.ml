@@ -382,7 +382,9 @@ let mk_Nary op es =
   | Land  -> mk_Land  es
   | GMult -> mk_GMult es
 
-(*i ----------------------------------------------------------------------- i*)
+let mk_InEq a b =
+  mk_Not (mk_Eq a b)
+  (*i ----------------------------------------------------------------------- i*)
 (* \hd{Generic functions on expressions} *)
 
 let sub_map g e = 

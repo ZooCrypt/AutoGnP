@@ -117,7 +117,7 @@ val mk_FPlus       : expr list -> expr
 val mk_FMult       : expr list -> expr
 val mk_Xor         : expr list -> expr
 val mk_Land        : expr list -> expr
-
+val mk_InEq        : expr -> expr -> expr
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Generic functions on [expr]} *)
 
