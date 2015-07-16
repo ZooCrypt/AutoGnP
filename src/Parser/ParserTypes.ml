@@ -178,5 +178,6 @@ type instr =
   | Debug      of string
   | PrintGame  of string
   | PrintGames of string * string
+  | Help       of tactic
 
 type theory = instr list

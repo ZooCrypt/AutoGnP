@@ -14,7 +14,8 @@
 /* Tokens */
 
 %token EOF
-
+%token HELP
+       
 /*----------------------------------------------------------------------*/
 /* Tokens for types */
 
@@ -428,6 +429,14 @@ decl :
     LBRACK g2=gdef RBRACK e2=bind_event          { JudgDist(g1, e1, g2, e2) }
 
 /*----------------------------------------------------------------------*/
+/* HELP */
+help_command :
+| HELP RINJECTIVE_CTXT_EV { Help(Rinjective_ctxt_ev(0,None,None)) }
+| HELP RBAD1 { Help(Rbad(1,0,"")) }
+| HELP RBAD2 { Help(Rbad(2,0,"")) }
+       
+                
+/*----------------------------------------------------------------------*/
 /* proof commands */
 
 proof_command :
@@ -600,6 +609,7 @@ selector:
 | INBOTH { InBoth }
 
 instr :
+| hc=help_command    { [hc] }
 | i=decl { [i] }
 | i=proof_command { [i] }
 | ir=selector? is=separated_nonempty_list(SEMICOLON,tactic) 
