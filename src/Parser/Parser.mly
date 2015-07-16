@@ -163,6 +163,7 @@
 %token RSUBST
 %token RRENAME
 %token RCTXT_EV
+%token RINJECTIVE_CTXT_EV       
 %token REXCEPT
 %token RHYBRID
 %token RADD_TEST
@@ -387,6 +388,9 @@ ty_anno :
 
 ctx :
 | LPAREN i=ID ot=option(ty_anno) TO e=expr RPAREN { (i, ot, e) }
+                                           
+ctx_noty :
+| LPAREN i=ID TO e=expr RPAREN { (i,None,e) }
 
 sym_class:
 | LBRACK vs=separated_nonempty_list(COMMA,ID) RBRACK { vs }
@@ -572,6 +576,8 @@ tactic :
 | RCASE_EV e=uopt(expr)              { Rcase_ev(e) }
 | RREWRITE_EV i=gpos d=dir?          { Rrewrite_ev(i,from_opt LeftToRight d) }
 | RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Rctxt_ev(oj,c) }
+| RINJECTIVE_CTXT_EV c1=ctx_noty c2=ctx_noty { Rinjective_ctxt_ev(0,Some c1,Some c2) } (* Index 0 is optional *)
+| RINJECTIVE_CTXT_EV j=gpos c1=ctx_noty c2=ctx_noty { Rinjective_ctxt_ev(j,Some c1,Some c2) }
 
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Rindep(excl=None) }

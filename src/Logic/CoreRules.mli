@@ -108,6 +108,9 @@ val t_assert : gcmd_pos -> expr -> tactic
 val rctxt_ev  : int -> ctxt -> rule 
 val t_ctxt_ev : int -> ctxt -> tactic
 
+val rinjective_ctxt_ev  : int -> ctxt -> ctxt -> rule 
+val t_injective_ctxt_ev : int -> ctxt -> ctxt -> tactic
+
 val rcase_ev  : ?flip:bool -> ?allow_existing:bool -> expr -> rule
 val t_case_ev : ?flip:bool -> ?allow_existing:bool -> expr -> tactic
 

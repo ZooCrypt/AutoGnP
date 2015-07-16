@@ -83,6 +83,7 @@
       ; "bad2", RBAD2
       ; "undo_back", UNDOBACK
       ; "ctxt_ev", RCTXT_EV
+      ; "injective_ctxt_ev", RINJECTIVE_CTXT_EV
       ; "extract", EXTRACT
       ; "return", RETURN
       ; "forall", FORALL

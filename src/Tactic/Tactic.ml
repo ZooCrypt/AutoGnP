@@ -385,6 +385,29 @@ let handle_tactic ts tac =
       let e1 = PU.expr_of_parse_expr vmap ts Unqual e in
       let c = v1, e1 in
       CR.t_ctxt_ev j c ju
+                   
+    | PT.Rinjective_ctxt_ev (j,Some (svx,None,ey),Some (svy,None,ex)) ->
+       let ev_expr = ju.ju_se.se_ev.ev_expr in
+       let b = match ev_expr.e_node with
+         | Nary(Land,es) when j < L.length es -> L.nth es j
+         | _ when j = 0 -> ev_expr
+         | _ -> tacerror "injective_ctxt_ev: bad index %i" j
+       in
+       let tyx =
+         if is_Eq b then (fst (destr_Eq b)).e_ty
+         else if is_InEq b then (fst (destr_Eq (destr_Not b))).e_ty
+         else tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_exp b
+       in
+       let vmap = vmap_of_globals ju.ju_se.se_gdef in
+       let _ = List.fold_left (fun acc (vs,o) -> List.fold_left (fun acc v -> (PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))::acc) acc vs) [] ju.ju_se.se_ev.ev_binding in
+       let vx = PU.create_var vmap ts Unqual svx tyx in
+       let ey = PU.expr_of_parse_expr vmap ts Unqual ey in 
+       let vy = PU.create_var vmap ts Unqual svy ey.e_ty in
+       let ex = PU.expr_of_parse_expr vmap ts Unqual ex in
+       let c1 = vx, ey and c2 = vy, ex in
+       CR.t_injective_ctxt_ev j c1 c2 ju
+
+    | PT.Rinjective_ctxt_ev _ -> assert false
   
     | PT.Rctxt_ev (mj,None) ->
       SimpRules.t_ctx_ev_maybe mj ju

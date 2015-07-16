@@ -405,7 +405,7 @@ let t_swap_oracle i delta = prove_by (rswap_oracle i delta)
 (*i ----------------------------------------------------------------------- i*)
 (** {\bf Random sampling.} *)
 
-let ensure_bijection se c1 c2 rs =
+let ensure_bijection ?partial:(partial=false) se c1 c2 rs = (* c1 = inverse, c2 = direct *)
   (* v : t
      c1 : t' -> t
      c2 : t  -> t' *)
@@ -423,8 +423,8 @@ let ensure_bijection se c1 c2 rs =
   let v  = mk_V rs in
   let v' = mk_V (Vsym.mk (mk_name ~name:"v__" se) t') in
   if not (Norm.e_equalmod (inst_ctxt c2 (inst_ctxt c1 v')) v' &&
-            Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v) then
-    tacerror "rnd: contexts %a and %a are not bijective"
+            (partial || Norm.e_equalmod (inst_ctxt c1 (inst_ctxt c2 v)) v)) then
+    tacerror "contexts %a and %a are not bijective"
       pp_ctxt c1 pp_ctxt c2
 
 (*  if not (ty_equal_size dty1 dty2) then
@@ -754,6 +754,30 @@ let rctxt_ev i c ju =
 
 let t_ctxt_ev i c = prove_by (rctxt_ev i c)
 
+let rinjective_ctxt_ev j c1 c2 ju =
+  let se = ju.ju_se in
+  let ev = se.se_ev in
+  let evs = destr_Land_nofail ev.ev_expr in
+  if j < 0 || j >= L.length evs then tacerror "Invalid index %i" j;
+  let l,b,r = Util.split_n j evs in
+  let b =
+    let op,(e1,e2) =
+      if is_Eq b then
+        mk_Eq,destr_Eq b else
+        if is_InEq b then
+          mk_InEq,destr_Eq (destr_Not b) else
+          tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_exp b in
+    
+    ensure_bijection ~partial:true se c2 c1 (fst c1);
+    op (inst_ctxt c1 e1) (inst_ctxt c1 e2) in
+  let ev = {ev with ev_expr = mk_Land (L.rev_append l (b::r))} in
+  let wfs = wf_gdef NoCheckDivZero (se.se_gdef) in
+  wf_ev NoCheckDivZero wfs ev;
+  let new_ju = { se with se_ev = ev } in
+  Rinjective_ctxt_ev(j,c1,c2), [ { ju with ju_se = new_ju } ]
+  
+let t_injective_ctxt_ev j c1 c2 = prove_by (rinjective_ctxt_ev j c1 c2) 
+  
 (*i ----------------------------------------------------------------------- i*)
 (** {\bf Remove an event} *)
 
