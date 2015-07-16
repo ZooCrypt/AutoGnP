@@ -117,8 +117,10 @@ let ranges ju l =
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Tactic handling} *)
-
-let handle_tactic ts tac =
+exception Handle_this_tactic_instead of PT.tactic
+            
+let rec handle_tactic ts tac =
+  let input_ts = ts in try (
   let ps = get_proof_state ts in
   let ju = match ps.CR.subgoals with
     | ju::_ -> ju
@@ -394,7 +396,8 @@ let handle_tactic ts tac =
          | _ -> tacerror "injective_ctxt_ev: bad index %i" j
        in
        let tyx =
-         if is_Eq b then (fst (destr_Eq b)).e_ty
+         if is_Eq b then (* (fst (destr_Eq b)).e_ty *)
+           raise (Handle_this_tactic_instead (PT.Rctxt_ev (Some j,Some(svx,None,ey))))
          else if is_InEq b then (fst (destr_Eq (destr_Not b))).e_ty
          else tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_exp b
        in
@@ -591,8 +594,9 @@ let handle_tactic ts tac =
    apply (CR.t_guard opos t)
 
  | _ ->
-   apply (interp_tac tac)
-
+    apply (interp_tac tac)              
+                       ) with
+        Handle_this_tactic_instead new_tac -> handle_tactic input_ts new_tac
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Instruction handling} *)

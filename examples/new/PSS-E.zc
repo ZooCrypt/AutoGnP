@@ -84,7 +84,8 @@ bound_adv
     norm_nounfold.
     injective_ctxt_ev 2 (x -> x ++ ch2) (y -> y ++ ch2).
     unfold ct.
-    norm.
+    abstract 8 sk get_sk(kp).
+    norm_nounfold.
     
     
     norm_nounfold.
