@@ -74,8 +74,24 @@ bound_adv
     abstract (11,1,3) t st#1.
     abstract (11,1,4) ct' (t ++ H2(s)).
     norm_nounfold.
-    case_ev (f_inv(sk,c) <> (cs,ct)).
-      rewrite_ev 1 <-.
+    unfold pk.
+    help injective_ctxt_ev.
+    injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y)) (x -> f(get_pk(kp),x)).
+    norm_nounfold.
+    rewrite_ev 1 <-.
+    unfold sk.
+    injective_ctxt_ev 2 (x -> x#1) (y -> (f_inv(get_sk(kp),c)#0,y)).
+    norm_nounfold.
+    injective_ctxt_ev 2 (x -> x ++ ch2) (y -> y ++ ch2).
+    unfold ct.
+    norm.
+    
+    
+    norm_nounfold.
+    abstract 8 ct (ch2 ++
+    norm_nounfold.
+    bycrush.
+    
       case_ev (((f_inv(sk,c))#1) <> ct).
         admit.
         
@@ -84,12 +100,12 @@ bound_adv
         norm_nounfold. (*It fails here *)
     
     
-      norm_nounfold.
+     (* norm_nounfold.
       ctxt_ev 4 (cc -> f(pk,cc)).
       norm.
       rewrite_ev 4 .
       norm.
-      false_ev.
+      false_ev.*)
     
     rewrite_ev 1 <-.
     norm_nounfold.
