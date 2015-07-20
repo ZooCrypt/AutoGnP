@@ -204,12 +204,23 @@ and norm_expr ?strong:(strong=false) e =
      let kp_norm = norm_expr ~strong kp in
      mk_ProjPermKey ke kp_norm
   | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
-  | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)
+  | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)     
   | App (op, l) ->
     if is_field_op op then norm_field_expr e
     else
       let l = List.map (norm_expr ~strong) l in
       mk_simpl_op strong op l
+  | Nary (Xor, ess) when is_Prod e.e_ty ->
+     let tys = destr_Prod e.e_ty in
+     let prod_list_of_e : expr -> expr list = fun e' ->
+       (if e'.e_ty <> e.e_ty then failwith "Wrong tuple type");
+       match e'.e_node with
+       | Tuple l -> (List.map (norm_expr ~strong) l)
+       | _ -> List.mapi (fun i _ -> norm_expr ~strong (mk_Proj i e')) tys in
+     let xor_of_tuples : expr list list =
+       List.map prod_list_of_e ess in
+     let tuples_of_xor = BatList.transpose xor_of_tuples in
+     mk_Tuple (List.map (mk_simpl_nop strong Xor) tuples_of_xor)
   | Nary(nop, l) ->
     if is_field_nop nop then norm_field_expr e
     else
