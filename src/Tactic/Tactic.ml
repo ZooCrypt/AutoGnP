@@ -605,6 +605,7 @@ let handle_instr verbose ts instr =
   match instr with
   | PT.Help(PT.Rinjective_ctxt_ev _) -> (ts, fsprintf "Rule that allows replacing the i-th event expression (of type \'e1 = e2\' or \'e1 <> e2\') \nby f(e1) and f(e2) provided f is injective (f_i verifying \'f_i(f(x)) = x\' is required to prove it)\nUsage : \n> injective_ctxt_ev [index] (x -> f(x)) (y -> f_i(y)).")
   | PT.Help(PT.Rbad(i,_,_)) -> (ts, fsprintf "Rule that allows to \"replace\" a random oracle call by a random sampling, \nprovided you can bound the probability the expression queried to the RO is not queried elsewhere.\nUsage : \n> bad%i line_number var_name. \nThe (game) command located at line_number must be a let binding of a random oracle call." i)
+  | PT.Help(PT.Rfind _) -> (ts, fsprintf "Rule to \'get\' existential variable(s) \'vars\' from the event into the main game thanks to an adversary \'A_name\' who is given \'args\'. \nUsage :\n> find (xs* -> f(xs,vars)) args A_name vars* .") 
   | PT.Help _ -> assert false
   | PT.PermDecl(s,t) -> let s_inv = s ^ "_inv" in
      if Mstring.mem s_inv ts.ts_permdecls then

@@ -434,6 +434,7 @@ help_command :
 | HELP RINJECTIVE_CTXT_EV { Help(Rinjective_ctxt_ev(0,None,None)) }
 | HELP RBAD1 { Help(Rbad(1,0,"")) }
 | HELP RBAD2 { Help(Rbad(2,0,"")) }
+| HELP RFIND { Help(Rfind(([],CB(false)),CB(false),"",[])) }
        
                 
 /*----------------------------------------------------------------------*/
