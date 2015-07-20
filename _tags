@@ -1,6 +1,6 @@
 true: bin_annot, debug
 
-<src/**/*>: package(bolt)
+<src/**/*>: package(bolt), package(batteries)
 
 <src/Util> or <src/Expr> or <src/Test> or <src/Poly>: include
 
