@@ -402,7 +402,16 @@ let rec handle_tactic ts tac =
          else tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_exp b
        in
        let vmap = vmap_of_globals ju.ju_se.se_gdef in
-       let _ = List.fold_left (fun acc (vs,o) -> List.fold_left (fun acc v -> (PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))::acc) acc vs) [] ju.ju_se.se_ev.ev_binding in
+       (* Adding quantified variables *)
+       List.iter (fun (vs,o) -> List.iter
+                      (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))) vs)
+                 ju.ju_se.se_ev.ev_binding;
+(*
+       let _ = List.fold_left
+                 (fun acc (vs,o) -> List.fold_left
+                                      (fun acc v -> (PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))::acc)
+                                      acc vs) [] ju.ju_se.se_ev.ev_binding in
+*)
        let vx = PU.create_var vmap ts Unqual svx tyx in
        let ey = PU.expr_of_parse_expr vmap ts Unqual ey in 
        let vy = PU.create_var vmap ts Unqual svy ey.e_ty in
