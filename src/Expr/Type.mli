@@ -52,11 +52,13 @@ val mk_Int  : ty
 
 val is_G : ty -> bool
 val is_Fq : ty -> bool
+val is_Prod : ty -> bool
 val destr_G : ty -> Groupvar.id
 val destr_BS : ty -> Lenvar.id
 val destr_KeyPair : ty -> Permvar.id
 val destr_KeyElem : ty -> (key_elem * Permvar.id)
 val destr_Prod : ty -> ty list
+val destr_Prod_no_fail : ty -> (ty list) option
 
 val pp_group : F.formatter -> Groupvar.id -> unit
 val pp_ty : F.formatter -> ty -> unit

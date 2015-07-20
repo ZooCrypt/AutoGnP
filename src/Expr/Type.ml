@@ -104,6 +104,9 @@ let is_G ty = match ty.ty_node with
 let is_Fq ty = match ty.ty_node with
   | Fq -> true
   | _  -> false
+let is_Prod ty = match ty.ty_node with
+  | Prod _ -> true
+  | _  -> false
 
 (** Destructor functions for types. *)
 let destr_G ty = match ty.ty_node with
@@ -128,6 +131,11 @@ let destr_Prod ty =
   match ty.ty_node with
   | Prod ts -> ts
   | _ -> assert false
+
+let destr_Prod_no_fail ty =
+  match ty.ty_node with
+  | Prod ts -> Some ts
+  | _ -> None
 
 (*i*)
 
