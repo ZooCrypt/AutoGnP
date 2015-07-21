@@ -99,23 +99,24 @@ let string_of_qvar (qual,s) =
   | Qual q -> q^"`"^s
 let init_odef_params vmap_g ts ?(qual=true) oname vs = 
   let osym =
-    try Mstring.find oname ts.ts_odecls
-    with Not_found -> fail_parse "oracle name not declared"
+    try Oracle.mk_O(Mstring.find oname ts.ts_odecls)
+    with Not_found -> try Oracle.mk_RO(Mstring.find oname ts.ts_rodecls)
+                                      with Not_found -> fail_parse "oracle name not declared"
   in
   let qual = if qual then (Qual oname) else Unqual in
   let vs =
-    match osym.Osym.dom.Type.ty_node, vs with
+    match (Oracle.get_dom osym).Type.ty_node, vs with
     | Type.Prod([]), [] -> []
     | Type.Prod(tys), vs when L.length tys = L.length vs ->
       L.map
         (fun (v,t) -> create_var vmap_g ts qual v t)
         (L.combine vs tys)
     | _, [v] ->
-      [create_var vmap_g ts qual v osym.Osym.dom]
+      [create_var vmap_g ts qual v (Oracle.get_dom osym)]
     | _ ->
-      tacerror "Pattern matching in oracle definition invalid: %a" Osym.pp osym
+      tacerror "Pattern matching in oracle definition invalid: %a" Oracle.pp osym
   in
-  vs,(Oracle.O osym)
+  vs,osym
 
 let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
   let rec go pe =

@@ -129,10 +129,10 @@ let rec mk_simpl_op _strong op l =
     if is_True e then mk_False
     else if is_False e then mk_True
     else
-      begin match e.e_node with
-      | App(Not,[e]) -> e
-      | _            -> mk_Not e
-      end
+      ( match e.e_node with
+        | App(Not,[e]) -> e
+        | Quant(q,b,e) -> mk_Quant (neg_quant q) b (norm_expr ~strong:_strong (mk_Not e))
+        | _            -> mk_Not e )
   | (        GExp _ | GLog _ | EMap _ | GInv
     | FOpp | FMinus | FInv   | FDiv
     | Eq   | Ifte   | Not)           , _ -> assert false

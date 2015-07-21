@@ -165,7 +165,11 @@ module Oracle = struct
   type t =
     | RO of Hsym.t
     |  O of Osym.t
-
+              
+  let mk_RO = function
+    | h when Hsym.is_ro h -> RO h
+    | h -> tacerror "mk_RO: (random) oracle expected, but %a is an operator" Hsym.pp h
+  let mk_O o = O(o)
 
   type tt = t
 

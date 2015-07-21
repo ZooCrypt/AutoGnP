@@ -79,9 +79,12 @@ module Hsym : sig
 end
 
 module Oracle : sig
-  type t =
+  type t = private
     | RO of Hsym.t
     |  O of Osym.t
+
+  val mk_RO : Hsym.t -> t
+  val mk_O  : Osym.t -> t 
 
   val hash : t -> int
   val equal : t -> t -> bool
