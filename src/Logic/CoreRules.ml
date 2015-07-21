@@ -517,7 +517,7 @@ let rassert p e ju =
     { ju_pr = Pr_Succ;
       ju_se = { se with se_ev = 
                 { se.se_ev with 
-                  ev_expr = mk_Land [se.se_ev.ev_expr; mk_Not e]; } } }
+                  ev_expr = insert_Land se.se_ev.ev_expr (mk_Not e) } } }
   in
   let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
   Rassert(p,e), [ ju1; ju2 ]
