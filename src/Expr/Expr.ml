@@ -90,6 +90,8 @@ let nop_hash = (*c ... *) (*i*)
 
 type quant = All | Exists
 
+let neg_quant q = if q = All then Exists else All
+
 let hash_quant = function
   | All    -> 1
   | Exists -> 2

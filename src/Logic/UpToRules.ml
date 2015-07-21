@@ -47,7 +47,7 @@ let rbad which_bad p vsx_name vmap ts ju =
                                      ( fun ei jus -> (create_ju ei)::jus )
                                      all_other_hash_calls_args []) in
      let bad_ev_expr = mk_Eq (mk_V vsx) e and
-         bad_ev_binding = ([vsx],Oracle.RO(h)) in
+         bad_ev_binding = ([vsx],Oracle.mk_RO(h)) in
      let bad_n,ju2 = match which_bad with
      (* ju2 is ju1 where event = bad_event + main_event when UpToBad, 
                               or bad_event only when CaseDist *)
@@ -94,7 +94,7 @@ let rbad_oracle which_bad opos vsx_name ts ju =
      let cmds = [ G.LSamp(vs, (e'.e_ty,[]) )] in
      let ju1 = {ju with ju_se = (G.set_se_octxt cmds se_octxt) } in
      let bad_ev_expr = mk_Eq (mk_V vsx) e and
-         bad_ev_binding = ([vsx],Oracle.RO(h)) in
+         bad_ev_binding = ([vsx],Oracle.mk_RO(h)) in
      ( match which_bad with
        | PU.UpToBad ->
           let conj_ev = { G.ev_quant   = G.Exists;

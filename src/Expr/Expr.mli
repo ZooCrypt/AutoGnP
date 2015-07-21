@@ -48,7 +48,8 @@ type nop =
 val nop_hash : nop -> int
                         
 type quant = All | Exists
-                     
+val neg_quant : quant -> quant
+                           
 type expr = private { e_node : expr_node; e_ty : Type.ty; e_tag : int; }
 and expr_node =
   | V           of Vsym.t          (*r variables (program, logical, random, ...) *)

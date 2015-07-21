@@ -1217,7 +1217,7 @@ let rguard opos tnew ju =
         sec_right = [];
         sec_ev = 
           { ev_quant = Exists;
-            ev_binding = [vs,Oracle.O seoc.seoc_osym];
+            ev_binding = [vs,Oracle.mk_O seoc.seoc_osym];
             ev_expr = e_subst subst (mk_Land (mk_Not t::tests))}
       }} in
   let i = if tnew = None then [] else [LGuard t] in

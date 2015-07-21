@@ -158,7 +158,11 @@ let pp_paren hv = pp_enclose hv ~pre:"(" ~post:")"
 let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 
 let pp_binder fmt (vs,o) =
-  F.fprintf fmt "(%a) in %a" (pp_list "," Vsym.pp) vs Oracle.pp o
+  let l_paren,r_paren =
+    match vs with
+    | [v] -> "",""
+    | _ -> "(",")" in
+  F.fprintf fmt "%s%a%s in L_%a" l_paren (pp_list "," Vsym.pp) vs r_paren Oracle.pp o
 
 (** Pretty-prints expression assuming that
     the expression above is of given type. *)
@@ -188,7 +192,7 @@ let rec pp_exp_p ~qual above fmt e =
     in
     pp_maybe_paren false (above <> PrefixApp) pp fmt es
   | Quant(q,b,e) ->
-     F.fprintf fmt "(%s %a: %a)" (if q = All then "forall" else "exists")
+     F.fprintf fmt "%s (%a): %a" (if q = All then "forall" else "exists")
                pp_binder b (pp_exp_p ~qual Top) e
   | Proj(i,e)  -> 
     F.fprintf fmt "(%a%s%i)" (pp_exp_p ~qual Tup) e "#" i

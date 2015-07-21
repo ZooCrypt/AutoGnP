@@ -45,7 +45,7 @@ type parse_expr =
   | Ifte of parse_expr * parse_expr * parse_expr
   | Land of parse_expr * parse_expr
   | Xor of parse_expr * parse_expr
-  | All of (string list * string) list *  parse_expr
+  | Quant of Expr.quant * (string list * string) list *  parse_expr
 
 let mk_Tuple = function [t] -> t | ts -> Tuple ts
 

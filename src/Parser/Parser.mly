@@ -253,7 +253,8 @@ expr :
 | e1=expr1 EQUAL e2=expr1                    { Eq(e1,e2) }
 | e1=expr1 NEQ e2=expr1                      { Not(Eq(e1,e2)) }
 | e1=expr1 QUESTION e2=expr1 COLON e3=expr1  { Ifte(e1, e2, e3) }
-| FORALL l=seplist1(COMMA,binding1) COLON e1=expr1 { All(l,e1) }
+| EXISTS l=seplist1(COMMA,binding1) COLON e1=expr1 { Quant(Expr.Exists,l,e1) }
+| FORALL l=seplist1(COMMA,binding1) COLON e1=expr1 { Quant(Expr.All,l,e1) }
 (* | e1=expr1 IN QUERIES LPAREN oname=ID RPAREN { InLog(e1,oname) }  *)
 | e=expr1                                    { e }
 
