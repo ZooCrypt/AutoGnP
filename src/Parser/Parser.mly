@@ -249,7 +249,6 @@ typ :
 /* Expressions */
 
 expr :
-| e1=expr  SHARP i=NAT                       { Proj(i,e1) }
 | e1=expr1 EQUAL e2=expr1                    { Eq(e1,e2) }
 | e1=expr1 NEQ e2=expr1                      { Not(Eq(e1,e2)) }
 | e1=expr1 QUESTION e2=expr1 COLON e3=expr1  { Ifte(e1, e2, e3) }
@@ -295,6 +294,7 @@ expr6 :
 | l=paren_list0(COMMA,expr)      { mk_Tuple l }
 | GETPK LPAREN e=expr RPAREN             { ParseProjPermKey(Type.PKey,e) }
 | GETSK LPAREN e=expr RPAREN             { ParseProjPermKey(Type.SKey,e) }
+| e1=expr6  SHARP i=NAT                       { Proj(i,e1) }
        
 
 /*======================================================================*/

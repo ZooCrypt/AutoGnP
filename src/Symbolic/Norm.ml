@@ -11,10 +11,30 @@ open Util
 let _log_i ls = mk_logger "Norm" Bolt.Level.INFO "Norm" ls
 
 (*i*)
-let mk_Perm_with_expr_list f ptype = function
-  | [k;e] -> mk_Perm f ptype k e
-  | _ -> failwith "[k;e] expected"
 
+let rm_tuple_proj e es =
+  match es with
+  | e1::es ->
+    begin
+      try
+        let i, e2 = destr_Proj e1 in
+        if i <> 0 then raise Not_found;
+        if List.length es + 1 <> List.length (destr_Prod e2.e_ty) then
+          raise Not_found;
+        List.iteri (fun i e ->
+          let i',e' = destr_Proj e in
+          if i + 1 <> i' || not (e_equal e2 e') then raise Not_found) es;
+        e2
+      with Not_found | Destr_failure _ -> e
+    end
+  | _ -> e
+
+let rec remove_tuple_proj e =
+  let e = e_sub_map remove_tuple_proj e in
+  match e.e_node with
+  | Tuple es -> rm_tuple_proj e es
+  | _ -> e
+           
 let mk_gexp gv p = mk_GExp (mk_GGen gv) p
 
 let destr_gexp gv g =
@@ -194,11 +214,11 @@ and norm_expr ?strong:(strong=false) e =
   | App(Perm(ptype1,f),[k1;e1]) -> (
     let k_o_p = key_elem_of_perm_type in
     let k1_norm = norm_expr ~strong k1 and
-	e1_norm = norm_expr ~strong e1 in
+	e1_norm = remove_tuple_proj (norm_expr ~strong e1) in
     match e1_norm.e_node with
     | App(Perm(ptype2,f),[k2_norm;e2_norm]) (* f(PKey,f_inv(SKey,e)) = e *)
 	 when (is_ProjPermKey (k_o_p ptype1) f k1_norm) && ptype1 <> ptype2 &&
-                (is_ProjPermKey (k_o_p ptype2) f k2_norm) -> e2_norm 
+                (is_ProjPermKey (k_o_p ptype2) f k2_norm) -> remove_tuple_proj e2_norm 
     | _ -> mk_Perm f ptype1 k1_norm e1_norm )
   | ProjPermKey(ke,kp) ->
      let kp_norm = norm_expr ~strong kp in
@@ -216,7 +236,7 @@ and norm_expr ?strong:(strong=false) e =
        (if e'.e_ty <> e.e_ty then failwith "Wrong tuple type");
        match e'.e_node with
        | Tuple l -> (List.map (norm_expr ~strong) l)
-       | _ -> List.mapi (fun i _ -> norm_expr ~strong (mk_Proj i e')) tys in
+       | _ -> let e' = norm_expr ~strong e' in List.mapi (fun i _ -> norm_expr ~strong (mk_Proj i e')) tys in
      let xor_of_tuples : expr list list =
        List.map prod_list_of_e ess in
      let tuples_of_xor = BatList.transpose xor_of_tuples in
@@ -257,29 +277,6 @@ let norm_expr_strong e = norm_expr ~strong:true e
 
 (*i use norm_expr to check equality modulo equational theory i*)
 let e_equalmod e e' = e_equal (norm_expr_strong e) (norm_expr_strong e')
-
-let rm_tuple_proj e es =
-  match es with
-  | e1::es ->
-    begin
-      try
-        let i, e2 = destr_Proj e1 in
-        if i <> 0 then raise Not_found;
-        if List.length es + 1 <> List.length (destr_Prod e2.e_ty) then
-          raise Not_found;
-        List.iteri (fun i e ->
-          let i',e' = destr_Proj e in
-          if i + 1 <> i' || not (e_equal e2 e') then raise Not_found) es;
-        e2
-      with Not_found | Destr_failure _ -> e
-    end
-  | _ -> e
-
-let rec remove_tuple_proj e =
-  let e = e_sub_map remove_tuple_proj e in
-  match e.e_node with
-  | Tuple es -> rm_tuple_proj e es
-  | _ -> e
 
 let norm_expr_abbrev_weak e = abbrev_ggen (norm_expr_weak e)
 
