@@ -214,16 +214,16 @@ and norm_expr ?strong:(strong=false) e =
   | App(Perm(ptype1,f),[k1;e1]) -> (
     let k_o_p = key_elem_of_perm_type in
     let k1_norm = norm_expr ~strong k1 and
-	e1_norm = remove_tuple_proj (norm_expr ~strong e1) in
+	e1_norm = norm_expr ~strong e1 in
     match e1_norm.e_node with
     | App(Perm(ptype2,f),[k2_norm;e2_norm]) (* f(PKey,f_inv(SKey,e)) = e *)
 	 when (is_ProjPermKey (k_o_p ptype1) f k1_norm) && ptype1 <> ptype2 &&
-                (is_ProjPermKey (k_o_p ptype2) f k2_norm) -> remove_tuple_proj e2_norm 
+                (is_ProjPermKey (k_o_p ptype2) f k2_norm) -> e2_norm 
     | _ -> mk_Perm f ptype1 k1_norm e1_norm )
   | ProjPermKey(ke,kp) ->
      let kp_norm = norm_expr ~strong kp in
      mk_ProjPermKey ke kp_norm
-  | Tuple l -> remove_tuple_proj (mk_Tuple (List.map (norm_expr ~strong) l))
+  | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
   | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)     
   | App (op, l) ->
     if is_field_op op then norm_field_expr e
@@ -273,11 +273,10 @@ let rec abbrev_ggen e =
 
 let norm_expr_weak e = norm_expr ~strong:false e
 
-let norm_expr_strong e = norm_expr ~strong:true e
-let norm_expr_very_strong e = remove_tuple_proj (norm_expr ~strong:true e)
+let norm_expr_strong e = remove_tuple_proj (norm_expr ~strong:true e)
 
 (*i use norm_expr to check equality modulo equational theory i*)
-let e_equalmod e e' = e_equal (norm_expr_very_strong e) (norm_expr_very_strong e')
+let e_equalmod e e' = e_equal (norm_expr_strong e) (norm_expr_strong e')
 
 let norm_expr_abbrev_weak e = abbrev_ggen (norm_expr_weak e)
 

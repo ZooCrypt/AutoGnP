@@ -70,12 +70,14 @@ bound_adv
     and then refolding it for readability *)
     norm. abstract 5 mb (b?m1:m0). abstract 6 cs H1(mb,r). abstract 7 ch2 H2(cs). abstract 8 ct (ch2 ++ (mb,r)). abstract 9 pk get_pk(kp). abstract 10 sk get_sk(kp)
 .   guard (11,1,3) ( ((f_inv(sk,c)#1) ++ H2((f_inv(sk,c)#0)) ) <> (mb,r) ). norm_nounfold
-.   guess aaa c.
-    ctxt_ev 1 (z -> (H1(z), z ++ H2(H1(z)))). norm.
+.   ctxt_ev 1 (z -> (H1(z), z ++ H2(H1(z)))). norm.
     
     rewrite_ev 3 <-.
     injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y)) (x -> f(get_pk(kp),x)). rewrite_ev 3 <-. remove_ev 3. norm
 .   rewrite_ev 1 <-. norm. false_ev.
+    
+    guard (11,1,4) (exists h1 in L_H1 : (h1 = ((f_inv(sk,Dec`c)#1) ++ H2((f_inv(sk,Dec`c)#0)))) ). norm
+.
 
 
 (* ====== Working with H2 args call ====== *)    
