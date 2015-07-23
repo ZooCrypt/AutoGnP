@@ -195,7 +195,7 @@ let rec pp_exp_p ~qual above fmt e =
      F.fprintf fmt "%s (%a): %a" (if q = All then "forall" else "exists")
                pp_binder b (pp_exp_p ~qual Top) e
   | Proj(i,e)  -> 
-    F.fprintf fmt "(%a%s%i)" (pp_exp_p ~qual Tup) e "#" i
+    F.fprintf fmt "(%a)%s%i" (pp_exp_p ~qual Tup) e "#" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty
   | App(o,es)  -> pp_op_p ~qual above fmt (o,es) 
   | Nary(o,es) ->
