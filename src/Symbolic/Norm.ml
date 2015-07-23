@@ -223,7 +223,7 @@ and norm_expr ?strong:(strong=false) e =
   | ProjPermKey(ke,kp) ->
      let kp_norm = norm_expr ~strong kp in
      mk_ProjPermKey ke kp_norm
-  | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
+  | Tuple l -> remove_tuple_proj (mk_Tuple (List.map (norm_expr ~strong) l))
   | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)     
   | App (op, l) ->
     if is_field_op op then norm_field_expr e
@@ -274,9 +274,10 @@ let rec abbrev_ggen e =
 let norm_expr_weak e = norm_expr ~strong:false e
 
 let norm_expr_strong e = norm_expr ~strong:true e
+let norm_expr_very_strong e = remove_tuple_proj (norm_expr ~strong:true e)
 
 (*i use norm_expr to check equality modulo equational theory i*)
-let e_equalmod e e' = e_equal (norm_expr_strong e) (norm_expr_strong e')
+let e_equalmod e e' = e_equal (norm_expr_very_strong e) (norm_expr_very_strong e')
 
 let norm_expr_abbrev_weak e = abbrev_ggen (norm_expr_weak e)
 

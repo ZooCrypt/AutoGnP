@@ -64,34 +64,21 @@ bound_adv
         return x#0;
       };
     ] : b = b'.
-
+    
+(* ====== Working with H1 args call ====== *)
+    (* Destroying the let bindings inside the oracle (required by 'guard' rule) 
+    and then refolding it for readability *)
     norm. abstract 5 mb (b?m1:m0). abstract 6 cs H1(mb,r). abstract 7 ch2 H2(cs). abstract 8 ct (ch2 ++ (mb,r)). abstract 9 pk get_pk(kp). abstract 10 sk get_sk(kp)
 .   guard (11,1,3) ( ((f_inv(sk,c)#1) ++ H2((f_inv(sk,c)#0)) ) <> (mb,r) ). norm_nounfold
 .   guess aaa c.
     ctxt_ev 1 (z -> (H1(z), z ++ H2(H1(z)))). norm.
     
     rewrite_ev 3 <-.
-    injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y)) (x -> f(get_pk(kp),x)). rewrite_ev 3 <-. remove_ev 3. norm.
-    unfold cs. unfold pk. unfold sk.
-    injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y) ) (x -> f(get_pk(kp),x)). norm_nounfold.
-    abstract 10 st (f_inv(get_sk(kp),c)).
-    abstract 11 s (st#0).
-    abstract 12 t (st#1).
-    unfold ch2.
-    case_ev (((t#0) ++ (H2(s)#0),(H2(s)#1) ++ (t#1)) ++ H2(H1((t#0) ++ (H2(s)#0),(H2(s)#1) ++ (t#1))) = (mb,r) ++ H2(H1(mb,r))). norm_nounfold
-.   ctxt_ev 1 (z -> (H1(z), z ++ H2(H1(z)))). norm.
-    rewrite_ev 4 ->.
-    ctxt_ev 1 (zz -> zz ++ ch2). norm_nounfold.
-    abstract 13 ch2' H2(s). 
-    unfold cs. unfold pk. unfold sk.
-    injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y) ) (x -> f(get_pk(kp),x)). norm_nounfold.
-  
-    ctxt_ev 1 (z -> f(get_pk(kp),(H1(z), z ++ H2(H1(z))))). norm.
-    guess aaa c.
-    norm_nounfold.
-    abstract 13 x (((f_inv(sk,c)#1)#0) ++ (H2((f_inv(sk,c)#0))#0),
-       (H2((f_inv(sk,c)#0))#1) ++ ((f_inv(sk,c)#1)#1)). norm_nounfold.
-    
+    injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y)) (x -> f(get_pk(kp),x)). rewrite_ev 3 <-. remove_ev 3. norm
+.   rewrite_ev 1 <-. norm. false_ev.
+
+
+(* ====== Working with H2 args call ====== *)    
     (* Destroying the let bindings inside the oracle (required by 'guard' rule) 
     and then refolding it for readability *)
     norm. abstract 5 mb (b?m1:m0). abstract 6 cs H1(mb,r). abstract 7 ch2 H2(cs). abstract 8 ct (ch2 ++ (mb,r)). abstract 9 pk get_pk(kp). abstract 10 sk get_sk(kp)
@@ -150,19 +137,4 @@ bound_adv
     help find.
   
   
-  
-  sk,c)#0,ct) -> f_inv(sk,c )
-    ctxt_ev 2 ( ss -> f_inv(sk,ss) ).
-    rewrite_ev 2.
-    norm.
-    find (pk0 f_cs_ct -> (c = f_cs_ct)) 
-         (pk, cb) 
-         A_finder c.
-    
-    norm.
-    abstract 5 mb (b?m1:m0).
-    abstract 6 cs H1(mb,r).
-    (* s <> cs *)
-
-    add_test (7,1,1) ((f_inv(get_sk(kp),c)#0) <> cs) AA gc.
     
