@@ -76,8 +76,10 @@ bound_adv
     injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y)) (x -> f(get_pk(kp),x)). rewrite_ev 3 <-. remove_ev 3. norm
 .   rewrite_ev 1 <-. norm. false_ev.
     
-    guard (11,1,4) (exists h1 in L_H1 : (h1 = ((f_inv(sk,Dec`c)#1) ++ H2((f_inv(sk,Dec`c)#0)))) ). norm
-.
+    guard (11,1,4) (forall h1 in L_H1 : (h1 <> ((f_inv(sk,Dec`c)#1) ++ H2((f_inv(sk,Dec`c)#0)))) ). norm_nounfold
+.   help unwrap_quant_ev.
+    unwrap_quant_ev.
+rewrite_ev 3 <-.   
 
 
 (* ====== Working with H2 args call ====== *)    

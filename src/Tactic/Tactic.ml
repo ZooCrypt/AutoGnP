@@ -388,6 +388,23 @@ let rec handle_tactic ts tac =
       let c = v1, e1 in
       CR.t_ctxt_ev j c ju
                    
+    | PT.Runwrap_quant_ev j ->
+       let r_unwrap_quant_ev ju =
+         let ev = ju.ju_se.se_ev in
+         let main_binding = ev.ev_binding and ev_exprs = ev.ev_expr in
+         let l,q_expr,r = match ev_exprs.e_node with
+           | Nary(Land,es) when j < L.length es -> Util.split_n j es
+           | _ when j = 0 -> [],ev_exprs,[]
+           | _ -> tacerror "unwrap_quant_ev: bad index %i" j
+         in
+         let (q,b,e) = try destr_Quant q_expr with Destr_failure _ -> tacerror "unwrap_quant_ev : no quantification in event %a" pp_exp q_expr in
+         if q = All then tacerror "forall quantification not handled yet.";
+         let new_ev = {ev_quant = ev.ev_quant; ev_binding = b :: main_binding ; ev_expr = mk_Land (List.rev_append l (e :: r))} in
+         let new_se = {ju.ju_se with se_ev = new_ev} in
+         let new_ju = {ju with ju_se = new_se} in
+         Runwrap_quant_ev j,[new_ju] in
+       CR.prove_by(r_unwrap_quant_ev) ju
+
     | PT.Rinjective_ctxt_ev (j,Some (svx,None,ey),Some (svy,None,ex)) ->
        let ev_expr = ju.ju_se.se_ev.ev_expr in
        let b = match ev_expr.e_node with
@@ -615,6 +632,7 @@ let handle_instr verbose ts instr =
   | PT.Help(PT.Rinjective_ctxt_ev _) -> (ts, fsprintf "Rule that allows replacing the i-th event expression (of type \'e1 = e2\' or \'e1 <> e2\') \nby f(e1) and f(e2) provided f is injective (f_i verifying \'f_i(f(x)) = x\' is required to prove it)\nUsage : \n> injective_ctxt_ev [index] (x -> f(x)) (y -> f_i(y)).")
   | PT.Help(PT.Rbad(i,_,_)) -> (ts, fsprintf "Rule that allows to \"replace\" a random oracle call by a random sampling, \nprovided you can bound the probability the expression queried to the RO is not queried elsewhere.\nUsage : \n> bad%i line_number var_name. \nThe (game) command located at line_number must be a let binding of a random oracle call." i)
   | PT.Help(PT.Rfind _) -> (ts, fsprintf "Rule to \'get\' existential variable(s) \'vars\' from the event into the main game \nthanks to an adversary \'A_name\' who is given \'args\'. \nUsage :\n> find (xs* -> f(xs,vars)) args A_name vars* .") 
+  | PT.Help (PT.Runwrap_quant_ev _) -> (ts, fsprintf "Rule to unwrap the quantification from the j-th event to the main event quantification. If j is not provided, it is assumed to be 0.\nUsage :\n> unwrap_quant_ev [j].")
   | PT.Help _ -> assert false
   | PT.PermDecl(s,t) -> let s_inv = s ^ "_inv" in
      if Mstring.mem s_inv ts.ts_permdecls then

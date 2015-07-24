@@ -85,6 +85,7 @@
       ; "undo_back", UNDOBACK
       ; "ctxt_ev", RCTXT_EV
       ; "injective_ctxt_ev", RINJECTIVE_CTXT_EV
+      ; "unwrap_quant_ev", RUNWRAP_QUANT_EV
       ; "extract", EXTRACT
       ; "return", RETURN
       ; "forall", FORALL

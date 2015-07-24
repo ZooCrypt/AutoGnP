@@ -164,7 +164,8 @@
 %token RSUBST
 %token RRENAME
 %token RCTXT_EV
-%token RINJECTIVE_CTXT_EV       
+%token RINJECTIVE_CTXT_EV
+%token RUNWRAP_QUANT_EV
 %token REXCEPT
 %token RHYBRID
 %token RADD_TEST
@@ -436,6 +437,7 @@ help_command :
 | HELP RBAD1 { Help(Rbad(1,0,"")) }
 | HELP RBAD2 { Help(Rbad(2,0,"")) }
 | HELP RFIND { Help(Rfind(([],CB(false)),CB(false),"",[])) }
+| HELP RUNWRAP_QUANT_EV { Help(Runwrap_quant_ev(0)) }
        
                 
 /*----------------------------------------------------------------------*/
@@ -589,6 +591,9 @@ tactic :
 | RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Rctxt_ev(oj,c) }
 | RINJECTIVE_CTXT_EV c1=ctx_noty c2=ctx_noty { Rinjective_ctxt_ev(0,Some c1,Some c2) } (* Index 0 is optional *)
 | RINJECTIVE_CTXT_EV j=gpos c1=ctx_noty c2=ctx_noty { Rinjective_ctxt_ev(j,Some c1,Some c2) }
+| RUNWRAP_QUANT_EV { Runwrap_quant_ev(0) }
+| RUNWRAP_QUANT_EV j=gpos { Runwrap_quant_ev(j) }
+                          
 
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Rindep(excl=None) }

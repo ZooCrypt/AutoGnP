@@ -109,6 +109,8 @@ type rule_name =
   (* $Rbijection\_ev(i,c1,c2)$: apply bijective context $c1$ to $i$-th conjunct in event *)
   | Rinjective_ctxt_ev of int * ctxt * ctxt
 
+  | Runwrap_quant_ev of int
+
   (* $Rremove\_ev(\vec{i})$: Remove given conjuncts. *)
   | Rremove_ev of int list
 

@@ -268,6 +268,8 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "ctxt %i" _i
   | Rinjective_ctxt_ev(_i,_c,_) ->
     F.fprintf fmt "injective_ctxt_ev %i" _i
+  | Runwrap_quant_ev(_i) ->
+    F.fprintf fmt "unwrap_quant_ev %i" _i
   | Rremove_ev(is) ->
     F.fprintf fmt "remove [%a]" (pp_list "," pp_int) is
   | Rmerge_ev(_i,_j) ->

@@ -112,6 +112,7 @@ type tactic =
   | Rswap_to_orcl  of assgn_pos * ocmd_pos_eq * string
   | Rctxt_ev       of int option * parse_ctx option
   | Rinjective_ctxt_ev  of int * parse_ctx option * parse_ctx option
+  | Runwrap_quant_ev    of int
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
   | Rrnd_exp       of bool * (string * string option) list
