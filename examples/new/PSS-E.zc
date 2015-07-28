@@ -75,11 +75,20 @@ bound_adv
     rewrite_ev 3 <-.
     injective_ctxt_ev 2 (y -> f_inv(get_sk(kp),y)) (x -> f(get_pk(kp),x)). rewrite_ev 3 <-. remove_ev 3. norm
 .   rewrite_ev 1 <-. norm. false_ev.
+    swap (11,1,3) -1. norm_nounfold.
     
-    guard (11,1,4) (forall h1 in L_H1 : (h1 <> ((f_inv(sk,Dec`c)#1) ++ H2((f_inv(sk,Dec`c)#0)))) ). norm_nounfold
-.   help unwrap_quant_ev.
-    unwrap_quant_ev.
-rewrite_ev 3 <-.   
+    guard (11,1,4) (exists h1 in L_H1 : (h1 = ((f_inv(sk,Dec`c)#1) ++ H2((f_inv(sk,Dec`c)#0)))) ). norm_nounfold
+.          
+    guess AA c.
+    abstract 13 h (((f_inv(sk,c))#1)#0 ++ (H2((f_inv(sk,c))#0))#0,
+              (H2((f_inv(sk,c))#0))#1 ++ ((f_inv(sk,c))#1)#1).
+    abstract 14 h' H1(h). swap (11,1,3) 1.
+    check_hash_args (11,1,3). (* Here atm *)
+    bad1 14 hh.
+    
+help unwrap_quant_ev.
+    unwrap_quant_ev 1.
+  rewrite_ev 1 <-.   
 
 
 (* ====== Working with H2 args call ====== *)    

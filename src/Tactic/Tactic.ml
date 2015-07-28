@@ -481,9 +481,11 @@ let rec handle_tactic ts tac =
       tacerror "add_test and debugging tactics cannot be combined with ';'"
 
     | PT.Rbad(1,p,vsx) ->
-       CR.prove_by (rbad PU.CaseDist p vsx vmap_g ts) ju;
+       t_bad PU.CaseDist p vsx vmap_g ts ju
     | PT.Rbad(2,p,vsx) ->
-       CR.prove_by (rbad PU.UpToBad  p vsx vmap_g ts) ju;
+       t_bad PU.UpToBad  p vsx vmap_g ts ju
+    | PT.Rcheck_hash_args(opos) ->
+       t_check_hash_args opos ts ju
     | PT.RbadOracle(1,opos,vsx) ->
        CR.prove_by (rbad_oracle PU.CaseDist opos vsx ts) ju;
     | PT.RbadOracle(2,opos,vsx) ->
@@ -633,6 +635,7 @@ let handle_instr verbose ts instr =
   | PT.Help(PT.Rbad(i,_,_)) -> (ts, fsprintf "Rule that allows to \"replace\" a random oracle call by a random sampling, \nprovided you can bound the probability the expression queried to the RO is not queried elsewhere.\nUsage : \n> bad%i line_number var_name. \nThe (game) command located at line_number must be a let binding of a random oracle call." i)
   | PT.Help(PT.Rfind _) -> (ts, fsprintf "Rule to \'get\' existential variable(s) \'vars\' from the event into the main game \nthanks to an adversary \'A_name\' who is given \'args\'. \nUsage :\n> find (xs* -> f(xs,vars)) args A_name vars* .") 
   | PT.Help (PT.Runwrap_quant_ev _) -> (ts, fsprintf "Rule to unwrap the quantification from the j-th event to the main event quantification. If j is not provided, it is assumed to be 0.\nUsage :\n> unwrap_quant_ev [j].")
+  | PT.Help (PT.Rcheck_hash_args _) -> (ts, fsprintf "Rule to deduce from a guarded expression of the form\n\'Exists h in L_H : h = e\',\nthat any future hash call querying e is actually a lookup, i.e.,\n\'H(e)\' becomes \'m_H(e)\'.\nUsage :\n> check_hash_args (i,j,k).")
   | PT.Help _ -> assert false
   | PT.PermDecl(s,t) -> let s_inv = s ^ "_inv" in
      if Mstring.mem s_inv ts.ts_permdecls then
@@ -644,8 +647,14 @@ let handle_instr verbose ts instr =
     let oname = if ro then "random oracle" else "operator" in
     if Mstring.mem s ts.ts_rodecls then
       tacerror "%s with same name already declared." oname;
-    let hs = Hsym.mk s ro (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
-    let ts = { ts with ts_rodecls = Mstring.add s hs ts.ts_rodecls } in
+    let dom,codom=(PU.ty_of_parse_ty ts t1),(PU.ty_of_parse_ty ts t2) in
+    let hs = Hsym.mk s ~ro dom codom in
+    let ts_rodecls = Mstring.add s hs ts.ts_rodecls in
+    let ts_lkupdecls =
+      if ro then
+        Mstring.add s (Hsym.mk s ~ro:true ~lkup:true dom codom) ts.ts_lkupdecls
+                    else ts.ts_lkupdecls in
+    let ts = { ts with ts_rodecls; ts_lkupdecls} in
     (ts, fsprintf "Declared %s" oname)
 
   | PT.EMDecl(s,g1,g2,g3) ->

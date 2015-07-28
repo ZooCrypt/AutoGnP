@@ -307,6 +307,11 @@ val ren_injective : renaming -> bool
 
 val pp_ren : F.formatter -> Vsym.t Vsym.M.t -> unit
 
+(* \hd{check_hash_args rule helper : Replace hash calls by lookups} *)
+val subst_lkup_e : ((Hsym.t * expr) -> Hsym.t) -> expr -> expr
+val subst_lkup_lc : ((Hsym.t * expr) -> Hsym.t) -> lcmd -> lcmd
+val subst_lkup_lcmds : ((Hsym.t * expr) -> Hsym.t) -> lcmd list -> lcmd list
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Mappings from strings to variables} *) 
 

@@ -60,17 +60,19 @@ end
 module Hsym : sig
   type t = private { 
     id    : Id.id; 
-    ro    : bool;   (*r true is random oracle *) 
+    ro    : bool;   (*r true is random oracle *)
+    lkup  : bool;   (*r true is LookUp call in random oracle *)
     dom   : ty;
     codom : ty;
   }
 
   val hash : t -> int
   val equal : t -> t -> bool
-  val mk : string -> bool -> ty -> ty -> t
+  val mk : string -> ro:bool -> ?lkup:bool -> ty -> ty -> t
   val pp : F.formatter -> t -> unit
   val to_string : t -> string
   val is_ro : t -> bool
+  val is_lkup : t -> bool
 
 
   module M : Map.S with type key = t
@@ -88,13 +90,15 @@ module Oracle : sig
 
   val hash : t -> int
   val equal : t -> t -> bool
-  val mk : string -> bool -> ty -> ty -> t
+  val mk : string -> ro:bool -> ?lkup:bool -> ty -> ty -> t
   val pp : F.formatter -> t -> unit
   val to_string : t -> string
   val is_ro : t -> bool
+  val is_lkup : t -> bool
   val get_id : t -> Id.id
   val get_dom : t -> ty
   val get_codom : t -> ty
+  exception Destr_failure of string
   val destr_as_Osym_t : t -> Osym.t
   val destr_as_Hsym_t : t -> Hsym.t
                                

@@ -100,6 +100,7 @@
 %token RCBRACE
 %token SEMICOLON
 %token <string> LIST
+%token <string> LOOKUP
 %token WITH
 /* %token <string> AID */
 %token <int> NAT
@@ -152,6 +153,7 @@
 %token BYSIMP
 %token RBAD1
 %token RBAD2
+%token RCHECK_HASH_ARGS
 %token RCASE_EV
 %token RFALSE_EV
 %token RREWRITE_EV
@@ -288,6 +290,7 @@ expr6 :
 | i=ZBS                          { CZ(i) }
 | TRUE                           { CB(true) }
 | FALSE                          { CB(false) }
+| s=LOOKUP l=paren_list0(COMMA,expr) { SLookUp(s,l) }
 | s=ID l=paren_list0(COMMA,expr) { SApp(s,l) }
 | MINUS e1=expr6                 { Opp(e1) } (* FIXME: check how unary/binary minus handled in Haskell/OCaml *)
 | NOT e=expr6                    { Not(e) }
@@ -436,6 +439,7 @@ help_command :
 | HELP RINJECTIVE_CTXT_EV { Help(Rinjective_ctxt_ev(0,None,None)) }
 | HELP RBAD1 { Help(Rbad(1,0,"")) }
 | HELP RBAD2 { Help(Rbad(2,0,"")) }
+| HELP RCHECK_HASH_ARGS {Help(Rcheck_hash_args(0,0,0,Game.Onohyb))}
 | HELP RFIND { Help(Rfind(([],CB(false)),CB(false),"",[])) }
 | HELP RUNWRAP_QUANT_EV { Help(Runwrap_quant_ev(0)) }
        
@@ -572,6 +576,7 @@ tactic :
 | RBAD1 i=NAT s=ID                                     { Rbad (1,i-1,s) }
 | RBAD2 op=opos s=ID                                   { RbadOracle (2,op,s) }
 | RBAD2 i=NAT s=ID                                     { Rbad (2,i-1,s) }
+| RCHECK_HASH_ARGS op=opos           {Rcheck_hash_args op}
 | RADD_TEST op=opos e=expr asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
 | RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }

@@ -25,6 +25,7 @@ let mk_Prod = function [t] -> t | ts -> Prod ts
 type parse_expr =
   | V of string qual * string
   | SApp of string * parse_expr list
+  | SLookUp of string * parse_expr list
   | Tuple of parse_expr list
   | ParseProjPermKey of Type.key_elem * parse_expr
   | Proj of int * parse_expr
@@ -136,6 +137,7 @@ type tactic =
   | Rindep         of bool
   | Rcrush         of bool * int option
   | Rbad           of int * int * string
+  | Rcheck_hash_args of ocmd_pos
   | RbadOracle     of int * ocmd_pos * string
   | Rexcept        of assgn_pos option * (parse_expr list) option 
   | Rexcept_orcl   of ocmd_pos * parse_expr list

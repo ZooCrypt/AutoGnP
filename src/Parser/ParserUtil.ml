@@ -140,7 +140,12 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
     | Tuple(es) -> E.mk_Tuple (L.map go es)
     | ParseProjPermKey(ke,kp) -> E.mk_ProjPermKey ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
-                             
+
+    | SLookUp(s,es) ->
+       let h = try Mstring.find s ts.ts_lkupdecls with
+                 Not_found -> fail_parse (F.sprintf "Undefined random oracle %s" s) in
+       let es = mk_Tuple (L.map go es) in
+       E.mk_H h es
     | SApp(s,es) when Mstring.mem (s ^ "_inv") ts.ts_permdecls ->
        begin
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in

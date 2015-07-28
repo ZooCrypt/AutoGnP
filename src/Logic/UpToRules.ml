@@ -25,7 +25,8 @@ let rbad which_bad p vsx_name vmap ts ju =
        tacerror "Error, var \'%a\' appears in expr \'%a\'" Vsym.pp vsx pp_exp e;     
      if not (Hsym.is_ro h) then
        tacerror "Error, the function \'%a\' is not a random oracle" Hsym.pp h;
-
+     if (Hsym.is_lkup h) then
+       tacerror "Error, \'bad\' rule cannot be applied to the oracle lookup \'%a\'" Hsym.pp h;
      
      let cmds = [ G.GSamp(vs, (e'.e_ty,[]) )] in
      (* ju1 is ju with a random sampling instead of the hash call *)
@@ -65,9 +66,36 @@ let rbad which_bad p vsx_name vmap ts ju =
      CoreTypes.Rbad(bad_n,p,vsx), ju1::ju2::check_other_hc_expr_eq_jus
   | _ -> tacerror "cannot apply \'bad\' rule at pos %i\n<< \'Let var = H(expr)\' required >>\n(remember you can use the \'abstract\' rule to fold a hash call into a variable)." (p+1)
      
+let t_bad which_bad p vsx_name vmap ts ju =
+  CR.prove_by (rbad which_bad p vsx_name vmap ts) ju
+           
+let rcheck_hash_args opos ts ju =
+  let se = ju.ju_se in
+  match G.get_se_octxt se opos with
+  | ((G.LGuard(eq)) as lguard), se_octxt ->
+     if not (is_SomeQuant eq) then
+       tacerror "Error, \'%a\' is not a quantified expression" pp_exp eq;
+     let _,(vs,o),eq = ExprUtils.destr_Quant eq in
+     let ve,e =
+       try ExprUtils.destr_Eq eq with
+         ExprUtils.Destr_failure _ -> tacerror "Error, expected \'v = expr\' expression, with v bound in L_%a" Oracle.pp o in
+     let o = try Oracle.destr_as_Hsym_t o with
+               Oracle.Destr_failure _ -> tacerror "Error, \'%a\' is not a random oracle" Oracle.pp o in
+     let o_lkup = Mstring.find (Hsym.to_string o) ts.TheoryTypes.ts_lkupdecls in
+     if not (List.exists (fun v -> e_equal ve (mk_V v)) vs) then
+       tacerror "Error, expected \'v = expr\' expression, with v bound in L_%a" Hsym.pp o;
+     let seoc_cright = se_octxt.G.seoc_cright in
+     let to_lkup = function
+       | (h,e') when (Hsym.equal h o && e_equal e e') -> o_lkup
+       | (h,_) -> h in
+     let seoc_cright = G.subst_lkup_lcmds to_lkup seoc_cright in
+     let se_octxt = {se_octxt with G.seoc_cright} in
+     CoreTypes.Rcheck_hash_args opos,[{ju with ju_se = G.set_se_octxt [lguard] se_octxt}]
+  | _ -> let (i,j,k,_) = opos in tacerror "Invalid guard position (%i,%i,%i)" i j k
 
-
-
+let t_check_hash_args opos ts ju =
+  CR.prove_by (rcheck_hash_args opos ts) ju
+                     
 (* TEST FUNCTION -- NOT VALID *)
 let rbad_oracle which_bad opos vsx_name ts ju =   
   (* fail_if_occur vsx ju "rbad"; FIXME : why is this needed ?*)

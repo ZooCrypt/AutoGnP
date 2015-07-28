@@ -40,6 +40,7 @@ type theory_state = {
   (* explicitly defined *)
   ts_permdecls  : Psym.t      Mstring.t;
   ts_rodecls    : Hsym.t      Mstring.t;
+  ts_lkupdecls  : Hsym.t      Mstring.t;
   ts_odecls     : Osym.t      Mstring.t;
   ts_adecls     : Asym.t      Mstring.t;
   ts_emdecls    : Esym.t      Mstring.t;

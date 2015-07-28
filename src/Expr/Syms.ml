@@ -133,6 +133,7 @@ module Hsym = struct
   type t = {
     id    : Id.id;
     ro    : bool;          (*r true if random oracle *)
+    lkup  : bool;          (*r true is LookUp call in random oracle *)    
     dom   : ty;
     codom : ty;
   }
@@ -151,13 +152,14 @@ module Hsym = struct
   module S = Hs.S
   module H = Hs.H
 
-  let mk name ro dom codom =
-    { id = Id.mk name; ro; dom; codom }
+  let mk name ~ro ?lkup:(lkup=false) dom codom =
+    { id = Id.mk name; ro; lkup = ro && lkup; dom; codom }
 
-  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
   let to_string hs = Id.name hs.id
 
   let is_ro hs = hs.ro
+  let is_lkup hs = hs.ro && hs.lkup
+  let pp fmt hs = F.fprintf fmt (if is_lkup hs then "m_%s" else "%s") (Id.name hs.id)
 end
 
 
@@ -177,12 +179,11 @@ module Oracle = struct
     | RO hs -> Hsym.hash hs
     |  O os -> Osym.hash os
                          
-  let equal_aux = function
+  let equal ors1 ors2 = match ors1,ors2 with
     | (RO hs1, RO hs2) -> Hsym.equal hs1 hs2
     | ( O os1,  O os2) -> Osym.equal os1 os2
     | _ -> false
 
-  let equal ors1 ors2 = equal_aux (ors1,ors2)
                 
   module Ors = StructMake (struct
     type t = tt
@@ -193,11 +194,11 @@ module Oracle = struct
   module S = Ors.S
   module H = Ors.H
 
-  let mk name ro dom codom =
+  let mk name ~ro ?lkup:(lkup=false) dom codom =
     if ro then
-      RO({ Hsym.id = Id.mk name; ro; dom; codom })
+      mk_RO(Hsym.mk name ~ro ~lkup dom codom)
     else
-      O( { Osym.id = Id.mk name;     dom; codom })
+      mk_O(Osym.mk name dom codom)
 
   let pp fmt = function
     | RO hs -> Hsym.pp fmt hs
@@ -208,7 +209,11 @@ module Oracle = struct
     |  O os -> Osym.to_string os
 
   let is_ro = function
-    | RO hs when hs.Hsym.ro -> true
+    | RO hs when Hsym.is_ro hs -> true
+    | _ -> false
+
+  let is_lkup = function
+    | RO hs when Hsym.is_lkup hs -> true
     | _ -> false
 
   let get_id = function
@@ -219,13 +224,16 @@ module Oracle = struct
     |  O os -> os.Osym.codom
   let get_dom = function
     | RO hs -> hs.Hsym.dom
-    |  O os -> os.Osym.dom            
+    |  O os -> os.Osym.dom
+                 
+  exception Destr_failure of string
+                                      
   let destr_as_Hsym_t = function
     | RO hs -> hs
-    | _ -> failwith "Oracle.destr_as_Hsym_t cast failure: received NON RANDOM Oracle"    
+    | _ -> raise (Destr_failure "Oracle.destr_as_Hsym_t cast failure: received NON RANDOM Oracle")
   let destr_as_Osym_t = function
     | O os -> os
-    | _ -> failwith "Oracle.destr_as_Osym_t cast failure: received RANDOM Oracle"
+    | _ -> raise (Destr_failure "Oracle.destr_as_Osym_t cast failure: received RANDOM Oracle")
                  
 end
                             

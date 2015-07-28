@@ -82,6 +82,7 @@
       ; "rnd_oracle", RRND_ORACLE
       ; "bad1", RBAD1
       ; "bad2", RBAD2
+      ; "check_hash_args", RCHECK_HASH_ARGS
       ; "undo_back", UNDOBACK
       ; "ctxt_ev", RCTXT_EV
       ; "injective_ctxt_ev", RINJECTIVE_CTXT_EV
@@ -130,6 +131,10 @@ rule lex = parse
     (['A'-'Z']
      ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
     { LIST (s) }
+  | "m_"
+    (['A'-'Z']
+     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
+    { LOOKUP (s) }
   | "BS_"(['a'-'z']['a'-'z' '0'-'9']* as s) { TBS(s) }
   | "0_"(['a'-'z']['0'-'9']* as s) { ZBS(s) }
   | "Bool" { TBOOL }

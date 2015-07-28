@@ -264,6 +264,8 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "case @[<v 2>%a@]" pp_exp e
   | Rbad(i,_,_) | RbadOracle(i,_,_) ->
     F.fprintf fmt "bad%i" i
+  | Rcheck_hash_args(i,j,k,_) ->
+    F.fprintf fmt "check_hash_args (%i,%i,%i)" (i+1) (j+1) (k+1)
   | Rctxt_ev(_i,_c) ->
     F.fprintf fmt "ctxt %i" _i
   | Rinjective_ctxt_ev(_i,_c,_) ->

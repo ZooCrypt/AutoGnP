@@ -14,6 +14,7 @@ let mk_ts () = {
   ts_gvars      = Hashtbl.create 20;
   ts_permvars   = Hashtbl.create 20;
   ts_rodecls    = Mstring.empty;
+  ts_lkupdecls  = Mstring.empty;  
   ts_permdecls  = Mstring.empty;
   ts_odecls     = Mstring.empty;
   ts_adecls     = Mstring.empty;

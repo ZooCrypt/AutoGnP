@@ -1092,6 +1092,34 @@ let id_renaming = Vsym.M.empty
 let pp_ren fmt ren =
   pp_list "," (pp_pair Vsym.pp Vsym.pp) fmt (Vsym.M.bindings ren)
 
+(* \hd{check_hash_args rule helper : Replace hash calls by lookups} *)
+
+let subst_lkup_e to_lkup =
+  let aux e =
+    match e.e_node with
+    | H(hs,e) when (Hsym.is_ro hs) -> mk_H (to_lkup (hs,e)) e
+    (*i we could reorder n-ary constructors here after the renaming
+    | Nary(o, es) when o == FPlus || o == FMult || o == GMult || o == Xor ->
+      let es = L.map (e_map_top aux) es in
+      Expr.mk_nary "subst" true o (L.sort e_compare es) (L.hd es).e_ty i*)
+    (*
+    | Exists(e1,e2,binders) ->
+      let e1 = e_map_top aux e1 in
+      let e2 = e_map_top aux e2 in
+      mk_Exists e1 e2 (L.map (fun (v,h) -> (tov v,h)) binders)
+    *)
+    | _ -> e
+  in
+  e_map aux
+
+let subst_lkup_lc to_lkup = function
+  | LLet (v, e) -> LLet(v, subst_lkup_e to_lkup e)
+  | LBind _ as lcmd' -> lcmd'
+  | LSamp(v,d) -> LSamp(v, map_distr_exp (subst_lkup_e to_lkup) d)
+  | LGuard e -> LGuard (subst_lkup_e to_lkup e)
+
+let subst_lkup_lcmds to_lkup = L.map (subst_lkup_lc to_lkup)
+
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Mappings from strings to variables} *) 
 
