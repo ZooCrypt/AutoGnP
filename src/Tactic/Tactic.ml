@@ -81,7 +81,8 @@ let gpos_of_apos ju ap =
   match ap with
   | PT.AbsPos i -> i
   | PT.Var s    -> find_gvar ju s
-  | PT.Pos i    -> (gpos_of_offset ju i) - 1
+  | PT.Pos i when i >= 0 -> (gpos_of_offset ju i) - 1
+  | PT.Pos i -> (gpos_of_offset ju i)
 
 let interval ju (i1,i2) = 
   let i1 = opt (gpos_of_apos ju) 0 i1 in
@@ -215,6 +216,9 @@ let rec handle_tactic ts tac =
       let e = parse_e se in
       let v = mk_new_var sv e.e_ty in
       t_let_abstract (get_pos i) v e (map_opt get_pos mupto) (not no_norm) ju
+
+    | PT.Rlet_abstract(None,sv,Some(se),mupto,no_norm) ->
+       raise (Handle_this_tactic_instead(PT.Rlet_abstract(Some (PT.Pos(-1)),sv,Some se, mupto, no_norm)))
                      
     | PT.Rlet_abstract_oracle(opos,sv,se,len,no_norm) ->
        let qual = Qual (PU.get_oname_from_opos ju.ju_se opos) in
