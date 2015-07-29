@@ -15,7 +15,8 @@ module CR = CoreRules
 let rbad which_bad p vsx_name vmap ts ju =  
   (* fail_if_occur vsx ju "rbad"; FIXME : why is this needed ?*)
   let se = ju.ju_se in
-  match G.get_se_ctxt se p with
+  match (try G.get_se_ctxt se p with
+           Failure s -> tacerror "Invalid position %i :\n%s" (p+1) s) with
   | G.GLet(vs,e'), se_ctxt when is_H e' ->
      let h,e = destr_H e' in
      let vsx = if (Ht.mem vmap (Unqual,vsx_name)) then
@@ -70,8 +71,9 @@ let t_bad which_bad p vsx_name vmap ts ju =
   CR.prove_by (rbad which_bad p vsx_name vmap ts) ju
            
 let rcheck_hash_args opos ts ju =
+  let bad_position ?s () = let (i,j,k,_) = opos in tacerror "Invalid guard position (%i,%i,%i)\n%s" (i+1) (j+1) (k+1) (match s with Some s -> "<< " ^ s ^ " >>" | _ -> "") in
   let se = ju.ju_se in
-  match G.get_se_octxt se opos with
+  match (try G.get_se_octxt se opos with Failure s -> bad_position ~s ()) with
   | ((G.LGuard(eq)) as lguard), se_octxt ->
      if not (is_SomeQuant eq) then
        tacerror "Error, \'%a\' is not a quantified expression" pp_exp eq;
@@ -91,7 +93,7 @@ let rcheck_hash_args opos ts ju =
      let seoc_cright = G.subst_lkup_lcmds to_lkup seoc_cright in
      let se_octxt = {se_octxt with G.seoc_cright} in
      CoreTypes.Rcheck_hash_args opos,[{ju with ju_se = G.set_se_octxt [lguard] se_octxt}]
-  | _ -> let (i,j,k,_) = opos in tacerror "Invalid guard position (%i,%i,%i)" i j k
+  | _ -> bad_position()
 
 let t_check_hash_args opos ts ju =
   CR.prove_by (rcheck_hash_args opos ts) ju

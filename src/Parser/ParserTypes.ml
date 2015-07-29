@@ -136,7 +136,7 @@ type tactic =
   | Rlet_unfold    of assgn_pos list
   | Rindep         of bool
   | Rcrush         of bool * int option
-  | Rbad           of int * int * string
+  | Rbad           of int * assgn_pos option * string
   | Rcheck_hash_args of ocmd_pos
   | RbadOracle     of int * ocmd_pos * string
   | Rexcept        of assgn_pos option * (parse_expr list) option 

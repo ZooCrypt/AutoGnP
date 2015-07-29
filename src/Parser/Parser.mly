@@ -437,8 +437,8 @@ decl :
 /* HELP */
 help_command :
 | HELP RINJECTIVE_CTXT_EV { Help(Rinjective_ctxt_ev(0,None,None)) }
-| HELP RBAD1 { Help(Rbad(1,0,"")) }
-| HELP RBAD2 { Help(Rbad(2,0,"")) }
+| HELP RBAD1 { Help(Rbad(1,None,"")) }
+| HELP RBAD2 { Help(Rbad(2,None,"")) }
 | HELP RCHECK_HASH_ARGS {Help(Rcheck_hash_args(0,0,0,Game.Onohyb))}
 | HELP RFIND { Help(Rfind(([],CB(false)),CB(false),"",[])) }
 | HELP RUNWRAP_QUANT_EV { Help(Runwrap_quant_ev(0)) }
@@ -572,11 +572,11 @@ tactic :
 /* oracles */
 | RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Rrnd_orcl(op,c1,c2) }
 | RREWRITE_ORACLE op=opos d=dir                       { Rrewrite_orcl(op,d) }
-| RBAD1 op=opos s=ID                                   { RbadOracle (1,op,s) }
-| RBAD1 i=NAT s=ID                                     { Rbad (1,i-1,s) }
-| RBAD2 op=opos s=ID                                   { RbadOracle (2,op,s) }
-| RBAD2 i=NAT s=ID                                     { Rbad (2,i-1,s) }
-| RCHECK_HASH_ARGS op=opos           {Rcheck_hash_args op}
+| RBAD1 op=opos s=ID                                  { RbadOracle (1,op,s) }
+| RBAD1 i=uopt(assgn_pos) s=ID                        { Rbad (1,i,s)        }
+| RBAD2 op=opos s=ID                                  { RbadOracle (2,op,s) }
+| RBAD2 i=uopt(assgn_pos) s=ID                        { Rbad (2,i,s)        }
+| RCHECK_HASH_ARGS op=opos                            { Rcheck_hash_args op }
 | RADD_TEST op=opos e=expr asym=ID fvs=ID*
   { Radd_test(Some(op),Some(e),Some(asym),Some(fvs)) }
 | RADD_TEST UNDERSCORE { Radd_test(None,None,None,None) }

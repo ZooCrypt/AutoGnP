@@ -82,10 +82,10 @@ bound_adv
     guess AA c.
     abstract 13 h (((f_inv(sk,c))#1)#0 ++ (H2((f_inv(sk,c))#0))#0,
               (H2((f_inv(sk,c))#0))#1 ++ ((f_inv(sk,c))#1)#1).
-    abstract 14 h' H1(h). swap (11,1,3) 1.
+    abstract _ h' H1(h). swap (11,1,3) 1.
     help check_hash_args.
     check_hash_args (11,1,3). (* Here atm *)
-    bad1 14 hh. print_goals.
+    bad1 h' hh. print_goals.
     
 help unwrap_quant_ev.
     unwrap_quant_ev 1.
