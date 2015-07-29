@@ -82,22 +82,20 @@ bound_adv
     guess AA c.
     abstract 13 h (((f_inv(sk,c))#1)#0 ++ (H2((f_inv(sk,c))#0))#0,
               (H2((f_inv(sk,c))#0))#1 ++ ((f_inv(sk,c))#1)#1).
-    abstract _ h' H1(h). swap (11,1,3) 1.
+    abstract _ h' H1(h#0,h#1). swap (11,1,3) 1.
     help check_hash_args.
-    check_hash_args (11,1,3). (* Here atm *)
-    bad1 h' hh. print_goals.
-    
-help unwrap_quant_ev.
-    unwrap_quant_ev 1.
-  rewrite_ev 1 <-.   
+    check_hash_args (11,1,3).
+    bad2 h' hh. indep.
+    guess A_H1 hh. swap h' 1. indep. rewrite_ev 1. norm. false_ev.
+    swap (11,1,4) -1. norm_nounfold.
 
 
 (* ====== Working with H2 args call ====== *)    
     (* Destroying the let bindings inside the oracle (required by 'guard' rule) 
     and then refolding it for readability *)
     norm. abstract 5 mb (b?m1:m0). abstract 6 cs H1(mb,r). abstract 7 ch2 H2(cs). abstract 8 ct (ch2 ++ (mb,r)). abstract 9 pk get_pk(kp). abstract 10 sk get_sk(kp)
-.   guard (11,1,3) ((f_inv(sk,c)#0) <> cs).
-        abstract (11,1,1) st f_inv(sk,c). abstract (11,1,2) s st#0. abstract (11,1,3) t st#1. abstract (11,1,4) ct' (t ++ H2(s))
+.   guard (11,1,5) ((f_inv(sk,c)#0) <> cs). unwrap_quant_ev 4. norm_nounfold
+.       abstract (11,1,1) st f_inv(sk,c). abstract (11,1,2) s st#0. abstract (11,1,3) t st#1. abstract (11,1,4) ct' (t ++ H2(s))
 .       norm_nounfold.
         unfold pk. unfold sk.
         
@@ -123,12 +121,12 @@ help unwrap_quant_ev.
           (* -a- No collision : H1(<>) -> <> *)
           rewrite_ev 1. (*2*)
           norm.
-          rewrite_ev 3 <-.
+          rewrite_ev 4 <-.
           norm. (*3*)
          false_ev.
         
           (* -b- Collision game : H1(<>) -> = *)
-          norm_nounfold.
+          norm_nounfold. (* HERE *)
           guess AA_guesser c. (* Inefficient, only needed for 
           abstract let bindings required to make the game match the 
           one computationally breaking H1 collision resistance *)
@@ -136,7 +134,7 @@ help unwrap_quant_ev.
           abstract 12 x1 ((ch2#0) ++ ((f_inv(sk,c)#1)#0),(ch2#1) ++ ((f_inv(sk,c)#1)#1))
 .         abstract 13 x2 (mb,r).
           norm_nounfold.
-          remove_ev 1 3.
+          remove_ev 1 5.
           abstract 1 input ( ).
          assumption_computational H1_collision_resistance [1 14]
      
