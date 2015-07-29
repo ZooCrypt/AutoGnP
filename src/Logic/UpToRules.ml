@@ -39,12 +39,20 @@ let rbad which_bad p vsx_name vmap ts ju =
                               (G.gdef_all_hash_calls_h h se_ctxt.G.sec_right) in
      if (Se.mem e all_other_hash_calls_args) then
        tacerror "Error, there cannot be other \'%a\' calls in main game querying the same expression \'%a\'" Hsym.pp h pp_exp e;
-     let create_ju ei =
-       { ju_pr = Pr_Succ ;
-         ju_se = { ju1.ju_se with G.se_ev =
-                                    { G.ev_quant = G.Forall;
-                                      G.ev_binding = [];
-                                      G.ev_expr = (mk_Eq e ei) } } } in
+     let create_ju = match which_bad with
+       | PU.CaseDist -> fun ei ->
+         { ju_pr = Pr_Succ ;
+           ju_se = { ju1.ju_se with G.se_ev =
+                                      { G.ev_quant = G.Forall;
+                                        G.ev_binding = [];
+                                        G.ev_expr = (mk_Eq e ei) } } }
+       | PU.UpToBad -> fun ei ->
+         { ju_pr = Pr_Succ ;
+           ju_se = { ju1.ju_se with G.se_ev =
+                               { se.G.se_ev with
+                                 G.ev_expr = insert_Land (mk_Eq e ei) se.G.se_ev.G.ev_expr}}}
+                                                       
+     in
      let check_other_hc_expr_eq_jus = List.rev (Se.fold
                                      ( fun ei jus -> (create_ju ei)::jus )
                                      all_other_hash_calls_args []) in
