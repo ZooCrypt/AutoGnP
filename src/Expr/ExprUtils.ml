@@ -391,7 +391,10 @@ let destr_Ifte e =
   | App(Ifte,[a;b;c]) -> (a,b,c) 
   | _ -> raise (Destr_failure "Ifte")
 
-
+let rec destr_Quant_nofail e = match e.e_node with
+  | Quant(q,b,e) -> destr_Quant_nofail e
+  | _ -> e
+           
 let destr_Xor_nofail e = 
   match e.e_node with
   | Nary(Xor,es) -> es 

@@ -82,6 +82,7 @@ val destr_FPlus        : expr -> expr list
 val destr_FMult        : expr -> expr list
 val destr_Xor          : expr -> expr list
 val destr_Land         : expr -> expr list
+val destr_Quant_nofail : expr -> expr
 val destr_Xor_nofail   : expr -> expr list
 val destr_Land_nofail  : expr -> expr list
 val destr_Tuple_nofail : expr -> expr list
