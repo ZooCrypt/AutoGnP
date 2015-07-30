@@ -48,7 +48,7 @@ let rbad which_bad p vsx_name vmap ts ju =
                                         G.ev_expr = (mk_Eq e ei) } } }
        | PU.UpToBad -> fun ei ->
          { ju_pr = Pr_Succ ;
-           ju_se = { ju1.ju_se with G.se_ev =
+           ju_se = { ju.ju_se with G.se_ev =
                                { se.G.se_ev with
                                  G.ev_expr = insert_Land (mk_Eq e ei) se.G.se_ev.G.ev_expr}}}
                                                        
@@ -65,7 +65,7 @@ let rbad which_bad p vsx_name vmap ts ju =
           let conj_ev = { G.ev_quant   = G.Exists;
                           G.ev_binding = bad_ev_binding :: se.G.se_ev.G.ev_binding;
                           G.ev_expr    = insert_Land bad_ev_expr se.G.se_ev.G.ev_expr } in
-          2, {ju_pr = Pr_Succ; ju_se = {ju1.ju_se with G.se_ev = conj_ev} }
+          2, {ju_pr = Pr_Succ; ju_se = {ju.ju_se with G.se_ev = conj_ev} }
        | PU.CaseDist ->
           let bad_ev = { G.ev_quant   = G.Exists;
                          G.ev_binding = [bad_ev_binding];

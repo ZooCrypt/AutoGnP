@@ -24,7 +24,6 @@ open Game
 module Ht = Hashtbl
 module PT = ParserTypes
 module PU = ParserUtil
-module G = Game
 module CR = CoreRules
 
 let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls

@@ -194,7 +194,7 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       let b = 
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
       in
-      let e = expr_of_parse_expr vmap ts Unqual pe in
+      let e = expr_of_parse_expr vmap ts qual pe in
       List.fold_left (fun acc x -> Expr.mk_Quant q x acc) e b
 
     | Div(e1,e2)   ->
