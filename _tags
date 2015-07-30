@@ -10,10 +10,10 @@ true: bin_annot, debug
 
 <src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), package(yojson), thread
 
-<src/Main/zoocrypt.d.byte>: thread, package(unix), package(yojson), package(bolt)
+<src/Main/autognp.d.byte>: thread, package(unix), package(yojson), package(bolt)
 
-<src/Main/zoocrypt.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num), package(bolt)
-<src/Main/zoocrypt.p.native>: thread, package(unix), package(yojson), package(bolt)
+<src/Main/autognp.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num), package(bolt)
+<src/Main/autognp.p.native>: thread, package(unix), package(yojson), package(bolt)
 
 <src/CAS/Factory.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num)
 
@@ -21,4 +21,4 @@ true: bin_annot, debug
 
 <src/CAS/CAS.ml>: package(yojson)
 
-<src/Main/wszoocrypt.ml> or <src/Main/wszoocrypt.native>: thread, package(unix), package(websocket), package(yojson), package(ctypes.foreign), package(num), package(bolt)
+<src/Main/wsautognp.ml> or <src/Main/wsautognp.native>: thread, package(unix), package(websocket), package(yojson), package(ctypes.foreign), package(num), package(bolt)

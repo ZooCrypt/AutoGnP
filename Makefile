@@ -1,4 +1,16 @@
--include Makefile.local
+DESTDIR    ?=
+PREFIX     ?= /usr/local
+VERSION    ?= $(shell date '+%F')
+INSTALL    := scripts/install/install-sh
+PWD        := $(shell pwd)
+
+BINDIR := $(PREFIX)/bin
+LIBDIR := $(PREFIX)/lib/autognp
+SHRDIR := $(PREFIX)/share/autognp
+
+INSTALL    := scripts/install/install-sh
+
+#############################################################################
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -8,12 +20,23 @@ ifeq ($(UNAME_S),Darwin)
   LIBFLAGS=-lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
 endif
 
-OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind -quiet
+OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -use-ocamlfind
 
-.PHONY : clean all doc test\
+ifeq ($(shell echo $$TERM), dumb)
+ OCAMLBUILDFLAGS += -classic-display -quiet
+endif
+
+#############################################################################
+
+.PHONY : clean all doc test autognp.native \
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
-all: wszoocrypt zoocrypt
+all: autognp.native
+
+autognp.native : stubs
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
+	#rm autognp.log
+	#BOLT_CONFIG=log_bolt.config ./autognp.native test.zc ; cat autognp.log
 
 stubs:
 	@test -d _build/c_src || mkdir -p _build/c_src
@@ -21,38 +44,23 @@ stubs:
 	@ar rc _build/c_src/libfactorystubs.a _build/c_src/factory_stubs.o
 	@c++ -shared -o _build/c_src/libfactorystubs.so _build/c_src/factory_stubs.o -lfactory
 
-stubtest:
-	c++ c_src/factory_stubs.cc -o factory_test -I/usr/local/include/factory -DWITHMAIN -lfactory 
-	./factory_test
+install:
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 0755 -T autognp.native $(DESTDIR)$(BINDIR)/autognp
 
-doc:
-	ocamlbuild $(OCAMLBUILDFLAGS) tutor.docdir/index.html
-
-toolchain:
-	./scripts/build-toolchain
-
-update-toolchain:
-	$$(./scripts/activate-toolchain.sh) \
-	&& opam update  -y \
-	&& opam upgrade -y  \
-	&& opam install -y ounit yojson websocket
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/autognp
 
 clean:
 	ocamlbuild -clean
 	-@rm -rf tutor.docdir
 
-zoocrypt : stubs
-	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) zoocrypt.native
-	#rm zoocrypt.log
-	#BOLT_CONFIG=log_bolt.config ./zoocrypt.native test.zc ; cat zoocrypt.log
-
 factory : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Factory.native
 
-
-wszoocrypt : stubs
-	@ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wszoocrypt.native
-	#-@killall wszoocrypt.native
+wsautognp : stubs
+	@ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wsautognp.native
+	#-@killall wsautognp.native
 
 ##########################################################################
 # Build PDF from literate program using ocamlweb and pdflatex
@@ -79,7 +87,7 @@ LOGIC_MODULES= Logic/Assumption.ml Logic/Assumption.mli \
 
 PARSER_MODULES= Parser/ParserTypes.ml Parser/ParserUtil.ml Parser/ParserUtil.mli Parser/Parse.ml Parser/Parse.mli
 TACTIC_MODULES= Tactic/TheoryTypes.ml Tactic/TheoryState.ml Tactic/TheoryState.mli Tactic/Tactic.ml Tactic/Tactic.mli
-TOOL_MODULES= Main/zoocrypt.ml Main/wszoocrypt.ml
+TOOL_MODULES= Main/autognp.ml Main/wsautognp.ml
 
 UTIL_FILES=$(addprefix src/,$(UTIL_MODULES))
 POLY_FILES=$(addprefix src/,$(POLY_MODULES))
@@ -169,13 +177,13 @@ ldocl:
 ##########################################################################
 # Used for development and testing
 
-test-examples: zoocrypt
+test-examples: autognp.native
 	sh scripts/run_tests.sh
 
-test-examples-ec: zoocrypt
+test-examples-ec: autognp.native
 	sh scripts/run_examples_ec.sh
 
-test-tests-ec: zoocrypt
+test-tests-ec: autognp.native
 	sh scripts/run_tests_ec.sh
 
 Test_Type :
@@ -195,3 +203,8 @@ Test_Solve_Fq :
 
 %.inferred.mli:
 	ocamlbuild $(OCAMLBUILDFLAGS) src/$@ && cat _build/src/$@
+
+stubtest:
+	c++ c_src/factory_stubs.cc -o factory_test -I/usr/local/include/factory -DWITHMAIN -lfactory 
+	./factory_test
+
