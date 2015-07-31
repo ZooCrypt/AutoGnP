@@ -21,4 +21,5 @@ depends: [
   "ctypes-foreign"
   "menhir"
   "websocket"
+  "batteries"
 ]

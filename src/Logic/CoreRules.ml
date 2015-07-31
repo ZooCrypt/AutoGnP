@@ -1061,7 +1061,6 @@ let radd_test opos tnew asym fvs ju =
                (pp_lcmd ~qual:Unqual) lcmd "preceeding commands must be tests"
     in
     let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
-    (* failwith (fsprintf "error-test: %a" (pp_list "," Vsym.pp) seoc.seoc_oargs); *)
     let subst =
       L.fold_left2
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)

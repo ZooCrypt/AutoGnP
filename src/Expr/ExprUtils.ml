@@ -487,7 +487,8 @@ let sub t =
         L.split 
           (L.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
       mk_Tuple es, mk_Tuple zs
-    | Int -> assert false in
+    | Int | KeyElem _ | KeyPair _ -> assert false
+  in
   let x1 = Vsym.mk "x" t in
   let x2 = Vsym.mk "x" t in
   let e, z = aux (mk_V x1) (mk_V x2) in
@@ -505,9 +506,8 @@ let rec is_Zero e =
   | _                    -> false
 
 let insert_Land e1 e2 =
-  let ty_Bool = mk_ty Bool in
-  if( not(ty_equal e1.e_ty ty_Bool) ) then
-    raise (TypeError(e1.e_ty, ty_Bool, e1, None,
+  if( not(ty_equal e1.e_ty mk_Bool) ) then
+    raise (TypeError(e1.e_ty, mk_Bool, e1, None,
                      "insert_Land failed, expr of type Bool expected."));
   match e2.e_node with
   | Nary(Land,es) -> mk_Land (e1::es)

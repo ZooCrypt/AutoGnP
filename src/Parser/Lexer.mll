@@ -150,7 +150,6 @@ rule lex = parse
 		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PKEY s}	 
   | "SKey_"((['a'-'z' 'A'-'Z' ]
 		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {SKEY s}
-  (*  (((['a'-'z'])(['a'-'z''0'-'9']* )) as s)"_inv" { F_INV(s) } (*Test *) *)
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
   | ['a'-'z' 'A'-'Z' ]
     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s
