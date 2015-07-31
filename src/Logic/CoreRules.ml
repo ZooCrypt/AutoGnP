@@ -8,7 +8,6 @@ open Syms
 open Type
 open Expr
 open ExprUtils
-(* open Gsyms *)
 open Game
 open Wf
 open Assumption
@@ -1074,7 +1073,7 @@ let radd_test opos tnew asym fvs ju =
         seoc_sec =
           { seoc.seoc_sec with
             sec_ev = 
-              { ev_quant = Forall;
+              { ev_quant = EvForall;
                 ev_binding = [];
                 ev_expr = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]))};
             sec_right = [] } }
@@ -1156,7 +1155,7 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
     { seoc with
       seoc_sec =
         { seoc.seoc_sec with
-          sec_ev = { ev_binding = []; ev_quant = Forall; ev_expr = mk_Land splitEv } };
+          sec_ev = { ev_binding = []; ev_quant = EvForall; ev_expr = mk_Land splitEv } };
       seoc_obless    = Some (rename_odef new_lcmds new_eret);
       seoc_obeq      = None;
       seoc_cright    = old_lcmds;
@@ -1215,7 +1214,7 @@ let rguard opos tnew ju =
       seoc_sec = { seoc.seoc_sec with 
         sec_right = [];
         sec_ev = 
-          { ev_quant = Exists;
+          { ev_quant = EvExists;
             ev_binding = [vs,Oracle.mk_O seoc.seoc_osym];
             ev_expr = e_subst subst (mk_Land (mk_Not t::tests))}
       }} in
@@ -1231,7 +1230,7 @@ let t_guard p tnew = prove_by (rguard p tnew)
 let rguess asym fvs ju = 
   let ev = ju.ju_se.se_ev in
   match ev.ev_quant, ev.ev_binding, ju.ju_pr with
-  | Exists, [vs,_o], Pr_Succ ->
+  | EvExists, [vs,_o], Pr_Succ ->
     assert (ty_equal (ty_prod_vs fvs) (ty_prod_vs vs));
     let subst =
       L.fold_left2
@@ -1241,7 +1240,7 @@ let rguess asym fvs ju =
     let ju1 = {ju with
       ju_se = {
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,mk_Tuple [], [])];
-        se_ev = { ev_quant = Forall; ev_binding = []; ev_expr = e }} } in
+        se_ev = { ev_quant = EvForall; ev_binding = []; ev_expr = e }} } in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
     Rguess asym, [ ju1 ]
     
@@ -1253,7 +1252,7 @@ let t_guess asym fvs = prove_by (rguess asym fvs)
 let rfind (bd,body) arg asym fvs ju =
   let ev = ju.ju_se.se_ev in
   match ev.ev_quant, ev.ev_binding, ju.ju_pr with
-  | Exists, [vs,_o], Pr_Succ ->
+  | EvExists, [vs,_o], Pr_Succ ->
     assert (ty_equal (ty_prod_vs fvs) (ty_prod_vs vs));
     (* check that body{bd <- arg} = ev.ev_expr *)
     assert (ty_equal (ty_prod_vs bd) arg.e_ty);
@@ -1281,7 +1280,7 @@ let rfind (bd,body) arg asym fvs ju =
     let ju1 = {ju with
       ju_se = {
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,arg, [])];
-        se_ev = { ev_quant = Forall; ev_binding = []; ev_expr = e }} } in
+        se_ev = { ev_quant = EvForall; ev_binding = []; ev_expr = e }} } in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
     Rfind (asym, (bd,body)), [ ju1 ]
     

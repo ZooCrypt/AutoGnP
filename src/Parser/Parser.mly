@@ -364,14 +364,14 @@ binding1:
 
 binding:
 (* | FORALL l=seplist1(COMMA,binding1) COLON {Game.Forall, l} *)
-| EXISTS l=seplist1(COMMA,binding1) COLON {Game.Exists, l}
+| EXISTS l=seplist1(COMMA,binding1) COLON {Game.EvExists, l}
 
 bind_event:
 | COLON b=binding? e=expr
   { match b with
-    | None                 -> (Game.Forall, []), e
-    | Some (Game.Forall,_) -> assert false
-    | Some (Game.Exists,l) -> (Game.Exists,l),e }
+    | None                   -> (Game.EvForall, []), e
+    | Some (Game.EvForall,_) -> assert false
+    | Some (Game.EvExists,l) -> (Game.EvExists,l),e }
 
 dir:
 | LEFTARROW { Util.RightToLeft }

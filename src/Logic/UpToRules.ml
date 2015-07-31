@@ -43,7 +43,7 @@ let rbad which_bad p vsx_name vmap ts ju =
        | PU.CaseDist -> fun ei ->
          { ju_pr = Pr_Succ ;
            ju_se = { ju1.ju_se with G.se_ev =
-                                      { G.ev_quant = G.Forall;
+                                      { G.ev_quant = G.EvForall;
                                         G.ev_binding = [];
                                         G.ev_expr = (mk_Eq e ei) } } }
        | PU.UpToBad -> fun ei ->
@@ -62,12 +62,12 @@ let rbad which_bad p vsx_name vmap ts ju =
      (* ju2 is ju1 where event = bad_event + main_event when UpToBad, 
                               or bad_event only when CaseDist *)
        | PU.UpToBad ->
-          let conj_ev = { G.ev_quant   = G.Exists;
+          let conj_ev = { G.ev_quant   = G.EvExists;
                           G.ev_binding = bad_ev_binding :: se.G.se_ev.G.ev_binding;
                           G.ev_expr    = insert_Land bad_ev_expr se.G.se_ev.G.ev_expr } in
           2, {ju_pr = Pr_Succ; ju_se = {ju.ju_se with G.se_ev = conj_ev} }
        | PU.CaseDist ->
-          let bad_ev = { G.ev_quant   = G.Exists;
+          let bad_ev = { G.ev_quant   = G.EvExists;
                          G.ev_binding = [bad_ev_binding];
                          G.ev_expr    = bad_ev_expr } in
           1, {ju_pr = Pr_Succ; ju_se = {ju1.ju_se with G.se_ev = bad_ev} }
@@ -135,13 +135,13 @@ let rbad_oracle which_bad opos vsx_name ts ju =
          bad_ev_binding = ([vsx],Oracle.mk_RO(h)) in
      ( match which_bad with
        | PU.UpToBad ->
-          let conj_ev = { G.ev_quant   = G.Exists;
+          let conj_ev = { G.ev_quant   = G.EvExists;
                           G.ev_binding = bad_ev_binding :: se.G.se_ev.G.ev_binding;
                           G.ev_expr    = insert_Land bad_ev_expr se.G.se_ev.G.ev_expr } in
           let ju2 = {ju with ju_se = {se with G.se_ev = conj_ev} } in
           CoreTypes.RbadOracle(2,opos,vsx), [ju1;ju2]
        | PU.CaseDist ->
-          let bad_ev = { G.ev_quant   = G.Exists;
+          let bad_ev = { G.ev_quant   = G.EvExists;
                          G.ev_binding = [bad_ev_binding];
                          G.ev_expr    = bad_ev_expr } in
           let ju2 = { ju_pr = Pr_Succ;

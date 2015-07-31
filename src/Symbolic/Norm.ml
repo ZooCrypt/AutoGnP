@@ -156,6 +156,7 @@ let rec mk_simpl_op _strong op l =
   | (        GExp _ | GLog _ | EMap _ | GInv
     | FOpp | FMinus | FInv   | FDiv
     | Eq   | Ifte   | Not)           , _ -> assert false
+  | Perm _, _ -> assert false
 
 and mk_simpl_nop strong op l =
   (*i FIXME flattening, for xor and land i*)

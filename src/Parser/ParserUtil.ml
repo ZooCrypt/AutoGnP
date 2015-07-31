@@ -294,7 +294,8 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
       let vts = L.combine vs tys in
       let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
-    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int), ([] | _ :: _ :: _) -> 
+    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.KeyElem _|Type.KeyPair _)
+      , ([] | _ :: _ :: _) -> 
       tacerror "Parser: wrong argument for adversary return value, expected one variable for type Bool"
           Type.pp_ty cty (L.length vs);
     end

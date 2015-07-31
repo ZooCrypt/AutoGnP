@@ -11,7 +11,7 @@ let t_guess_maybe _ts masym mvars ju =
   let se = ju.ju_se in
   let ev = se.se_ev in
   (match ev.ev_binding, ev.ev_quant with
-    | [(vs,_)], Exists -> ret vs
+    | [(vs,_)], EvExists -> ret vs
     | _ -> mempty
   ) >>= fun vs ->
   let asym =

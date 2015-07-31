@@ -96,12 +96,12 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let rec register_subexprs in_field e = 
     match e.e_node with
     | H(_,e1)     -> add_sub e; register_subexprs false e1
-    | ProjPermKey(ke,kp) -> add_sub e; register_subexprs false kp;
+    | ProjPermKey(_,kp) -> add_sub e; register_subexprs false kp;
     | Tuple es    -> add_sub_constr e; List.iter (register_subexprs false) es
     | Quant(_,_,e1) -> add_sub e; register_subexprs true e1
     | Proj(_,e1)  -> add_sub e; (register_subexprs false) e1
     | App(op, es) -> 
-       begin match op with (* FIXME : Permutation handling *)
+      begin match op with (* FIXME : Permutation handling *)
       | FOpp | FMinus | FInv | FDiv -> 
         if not in_field then add_sub_solver e;
         List.iter (register_subexprs true) es
@@ -130,6 +130,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Eq | Not | Ifte ->
         add_sub_constr e; List.iter (register_subexprs false) es
       | GInv -> failwith "GInv cannot occur in normal-form"
+      | Perm _ -> failwith "No support for permutations"
       (*
       | FDiv ->
         FIXME: not the case, check where/why we need this

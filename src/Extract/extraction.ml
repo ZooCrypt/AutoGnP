@@ -66,6 +66,7 @@ let op_of_op file ty = function
   | Not     -> Onot
   | Ifte    -> assert false
   | EMap bm -> Ostr  ((bvar_mod file bm) ^ ".e")
+  | Perm _  -> assert false
 
 let op_of_nop ty = function
   | FPlus -> Oadd
@@ -113,6 +114,7 @@ let rec expression file e =
       List.fold_left (fun e e1 -> Eapp(op,[e;expression file e1])) 
         (expression file e) es 
     end
+  | Quant _ | ProjPermKey _ -> assert false
 
 let rec formula file prefix mem 
     ?(local=Vsym.S.empty) ?(flocal=Vsym.S.empty) e = 
@@ -152,6 +154,7 @@ let rec formula file prefix mem
         (fun e e1 -> Fapp(op,[e;formula file prefix mem ~local ~flocal e1])) 
         (formula file prefix mem ~local ~flocal e) es 
     end
+  | Quant _ | ProjPermKey _ -> assert false
   
 let rec init_res_expr ty = 
   match ty.ty_node with 
@@ -161,6 +164,7 @@ let rec init_res_expr ty =
   | Fq       -> Expr.mk_FZ
   | Prod tys -> Expr.mk_Tuple (List.map init_res_expr tys)
   | Int      -> assert false
+  | KeyPair _ | KeyElem _ -> assert false
 
 let log_oracle modn osym = 
   modn, Format.sprintf "log%s" (Osym.to_string osym)
@@ -643,7 +647,7 @@ let pp_congr_quant ~semi fmt ev =
   | [vs,_] -> 
     F.fprintf fmt 
       "apply %s_congr=> [[%a]];iota zeta%s"
-      (if ev.ev_quant = Forall then "all" else "any")
+      (if ev.ev_quant = EvForall then "all" else "any")
       (pp_list " " (fun fmt _ -> F.fprintf fmt "_")) vs
       (if semi then ";" else "")
   | _ -> assert false (* Not implemented *)
@@ -654,7 +658,7 @@ let pp_impl_quant  fmt ev =
   | [vs,_] -> 
     F.fprintf fmt 
       "by move=> &hr;apply %s_impl=> [[%a]];iota."
-      (if ev.ev_quant = Forall then "all" else "any")
+      (if ev.ev_quant = EvForall then "all" else "any")
       (pp_list " " (fun fmt _ -> F.fprintf fmt "_")) vs
   | _ -> assert false (* Not implemented *)
  
@@ -833,8 +837,10 @@ let mu_x_def file fmt ty =
     F.fprintf fmt "Bool.Dbool.mu_x_def"
   | G gv -> F.fprintf fmt "%s.Distr.mu_x_def_in" (get_gvar file gv).tvar_mod
   | Fq    -> F.fprintf fmt "FDistr.mu_x_def_in"
-  | Prod _ -> assert false (* FIXME *) 
-  | Int -> assert false
+  | Prod _
+  | Int
+  | KeyPair _
+  | KeyElem _ -> assert false
 
 let supp_def file fmt ty = 
   match ty.ty_node with
@@ -844,8 +850,10 @@ let supp_def file fmt ty =
     F.fprintf fmt "Bool.Dbool.supp_def"
   | G gv ->  F.fprintf fmt "%s.Distr.supp_def" (get_gvar file gv).tvar_mod
   | Fq    -> F.fprintf fmt "FDistr.supp_def"
-  | Prod _ -> assert false (* FIXME *) 
-  | Int -> assert false
+  | Prod _
+  | Int
+  | KeyPair _
+  | KeyElem _ -> assert false
 
 let rnd_loosless file fmt (ty, l) =
  match ty.ty_node, l with
@@ -864,9 +872,11 @@ let rnd_loosless file fmt (ty, l) =
     F.fprintf fmt "FDistr.lossless"
   | Fq, [_]    -> 
     F.fprintf fmt "FDistr.lossless_excp"
-  | Fq, _ -> assert false
-  | Prod _, _ -> assert false (* FIXME *) 
-  | Int   , _ -> assert false 
+  | Fq, _ 
+  | Prod _, _
+  | Int   , _
+  | KeyPair _, _  
+  | KeyElem _,_  -> assert false
 
 let t_rnd_loosless file ty f l = 
   F.fprintf F.str_formatter
@@ -1791,10 +1801,12 @@ let extract_except file pos _l pft pft' =
       let s = snd (pvar [] v) in
       F.fprintf fmt "  let %s = g.`%s.%s in@ "
         s adv.mod_name (exclude_private s)) (Se.elements fv);
-    List.iter (fun (_,Oracle.O o) ->
-      let s = snd (log_oracle [] o) in
-      F.fprintf fmt "  let %s = g.`%s.%s in@ "
-        s adv.mod_name (exclude_private s)) ju.ju_se.se_ev.ev_binding;
+    List.iter (function
+      | (_,Oracle.RO _) -> assert false
+      | (_,Oracle.O o) ->
+        let s = snd (log_oracle [] o) in
+        F.fprintf fmt "  let %s = g.`%s.%s in@ "
+          s adv.mod_name (exclude_private s)) ju.ju_se.se_ev.ev_binding;
     F.fprintf fmt "  @[%a@].@ "Printer.pp_form form;
     F.fprintf fmt "cut H1 := %s.SD1_conseq_abs %s &m EV.@ " 
       clone_info.ci_as adv.mod_name;
@@ -2723,7 +2735,7 @@ let rec extract_proof file pft =
         F.fprintf fmt "cut -> : @[<hov>%a =@ %a@];[ | by rewrite Pr [mu_false]].@ "
           Printer.pp_form pr Printer.pp_form prf;
         F.fprintf fmt "rewrite Pr [mu_eq] /List.%s //;smt.@]"
-          (if ev.ev_quant = Forall then "all" else "any");
+          (if ev.ev_quant = EvForall then "all" else "any");
       | _ -> assert false (* Not implemented *) in
     let lemma = add_pr_lemma ~pinfo:pft.pt_info file (mk_cmp pr cmp_eq bound) (Some proof) in
     lemma, pr, cmp_eq, bound
@@ -2756,14 +2768,14 @@ let rec extract_proof file pft =
       F.fprintf fmt "apply (Real.Trans _ (%a)).@ " Printer.pp_form pr_or;
       let rw_list = 
         if jev.ev_binding = [] then ""
-        else if jev.ev_quant = Forall then " /List.all" 
+        else if jev.ev_quant = EvForall then " /List.all" 
         else " /List.any" in
       F.fprintf fmt "+ @[<v>rewrite Pr[mu_sub]%s;[ move=> &hr | by []].@ " rw_list;
       let pp_v fmt v = F.fprintf fmt "%s" (snd (pvar [] v)) in
       if jev.ev_binding = [] then
         F.fprintf fmt "by case (%a) => Hc He;[left | right];move: Hc He.@ "
           Printer.pp_form ev
-      else if jev.ev_quant = Forall then 
+      else if jev.ev_quant = EvForall then 
         F.fprintf fmt "@[<hov 2>by move=> %s;case (%a)=> Hc;@ [left|right];%s@ move=> [%a];move: (He (%a)) Hc.@]@ "
           (if has_assert then "[He _]" else "He") 
           Printer.pp_form ev 
@@ -3144,6 +3156,12 @@ let rec extract_proof file pft =
         conclusion prb cmpb boundb fct in 
     let lemma = add_pr_lemma ~pinfo:pft.pt_info file concl (Some proof) in
     (lemma, pr, cmp_le, bound) 
+
+  | Rcheck_hash_args _
+  | RbadOracle _
+  | Rinjective_ctxt_ev _
+  | Runwrap_quant_ev _ -> assert false
+
 
 and extract_conv file pft sw1 pft1 =
   let pft2 = skip_conv pft1 in

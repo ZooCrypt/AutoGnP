@@ -21,7 +21,7 @@ let is_V e = match e.e_node with V _ -> true | _ -> false
 let is_H e = match e.e_node with H _ -> true | _ -> false
 
 let is_Quant q e = match e.e_node with Quant(q',_,_) when q=q' -> true | _ -> false
-let is_SomeQuant e = match e.e_node with Quant(q,_,_) -> true | _ -> false
+let is_SomeQuant e = match e.e_node with Quant(_,_,_) -> true | _ -> false
 let is_All = is_Quant All
 let is_Exists = is_Quant Exists
 
@@ -158,8 +158,9 @@ let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 let pp_binder fmt (vs,o) =
   let l_paren,r_paren =
     match vs with
-    | [v] -> "",""
-    | _ -> "(",")" in
+    | [_] -> "",""
+    | _   -> "(",")"
+  in
   F.fprintf fmt "%s%a%s in L_%a" l_paren (pp_list "," Vsym.pp) vs r_paren Oracle.pp o
 
 (** Pretty-prints expression assuming that
@@ -390,7 +391,7 @@ let destr_Ifte e =
   | _ -> raise (Destr_failure "Ifte")
 
 let rec destr_Quant_nofail e = match e.e_node with
-  | Quant(q,b,e) -> destr_Quant_nofail e
+  | Quant(_,_,e) -> destr_Quant_nofail e
   | _ -> e
            
 let destr_Xor_nofail e = 
@@ -421,7 +422,7 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | ProjPermKey(ke,kp) -> go ie kp; run e0
+    | ProjPermKey(_,kp) -> go ie kp; run e0
     | H(_,e) | Proj(_,e) | Quant(_,_,e)-> 
       go ie e; run e0
     | Tuple(es) | App(_,es) | Nary(_,es) ->
@@ -535,17 +536,19 @@ let eqs_equal e1 e2 =
                         
 let rec e_equivalent_eqs ?strong:(strong = true) e1 e2 =
   if (is_Eq e1 && is_Eq e2) then (
-    let e1' = e_eq_remove_eventual_perms e1
-    and e2' = e_eq_remove_eventual_perms e2 in
+    let e1' = e_eq_remove_eventual_perms e1 in
+    let e2' = e_eq_remove_eventual_perms e2 in
     let ((e11,e12),(e21,e22)) = (destr_Eq e1',destr_Eq e2') in
     if strong && (is_Perm e11 <> is_Perm e12) && (is_Perm e21 <> is_Perm e22)
     then (
       let ((f1,ptype1,k1,e11),e12) =
         if is_Perm e11 then (destr_Perm e11,e12)
         else (destr_Perm e12, e11)
-      and ((f2,ptype2,k2,e21),e22) =
+      in
+      let ((_f2,ptype2,_k2,_e21),_e22) =
         if is_Perm e21 then (destr_Perm e21,e22)
-        else (destr_Perm e22, e21) in
+        else (destr_Perm e22, e21)
+      in
       if (ptype1 <> ptype2) then
         e_equivalent_eqs ~strong:false (mk_Eq e11 (mk_Perm f1 ptype2 k1 e12)) e2'
       else

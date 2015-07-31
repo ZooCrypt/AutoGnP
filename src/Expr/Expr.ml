@@ -56,17 +56,17 @@ type op =
 (** Hash operators. *)
 let op_hash = (*c ... *) (*i*)
   function
-  | GExp gv  -> hcomb 1 (Groupvar.hash gv)
-  | GLog gv  -> hcomb 2 (Groupvar.hash gv)
-  | GInv     -> 3
-  | FOpp     -> 4
-  | FMinus   -> 5
-  | FInv     -> 6
-  | FDiv     -> 7
-  | Eq       -> 8
-  | Not      -> 9
-  | Ifte     -> 10
-  | EMap es  -> hcomb 11 (Esym.hash es)
+  | GExp gv    -> hcomb 1 (Groupvar.hash gv)
+  | GLog gv    -> hcomb 2 (Groupvar.hash gv)
+  | GInv       -> 3
+  | FOpp       -> 4
+  | FMinus     -> 5
+  | FInv       -> 6
+  | FDiv       -> 7
+  | Eq         -> 8
+  | Not        -> 9
+  | Ifte       -> 10
+  | EMap es    -> hcomb 11 (Esym.hash es)
   | Perm(pt,f) -> hcomb (hash_perm_type pt) (Psym.hash f)
   (*i*)
 
@@ -260,13 +260,12 @@ let mk_GExp a b =
 let mk_Perm f ptype k e =
   let ke = key_elem_of_perm_type ptype in
   let k_pid = ensure_ty_KeyElem ke k.e_ty "mk_Perm - key" in
-  if (not (f.Psym.pid = k_pid)) then
+  if (not (Type.Permvar.equal f.Psym.pid k_pid)) then
     failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." Psym.pp f);
   ensure_ty_equal e.e_ty f.Psym.dom
     e (Some k)
     (fsprintf "mk_Perm for %a : expected arg of type %a" Psym.pp f pp_ty e.e_ty);
-  let p = Perm(ptype,f) in
-  mk_App p [k;e] e.e_ty
+  mk_App (Perm(ptype,f)) [k;e] e.e_ty
                   
 let mk_GOne gn =
   mk_GExp (mk_GGen gn) mk_FZ
@@ -337,34 +336,23 @@ let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
-(* Helper to check the validity of the type of expressions when calling mk_Xor :
-   Every base type must be either Bool or BS, and
-   if there ever is a product (stored in acc_option), 
-   all the remaining ty_nodes must be of the same type *)
-let rec valid_Xor_type ?acc_option acc2 : ty list -> bool = function
-  | [] -> true
-  | ty::tys when acc_option = None ->
-     (match ty.ty_node with
-     | BS _ | Bool -> valid_Xor_type (ty::acc2) tys
-     | Prod tys2 -> (valid_Xor_type [] tys2) &&
-                      (valid_Xor_type ~acc_option:tys2 [] acc2) && 
-                        (valid_Xor_type ~acc_option:tys2 [] tys)
-     | _ -> false)
-  | ty::tys ->
-     let Some acc = acc_option in
-     (match ty.ty_node with
-      | Prod tys2 ->
-         (List.fold_left (fun b1 b2 -> b1 && b2) true (List.map2 ty_equal acc tys2))
-       (* The previous check also implicitly runs 'valid_Xor_type tys2' due to wf of acc *)
-         && (valid_Xor_type ?acc_option [] tys)
-      | _ -> false)
+let valid_Xor_type ty =
+  let rec valid ty =
+    match ty.ty_node with
+    | BS _ | Bool -> true
+    | Prod tys    ->
+      L.for_all (fun ty -> valid ty) tys
+    | _ -> false
+  in
+  valid ty
                     
 let mk_Xor = function
-  | e::_ as es -> if ( valid_Xor_type [] (List.map (fun e -> e.e_ty) es) )
-                  then mk_nary "mk_Xor" true Xor es e.e_ty
-                  else failwith "mk_Xor: type mismatch"
+  | e::_ as es ->
+    if (valid_Xor_type e.e_ty)
+    then mk_nary "mk_Xor" true Xor es e.e_ty
+    else failwith "mk_Xor: invalid type for Xor, expected (nested) tuples of bitstrings/bools."
   | _ -> failwith "mk_Xor: expected non-empty list"
-                                  
+
 let mk_Land es = mk_nary "mk_Land" false Land es mk_Bool
 
 let mk_GMult es =

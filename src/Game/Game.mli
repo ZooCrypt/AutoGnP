@@ -50,7 +50,7 @@ type gcmd =
 type gdef = gcmd list
 
 (** An event is just an quantified expression. *)
-type quant = Forall | Exists
+type quant = EvForall | EvExists
 type ev = { ev_quant: quant; ev_binding: (vs list * ors)list; ev_expr:expr }
 
 (** A security experiment consists of a game and an event. *)

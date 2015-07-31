@@ -59,7 +59,7 @@ type gcmd =
 type gdef = gcmd list
 
 (** An event is just a quantified expression. *)
-type quant = Forall | Exists
+type quant = EvForall | EvExists
 type ev = { ev_quant: quant; ev_binding: (vs list * ors) list; ev_expr:expr }
 
 (** A security experiment consists of a game and an event. *)
@@ -177,8 +177,8 @@ let pp_gdef ~nonum fmt gd =
     pp_list ";@;" pp_igcmd fmt (num_list gd)
 
 let pp_quant fmt = function
-  | Forall -> F.fprintf fmt "forall"
-  | Exists -> F.fprintf fmt "exists"
+  | EvForall -> F.fprintf fmt "forall"
+  | EvExists -> F.fprintf fmt "exists"
 
 let pp_binding1 fmt (vs,ors) = 
   let pp_bdecl fmt vs = 
@@ -774,7 +774,7 @@ let gdef_all_hash_calls gdef = fold_union_hc gcmd_all_hash_calls gdef
 let ohybrid_global_hash_calls oh =
   (obody_hash_calls oh.odef_eq)
 
-let odef_global_hash_calls (_,vs,odecl) =
+let odef_global_hash_calls (_,_vs,odecl) =
   match odecl with
   | Odef _ -> Hsym.S.empty
   | Ohybrid oh ->

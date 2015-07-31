@@ -88,6 +88,7 @@ let rec pp_type file fmt ty =
       F.fprintf fmt "(@[%a@])" (pp_list " *@ " (pp_type file)) tys
     end
   | Int -> F.fprintf fmt "int"
+  | KeyPair _ | KeyElem _ -> assert false
 
 let pp_pvar_decl file fmt (x,ty) = 
   F.fprintf fmt "@[<hov 2>%a:@ %a@]"
@@ -183,7 +184,7 @@ let rec pp_form_lvl outer fmt = function
           F.fprintf fmt "let %s = __elem__.`%i in@ " v (i+1)) bd;
       pp_form fmt body in
     F.fprintf fmt "(%s (@[<hov>%a@]) %a)"
-      (if q = Game.Forall then "all" else "any")
+      (if q = Game.EvForall then "all" else "any")
       pp_fun f
       (pp_form_lvl min_lvl) log
 
@@ -274,8 +275,10 @@ let pp_ty_distr file fmt ty =
   | Bool  -> F.fprintf fmt "{0,1}"
   | G gv  -> F.fprintf fmt "%s.Distr.dt" (get_gvar file gv).tvar_mod
   | Fq    -> F.fprintf fmt "FDistr.dt"
-  | Prod _ -> assert false (* FIXME *)
-  | Int    -> assert false
+  | Prod _
+  | Int
+  | KeyPair _
+  | KeyElem _ -> assert false
 
   
 let rec pp_instr file fmt = function

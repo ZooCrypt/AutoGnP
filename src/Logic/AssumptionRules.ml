@@ -383,7 +383,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   let sassm_ev = e_subst ev_me sassm.ac_event.ev_expr in
   let assm_se =
     { se_gdef = sassm.ac_prefix;
-      se_ev = {ev_quant=Exists; ev_binding=[]; ev_expr = sassm_ev } }
+      se_ev = {ev_quant=EvExists; ev_binding=[]; ev_expr = sassm_ev } }
   in
   let assm_se = norm_se ~norm:(fun x -> x) assm_se in
   let conjs = destr_Land assm_se.se_ev.ev_expr in
