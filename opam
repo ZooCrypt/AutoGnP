@@ -20,4 +20,5 @@ depends: [
   "ctypes"
   "ctypes-foreign"
   "menhir"
+  "websocket"
 ]

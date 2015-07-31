@@ -1,0 +1,8 @@
+#!/bin/sh
+
+export BOLT_CONFIG=etc/log_bolt.config
+if [ -z ${@} ]; then
+  ./wsautognp.native examples/ok/*.zc examples/ok/**/*.zc test/**/*.zc -new_dir examples/new
+else
+  ./wsautognp.native $@
+fi

@@ -28,10 +28,10 @@ endif
 
 #############################################################################
 
-.PHONY : clean all doc test autognp.native \
+.PHONY : clean all doc test autognp.native wsautognp.native \
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
-all: autognp.native
+all: wsautognp.native
 
 autognp.native : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
@@ -58,7 +58,7 @@ clean:
 factory : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Factory.native
 
-wsautognp : stubs
+wsautognp.native : stubs
 	@ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wsautognp.native
 	#-@killall wsautognp.native
 

@@ -2,7 +2,7 @@
 
 To get the required C(++) library, follow these instructions.
 
-1. download and install NTL from
+1) download and install NTL from
 http://www.shoup.net/ntl/ntl-6.2.1.tar.gz
 
 ```
@@ -14,7 +14,7 @@ sudo make install
  ./configure NTL_GMP_LIP=on SHARED=on LIBTOOL="glibtool --tag" )
 ```
 
-2. download and install libfactory from
+2) download and install libfactory from
 http://www.mathematik.uni-kl.de/ftp/pub/Math/Factory/factory-4.0.1.tar.gz
 
 ```

@@ -21,4 +21,18 @@ true: bin_annot, debug
 
 <src/CAS/CAS.ml>: package(yojson)
 
-<src/Main/wsautognp.ml> or <src/Main/wsautognp.native>: thread, package(unix), package(websocket), package(yojson), package(ctypes.foreign), package(num), package(bolt)
+<src/Main/wsautognp.*>: thread,\
+                        package(unix),\
+                        package(websocket.lwt),\
+                        package(yojson),\
+                        package(ctypes.foreign),\
+                        package(num),\
+                        package(bolt),\
+                        package(lwt),\
+                        package(lwt.ppx),\
+                        package(uri),\
+                        package(cohttp.lwt),\
+                        package(ppx_deriving.std),\
+                        package(containers),\
+                        package(nocrypto.lwt),\
+                        package(conduit)

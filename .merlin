@@ -28,4 +28,5 @@ B _build/src/Test/
 B _build/src/Type/
 B _build/src/Util/
 
-PKG unix websocket yojson ctypes bolt
+PKG unix websocket yojson ctypes bolt lwt lwt.ppx uri cohttp.lwt ppx_deriving.std containers nocrypto.lwt conduit
+
