@@ -21,8 +21,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let is_in e = is_some_Cnst e || He.mem known e in
   let get e = if is_some_Cnst e then e else He.find known e in
 
-  (** add an expression with the given inverter and also immediately
-      add extractable subterms (e.g., components of tuple). *)
+  (* add an expression with the given inverter and also immediately
+     add extractable subterms (e.g., components of tuple). *)
   let rec add_known e inv =
     (* we might deduce non-normalized Ifte expressions such as b?g^a:g^b *)
     let e = if is_Ifte e then Norm.norm_expr_strong e else e in
@@ -55,9 +55,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | All(_,_) -> ()
   in
 
-  (** Set of useful subterms that we should construct,
-      also contains tuples. For examples, constructing (a,b)
-      might allow us to construct h((a,b)). *)
+  (* Set of useful subterms that we should construct,
+     also contains tuples. For examples, constructing (a,b)
+     might allow us to construct h((a,b)). *)
   let sub_constr = ref Se.empty in
   let add_sub_constr e =
     if not (Se.mem e !sub_constr) then
@@ -67,9 +67,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let rm_sub_constr e = sub_constr := Se.remove e !sub_constr in
   let reg_constr e inv = add_known e inv; rm_sub_constr e in
 
-  (** sub_solver contains for each type a set of (known and unknown) maximal
-      subterms of the given type. These are used by the type-specific
-      solvers, e.g., for Xor or Fq. *)
+  (* sub_solver contains for each type a set of (known and unknown) maximal
+     subterms of the given type. These are used by the type-specific
+     solvers, e.g., for Xor or Fq. *)
   let sub_solver = Hty.create 7 in
   let add_sub_solver e =
     log_i (lazy (fsprintf "add_sub_solver[maybe]: %a" pp_exp e));
@@ -146,7 +146,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Cnst _ -> add_sub_constr e
   in
 
-  (** Try to construct unknown useful expressions *)
+  (* Try to construct unknown useful expressions *)
   let construct1 e e1 mki =
     if not (is_in e) && is_in e1 then reg_constr e (mki (get e1))
   in
@@ -240,7 +240,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
 
   (* Initialisation *)
   try
-    (** initialize for all known expressions *)
+    (* initialize for all known expressions *)
     let init_known (e,I i) =
       let e = Norm.norm_expr_strong e in
       log_i (lazy (fsprintf "init_known: %a" pp_exp e));
@@ -249,11 +249,11 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     in
     List.iter init_known known_es;
 
-    (** Register subterms of expression that we want to deduce *)
+    (* Register subterms of expression that we want to deduce *)
     register_subexprs false to_;
 
-    (** First try to construct all interesting subterms,
-        if progress stops, call xor, group, or field solver *)
+    (* First try to construct all interesting subterms,
+       if progress stops, call xor, group, or field solver *)
     while !progress do
       progress := false;
       Se.iter construct !sub_constr;

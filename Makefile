@@ -20,7 +20,7 @@ ifeq ($(UNAME_S),Darwin)
   LIBFLAGS=-lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
 endif
 
-OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -use-ocamlfind
+OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48-37" -use-menhir -menhir "menhir -v" -use-ocamlfind
 
 ifeq ($(shell echo $$TERM), dumb)
  OCAMLBUILDFLAGS += -classic-display -quiet
