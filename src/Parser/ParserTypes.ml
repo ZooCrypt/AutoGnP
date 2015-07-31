@@ -55,7 +55,6 @@ type parse_ctx = string * parse_ty option * parse_expr
 type lcmd =
     LLet of string * parse_expr
   | LBind of string list * string
-(*  | LSampKP of string * parse_ty * parse_expr list *)
   | LSamp of string * parse_ty * parse_expr list
   | LGuard of parse_expr
 

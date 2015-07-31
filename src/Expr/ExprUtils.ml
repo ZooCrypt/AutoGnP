@@ -22,7 +22,8 @@ let is_H e = match e.e_node with H _ -> true | _ -> false
 
 let is_Quant q e = match e.e_node with Quant(q',_,_) when q=q' -> true | _ -> false
 let is_SomeQuant e = match e.e_node with Quant(q,_,_) -> true | _ -> false
-let is_All = is_Quant All and is_Exists = is_Quant Exists
+let is_All = is_Quant All
+let is_Exists = is_Quant Exists
 
 let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
 
@@ -56,11 +57,8 @@ let is_some_App e = match e.e_node with App _ -> true | _ -> false
 let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
 
 let is_Perm e =  match e.e_node with
-  | App(o',_) ->
-     (match o' with
-       | Perm _ -> true
-       | _ -> false)
-  | _ -> false
+  | App(Perm _,_) -> true
+  | _             -> false
 
 let is_FDiv e = is_App FDiv e
 
