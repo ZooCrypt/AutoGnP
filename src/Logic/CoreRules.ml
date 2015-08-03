@@ -516,7 +516,7 @@ let rassert p e ju =
     { ju_pr = Pr_Succ;
       ju_se = { se with se_ev = 
                 { se.se_ev with 
-                  ev_expr = insert_Land se.se_ev.ev_expr (mk_Not e) } } }
+                  ev_expr = mk_Land [se.se_ev.ev_expr; mk_Not e] } } }
   in
   let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
   Rassert(p,e), [ ju1; ju2 ]
@@ -1267,7 +1267,7 @@ let rfind (bd,body) arg asym fvs ju =
         pp_exp body (pp_list "," pp_exp) (Se.elements allowed);
     let e1 = e_subst subst_bd body in
     if not (e_equal e1 ev.ev_expr) then
-        tacerror "find: invalid event in function : %a \nvs %a" pp_exp e1 pp_exp ev.ev_expr;
+      tacerror "find: invalid event in function : %a \nvs %a" pp_exp e1 pp_exp ev.ev_expr;
     (* check that the function is PPT *)
     if not (is_ppt body) then 
       tacerror "find: the function is not ppt";

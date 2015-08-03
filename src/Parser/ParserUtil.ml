@@ -138,7 +138,7 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (L.map go es)
-    | ParseProjPermKey(ke,kp) -> E.mk_ProjPermKey ke (go kp)
+    | ProjPermKey(ke,kp) -> E.mk_ProjPermKey ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
 
     | SLookUp(s,es) ->

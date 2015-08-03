@@ -503,14 +503,6 @@ let rec is_Zero e =
   | Tuple es             -> L.for_all is_Zero es
   | App(GExp _, [e1;e2]) -> is_Zero e2 || is_Zero e1
   | _                    -> false
-
-let insert_Land e1 e2 =
-  if( not(ty_equal e1.e_ty mk_Bool) ) then
-    raise (TypeError(e1.e_ty, mk_Bool, e1, None,
-                     "insert_Land failed, expr of type Bool expected."));
-  match e2.e_node with
-  | Nary(Land,es) -> mk_Land (e1::es)
-  | _ -> mk_Land [e1;e2]
                  
 type inverter = I of expr
 

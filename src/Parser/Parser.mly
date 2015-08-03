@@ -296,8 +296,8 @@ expr6 :
 | NOT e=expr6                    { Not(e) }
 | LOG LPAREN e1=expr RPAREN      { Log(e1) }
 | l=paren_list0(COMMA,expr)      { mk_Tuple l }
-| GETPK LPAREN e=expr RPAREN             { ParseProjPermKey(Type.PKey,e) }
-| GETSK LPAREN e=expr RPAREN             { ParseProjPermKey(Type.SKey,e) }
+| GETPK LPAREN e=expr RPAREN             { ProjPermKey(Type.PKey,e) }
+| GETSK LPAREN e=expr RPAREN             { ProjPermKey(Type.SKey,e) }
 | e1=expr6  SHARP i=NAT                       { Proj(i,e1) }
        
 
