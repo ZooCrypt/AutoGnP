@@ -151,8 +151,3 @@ type inverter = I of expr
 val expr_of_inverter : inverter -> expr
 
 val pp_inverter : F.formatter -> inverter -> unit
-
-(*val e_eq_remove_eventual_perms : expr -> expr*)
-
-val e_equivalent_eqs : ?strong:bool -> expr -> expr -> bool
-

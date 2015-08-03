@@ -1266,7 +1266,7 @@ let rfind (bd,body) arg asym fvs ju =
       tacerror "find not a closed function: %a contains variables not in %a"
         pp_exp body (pp_list "," pp_exp) (Se.elements allowed);
     let e1 = e_subst subst_bd body in
-    if not (e_equivalent_eqs e1 ev.ev_expr) then
+    if not (e_equal e1 ev.ev_expr) then
         tacerror "find: invalid event in function : %a \nvs %a" pp_exp e1 pp_exp ev.ev_expr;
     (* check that the function is PPT *)
     if not (is_ppt body) then 
