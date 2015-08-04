@@ -484,21 +484,17 @@ let rec handle_tactic ts tac =
       tacerror "add_test and debugging tactics cannot be combined with ';'"
 
     | PT.Rbad(1,Some ap,vsx) ->
-       let p = gpos_of_apos ju ap in
-       t_bad PU.CaseDist p vsx vmap_g ts ju
+      let p = gpos_of_apos ju ap in
+      t_bad PU.CaseDist p vsx vmap_g ts ju
     | PT.Rbad(2,Some ap,vsx) ->
-       let p = gpos_of_apos ju ap in
-       t_bad PU.UpToBad p vsx vmap_g ts ju
+      let p = gpos_of_apos ju ap in
+      t_bad PU.UpToBad p vsx vmap_g ts ju
     | PT.Rbad(i,None,vsx) ->
-       raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx)))
+      raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx)))
     | PT.Rcheck_hash_args(opos) ->
-       t_check_hash_args opos ts ju
-    | PT.RbadOracle(1,opos,vsx) ->
-       CR.prove_by (rbad_oracle PU.CaseDist opos vsx ts) ju;
-    | PT.RbadOracle(2,opos,vsx) ->
-       CR.prove_by (rbad_oracle PU.UpToBad  opos vsx ts) ju;
-    | PT.Rbad _ | PT.RbadOracle _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
-
+      t_check_hash_args opos ts ju
+    | PT.Rbad _ | PT.RbadOracle _ ->
+      tacerror "Wrong RBad tactic call in Tactic.ml";
     | PT.Rguess(aname, fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
