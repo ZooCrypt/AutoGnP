@@ -722,143 +722,100 @@ let asym_gcmd gcmd =
 let asym_gcmds gcmds =
   L.map asym_gcmd gcmds |> catSome
 
-(** Sedgments. *)
+(** Security experiments *)
 
 let read_se se = Se.union (read_gcmds se.se_gdef) (e_vars se.se_ev.ev_expr)
 
 (*i ----------------------------------------------------------------------- i*)
-(* \hd{Hash call (hc) occurences} *)
-let fold_union_hc f hcs =
-  L.fold_right Hsym.S.union (L.map f hcs) Hsym.S.empty
+(* \hd{Find expressions that satisfy predicate} *)
 
-let expr_hash_calls  e =
-  let fst (a,_) = a in          
-  Se.fold (fun e s -> Hsym.S.add (fst(destr_H e)) s) (e_hash_calls e) Hsym.S.empty
+let fold_union_e f xs =
+  L.fold_right Se.union (L.map f xs) Se.empty
 
-let exprs_hash_calls es = fold_union_hc expr_hash_calls es
+let expr_find p e = e_find_all p e
 
-let lcmd_hash_calls = function 
-  | LLet(_,e)   -> expr_hash_calls e
-  | LSamp(_,d)  -> exprs_hash_calls (snd d)
-  | LBind _ -> Hsym.S.empty
-  | LGuard(e)   -> expr_hash_calls e
+let exprs_find p es = fold_union_e (expr_find p) es
 
-let lcmds_hash_calls c = fold_union_hc lcmd_hash_calls c
+let lcmd_find p = function 
+  | LLet(_,e)  -> expr_find p e
+  | LSamp(_,d) -> exprs_find p (snd d)
+  | LBind(_,_) -> Se.empty
+  | LGuard(e)  -> expr_find p e
 
-let obody_hash_calls (cmds,e) =
-  (Hsym.S.union (expr_hash_calls e) (lcmds_hash_calls cmds))
+let lcmds_find p c = fold_union_e (lcmd_find p) c
 
-let ohybrid_hash_calls oh =
-  Hsym.S.union (obody_hash_calls oh.odef_less)
-    (Hsym.S.union (obody_hash_calls oh.odef_eq) (obody_hash_calls oh.odef_greater))
+let obody_find p (cmd,e) =
+  Se.union (expr_find p e) (lcmds_find p cmd)
 
-let odecl_hash_calls od =
-  match od with
-  | Odef od -> obody_hash_calls od
-  | Ohybrid oh -> ohybrid_hash_calls oh
+let ohybrid_find p oh =
+  Se.union (obody_find p oh.odef_less)
+    (Se.union (obody_find p oh.odef_eq) (obody_find p oh.odef_greater))
 
-let odef_hash_calls (_,_,odecl) =
-  odecl_hash_calls odecl 
+let odecl_find p = function
+  | Odef od    -> obody_find p od
+  | Ohybrid oh -> ohybrid_find p oh
 
-let gcmd_all_hash_calls = function
-  | GLet(_,e)  -> expr_hash_calls e
-  | GAssert(e) -> expr_hash_calls e
-  | GSamp(_,d) -> exprs_hash_calls (snd d)
+let odef_find p (_,_,odecl) = odecl_find p odecl
+
+let gcmd_all_find p = function
+  | GLet(_,e)  -> expr_find p e
+  | GAssert(e) -> expr_find p e
+  | GSamp(_,d) -> exprs_find p (snd d)
   | GCall(_,_,e,odefs) ->
-    Hsym.S.union
-      (fold_union_hc odef_hash_calls odefs)
-      (expr_hash_calls e)
+    Se.add e (fold_union_e (odef_find p) odefs)
 
-let gdef_all_hash_calls gdef = fold_union_hc gcmd_all_hash_calls gdef
+let gdef_all_find p gdef =
+  fold_union_e (gcmd_all_find p) gdef
 
-let ohybrid_global_hash_calls oh =
-  (obody_hash_calls oh.odef_eq)
+let ohybrid_global_find p oh =
+  obody_find p oh.odef_eq
 
-let odef_global_hash_calls (_,_vs,odecl) =
+let odef_global_find p (_,_,odecl) =
   match odecl with
-  | Odef _ -> Hsym.S.empty
-  | Ohybrid oh ->
-    ohybrid_global_hash_calls oh
+  | Odef _     -> Se.empty
+  | Ohybrid oh -> ohybrid_global_find p oh
 
-let gcmd_global_hash_calls = function
-  | GLet(_,e)  -> expr_hash_calls e
-  | GAssert(e) -> expr_hash_calls e
-  | GSamp(_,d) -> exprs_hash_calls (snd d)
+let gcmd_global_find p = function
+  | GLet(_,e)  -> expr_find p e
+  | GAssert(e) -> expr_find p e
+  | GSamp(_,d) -> exprs_find p (snd d)
   | GCall(_,_,e,odefs) ->
-    Hsym.S.union
-      (fold_union_hc odef_global_hash_calls odefs)
-      (expr_hash_calls e) 
+    Se.add e (fold_union_e (odef_global_find p) odefs)
 
-let gdef_global_hash_calls gdef = fold_union_hc gcmd_global_hash_calls gdef
+let gdef_global_find p gdef = fold_union_e (gcmd_global_find p) gdef
 
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Hash symbol occurences} *)
 
-(* \hd{Expr args in Hash call (hc) occurences of hash function h} *)
-let fold_union_hc_h f hcs =
-  L.fold_right Se.union (L.map f hcs) Se.empty
+let hsym_of_es es =
+  Se.fold (fun e s -> Hsym.S.add (fst (destr_H e)) s) es Hsym.S.empty
 
-let expr_hash_calls_h h e =
-  let aux e s =
-    let h1,e1 = destr_H e in
-    if Hsym.equal h h1 then Se.add e1 s else s in 
-  Se.fold aux (e_hash_calls e) Se.empty
+let expr_hash_syms e = hsym_of_es (expr_find is_H e)
 
-let exprs_hash_calls_h h es = fold_union_hc_h (expr_hash_calls_h h) es
+let gcmd_all_hash_syms gcmd = hsym_of_es (gcmd_all_find is_H gcmd)
 
-let lcmd_hash_calls_h h = function 
-  | LLet(_,e)   -> expr_hash_calls_h h e
-  | LSamp(_,d)  -> exprs_hash_calls_h h (snd d)
-  | LBind _ -> Se.empty
-  | LGuard(e)   -> expr_hash_calls_h h e
+let gdef_all_hash_syms gdef = hsym_of_es (gdef_all_find is_H gdef)
 
-let lcmds_hash_calls_h h c = fold_union_hc_h (lcmd_hash_calls_h h) c
+let gdef_global_hash_syms gdef = hsym_of_es (gdef_global_find is_H gdef)
 
-let obody_hash_calls_h h (cmds,e) =
-  (Se.union (expr_hash_calls_h h e) (lcmds_hash_calls_h h cmds))
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Hash arguments for given hash symbol} *)
 
-let ohybrid_hash_calls_h h oh =
-  Se.union (obody_hash_calls_h h oh.odef_less)
-    (Se.union (obody_hash_calls_h h oh.odef_eq) (obody_hash_calls_h h oh.odef_greater))
+let harg_of_es es =
+  Se.fold (fun e s -> Se.add (snd (destr_H e)) s) es Se.empty
 
-let odecl_hash_calls_h h od =
-  match od with
-  | Odef od -> obody_hash_calls_h h od
-  | Ohybrid oh -> ohybrid_hash_calls_h h oh
+let is_H_call h e = is_H e && Hsym.equal h (fst (destr_H e))
 
-let odef_hash_calls_h h (_,_,odecl) =
-  odecl_hash_calls_h h odecl 
+let expr_hash_args h e = harg_of_es (expr_find (is_H_call h) e)
 
-let gcmd_all_hash_calls_h h = function
-  | GLet(_,e)  -> expr_hash_calls_h h e
-  | GAssert(e) -> expr_hash_calls_h h e
-  | GSamp(_,d) -> exprs_hash_calls_h h (snd d)
-  | GCall(_,_,e,odefs) ->
-    Se.union
-      (fold_union_hc_h (odef_hash_calls_h h) odefs)
-      (expr_hash_calls_h h e)
+let gcmd_all_hash_args h gcmd = harg_of_es (gcmd_all_find (is_H_call h) gcmd)
 
-let gdef_all_hash_calls_h h gdef = fold_union_hc_h (gcmd_all_hash_calls_h h) gdef
+let gdef_all_hash_args h gdef = harg_of_es (gdef_all_find (is_H_call h) gdef)
 
-let ohybrid_global_hash_calls_h h oh =
-  (obody_hash_calls_h h oh.odef_eq)
+let gdef_global_hash_args h gdef = harg_of_es (gdef_global_find (is_H_call h) gdef)
 
-let odef_global_hash_calls_h h (_,_,odecl) =
-  match odecl with
-  | Odef _ -> Se.empty
-  | Ohybrid oh ->
-    ohybrid_global_hash_calls_h h oh
-
-let gcmd_global_hash_calls_h h = function
-  | GLet(_,e)  -> expr_hash_calls_h h e
-  | GAssert(e) -> expr_hash_calls_h h e
-  | GSamp(_,d) -> exprs_hash_calls_h h (snd d)
-  | GCall(_,_,e,odefs) ->
-    Se.union
-      (fold_union_hc_h (odef_global_hash_calls_h h) odefs)
-      (expr_hash_calls_h h e) 
-
-let gdef_global_hash_calls_h h gdef = fold_union_hc_h (gcmd_global_hash_calls_h h) gdef
-
-(* \hd{Variable occurences} *) 
+(*i ----------------------------------------------------------------------- i*)
+(* \hd{Variable occurences} *)
 
 let fold_union_vs f xs =
   L.fold_right Vsym.S.union (L.map f xs) Vsym.S.empty
