@@ -1294,7 +1294,7 @@ let t_find f arg asym fvs = prove_by (rfind f arg asym fvs)
 (*i ----------------------------------------------------------------------- i*)
 
 (** {\bf bad rule that replaces hash call with random sampling} *)  
-let rbad which_bad p vsx ju =
+let rbad which_bad p gen_vsx ju =
   (* fail_if_occur vsx ju "rbad"; FIXME : why is this needed ?*)
   let se = ju.ju_se in
   let p_ctxt =
@@ -1305,6 +1305,7 @@ let rbad which_bad p vsx ju =
   match p_ctxt with
   | GLet(vs,e'), se_ctxt when is_H e' ->
     let h,e = destr_H e' in
+    let vsx = gen_vsx e in
     if (Vsym.S.mem vsx (expr_vars e)) then
       tacerror "Error, var '%a' appears in expr '%a'" Vsym.pp vsx pp_exp e;
     if not (Hsym.is_ro h) then
@@ -1325,13 +1326,13 @@ let rbad which_bad p vsx ju =
      if (Se.mem e all_other_hash_calls_args) then
        tacerror "Error, there cannot be other '%a' calls querying the expression '%a'" Hsym.pp h pp_exp e;
      let create_ju = match which_bad with
-       | CaseDist -> fun ei ->
+       | UpToBad -> fun ei ->
          { ju_pr = Pr_Succ ;
            ju_se = { ju1.ju_se with se_ev =
                                       { ev_quant   = EvForall;
                                         ev_binding = [];
                                         ev_expr    = (mk_Eq e ei) } } }
-       | UpToBad -> fun ei ->
+       | CaseDist -> fun ei ->
          { ju_pr = Pr_Succ ;
            ju_se = { ju.ju_se with se_ev =
                                { se.se_ev with
@@ -1347,13 +1348,13 @@ let rbad which_bad p vsx ju =
      let bad_n,ju2 = match which_bad with
      (* ju2 is ju1 where event = bad_event + main_event when UpToBad, 
                               or bad_event only when CaseDist *)
-       | UpToBad ->
+       | CaseDist ->
           let conj_ev = { ev_quant   = EvExists;
                           ev_binding = bad_ev_binding :: se.se_ev.ev_binding;
                           ev_expr    = mk_Land [bad_ev_expr; se.se_ev.ev_expr] }
           in
           2, {ju_pr = Pr_Succ; ju_se = {ju.ju_se with se_ev = conj_ev} }
-       | CaseDist ->
+       | UpToBad ->
           let bad_ev = { ev_quant   = EvExists;
                          ev_binding = [bad_ev_binding];
                          ev_expr    = bad_ev_expr }
@@ -1367,17 +1368,17 @@ let rbad which_bad p vsx ju =
        ^^">>\n(note that the 'abstract' rule can be used to fold a hash call into a variable).")
       (p+1)
      
-let t_bad which_bad p vsx =
-  prove_by (rbad which_bad p vsx)
+let t_bad which_bad p gen_vsx =
+  prove_by (rbad which_bad p gen_vsx)
 
 (** {\bf Replace hash call by map lookup (still needs some work)} *)  
-let rcheck_hash_args opos ju =
+let rcheck_hash_args opos gen_o_lkup ju =
   let se = ju.ju_se in
   let bad_position ?s () =
     let (i,j,k,_) = opos in
     tacerror "Invalid guard position (%i,%i,%i)\n%s"
-      (i+1) (j+1) (k+1)
-      (match s with Some s -> "<< " ^ s ^ " >>" | _ -> "")
+             (i+1) (j+1) (k+1)
+             (match s with Some s -> "<< " ^ s ^ " >>" | _ -> "")
   in
   let gctxt =
     try get_se_octxt se opos with Failure s -> bad_position ~s ()
@@ -1387,20 +1388,19 @@ let rcheck_hash_args opos ju =
      if not (is_SomeQuant eq) then
        tacerror "Error, '%a' is not a quantified expression" pp_exp eq;
      let _,(vs,o),eq = ExprUtils.destr_Quant eq in
-     let ve,e =
-       try ExprUtils.destr_Eq eq
-       with
-         ExprUtils.Destr_failure _ ->
-           tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Oracle.pp o
-     in
      let o =
        try Oracle.destr_as_Hsym_t o
        with
          Oracle.Destr_failure _ ->
-           tacerror "Error, '%a' is not a random oracle" Oracle.pp o
+         tacerror "Error, '%a' is not a random oracle" Oracle.pp o
      in
-     let o_lkup = failwith "undefined" in
-       (*  before: Mstring.find (Hsym.to_string o) ts.TheoryTypes.ts_lkupdecls *)
+     let o_lkup = gen_o_lkup o in
+     let ve,e =
+       try ExprUtils.destr_Eq eq
+       with
+         ExprUtils.Destr_failure _ ->
+           tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Hsym.pp o
+     in                    
      if not (List.exists (fun v -> e_equal ve (mk_V v)) vs) then
        tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Hsym.pp o;
      let seoc_cright = se_octxt.seoc_cright in
@@ -1411,8 +1411,7 @@ let rcheck_hash_args opos ju =
      let seoc_cright = subst_lkup_lcmds to_lkup seoc_cright in
      let se_octxt = {se_octxt with seoc_cright} in
      Rcheck_hash_args opos,[{ju with ju_se = set_se_octxt [lguard] se_octxt}]
-
   | _ -> bad_position ()
 
-let t_check_hash_args opos ju =
-  prove_by (rcheck_hash_args opos) ju
+let t_check_hash_args opos gen_o_lkup =
+  prove_by (rcheck_hash_args opos gen_o_lkup)

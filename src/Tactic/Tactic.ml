@@ -483,17 +483,22 @@ let rec handle_tactic ts tac =
       tacerror "add_test and debugging tactics cannot be combined with ';'"
 
     | PT.Rbad(1,Some ap,_vsx) ->
-      let p = gpos_of_apos ju ap in
-      let vsx = failwith "undefined" in
-      CR.t_bad CaseDist p vsx ju
+       let p = gpos_of_apos ju ap in
+       let gen_vsx e = if (Ht.mem vmap_g (Unqual,_vsx)) then
+                         Ht.find vmap_g (Unqual,_vsx) else
+                         PU.create_var vmap_g ts Unqual _vsx e.Expr.e_ty in
+      CR.t_bad UpToBad p gen_vsx ju
     | PT.Rbad(2,Some ap,_vsx) ->
-      let p = gpos_of_apos ju ap in
-      let vsx = failwith "undefined" in
-      CR.t_bad UpToBad p vsx ju
+       let p = gpos_of_apos ju ap in
+       let gen_vsx e = if (Ht.mem vmap_g (Unqual,_vsx)) then
+                         Ht.find vmap_g (Unqual,_vsx) else
+                         PU.create_var vmap_g ts Unqual _vsx e.Expr.e_ty in
+      CR.t_bad CaseDist p gen_vsx ju
     | PT.Rbad(i,None,vsx) ->
       raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx)))
     | PT.Rcheck_hash_args(opos) ->
-      CR.t_check_hash_args opos ju
+       let gen_o_lkup o  = Mstring.find (Hsym.to_string o) ts.ts_lkupdecls in
+       CR.t_check_hash_args opos gen_o_lkup ju
     | PT.Rbad _ | PT.RbadOracle _ ->
       tacerror "Wrong RBad tactic call in Tactic.ml";
     | PT.Rguess(aname, fvs) ->
