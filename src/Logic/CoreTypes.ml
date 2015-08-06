@@ -55,6 +55,8 @@ let pp_ju fmt ju =
 
 (* \hd{Low-level rules (extractable to EasyCrypt).} *)
 
+type bad_version = UpToBad | CaseDist
+
 type rule_name =
 
   (* \hd{Equivalence/small statistical distance: main} *)

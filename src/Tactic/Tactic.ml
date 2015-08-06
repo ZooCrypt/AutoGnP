@@ -18,7 +18,6 @@ open RandomRules
 open RindepRules
 open CrushRules
 open CaseRules
-open UpToRules       
 open Game
 
 module Ht = Hashtbl
@@ -392,52 +391,52 @@ let rec handle_tactic ts tac =
       CR.t_ctxt_ev j c ju
                    
     | PT.Runwrap_quant_ev j ->
-       let r_unwrap_quant_ev ju =
-         let ev = ju.ju_se.se_ev in
-         let main_binding = ev.ev_binding and ev_exprs = ev.ev_expr in
-         let l,q_expr,r = match ev_exprs.e_node with
-           | Nary(Land,es) when j < L.length es -> Util.split_n j es
-           | _ when j = 0 -> [],ev_exprs,[]
-           | _ -> tacerror "unwrap_quant_ev: bad index %i" j
-         in
-         let (q,b,e) = try destr_Quant q_expr with Destr_failure _ -> tacerror "unwrap_quant_ev : no quantification in event %a" pp_exp q_expr in
-         if q = All then tacerror "forall quantification not handled yet.";
-         let new_ev = {ev_quant = ev.ev_quant; ev_binding = b :: main_binding ; ev_expr = mk_Land (List.rev_append l (e :: r))} in
-         let new_se = {ju.ju_se with se_ev = new_ev} in
-         let new_ju = {ju with ju_se = new_se} in
-         Runwrap_quant_ev j,[new_ju] in
-       CR.prove_by(r_unwrap_quant_ev) ju
+      let r_unwrap_quant_ev ju =
+        let ev = ju.ju_se.se_ev in
+        let main_binding = ev.ev_binding and ev_exprs = ev.ev_expr in
+        let l,q_expr,r = match ev_exprs.e_node with
+          | Nary(Land,es) when j < L.length es -> Util.split_n j es
+          | _ when j = 0 -> [],ev_exprs,[]
+          | _ -> tacerror "unwrap_quant_ev: bad index %i" j
+        in
+        let (q,b,e) =
+          try destr_Quant q_expr
+          with
+            Destr_failure _ -> tacerror "unwrap_quant_ev : no quantification in event %a" pp_exp q_expr
+        in
+        if q = All then tacerror "forall quantification not handled yet.";
+        let new_ev = { ev with ev_binding = b :: main_binding; ev_expr = mk_Land (List.rev_append l (e :: r))} in
+        let new_se = {ju.ju_se with se_ev = new_ev} in
+        let new_ju = {ju with ju_se = new_se} in
+        Runwrap_quant_ev j,[new_ju]
+      in
+      CR.prove_by(r_unwrap_quant_ev) ju
 
     | PT.Rinjective_ctxt_ev (j,Some (svx,None,ey),Some (svy,None,ex)) ->
-       let ev_expr = ju.ju_se.se_ev.ev_expr in
-       let b = match ev_expr.e_node with
-         | Nary(Land,es) when j < L.length es -> L.nth es j
-         | _ when j = 0 -> ev_expr
-         | _ -> tacerror "injective_ctxt_ev: bad index %i" j
-       in
-       let tyx =
-         if is_Eq b then (* (fst (destr_Eq b)).e_ty *)
-           raise (Handle_this_tactic_instead (PT.Rctxt_ev (Some j,Some(svx,None,ey))))
-         else if is_InEq b then (fst (destr_Eq (destr_Not b))).e_ty
-         else tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_exp b
-       in
-       let vmap = vmap_of_globals ju.ju_se.se_gdef in
-       (* Adding quantified variables *)
-       List.iter (fun (vs,o) -> List.iter
-                      (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))) vs)
-                 ju.ju_se.se_ev.ev_binding;
-(*
-       let _ = List.fold_left
-                 (fun acc (vs,o) -> List.fold_left
-                                      (fun acc v -> (PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))::acc)
-                                      acc vs) [] ju.ju_se.se_ev.ev_binding in
-*)
-       let vx = PU.create_var vmap ts Unqual svx tyx in
-       let ey = PU.expr_of_parse_expr vmap ts Unqual ey in 
-       let vy = PU.create_var vmap ts Unqual svy ey.e_ty in
-       let ex = PU.expr_of_parse_expr vmap ts Unqual ex in
-       let c1 = vx, ey and c2 = vy, ex in
-       CR.t_injective_ctxt_ev j c1 c2 ju
+      let ev_expr = ju.ju_se.se_ev.ev_expr in
+      let b = match ev_expr.e_node with
+        | Nary(Land,es) when j < L.length es -> L.nth es j
+        | _ when j = 0 -> ev_expr
+        | _ -> tacerror "injective_ctxt_ev: bad index %i" j
+      in
+      let tyx =
+        if is_Eq b then (* (fst (destr_Eq b)).e_ty *)
+          raise (Handle_this_tactic_instead (PT.Rctxt_ev (Some j,Some(svx,None,ey))))
+        else if is_InEq b then (fst (destr_Eq (destr_Not b))).e_ty
+        else tacerror "injective_ctxt_ev: bad event %a, expected '=' or '<>'" pp_exp b
+      in
+      let vmap = vmap_of_globals ju.ju_se.se_gdef in
+      (* Adding quantified variables *)
+      List.iter
+        (fun (vs,o) -> List.iter
+          (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))) vs)
+        ju.ju_se.se_ev.ev_binding;
+      let vx = PU.create_var vmap ts Unqual svx tyx in
+      let ey = PU.expr_of_parse_expr vmap ts Unqual ey in 
+      let vy = PU.create_var vmap ts Unqual svy ey.e_ty in
+      let ex = PU.expr_of_parse_expr vmap ts Unqual ex in
+      let c1 = vx, ey and c2 = vy, ex in
+      CR.t_injective_ctxt_ev j c1 c2 ju
 
     | PT.Rinjective_ctxt_ev _ -> assert false
   
@@ -483,16 +482,18 @@ let rec handle_tactic ts tac =
     | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) | PT.Rguard _ ->
       tacerror "add_test and debugging tactics cannot be combined with ';'"
 
-    | PT.Rbad(1,Some ap,vsx) ->
+    | PT.Rbad(1,Some ap,_vsx) ->
       let p = gpos_of_apos ju ap in
-      t_bad PU.CaseDist p vsx vmap_g ts ju
-    | PT.Rbad(2,Some ap,vsx) ->
+      let vsx = failwith "undefined" in
+      CR.t_bad CaseDist p vsx ju
+    | PT.Rbad(2,Some ap,_vsx) ->
       let p = gpos_of_apos ju ap in
-      t_bad PU.UpToBad p vsx vmap_g ts ju
+      let vsx = failwith "undefined" in
+      CR.t_bad UpToBad p vsx ju
     | PT.Rbad(i,None,vsx) ->
       raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx)))
     | PT.Rcheck_hash_args(opos) ->
-      t_check_hash_args opos ts ju
+      CR.t_check_hash_args opos ju
     | PT.Rbad _ | PT.RbadOracle _ ->
       tacerror "Wrong RBad tactic call in Tactic.ml";
     | PT.Rguess(aname, fvs) ->
@@ -505,8 +506,7 @@ let rec handle_tactic ts tac =
         | _ ->  tacerror "rguess: invalid binding" in
       let asym = Asym.mk aname (mk_Prod []) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
-        tacerror "Error, \'guess\' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
-(*"number of given variables does not match type";*)
+        tacerror "Error, 'guess' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
       let vmap = vmap_of_globals ju.ju_se.se_gdef in
       let fvs = 
         L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
@@ -524,7 +524,7 @@ let rec handle_tactic ts tac =
       let arg = parse_e arg in
       let asym = Asym.mk aname (arg.e_ty) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
-        tacerror "Error, \'find\' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
+        tacerror "Error, 'find' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
       let vmap = vmap_of_globals ju.ju_se.se_gdef in
       let fvs = 
         L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
@@ -634,15 +634,49 @@ let rec handle_tactic ts tac =
 
 let handle_instr verbose ts instr =
   match instr with
-  | PT.Help(PT.Rinjective_ctxt_ev _) -> (ts, fsprintf "Rule that allows replacing the i-th event expression (of type \'e1 = e2\' or \'e1 <> e2\') \nby f(e1) and f(e2) provided f is injective (f_i verifying \'f_i(f(x)) = x\' is required to prove it)\n\nUsage : \n> injective_ctxt_ev [index] (x -> f(x)) (y -> f_i(y)).")
-  | PT.Help(PT.Rbad(i,_,_)) -> (ts, fsprintf "Rule that allows to \"replace\" a random oracle call by a random sampling, \nprovided you can bound the probability the expression queried to the RO is not queried elsewhere.\n\nUsage : \n> bad%i assgn_pos var_name.\n(where assgn_pos is either the line_number, the name of the var being bound, or a placeholder for last line)\n\nThe (game) command located at line_number must be a let binding of a random oracle call." i)
-  | PT.Help(PT.Rfind _) -> (ts, fsprintf "Rule to \'get\' existential variable(s) \'vars\' from the event into the main game \nthanks to an adversary \'A_name\' who is given \'args\'. \n\nUsage :\n> find (xs* -> f(xs,vars)) args A_name vars* .") 
-  | PT.Help (PT.Runwrap_quant_ev _) -> (ts, fsprintf "Rule to unwrap the quantification from the j-th event to the main event quantification. If j is not provided, it is assumed to be 0.\n\nUsage :\n> unwrap_quant_ev [j].")
-  | PT.Help (PT.Rcheck_hash_args _) -> (ts, fsprintf "Rule to deduce from a guarded expression of the form\n\'Exists h in L_H : h = e\',\nthat any future hash call querying e is actually a lookup, i.e.,\n\'H(e)\' becomes \'m_H(e)\'.\n\nUsage :\n> check_hash_args (i,j,k).")
+  | PT.Help(PT.Rinjective_ctxt_ev _) ->
+    let msg =
+      "Rule that allows replacing the i-th event expression (of type 'e1 = e2' or 'e1 <> e2')"^
+      "by f(e1) and f(e2) provided f is injective (f_i verifying 'f_i(f(x)) = x' is required to prove it)"^
+      "Usage : \n> injective_ctxt_ev [index] (x -> f(x)) (y -> f_i(y))."
+    in
+    (ts, msg)
+  | PT.Help(PT.Rbad(i,_,_)) ->
+    let msg =
+      fsprintf
+        ("Rule that allows to \"replace\" a random oracle call by a random sampling,\n"^^
+         "provided you can bound the probability the expression queried to the RO is not queried elsewhere.\n\n"^^
+         "Usage : \n> bad%i assgn_pos var_name.\n"^^
+         "(where assgn_pos is a line_number, the name of a let-bound variable, or a placeholder (last line))\n\n"^^
+         "The (game) command located at line_number must be a let binding of a random oracle call.")
+        i
+    in
+    (ts, msg)
+  | PT.Help(PT.Rfind _) ->
+    let msg =
+      "Rule to 'get' existential variable(s) 'vars' from the event into the main game \n"^
+      "thanks to an adversary 'A_name' who is given 'args'. \n\n"^
+      "Usage :\n> find (xs* -> f(xs,vars)) args A_name vars* ."
+    in
+    (ts, msg)
+  | PT.Help (PT.Runwrap_quant_ev _) ->
+    let msg =
+      "Rule to unwrap the quantification from the j-th event to the main event quantification.\n"^
+      "If j is not provided, it is assumed to be 0.\n\n"^
+      "Usage :\n> unwrap_quant_ev [j]."
+    in
+    (ts, msg)
+  | PT.Help (PT.Rcheck_hash_args _) ->
+    let msg =
+      "Rule to deduce from a guarded expression of the form\n'Exists h in L_H : h = e',\n"^
+      "that any future hash call querying e is actually a lookup, i.e.,\n'H(e)' becomes 'm_H(e)'.\n\n"^
+      "Usage :\n> check_hash_args (i,j,k)."
+    in
+    (ts, msg)
   | PT.Help _ -> assert false
   | PT.PermDecl(s,t) -> let s_inv = s ^ "_inv" in
      if Mstring.mem s_inv ts.ts_permdecls then
-       tacerror "Permutation with the same name \'%s\' already declared." s;
+       tacerror "Permutation with the same name '%s' already declared." s;
      let f = Psym.mk s (PU.ty_of_parse_ty ts t) (create_permvar ts s) in
      let ts = { ts with ts_permdecls = Mstring.add s_inv f ts.ts_permdecls } in
      (ts, fsprintf "Declared permutation %s : " s)

@@ -22,8 +22,6 @@ module S = String
 
 (** Parser error with explanation. *)
 exception ParseError of string
-
-type bad_version = UpToBad | CaseDist
                                
 let fail_parse s = raise (ParseError s)
 
@@ -45,7 +43,6 @@ let get_oname_from_opos (se : G.sec_exp) (opos : G.ocmd_pos) : string =
      let (os,_,_) = od in
      Id.name os.Osym.id
   | _ -> tacerror "Error, no Oracle definition at line %i" (i+1)
-
                   
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Conversion functions for parser-types} *)

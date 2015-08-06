@@ -10,8 +10,6 @@ open ParserTypes
 (*i*)
 
 exception ParseError of string
-
-type bad_version = UpToBad | CaseDist
                                
 val fail_parse : string -> 'a
 
