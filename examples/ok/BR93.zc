@@ -39,7 +39,7 @@ bound_adv
     
                  (* Proof *)
 (* 
-   Idea : 
+   Idea: 
    -1- exploit the randomness of ideal RO hash function H
    that 'ensures' the secrecy of H(r) XOR Mb (OTP-like)
    as long as its argument r remains secret ; 
