@@ -26,7 +26,7 @@ let log_i ls  = mk_logger "Logic.Crush" Bolt.Level.INFO  "CrushRules" ls
 (* \hd{Simplification} *)
 
 let t_split_ev_maybe mi ju =
-  let ev = ju.ju_se.se_ev.ev_expr in
+  let ev = Event.expr ju.ju_se.se_ev in
   (match mi with
   | Some i -> ret i
   | None   ->
@@ -41,7 +41,7 @@ let t_split_ev_maybe mi ju =
   CR.t_split_ev i ju
 
 let t_rewrite_ev_maybe mi mdir ju =
-  let ev = ju.ju_se.se_ev.ev_expr in
+  let ev = Event.expr ju.ju_se.se_ev in
   (match mi with
   | Some i ->
     begin match mdir with
@@ -68,7 +68,7 @@ let t_rewrite_ev_maybe mi mdir ju =
 
 let t_ctx_ev_maybe mi ju =
   log_i (lazy (fsprintf "ctx_ev_maybe: %i" (from_opt (-1) mi)));
-  let ev = ju.ju_se.se_ev.ev_expr in
+  let ev = Event.expr ju.ju_se.se_ev in
   (match mi with
   | Some i ->
     let conjs = destr_Land_nofail ev in
@@ -134,7 +134,7 @@ let t_fix must_finish max t ju =
 let rec t_split_ineq i ju =
   let rn = "split_ev" in
   let se = ju.ju_se in
-  let ev = se.se_ev.ev_expr in
+  let ev = Event.expr se.se_ev in
   let evs = destr_Land_nofail ev in
   if i < 0 || i >= L.length evs then
     tacerror "%s: invalid event position %i" rn i;

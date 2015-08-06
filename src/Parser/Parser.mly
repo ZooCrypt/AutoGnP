@@ -168,6 +168,7 @@
 %token RCTXT_EV
 %token RINJECTIVE_CTXT_EV
 %token RUNWRAP_QUANT_EV
+%token RSWAP_QUANT_EV
 %token REXCEPT
 %token RHYBRID
 %token RADD_TEST
@@ -362,17 +363,8 @@ binding1:
 | x=ID IN o=LIST {[x], o}
 | LPAREN xs=seplist1(COMMA,ID) RPAREN IN o=LIST {xs, o}
 
-binding:
-(* | FORALL l=seplist1(COMMA,binding1) COLON {Game.Forall, l} *)
-| EXISTS l=seplist1(COMMA,binding1) COLON {Game.EvExists, l}
-
 bind_event:
-| COLON b=binding? e=expr
-  { match b with
-    | None                   -> (Game.EvForall, []), e
-    | Some (Game.EvForall,_) -> assert false
-    | Some (Game.EvExists,l) -> (Game.EvExists,l),e }
-
+| COLON e=expr {e}
 dir:
 | LEFTARROW { Util.RightToLeft }
 | TO        { Util.LeftToRight }
@@ -441,7 +433,8 @@ help_command :
 | HELP RBAD2 { Help(Rbad(2,None,"")) }
 | HELP RCHECK_HASH_ARGS {Help(Rcheck_hash_args(0,0,0,Game.Onohyb))}
 | HELP RFIND { Help(Rfind(([],CB(false)),CB(false),"",[])) }
-| HELP RUNWRAP_QUANT_EV { Help(Runwrap_quant_ev(0)) }
+| HELP RUNWRAP_QUANT_EV { Help(Runwrap_quant_ev (0)) }
+| HELP RSWAP_QUANT_EV   { Help(Rswap_quant_ev   (0)) }
        
                 
 /*----------------------------------------------------------------------*/
@@ -572,9 +565,7 @@ tactic :
 /* oracles */
 | RRND_ORACLE op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Rrnd_orcl(op,c1,c2) }
 | RREWRITE_ORACLE op=opos d=dir                       { Rrewrite_orcl(op,d) }
-| RBAD1 op=opos s=ID                                  { RbadOracle (1,op,s) }
 | RBAD1 i=uopt(assgn_pos) s=ID                        { Rbad (1,i,s)        }
-| RBAD2 op=opos s=ID                                  { RbadOracle (2,op,s) }
 | RBAD2 i=uopt(assgn_pos) s=ID                        { Rbad (2,i,s)        }
 | RCHECK_HASH_ARGS op=opos                            { Rcheck_hash_args op }
 | RADD_TEST op=opos e=expr asym=ID fvs=ID*
@@ -598,6 +589,7 @@ tactic :
 | RINJECTIVE_CTXT_EV j=gpos c1=ctx_noty c2=ctx_noty { Rinjective_ctxt_ev(j,Some c1,Some c2) }
 | RUNWRAP_QUANT_EV { Runwrap_quant_ev(0) }
 | RUNWRAP_QUANT_EV j=gpos { Runwrap_quant_ev(j) }
+| RSWAP_QUANT_EV j=gpos { Rswap_quant_ev(j) }
                           
 
 /* probability bounding rules */

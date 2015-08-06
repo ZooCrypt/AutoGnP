@@ -514,9 +514,8 @@ let rassert p e ju =
   let cmds = [ GAssert(e); cmd ] in
   let ju1 =
     { ju_pr = Pr_Succ;
-      ju_se = { se with se_ev = 
-                { se.se_ev with 
-                  ev_expr = mk_Land [se.se_ev.ev_expr; mk_Not e] } } }
+      ju_se = { se with
+                se_ev = Event.insert ~e:(mk_Not e) se.se_ev } }
   in
   let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
   Rassert(p,e), [ ju1; ju2 ]
@@ -559,7 +558,7 @@ let merge_base_event ev1 ev2 =
 let rmerge_ev i j ju =
   let se = ju.ju_se in
   let i,j = if i <= j then i, j else j, i in
-  let evs = destr_Land_nofail se.se_ev.ev_expr in
+  let evs = destr_Land_nofail (Event.expr se.se_ev) in
   let l,b1,r = Util.split_n i evs in
   let l',b2,r =
     if i = j then [], b1, r
@@ -567,7 +566,7 @@ let rmerge_ev i j ju =
   in
   let ev = merge_base_event b1 b2 in
   let evs = L.rev_append l (L.rev_append l' (ev::r)) in
-  let new_se = {se with se_ev = { se.se_ev with ev_expr = mk_Land evs} } in
+  let new_se = {se with se_ev = Event.set_expr (mk_Land evs) se.se_ev} in
   Rmerge_ev(i,j), [ { ju with ju_se = new_se } ]
 
 let t_merge_ev i j = prove_by (rmerge_ev i j)
@@ -579,7 +578,7 @@ let rsplit_ev i ju =
   let rn = "split_ev" in
   let se = ju.ju_se in
   let ev = se.se_ev in
-  let evs = destr_Land_nofail ev.ev_expr in
+  let evs = destr_Land_nofail (Event.expr ev) in
   if i < 0 || i >= L.length evs then
     tacerror "%s: invalid event position %i" rn i;
   let l,b,r = Util.split_n i evs in
@@ -595,7 +594,7 @@ let rsplit_ev i ju =
     L.map (fun (e1,e2) -> mk_Eq e1 e2) (L.combine es1 es2)
   in
   let evs = l@b@r in
-  let new_se = { se with se_ev = { se.se_ev with ev_expr = mk_Land evs }} in
+  let new_se = { se with se_ev = Event.set_expr (mk_Land evs) se.se_ev} in
   Rsplit_ev(i), [ { ju with ju_se = new_se } ]
 
 let t_split_ev i = prove_by (rsplit_ev i)
@@ -607,7 +606,7 @@ let rrw_ev i d ju =
   let rn = "rewrite_ev" in
   let se = ju.ju_se in
   let ev = se.se_ev in
-  let evs = destr_Land_nofail ev.ev_expr in
+  let evs = destr_Land_nofail (Event.expr ev) in
   if i < 0 || i >= L.length evs then
     tacerror "%s: invalid event position %i" rn i;
   let l,b,r = Util.split_n i evs in
@@ -625,7 +624,7 @@ let rrw_ev i d ju =
   in
   let subst e = e_replace u v e in
   let evs = (L.map subst l |> L.rev)@[b]@(L.map subst r) in
-  let new_se = { se with se_ev = {se.se_ev with ev_expr = mk_Land evs } } in
+  let new_se = { se with se_ev = Event.set_expr (mk_Land evs) se.se_ev } in
   Rrw_ev(i,d), [ { ju with ju_se = new_se } ]
 
 let t_rw_ev i d = prove_by (rrw_ev i d)
@@ -717,13 +716,13 @@ let conj_or_negation_included e ev =
 let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   let se = ju.ju_se in
   ensure_pr_Succ_or_Adv "case_ev" ju;
-  let ev = se.se_ev.ev_expr in
+  let ev = (Event.expr se.se_ev) in
   if not ae && conj_or_negation_included e ev then
     tacerror "case_ev: event or negation already in event";
   let ju1 = { ju with ju_se =
-      { se with se_ev = { se.se_ev with ev_expr = mk_Land [ev;e] }}} in
-  let ju2 = { ju with ju_se = 
-      { se with se_ev = { se.se_ev with ev_expr = mk_Land [ev; mk_Not e] }}} in
+      { se with se_ev = Event.insert ~e se.se_ev}} in
+  let ju2 = { ju with ju_se =
+      { se with se_ev = Event.insert ~e:(mk_Not e) se.se_ev}} in
   Rcase_ev(flip,e), if flip then [ju2; ju1] else [ju1;ju2]
 
 let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
@@ -735,7 +734,7 @@ let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
 let rctxt_ev i c ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
-  let ev = se.se_ev.ev_expr in
+  let ev = (Event.expr se.se_ev) in
   let evs = destr_Land_nofail ev in
   if i < 0 || i >= L.length evs then failwith "invalid event position";
   let l,b,r = Util.split_n i evs in
@@ -745,7 +744,7 @@ let rctxt_ev i c ju =
       mk_Eq (inst_ctxt c e1) (inst_ctxt c e2)
     else tacerror "ctxt_ev: bad event, expected equality"
   in
-  let ev = {se.se_ev with ev_expr = mk_Land (L.rev_append l (b::r))} in
+  let ev = Event.set_expr (mk_Land (L.rev_append l (b::r))) se.se_ev in
   let wfs = wf_gdef NoCheckDivZero (se.se_gdef) in
   wf_ev NoCheckDivZero wfs ev;
   let new_ju = { se with se_ev = ev } in
@@ -756,7 +755,7 @@ let t_ctxt_ev i c = prove_by (rctxt_ev i c)
 let rinjective_ctxt_ev j c1 c2 ju =
   let se = ju.ju_se in
   let ev = se.se_ev in
-  let evs = destr_Land_nofail ev.ev_expr in
+  let evs = destr_Land_nofail (Event.expr ev) in
   if j < 0 || j >= L.length evs then tacerror "Invalid index %i" j;
   let l,b,r = Util.split_n j evs in
   let b =
@@ -769,7 +768,7 @@ let rinjective_ctxt_ev j c1 c2 ju =
     
     ensure_bijection ~partial:true se c2 c1 (fst c1);
     op (inst_ctxt c1 e1) (inst_ctxt c1 e2) in
-  let ev = {ev with ev_expr = mk_Land (L.rev_append l (b::r))} in
+  let ev = Event.set_expr (mk_Land (L.rev_append l (b::r))) ev in
   let wfs = wf_gdef NoCheckDivZero (se.se_gdef) in
   wf_ev NoCheckDivZero wfs ev;
   let new_ju = { se with se_ev = ev } in
@@ -784,13 +783,14 @@ let rremove_ev (rm:int list) ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
   let evs =
-    destr_Land_nofail se.se_ev.ev_expr
+    destr_Land_nofail (Event.expr se.se_ev)
     |> L.mapi (fun i e -> if L.mem i rm then None else Some e)
     |> cat_Some
   in
-  let new_ju = { se with se_ev = 
-      { se.se_ev with ev_expr = if evs = [] then mk_True else mk_Land evs }} in
-  Rremove_ev rm, [ { ju with ju_se = new_ju } ]
+  let new_ev_expr = if evs = [] then mk_True else mk_Land evs in
+  let new_se = { se with se_ev =
+                           Event.set_expr new_ev_expr se.se_ev} in
+  Rremove_ev rm, [ { ju with ju_se = new_se } ]
 
 let t_remove_ev rm = prove_by (rremove_ev rm)
 
@@ -837,7 +837,7 @@ let t_dist_eq = prove_by rdist_eq
 
 let rfalse_ev ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
-  if is_False ju.ju_se.se_ev.ev_expr
+  if is_False (Event.expr ju.ju_se.se_ev)
   then Rfalse_ev, []
   else tacerror "false_ev: event false expected"
 
@@ -847,9 +847,9 @@ let t_false_ev = prove_by rfalse_ev
 (** {\bf Bound random independence} *)
 
 let check_event r ev =
-  if ev.ev_binding <> [] 
+  if Event.binding ev <> [] 
      then tacerror "indep: the event can not be quantified";
-  let ev = ev.ev_expr in
+  let ev = (Event.expr ev) in
   let r = mk_V r in
   let rec aux i evs =
     match evs with
@@ -1031,8 +1031,8 @@ let rassm_dec dir ren rngs assm0 ju =
   (* check that event is equal to last returned variable *)
   let ev_is_last_returned = 
     match Util.last acalls_ju with
-    | GLet(vs,_) when e_equal se.se_ev.ev_expr (mk_V vs) &&
-                      se.se_ev.ev_binding = []         -> true
+    | GLet(vs,_) when e_equal (Event.expr se.se_ev) (mk_V vs) &&
+                      Event.binding se.se_ev = []      -> true
     | _                                                -> false
   in
   if not ev_is_last_returned then
@@ -1072,10 +1072,7 @@ let radd_test opos tnew asym fvs ju =
         seoc_avars = fvs;
         seoc_sec =
           { seoc.seoc_sec with
-            sec_ev = 
-              { ev_quant = EvForall;
-                ev_binding = [];
-                ev_expr = e_subst subst (mk_Land (tests@[ t ; mk_Not tnew]))};
+            sec_ev = Event.mk (e_subst subst (mk_Land (tests@[ t ; mk_Not tnew])));
             sec_right = [] } }
     in
     let ju1 = {ju_se = set_se_octxt [LGuard(t)] seoc_bad; ju_pr = Pr_Succ } in
@@ -1132,9 +1129,9 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
             seoc_cright = new_lcmds } }
   in
   let ev = ju.ju_se.se_ev in
-  assert (ev.ev_binding = []);
+  assert (Event.binding ev = []);
   let splitEv =
-    let conj = destr_Land_nofail ev.ev_expr in
+    let conj = destr_Land_nofail (Event.expr ev) in
     conc_map
       (fun e ->
         if is_All e then (
@@ -1155,7 +1152,7 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
     { seoc with
       seoc_sec =
         { seoc.seoc_sec with
-          sec_ev = { ev_binding = []; ev_quant = EvForall; ev_expr = mk_Land splitEv } };
+          sec_ev = Event.mk (mk_Land splitEv) };
       seoc_obless    = Some (rename_odef new_lcmds new_eret);
       seoc_obeq      = None;
       seoc_cright    = old_lcmds;
@@ -1213,10 +1210,9 @@ let rguard opos tnew ju =
     { seoc with 
       seoc_sec = { seoc.seoc_sec with 
         sec_right = [];
-        sec_ev = 
-          { ev_quant = EvExists;
-            ev_binding = [vs,Oracle.mk_O seoc.seoc_osym];
-            ev_expr = e_subst subst (mk_Land (mk_Not t::tests))}
+        sec_ev = Event.mk ~quant:Exists
+                          ~binding:(vs,Oracle.mk_O seoc.seoc_osym)
+                          (e_subst subst (mk_Land (mk_Not t::tests)))
       }} in
   let i = if tnew = None then [] else [LGuard t] in
   let ju1 = {ju_se = set_se_octxt i seoc_bad; ju_pr = Pr_Succ } in
@@ -1229,18 +1225,21 @@ let t_guard p tnew = prove_by (rguard p tnew)
 
 let rguess asym fvs ju = 
   let ev = ju.ju_se.se_ev in
-  match ev.ev_quant, ev.ev_binding, ju.ju_pr with
-  | EvExists, [vs,_o], Pr_Succ ->
-    assert (ty_equal (ty_prod_vs fvs) (ty_prod_vs vs));
+  let (q,b,ev_expr) = try Event.destr ev with
+                   Event.NoQuant -> tacerror "guess : invalid event, quantification required." in
+  match q, b, ju.ju_pr with
+  | Exists, (vs,_o), Pr_Succ ->
+     if not(ty_equal (ty_prod_vs fvs) (ty_prod_vs vs)) then
+     tacerror "guess : invalid variables types";
     let subst =
       L.fold_left2
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
         Me.empty vs fvs in
-    let e = e_subst subst ev.ev_expr in
+    let e = e_subst subst ev_expr in
     let ju1 = {ju with
       ju_se = {
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,mk_Tuple [], [])];
-        se_ev = { ev_quant = EvForall; ev_binding = []; ev_expr = e }} } in
+        se_ev = Event.mk e} } in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
     Rguess asym, [ ju1 ]
     
@@ -1251,10 +1250,12 @@ let t_guess asym fvs = prove_by (rguess asym fvs)
 
 let rfind (bd,body) arg asym fvs ju =
   let ev = ju.ju_se.se_ev in
-  match ev.ev_quant, ev.ev_binding, ju.ju_pr with
-  | EvExists, [vs,_o], Pr_Succ ->
+  let (q,b,ev_expr) = try Event.destr ev with
+                        Event.NoQuant -> tacerror "rfind : not a valid event, quantification required" in
+  match q, b, ju.ju_pr with
+  | Exists, (vs,_o), Pr_Succ ->
     assert (ty_equal (ty_prod_vs fvs) (ty_prod_vs vs));
-    (* check that body{bd <- arg} = ev.ev_expr *)
+    (* check that body{bd <- arg} = (Event.expr ev) *)
     assert (ty_equal (ty_prod_vs bd) arg.e_ty);
     let subst_bd = 
       L.fold_left2 (fun s v e -> Me.add (mk_V v) e s) Me.empty bd 
@@ -1266,8 +1267,8 @@ let rfind (bd,body) arg asym fvs ju =
       tacerror "find not a closed function: %a contains variables not in %a"
         pp_exp body (pp_list "," pp_exp) (Se.elements allowed);
     let e1 = e_subst subst_bd body in
-    if not (e_equal e1 ev.ev_expr) then
-      tacerror "find: invalid event in function : %a \nvs %a" pp_exp e1 pp_exp ev.ev_expr;
+    if not (e_equal e1 (Event.expr ev)) then
+      tacerror "find: invalid event in function : %a \nvs %a" pp_exp e1 pp_exp (Event.expr ev);
     (* check that the function is PPT *)
     if not (is_ppt body) then 
       tacerror "find: the function is not ppt";
@@ -1276,11 +1277,11 @@ let rfind (bd,body) arg asym fvs ju =
       L.fold_left2
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
         Me.empty vs fvs in
-    let e = e_subst subst ev.ev_expr in
+    let e = e_subst subst ev_expr in
     let ju1 = {ju with
       ju_se = {
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,arg, [])];
-        se_ev = { ev_quant = EvForall; ev_binding = []; ev_expr = e }} } in
+        se_ev = Event.mk e} } in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
     Rfind (asym, (bd,body)), [ ju1 ]
     
@@ -1328,16 +1329,13 @@ let rbad which_bad p gen_vsx ju =
      let create_ju = match which_bad with
        | UpToBad -> fun ei ->
          { ju_pr = Pr_Succ ;
-           ju_se = { ju1.ju_se with se_ev =
-                                      { ev_quant   = EvForall;
-                                        ev_binding = [];
-                                        ev_expr    = (mk_Eq e ei) } } }
+           ju_se = { ju1.ju_se with se_ev = Event.mk
+                                              (mk_Eq e ei) } }
        | CaseDist -> fun ei ->
          { ju_pr = Pr_Succ ;
-           ju_se = { ju.ju_se with se_ev =
-                               { se.se_ev with
-                                 ev_expr = 
-                                   mk_Land [mk_Eq e ei; se.se_ev.ev_expr]}}}
+           ju_se = { ju.ju_se with se_ev = Event.insert
+                                             ~e:(mk_Eq e ei)
+                                             se.se_ev}}
      in
      let check_other_hc_expr_eq_jus =
        Se.fold (fun ei jus -> (create_ju ei)::jus) all_other_hash_calls_args []
@@ -1349,16 +1347,17 @@ let rbad which_bad p gen_vsx ju =
      (* ju2 is ju1 where event = bad_event + main_event when UpToBad, 
                               or bad_event only when CaseDist *)
        | CaseDist ->
-          let conj_ev = { ev_quant   = EvExists;
-                          ev_binding = bad_ev_binding :: se.se_ev.ev_binding;
-                          ev_expr    = mk_Land [bad_ev_expr; se.se_ev.ev_expr] }
-          in
+          let conj_ev = Event.insert
+                          ~quant:Exists
+                          ~binding:bad_ev_binding
+                          ~e:bad_ev_expr
+                          se.se_ev in
           2, {ju_pr = Pr_Succ; ju_se = {ju.ju_se with se_ev = conj_ev} }
        | UpToBad ->
-          let bad_ev = { ev_quant   = EvExists;
-                         ev_binding = [bad_ev_binding];
-                         ev_expr    = bad_ev_expr }
-          in
+          let bad_ev = Event.mk
+                         ~quant:Exists
+                         ~binding:bad_ev_binding
+                         bad_ev_expr in
           1, {ju_pr = Pr_Succ; ju_se = {ju1.ju_se with se_ev = bad_ev} }
      in
      Rbad(bad_n,p,vsx), ju1::ju2::check_other_hc_expr_eq_jus
@@ -1415,3 +1414,39 @@ let rcheck_hash_args opos gen_o_lkup ju =
 
 let t_check_hash_args opos gen_o_lkup =
   prove_by (rcheck_hash_args opos gen_o_lkup)
+
+           
+let runwrap_quant_ev j ju =
+  let ev = ju.ju_se.se_ev in
+  let q_expr = try Event.nth j ev with
+                 Failure _ -> tacerror "unwrap_quant_ev: bad index %i" j in
+  let (q,b,e) = try destr_Quant q_expr with Destr_failure _ -> tacerror "unwrap_quant_ev : no quantification in event %a" pp_exp q_expr in
+  let new_ev = Event.insert
+                 ~quant:q
+                 ~binding:b
+                 (Event.set_nth j e ev) in
+  let new_se = {ju.ju_se with se_ev = new_ev} in
+  let new_ju = {ju with ju_se = new_se} in
+  Runwrap_quant_ev j,[new_ju]
+
+let t_unwrap_quant_ev j = prove_by (runwrap_quant_ev j)
+                                 
+let rswap_quant_ev j ju =
+  let ev = ju.ju_se.se_ev in
+  let (q,b,e) = try Event.destr ev with Event.NoQuant -> tacerror "swap_quant_ev: no quantification in event %a.\n%s" Event.pp ev (if is_SomeQuant (Event.expr ev) then "(Remember there is an \'unwrap_quant_ev\' rule)" else "") in
+  let rec go j e = match e.e_node with
+    | Quant(q0,b0,e0) when j <= 0 -> (q0,b0,e0)
+    | Quant(q,b,e) ->
+       let (q0,b0,e0) = go (j-1) e in
+       if q0 = Expr.Exists && q = Expr.All then
+         tacerror "swap_quant_ev: can't swap \'exists\' out of a preceding \'forall\'";
+       (q0,b0,mk_Quant q b e0)
+    | _ -> tacerror "swap_quant_ev: invalid index %i" (j+1) in
+  let (q0,b0,e0) = go j (mk_Quant q b e) in
+  let new_ev = Event.mk ~quant:q0
+                        ~binding:b0
+                        e0 in
+  Rswap_quant_ev j,[{ju with ju_se = {ju.ju_se with se_ev = new_ev}}]
+
+let t_swap_quant_ev j ju =
+  prove_by (rswap_quant_ev j) ju

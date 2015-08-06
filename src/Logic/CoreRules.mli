@@ -221,3 +221,10 @@ val t_bad : bad_version -> gcmd_pos -> (expr -> Vsym.t) -> tactic
 
 val rcheck_hash_args  : ocmd_pos -> (Syms.Hsym.t -> Syms.Hsym.t) -> rule
 val t_check_hash_args : ocmd_pos -> (Syms.Hsym.t -> Syms.Hsym.t) -> tactic
+
+val runwrap_quant_ev : int -> rule
+val t_unwrap_quant_ev : int -> tactic
+                                
+val rswap_quant_ev : int -> rule
+val t_swap_quant_ev : int -> tactic
+                                

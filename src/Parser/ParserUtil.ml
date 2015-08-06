@@ -300,14 +300,9 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
 let gdef_of_parse_gdef (vmap : G.vmap) ts gd =
   L.map (fun gc -> gcmd_of_parse_gcmd vmap ts gc) gd
 
-let ev_of_parse_ev vmap ts ((quant, bd),pe) = 
-  let b = 
-    List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
-  in
-  { G.ev_quant   = quant; 
-    G.ev_binding = b;
-    G.ev_expr    = expr_of_parse_expr vmap ts Unqual pe }
-
+let ev_of_parse_ev vmap ts pe =
+  G.Event.mk (expr_of_parse_expr vmap ts Unqual pe)
+                     
 let se_of_parse_se (vmap : G.vmap) ts gd ev =
   let gd = gdef_of_parse_gdef vmap ts gd in
   let ev  = ev_of_parse_ev vmap ts ev in

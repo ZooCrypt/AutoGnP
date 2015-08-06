@@ -366,7 +366,7 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   let a_cmds = map_gdef_exp deduce a_cmds in
   let se_ev =
     match mupto with
-    | None   -> { sec.sec_ev with ev_expr = deduce sec.sec_ev.ev_expr }
+    | None   -> Event.map deduce sec.sec_ev (* FIXME : Potential problem ? *)
     | Some _ -> sec.sec_ev
   in
   let sec = {sec with sec_ev = se_ev} in

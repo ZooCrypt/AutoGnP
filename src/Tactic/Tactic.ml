@@ -61,7 +61,7 @@ let gpos_of_offset ju i =
   if i < 0 then L.length ju.ju_se.se_gdef + i + 1 else i
 
 let epos_of_offset ju i =
-  let ev = ju.ju_se.se_ev.ev_expr in
+  let ev = (Event.expr ju.ju_se.se_ev) in
   if i < 0 && is_Land ev
   then L.length (destr_Land ev) + i + 1
   else i
@@ -290,9 +290,9 @@ let rec handle_tactic ts tac =
       t_swap_to_orcl ju
   
     | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
-      let v = mk_new_var sv ju.ju_se.se_ev.ev_expr.e_ty in
+      let v = mk_new_var sv (Event.expr ju.ju_se.se_ev).e_ty in
       let max = L.length ju.ju_se.se_gdef in
-      t_let_abstract max v ju.ju_se.se_ev.ev_expr (map_opt get_pos mupto) (not no_norm) ju
+      t_let_abstract max v (Event.expr ju.ju_se.se_ev) (map_opt get_pos mupto) (not no_norm) ju
   
     | PT.Rlet_abstract(_,_,_,_,_) ->
       tacerror "No placeholders or placeholders for both position and event"
@@ -370,7 +370,7 @@ let rec handle_tactic ts tac =
         | Some j -> j
         | None -> tacerror "position placeholder not allowed if context is given"
       in
-      let ev = ju.ju_se.se_ev.ev_expr in
+      let ev = (Event.expr ju.ju_se.se_ev) in
       let b =
         match ev.e_node with
         | Nary(Land,es) when j < L.length es ->
@@ -389,54 +389,31 @@ let rec handle_tactic ts tac =
       let e1 = PU.expr_of_parse_expr vmap ts Unqual e in
       let c = v1, e1 in
       CR.t_ctxt_ev j c ju
-                   
-    | PT.Runwrap_quant_ev j ->
-      let r_unwrap_quant_ev ju =
-        let ev = ju.ju_se.se_ev in
-        let main_binding = ev.ev_binding and ev_exprs = ev.ev_expr in
-        let l,q_expr,r = match ev_exprs.e_node with
-          | Nary(Land,es) when j < L.length es -> Util.split_n j es
-          | _ when j = 0 -> [],ev_exprs,[]
-          | _ -> tacerror "unwrap_quant_ev: bad index %i" j
-        in
-        let (q,b,e) =
-          try destr_Quant q_expr
-          with
-            Destr_failure _ -> tacerror "unwrap_quant_ev : no quantification in event %a" pp_exp q_expr
-        in
-        if q = All then tacerror "forall quantification not handled yet.";
-        let new_ev = { ev with ev_binding = b :: main_binding; ev_expr = mk_Land (List.rev_append l (e :: r))} in
-        let new_se = {ju.ju_se with se_ev = new_ev} in
-        let new_ju = {ju with ju_se = new_se} in
-        Runwrap_quant_ev j,[new_ju]
-      in
-      CR.prove_by(r_unwrap_quant_ev) ju
 
+    | PT.Rswap_quant_ev j ->
+       CR.t_swap_quant_ev j ju
+    | PT.Runwrap_quant_ev j ->
+       CR.t_unwrap_quant_ev j ju
     | PT.Rinjective_ctxt_ev (j,Some (svx,None,ey),Some (svy,None,ex)) ->
-      let ev_expr = ju.ju_se.se_ev.ev_expr in
-      let b = match ev_expr.e_node with
-        | Nary(Land,es) when j < L.length es -> L.nth es j
-        | _ when j = 0 -> ev_expr
-        | _ -> tacerror "injective_ctxt_ev: bad index %i" j
-      in
-      let tyx =
-        if is_Eq b then (* (fst (destr_Eq b)).e_ty *)
-          raise (Handle_this_tactic_instead (PT.Rctxt_ev (Some j,Some(svx,None,ey))))
-        else if is_InEq b then (fst (destr_Eq (destr_Not b))).e_ty
-        else tacerror "injective_ctxt_ev: bad event %a, expected '=' or '<>'" pp_exp b
-      in
-      let vmap = vmap_of_globals ju.ju_se.se_gdef in
-      (* Adding quantified variables *)
-      List.iter
-        (fun (vs,o) -> List.iter
-          (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))) vs)
-        ju.ju_se.se_ev.ev_binding;
-      let vx = PU.create_var vmap ts Unqual svx tyx in
-      let ey = PU.expr_of_parse_expr vmap ts Unqual ey in 
-      let vy = PU.create_var vmap ts Unqual svy ey.e_ty in
-      let ex = PU.expr_of_parse_expr vmap ts Unqual ex in
-      let c1 = vx, ey and c2 = vy, ex in
-      CR.t_injective_ctxt_ev j c1 c2 ju
+       let b = try Event.nth j ju.ju_se.se_ev
+       with Failure _ -> tacerror "injective_ctxt_ev: bad index %i" j in
+       let tyx =
+         if is_Eq b then (* (fst (destr_Eq b)).e_ty *)
+           raise (Handle_this_tactic_instead (PT.Rctxt_ev (Some j,Some(svx,None,ey))))
+         else if is_InEq b then (fst (destr_Eq (destr_Not b))).e_ty
+         else tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_exp b
+       in
+       let vmap = vmap_of_globals ju.ju_se.se_gdef in
+       (* Adding quantified variables *)
+       List.iter (fun (vs,o) -> List.iter
+                      (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))) vs)
+                 (Event.binding ju.ju_se.se_ev);
+       let vx = PU.create_var vmap ts Unqual svx tyx in
+       let ey = PU.expr_of_parse_expr vmap ts Unqual ey in 
+       let vy = PU.create_var vmap ts Unqual svy ey.e_ty in
+       let ex = PU.expr_of_parse_expr vmap ts Unqual ex in
+       let c1 = vx, ey and c2 = vy, ex in
+       CR.t_injective_ctxt_ev j c1 c2 ju
 
     | PT.Rinjective_ctxt_ev _ -> assert false
   
@@ -499,15 +476,14 @@ let rec handle_tactic ts tac =
     | PT.Rcheck_hash_args(opos) ->
        let gen_o_lkup o  = Mstring.find (Hsym.to_string o) ts.ts_lkupdecls in
        CR.t_check_hash_args opos gen_o_lkup ju
-    | PT.Rbad _ | PT.RbadOracle _ ->
-      tacerror "Wrong RBad tactic call in Tactic.ml";
+    | PT.Rbad _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
     | PT.Rguess(aname, fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
       let ev = ju.ju_se.se_ev in
       let vs = 
-        match ev.ev_binding with
-        | [vs,_] -> vs
+        match Event.binding ev with
+        | (vs,_)::_ -> vs
         | _ ->  tacerror "rguess: invalid binding" in
       let asym = Asym.mk aname (mk_Prod []) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
@@ -523,8 +499,8 @@ let rec handle_tactic ts tac =
         tacerror "rguess: adversary with same name already declared";
       let ev = ju.ju_se.se_ev in
       let vs = 
-        match ev.ev_binding with
-        | [vs,_] -> vs
+        match Event.binding ev with
+        | (vs,_)::_ -> vs
         | _ ->  tacerror "rfind: invalid binding" in
       let arg = parse_e arg in
       let asym = Asym.mk aname (arg.e_ty) (ty_prod_vs vs) in

@@ -48,13 +48,31 @@ type gcmd =
   | GCall   of vs list * ads * expr * odef list
 
 type gdef = gcmd list
+                               
+module Event : sig
+    type t
 
-(** An event is just an quantified expression. *)
-type quant = EvForall | EvExists
-type ev = { ev_quant: quant; ev_binding: (vs list * ors)list; ev_expr:expr }
+    val quant : t -> Expr.quant
+    val binding : t -> (Vsym.t list * Oracle.t) list
+    val expr : t -> expr
+                      
+    val mk : ?quant:Expr.quant -> ?binding:(Vsym.t list * Oracle.t) -> expr -> t
+    val insert : ?quant:Expr.quant -> ?binding:(Vsym.t list * Oracle.t) -> ?e:expr -> t -> t
+    val equal : t -> t -> bool
+                            
+    val map : (expr -> expr) -> t -> t
+    val set_expr : expr -> t -> t
+    val nth : int -> t -> expr
+    val set_nth : int -> expr -> t -> t
 
+    exception NoQuant
+    val destr : t -> Expr.quant * (Vsym.t list * Oracle.t) * expr
+
+    val pp : F.formatter -> t -> unit
+  end
+                 
 (** A security experiment consists of a game and an event. *)
-type sec_exp = { se_gdef : gdef; se_ev : ev }
+type sec_exp = { se_gdef : gdef; se_ev : Event.t }
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Pretty printing} *)
@@ -87,8 +105,6 @@ val pp_se_nonum : F.formatter -> sec_exp -> unit
 
 val pp_se : F.formatter -> sec_exp -> unit
 
-val pp_ev : F.formatter -> ev -> unit
-
 val pp_ps : F.formatter -> sec_exp list -> unit
 
 (*i ----------------------------------------------------------------------- i*)
@@ -104,7 +120,7 @@ val map_gcmd_exp : (expr -> expr) -> gcmd -> gcmd
 
 val map_gdef_exp : (expr -> expr) -> gdef -> gcmd list
 
-val map_ev_exp   :  (expr -> expr) -> ev -> ev 
+val map_ev_exp   :  (expr -> expr) -> Event.t -> Event.t 
 
 val map_se_exp : (expr -> expr) -> sec_exp -> sec_exp
 
@@ -136,7 +152,7 @@ type ocmd_pos_eq = (int * int * int)
 
 val get_se_gcmd : sec_exp -> gcmd_pos -> gcmd
 
-type se_ctxt = { sec_left : gdef; sec_right : gdef; sec_ev : ev; }
+type se_ctxt = { sec_left : gdef; sec_right : gdef; sec_ev : Event.t; }
 
 val get_se_ctxt_len : sec_exp -> pos:gcmd_pos -> len:int -> gcmd list * se_ctxt
 
@@ -218,8 +234,6 @@ val gcmd_equal : gcmd -> gcmd -> bool
 
 val gdef_equal : gdef -> gdef -> bool
 
-val ev_equal   : ev -> ev -> bool
-
 val se_equal : sec_exp -> sec_exp -> bool
 
 (*i ----------------------------------------------------------------------- i*)
@@ -300,7 +314,7 @@ val gdef_global_vars : gdef -> Vsym.S.t
 (* \hd{Variable renaming} *)
 
 val subst_v_e : (vs -> vs) -> expr -> expr
-val subst_v_ev : (vs -> vs) -> ev -> ev
+val subst_v_ev : (vs -> vs) -> Event.t -> Event.t
 
 val subst_v_lc : (vs -> vs) -> lcmd -> lcmd
 
@@ -396,3 +410,7 @@ val is_assert : gcmd -> bool
 val has_assert : gcmd list -> bool
 
 val destr_guard : lcmd -> expr
+
+type ev = Event.t
+val ev_equal : Event.t     -> Event.t -> bool
+val pp_ev    : F.formatter -> Event.t -> unit

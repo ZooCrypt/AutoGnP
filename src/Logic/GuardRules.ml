@@ -1,5 +1,6 @@
 open Abbrevs
 open Type
+open Expr
 open Game
 open Syms
 open CoreTypes
@@ -10,9 +11,8 @@ module CR = CoreRules
 let t_guess_maybe _ts masym mvars ju =
   let se = ju.ju_se in
   let ev = se.se_ev in
-  (match ev.ev_binding, ev.ev_quant with
-    | [(vs,_)], EvExists -> ret vs
-    | _ -> mempty
+  (try let (Exists,(vs,_),_) = Event.destr ev in ret vs
+   with Match_failure _ | Event.NoQuant -> mempty
   ) >>= fun vs ->
   let asym =
     match masym with

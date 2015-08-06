@@ -93,7 +93,7 @@ type range = int * int
 type ranges = range_pos list
 
 
-type parse_ev = (Game.quant * (string list * string) list) * parse_expr
+type parse_ev = parse_expr
 
 type tactic =
   | Rseq           of tactic list
@@ -113,6 +113,7 @@ type tactic =
   | Rctxt_ev       of int option * parse_ctx option
   | Rinjective_ctxt_ev  of int * parse_ctx option * parse_ctx option
   | Runwrap_quant_ev    of int
+  | Rswap_quant_ev      of int
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
   | Rrnd_exp       of bool * (string * string option) list
@@ -137,7 +138,6 @@ type tactic =
   | Rcrush         of bool * int option
   | Rbad           of int * assgn_pos option * string
   | Rcheck_hash_args of ocmd_pos
-  | RbadOracle     of int * ocmd_pos * string
   | Rexcept        of assgn_pos option * (parse_expr list) option 
   | Rexcept_orcl   of ocmd_pos * parse_expr list
   | Radd_test      of ocmd_pos option * parse_expr option * string option *

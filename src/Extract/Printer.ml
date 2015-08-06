@@ -184,7 +184,7 @@ let rec pp_form_lvl outer fmt = function
           F.fprintf fmt "let %s = __elem__.`%i in@ " v (i+1)) bd;
       pp_form fmt body in
     F.fprintf fmt "(%s (@[<hov>%a@]) %a)"
-      (if q = Game.EvForall then "all" else "any")
+      (if q = Expr.All then "all" else "any")
       pp_fun f
       (pp_form_lvl min_lvl) log
 

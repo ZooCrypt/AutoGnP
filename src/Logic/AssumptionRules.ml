@@ -134,9 +134,9 @@ let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
   let arg_e = Game.subst_v_e (fun vs -> Vsym.M.find vs ren) arg_e in
   let arg_v = Vsym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
   let pref_len = L.length assm_samps in
-  if ju.ju_se.se_ev.ev_binding <> [] then 
+  if Event.binding ju.ju_se.se_ev <> [] then 
     tacerror "t_assm_dec: no quantifier allowed";
-  let ev = ju.ju_se.se_ev.ev_expr in
+  let ev = Event.expr ju.ju_se.se_ev in
   let ev_v = 
     Vsym.mk (CR.mk_name ~name:"re" ju.ju_se) ev.e_ty in
   let max = L.length ju.ju_se.se_gdef in
@@ -344,9 +344,9 @@ let match_exprs_assm ju assm =
   assm_acall assm >>= fun (avs,_) ->
   let eavs = L.map mk_V avs in
   (* we first collect all equalities in aev and jev *)
-  e_eqs aev.ev_expr >>= fun aeq ->
+  e_eqs (Event.expr aev) >>= fun aeq ->
   guard (not (Se.is_empty (Se.inter (Se.of_list eavs) (e_vars aeq)))) >>= fun _ ->
-  e_eqs jev.ev_expr >>= fun jeq ->
+  e_eqs (Event.expr jev) >>= fun jeq ->
   ret (aeq,jeq)
 
 let tries = ref 0
@@ -380,13 +380,13 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   let sassm = Assumption.inst_comp subst assm in
   log_t (lazy (fsprintf "matching %a" (pp_list "," (pp_pair Vsym.pp pp_exp)) ev_mapping));
   let ev_me = me_of_list (L.map (fun (v,e) -> (mk_V v,e)) ev_mapping) in
-  let sassm_ev = e_subst ev_me sassm.ac_event.ev_expr in
+  let sassm_ev = e_subst ev_me (Event.expr sassm.ac_event) in
   let assm_se =
     { se_gdef = sassm.ac_prefix;
-      se_ev = {ev_quant=EvExists; ev_binding=[]; ev_expr = sassm_ev } }
+      se_ev = Event.mk sassm_ev  }
   in
   let assm_se = norm_se ~norm:(fun x -> x) assm_se in
-  let conjs = destr_Land assm_se.se_ev.ev_expr in
+  let conjs = destr_Land (Event.expr assm_se.se_ev) in
   let ineq = L.hd (L.filter is_Not conjs) in
   let nineq = Norm.norm_expr_nice (mk_Not ineq) in
   guard (not (Se.mem nineq icases)) >>= fun _ ->
@@ -412,10 +412,10 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
                t_abstract_deduce ~keep_going:false ts assm_len argv aarg (Some (L.length ju.ju_se.se_gdef - 1)) ju)
            @> (fun ju ->
                let ev = ju.ju_se.se_ev in
-               let vs = get_bind ev.ev_binding in
+               let vs = get_bind (Event.binding ev) in
                let asym = Asym.mk "CC" argv.Vsym.ty (mk_Prod (L.map (fun v -> v.Vsym.ty) vs))  in
                let v = Vsym.mk "f_arg" aarg.e_ty in
-               CR.t_find ([v],e_replace aarg (mk_V v) ev.ev_expr) aarg asym vs ju)
+               CR.t_find ([v],e_replace aarg (mk_V v) (Event.expr ev)) aarg asym vs ju)
            @> (t_seq_fold
                 (L.map (fun (v,e) ju -> t_let_abstract (L.length ju.ju_se.se_gdef) v e None false ju) ev_mapping'))
            @> t_print log_i ("before_comp_assm")
@@ -428,9 +428,9 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   let sconjs = destr_Land sassm_ev in
   let sineq = L.hd (L.filter is_Not sconjs) in
   let snineq = Norm.abbrev_ggen sineq in
-  if is_Land ju.ju_se.se_ev.ev_expr &&
+  if is_Land (Event.expr ju.ju_se.se_ev) &&
      L.exists (fun e ->
-       e_equal (Norm.abbrev_ggen e) snineq) (destr_Land ju.ju_se.se_ev.ev_expr)
+       e_equal (Norm.abbrev_ggen e) snineq) (destr_Land (Event.expr ju.ju_se.se_ev))
   then CR.t_assm_comp assm [] subst ju >>= fun ps -> ret (None,ps)
   else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
 
@@ -497,13 +497,13 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
       match_samps
   in
   (* FIXME: use case_ev and rfalse to handle case with missing events *)
-  assert (assm.ac_event.ev_binding = []);
+  assert ((Event.binding assm.ac_event) = []);
   (*
   if (se.se_ev.ev_binding <> []) then 
     tacerror " t_assm_comp_auto: quantifier not allowed";
   *)
-  let aev = assm.ac_event.ev_expr in
-  let ev = se.se_ev.ev_expr in
+  let aev = Event.expr assm.ac_event in
+  let ev = Event.expr se.se_ev in
   let remove_events =
     if not (is_Land aev && is_Land ev) then ( [] )
     else (

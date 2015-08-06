@@ -113,6 +113,7 @@ type rule_name =
   | Rinjective_ctxt_ev of int * ctxt * ctxt
 
   | Runwrap_quant_ev of int
+  | Rswap_quant_ev   of int
 
   (* $Rremove\_ev(\vec{i})$: Remove given conjuncts. *)
   | Rremove_ev of int list

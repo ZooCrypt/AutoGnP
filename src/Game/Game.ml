@@ -58,12 +58,70 @@ type gcmd =
 (** Game definition. *)
 type gdef = gcmd list
 
-(** An event is just a quantified expression. *)
-type quant = EvForall | EvExists
-type ev = { ev_quant: quant; ev_binding: (vs list * ors) list; ev_expr:expr }
+module Event = struct
+    type t = expr
+
+    let mk_from_expr (e : expr) : t = e
+
+    let rec mk ?quant ?binding e = match quant,binding with
+      | None,None -> mk_from_expr e
+      | Some q,Some b -> mk_Quant q b (mk_from_expr e)
+      | _ -> invalid_arg "Event.mk"
+
+    let equal = Expr.e_equal
+
+    let quant ev = match ev.e_node with
+      | Quant(q,_,_) -> q
+      | _ -> Expr.All
+    let rec binding ev = match ev.e_node with
+      | Quant(_,b,e) -> b :: (binding e)
+      | _ -> []
+    let rec expr ev = match ev.e_node with
+      | Quant(_,_,e) -> expr e
+      | _ -> ev
+               
+    let rec map f ev = match ev.e_node with
+      | Quant(q,b,e) -> mk_Quant q b (map f e)
+      | _ -> f ev
+
+    let rec insert ?quant ?binding ?e ev =
+      match quant,binding,e with
+      | None,None,Some e -> map (fun x -> mk_Land [x;e]) ev
+      | Some q, Some b,_ -> insert ?e (map (mk_Quant q b) ev)
+      | None,None,None -> ev
+      | _ -> invalid_arg "Event.insert"
+                       
+    let set_expr e ev = map (fun _ -> e) ev           
+    let nth i ev =
+      let evs = destr_Land_nofail(expr ev) in
+      let _,e,_ = Util.split_n i evs in e
+                                          
+    let set_nth_aux i e0 e =
+      let evs = destr_Land_nofail e in
+      let l,_,r = Util.split_n i evs in
+      mk_Land (List.rev_append l (e0::r))
+    let set_nth i e = map (set_nth_aux i e)
+
+    exception NoQuant
+    let destr ev = (try ExprUtils.destr_Quant ev with
+                           Destr_failure _ -> raise NoQuant)
+
+    let pp_q fmt = function
+      | All -> F.fprintf fmt "forall"
+      | Exists -> F.fprintf fmt "exists"
+    let pp_vs fmt = function
+      | [v] -> Vsym.pp fmt v
+      |  vs -> (pp_list "," Vsym.pp) fmt vs                                     
+    let pp_b fmt (vs,o) = 
+      F.fprintf fmt "%a in L_%a" pp_vs vs Oracle.pp o
+
+    let rec pp fmt ev = match ev.e_node with
+      | Quant(q,b,e) -> F.fprintf fmt "@[<hov>%a (%a):@ %a@]" pp_q q pp_b b pp e
+      | _ -> pp_exp fmt ev
+  end
 
 (** A security experiment consists of a game and an event. *)
-type sec_exp = { se_gdef : gdef; se_ev : ev }
+type sec_exp = { se_gdef : gdef; se_ev : Event.t }
 
 (*i*)
 (* ----------------------------------------------------------------------- *)
@@ -176,36 +234,14 @@ let pp_gdef ~nonum fmt gd =
   else
     pp_list ";@;" pp_igcmd fmt (num_list gd)
 
-let pp_quant fmt = function
-  | EvForall -> F.fprintf fmt "forall"
-  | EvExists -> F.fprintf fmt "exists"
-
-let pp_binding1 fmt (vs,ors) = 
-  let pp_bdecl fmt vs = 
-    match vs with
-    | [v] -> Vsym.pp fmt v
-    | _   -> F.fprintf fmt "(%a)" (pp_list "," Vsym.pp) vs in
-  F.fprintf fmt "%a in L_%a"
-            pp_bdecl vs Oracle.pp ors
-
-let pp_binding = pp_list ", " pp_binding1 
-
-let pp_ev fmt ev = 
-  if ev.ev_binding = [] then pp_exp fmt ev.ev_expr 
-  else
-    F.fprintf fmt "@[<hov>%a (%a):@ %a@]"
-      pp_quant ev.ev_quant
-      pp_binding ev.ev_binding
-      pp_exp ev.ev_expr
-
 let pp_se fmt se =
   F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:false) se.se_gdef
-    pp_ev se.se_ev
+    Event.pp se.se_ev
 
 
 let pp_se_nonum fmt se =
   F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:true) se.se_gdef 
-    pp_ev se.se_ev
+    Event.pp se.se_ev
 
 let pp_ps fmt ps =
   let se_idxs =
@@ -256,7 +292,7 @@ let map_gcmd_exp f gcmd = match gcmd with
 
 let map_gdef_exp f gdef = L.map (map_gcmd_exp f) gdef
 
-let map_ev_exp f ev = { ev with ev_expr = f ev.ev_expr }
+let map_ev_exp = Event.map
 
 let map_se_exp f se =
   { se_gdef = map_gdef_exp f se.se_gdef; se_ev = map_ev_exp f se.se_ev }
@@ -311,7 +347,7 @@ let iter_gdef_exp ?iexc:(iexc=false) f gdef =
   L.iter (iter_gcmd_exp_orcl ~iexc f) gdef
 
 let iter_se_exp ?iexc:(iexc=false) f se =
-  iter_gdef_exp ~iexc f se.se_gdef; f se.se_ev.ev_expr
+  iter_gdef_exp ~iexc f se.se_gdef; f (Event.expr se.se_ev)
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Positions and replacement functions} *)
@@ -329,7 +365,7 @@ let get_se_gcmd se p = L.nth se.se_gdef p
 type se_ctxt = {
   sec_left : gdef;
   sec_right : gdef;
-  sec_ev : ev
+  sec_ev : Event.t
 }
   
 let get_se_ctxt_len se ~pos ~len =
@@ -550,8 +586,9 @@ let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
 
 let iter_ctx_se_exp ?iexc:(iexc=false) f se =
   let nz = iter_ctx_gdef_exp ~iexc f se.se_gdef in
-  if is_Land se.se_ev.ev_expr then (
-    let conjs = destr_Land se.se_ev.ev_expr  in
+  let main_expr = Event.expr se.se_ev in
+  if is_Land main_expr then (
+    let conjs = destr_Land main_expr  in
     let (ineqs,eqs) = L.partition is_Not conjs in
     let nonZero = ref nz in
     let _ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
@@ -567,7 +604,7 @@ let iter_ctx_se_exp ?iexc:(iexc=false) f se =
     L.iter (f ctx) eqs
   ) else (
     let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
-    f ctx se.se_ev.ev_expr 
+    f ctx main_expr 
   )
 
 (*i ----------------------------------------------------------------------- i*)
@@ -631,19 +668,9 @@ let gcmd_equal i1 i2 =
 
 let gdef_equal c1 c2 = list_eq_for_all2 gcmd_equal c1 c2
 
-let ev_equal ev1 ev2 =
-  let b_equal (xs1,ors1) (xs2,ors2) =
-    (Oracle.equal ors1 ors2) &&
-    try List.for_all2 Vsym.equal xs1 xs2
-    with Invalid_argument _ -> false in
-  ev1.ev_quant = ev2.ev_quant &&
-  e_equal ev1.ev_expr ev2.ev_expr &&
-  try List.for_all2 b_equal ev1.ev_binding ev2.ev_binding
-  with Invalid_argument _ -> false
-
 let se_equal se1 se2 =
   gdef_equal se1.se_gdef se2.se_gdef &&
-    ev_equal se1.se_ev se2.se_ev
+    Event.equal se1.se_ev se2.se_ev
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Read and write variables } *)
@@ -724,7 +751,7 @@ let asym_gcmds gcmds =
 
 (** Security experiments *)
 
-let read_se se = Se.union (read_gcmds se.se_gdef) (e_vars se.se_ev.ev_expr)
+let read_se se = Se.union (read_gcmds se.se_gdef) (e_vars (Event.expr se.se_ev))
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Find expressions that satisfy predicate} *)
@@ -1035,8 +1062,7 @@ let subst_v_gc tov = function
 
 let subst_v_gdef tov = L.map (subst_v_gc tov)
 
-let subst_v_ev tov ev = 
-  { ev with ev_expr = subst_v_e tov ev.ev_expr }
+let subst_v_ev tov = Event.map (subst_v_e tov)
  
 let subst_v_se tov se =
   { se_gdef = subst_v_gdef tov se.se_gdef; se_ev = subst_v_ev tov se.se_ev }
@@ -1124,14 +1150,15 @@ let vmap_of_ves ves =
 
 let vmap_of_globals gdef = vmap_of_vss (gdef_global_vars gdef)
 
-let vmap_of_se se = 
-  let s = 
-    List.fold_left (fun s (vs,_) -> 
-      List.fold_left (fun s v -> Vsym.S.add v s) s vs)
-      (gdef_global_vars se.se_gdef)
-      se.se_ev.ev_binding in
-  vmap_of_vss s
-
+let vmap_of_se se =
+  let rec vmap_aux s0 ev =
+    try
+      let (_,(vs,_),ev) = Event.destr ev in
+      List.fold_left (fun s v -> Vsym.S.add v s) (vmap_aux s0 ev) vs
+    with Event.NoQuant -> s0 in
+  vmap_of_vss (vmap_aux (gdef_global_vars se.se_gdef) se.se_ev)
+    
+        
 let ves_to_vss ves =
   Se.fold (fun e vss -> Vsym.S.add (destr_V e) vss) ves Vsym.S.empty
 
@@ -1221,7 +1248,7 @@ let norm_gdef ?norm:(nf=Norm.norm_expr_nice) g =
 let norm_se ?norm:(nf=Norm.norm_expr_nice) se =
   let g,s = norm_gdef ~norm:nf se.se_gdef in
   { se_gdef = g;
-    se_ev = {se.se_ev with ev_expr = nf (e_subst s se.se_ev.ev_expr) } }
+    se_ev = Event.map (fun ev_expr -> nf (e_subst s ev_expr)) se.se_ev }
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Probabilistic polynomial time} *)
@@ -1276,7 +1303,7 @@ let is_ppt_gcmd = function
 
 let is_ppt_gcmds c = L.for_all is_ppt_gcmd c
 
-let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt se.se_ev.ev_expr 
+let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt (Event.expr se.se_ev) 
 
 let is_call = function
   | GCall _ -> true
@@ -1294,3 +1321,8 @@ let destr_guard lcmd =
   match lcmd with
   | LGuard(e) -> e
   | _ -> assert false (* FIXME *)
+
+type ev = Event.t
+let ev_equal = Event.equal
+let pp_ev = Event.pp
+              

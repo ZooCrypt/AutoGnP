@@ -122,7 +122,7 @@ type form =
   | Fif of form * form * form 
   | Fabs of form
   | Frofi of form (* int -> real *)
-  | Fquant_in of quant * (string list * string * form) * form
+  | Fquant_in of Expr.quant * (string list * string * form) * form
   | Fforall_mem of mem * form  
   | Fpr of fun_name * mem * form list * form
 
