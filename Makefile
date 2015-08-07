@@ -60,7 +60,7 @@ factory : stubs
 
 wsautognp.native : stubs
 	@ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wsautognp.native
-	#-@killall wsautognp.native
+	-@killall wsautognp.native
 
 ##########################################################################
 # Build PDF from literate program using ocamlweb and pdflatex
