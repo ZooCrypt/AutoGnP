@@ -20,6 +20,7 @@ depends: [
   "ctypes"
   "ctypes-foreign"
   "menhir"
-  "websocket"
+  "websocket" { = "2.1" }
+  "cohttp" { = "0.18.3" }
   "batteries"
 ]
