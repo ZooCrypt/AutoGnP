@@ -61,6 +61,7 @@ bad1 4 rr.
        computational assumption of f -> goal -2- *)    
     norm.
     swap KPair (1). swap r (2).
+    ctxt_ev 1 (x -> f(get_pk(KPair),x)).
     find (pk f_r -> (f(pk,rr) = f_r)) 
          (get_pk(KPair), f(get_pk(KPair),r)) 
          A_finder rr.
@@ -68,6 +69,7 @@ bad1 4 rr.
     abstract 3 A_comp_args 
     (  get_pk(KPair) , f(get_pk(KPair),r)  ).
     abstract 9 r_A rr.
+    ctxt_ev 1 (y -> f_inv(get_sk(KPair),y)).
     assumption_computational OW_comp_assm [3 9].
     
 qed.

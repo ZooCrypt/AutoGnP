@@ -829,7 +829,9 @@ let gdef_global_hash_syms gdef = hsym_of_es (gdef_global_find is_H gdef)
 (* \hd{Hash arguments for given hash symbol} *)
 
 let harg_of_es es =
-  Se.fold (fun e s -> Se.add (snd (destr_H e)) s) es Se.empty
+  Se.fold (fun e s ->
+           if is_H e then Se.add (snd (destr_H e)) s
+           else s) es Se.empty
 
 let is_H_call h e = is_H e && Hsym.equal h (fst (destr_H e))
 
