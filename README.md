@@ -28,7 +28,7 @@ It is probably easiest to install the following ocaml dependencies
 using the opam manager for OCaml (see http://opam.ocamlpro.com/).
 
 ```
-opam pin add AUTOGNP_DIR autognp
+opam pin add autognp AUTOGNP_DIR
 opam install autognp --deps-only
 ```
 
