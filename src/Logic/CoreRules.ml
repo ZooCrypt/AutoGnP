@@ -1225,7 +1225,7 @@ let t_guard p tnew = prove_by (rguard p tnew)
 
 let rguess asym fvs ju = 
   let ev = ju.ju_se.se_ev in
-  let (q,b,ev_expr) = try Event.destr ev with
+  let (q,b,ev_expr) = try Event.destr_exn ev with
                    Event.NoQuant -> tacerror "guess : invalid event, quantification required." in
   match q, b, ju.ju_pr with
   | Exists, (vs,_o), Pr_Succ ->
@@ -1250,7 +1250,7 @@ let t_guess asym fvs = prove_by (rguess asym fvs)
 
 let rfind (bd,body) arg asym fvs ju =
   let ev = ju.ju_se.se_ev in
-  let (q,b,ev_expr) = try Event.destr ev with
+  let (q,b,ev_expr) = try Event.destr_exn ev with
                         Event.NoQuant -> tacerror "rfind : not a valid event, quantification required" in
   match q, b, ju.ju_pr with
   | Exists, (vs,_o), Pr_Succ ->
@@ -1433,7 +1433,7 @@ let t_unwrap_quant_ev j = prove_by (runwrap_quant_ev j)
                                  
 let rswap_quant_ev j ju =
   let ev = ju.ju_se.se_ev in
-  let (q,b,e) = try Event.destr ev with Event.NoQuant -> tacerror "swap_quant_ev: no quantification in event %a.\n%s" Event.pp ev (if is_SomeQuant (Event.expr ev) then "(Remember there is an \'unwrap_quant_ev\' rule)" else "") in
+  let (q,b,e) = try Event.destr_exn ev with Event.NoQuant -> tacerror "swap_quant_ev: no quantification in event %a.\n%s" Event.pp ev (if is_SomeQuant (Event.expr ev) then "(Remember there is an \'unwrap_quant_ev\' rule)" else "") in
   let rec go j e = match e.e_node with
     | Quant(q0,b0,e0) when j <= 0 -> (q0,b0,e0)
     | Quant(q,b,e) ->

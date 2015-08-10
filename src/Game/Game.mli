@@ -66,7 +66,8 @@ module Event : sig
     val set_nth : int -> expr -> t -> t
 
     exception NoQuant
-    val destr : t -> Expr.quant * (Vsym.t list * Oracle.t) * expr
+    val destr_exn : t -> Expr.quant * (Vsym.t list * Oracle.t) * expr
+    val destr : t -> (Expr.quant * (Vsym.t list * Oracle.t) * expr) option
 
     val pp : F.formatter -> t -> unit
   end

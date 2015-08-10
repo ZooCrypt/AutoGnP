@@ -59,66 +59,79 @@ type gcmd =
 type gdef = gcmd list
 
 module Event = struct
-    type t = expr
+  type t = expr
 
-    let mk_from_expr (e : expr) : t = e
+  let mk_from_expr (e : expr) : t = e
 
-    let rec mk ?quant ?binding e = match quant,binding with
-      | None,None -> mk_from_expr e
-      | Some q,Some b -> mk_Quant q b (mk_from_expr e)
-      | _ -> invalid_arg "Event.mk"
+  let mk ?quant ?binding e = match quant,binding with
+    | None,None -> mk_from_expr e
+    | Some q,Some b -> mk_Quant q b (mk_from_expr e)
+    | _ -> invalid_arg "Event.mk"
 
-    let equal = Expr.e_equal
+  let equal = Expr.e_equal
 
-    let quant ev = match ev.e_node with
-      | Quant(q,_,_) -> q
-      | _ -> Expr.All
-    let rec binding ev = match ev.e_node with
-      | Quant(_,b,e) -> b :: (binding e)
-      | _ -> []
-    let rec expr ev = match ev.e_node with
-      | Quant(_,_,e) -> expr e
-      | _ -> ev
+  let quant ev = match ev.e_node with
+    | Quant(q,_,_) -> q
+    | _ -> Expr.All
+
+  let rec binding ev = match ev.e_node with
+    | Quant(_,b,e) -> b :: (binding e)
+    | _ -> []
+
+  let rec expr ev = match ev.e_node with
+    | Quant(_,_,e) -> expr e
+    | _ -> ev
                
-    let rec map f ev = match ev.e_node with
-      | Quant(q,b,e) -> mk_Quant q b (map f e)
-      | _ -> f ev
+  let rec map f ev = match ev.e_node with
+    | Quant(q,b,e) -> mk_Quant q b (map f e)
+    | _ -> f ev
 
-    let rec insert ?quant ?binding ?e ev =
-      match quant,binding,e with
-      | None,None,Some e -> map (fun x -> mk_Land [x;e]) ev
-      | Some q, Some b,_ -> insert ?e (map (mk_Quant q b) ev)
-      | None,None,None -> ev
-      | _ -> invalid_arg "Event.insert"
+  let rec insert ?quant ?binding ?e ev =
+    match quant,binding,e with
+    | None,   None,   Some e -> map (fun x -> mk_Land [x;e]) ev
+    | Some q, Some b, _      -> insert ?e (map (mk_Quant q b) ev)
+    | None,   None,   None   -> ev
+    | _                      -> invalid_arg "Event.insert"
                        
-    let set_expr e ev = map (fun _ -> e) ev           
-    let nth i ev =
-      let evs = destr_Land_nofail(expr ev) in
-      let _,e,_ = Util.split_n i evs in e
+  let set_expr e ev = map (fun _ -> e) ev
+
+  let nth i ev =
+    let evs = destr_Land_nofail (expr ev) in
+    let _,e,_ = Util.split_n i evs in
+    e
                                           
-    let set_nth_aux i e0 e =
-      let evs = destr_Land_nofail e in
-      let l,_,r = Util.split_n i evs in
-      mk_Land (List.rev_append l (e0::r))
-    let set_nth i e = map (set_nth_aux i e)
+  let set_nth_aux i e0 e =
+    let evs = destr_Land_nofail e in
+    let l,_,r = Util.split_n i evs in
+    mk_Land (List.rev_append l (e0::r))
 
-    exception NoQuant
-    let destr ev = (try ExprUtils.destr_Quant ev with
-                           Destr_failure _ -> raise NoQuant)
+  let set_nth i e = map (set_nth_aux i e)
 
-    let pp_q fmt = function
-      | All -> F.fprintf fmt "forall"
-      | Exists -> F.fprintf fmt "exists"
-    let pp_vs fmt = function
-      | [v] -> Vsym.pp fmt v
-      |  vs -> (pp_list "," Vsym.pp) fmt vs                                     
-    let pp_b fmt (vs,o) = 
-      F.fprintf fmt "%a in L_%a" pp_vs vs Oracle.pp o
+  exception NoQuant
 
-    let rec pp fmt ev = match ev.e_node with
-      | Quant(q,b,e) -> F.fprintf fmt "@[<hov>%a (%a):@ %a@]" pp_q q pp_b b pp e
-      | _ -> pp_exp fmt ev
-  end
+  let destr_exn ev =
+    try  ExprUtils.destr_Quant ev
+    with Destr_failure _ -> raise NoQuant
+
+  let destr ev =
+    try  Some (ExprUtils.destr_Quant ev)
+    with Destr_failure _ -> None
+
+  let pp_q fmt = function
+    | All -> F.fprintf fmt "forall"
+    | Exists -> F.fprintf fmt "exists"
+
+  let pp_vs fmt = function
+    | [v] -> Vsym.pp fmt v
+    |  vs -> (pp_list "," Vsym.pp) fmt vs                                     
+
+  let pp_b fmt (vs,o) = 
+    F.fprintf fmt "%a in L_%a" pp_vs vs Oracle.pp o
+
+  let rec pp fmt ev = match ev.e_node with
+    | Quant(q,b,e) -> F.fprintf fmt "@[<hov>%a (%a):@ %a@]" pp_q q pp_b b pp e
+    | _ -> pp_exp fmt ev
+end
 
 (** A security experiment consists of a game and an event. *)
 type sec_exp = { se_gdef : gdef; se_ev : Event.t }
@@ -1155,7 +1168,7 @@ let vmap_of_globals gdef = vmap_of_vss (gdef_global_vars gdef)
 let vmap_of_se se =
   let rec vmap_aux s0 ev =
     try
-      let (_,(vs,_),ev) = Event.destr ev in
+      let (_,(vs,_),ev) = Event.destr_exn ev in
       List.fold_left (fun s v -> Vsym.S.add v s) (vmap_aux s0 ev) vs
     with Event.NoQuant -> s0 in
   vmap_of_vss (vmap_aux (gdef_global_vars se.se_gdef) se.se_ev)

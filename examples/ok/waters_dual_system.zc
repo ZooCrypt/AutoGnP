@@ -85,7 +85,7 @@ bound_adv
       let k  = (U^i*W^tagk*H)^r1;
       return (tagk,D1,D2,D3,D4,D5,D6,D7,k)
     };
-] : (forall ii in KeyGen1: (ii <> ci)) /\ (beta = beta').
+] : (forall ii in L_KeyGen1: (ii <> ci)) /\ (beta = beta').
 
 (* ================================================ *)
 (* make ciphertext semi-functional by applying DLIN *)

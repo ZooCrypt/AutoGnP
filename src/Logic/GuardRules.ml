@@ -11,8 +11,9 @@ module CR = CoreRules
 let t_guess_maybe _ts masym mvars ju =
   let se = ju.ju_se in
   let ev = se.se_ev in
-  (try let (Exists,(vs,_),_) = Event.destr ev in ret vs
-   with Match_failure _ | Event.NoQuant -> mempty
+  (match Event.destr ev with
+   | Some (Exists,(vs,_), _) -> ret vs
+   | None | Some _           -> mempty
   ) >>= fun vs ->
   let asym =
     match masym with
