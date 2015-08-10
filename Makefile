@@ -28,15 +28,13 @@ endif
 
 #############################################################################
 
-.PHONY : clean all doc test autognp.native wsautognp.native \
+.PHONY : clean all doc test autognp.native wsautognp.native test \
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
 all: wsautognp.native autognp.native
 
 autognp.native : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
-	#rm autognp.log
-	#BOLT_CONFIG=log_bolt.config ./autognp.native test.zc ; cat autognp.log
 
 stubs:
 	@test -d _build/c_src || mkdir -p _build/c_src
@@ -59,8 +57,7 @@ factory : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Factory.native
 
 wsautognp.native : stubs
-	@ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wsautognp.native
-	-@killall wsautognp.native
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wsautognp.native
 
 ##########################################################################
 # Build PDF from literate program using ocamlweb and pdflatex
@@ -177,14 +174,22 @@ ldocl:
 ##########################################################################
 # Used for development and testing
 
+autognp.native-dev : stubs
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
+	rm autognp.log
+	BOLT_CONFIG=log_bolt.config ./autognp.native test.zc ; cat autognp.log
+
+wsautognp.native-dev : wsautognp.native
+	-@killall wsautognp.native
+
 test-examples: autognp.native
-	sh scripts/run_tests.sh
+	bash scripts/run_tests.sh
 
 test-examples-ec: autognp.native
-	sh scripts/run_examples_ec.sh
+	bash scripts/run_examples_ec.sh
 
 test-tests-ec: autognp.native
-	sh scripts/run_tests_ec.sh
+	bash scripts/run_tests_ec.sh
 
 Test_Type :
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte

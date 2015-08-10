@@ -11,7 +11,7 @@ function ok_tests() {
   for file in examples/ok/*.zc test/ok/*.zc; do
     printf "File $file: \n"
     before=$(date +%s)
-    if ! ./zoocrypt.native $file 2>&1 | \
+    if ! ./autognp $file 2>&1 | \
          grep --colour=always -i \
            -e 'Finished Proof' -e 'EasyCrypt proof script.extracted'; then
       FAILED="$FAILED $file"
@@ -21,10 +21,10 @@ function ok_tests() {
     after=$(date +%s)
     dt=$((after - before))
     printf  "  \e[1;32m$dt seconds\e[1;0m\n"
-  done
+    done
 
-  echo "\nFailed: $FAILED"
-  echo "\nOK: $OK"
+  printf "\nFailed: $FAILED"
+  printf "\nOK: $OK"
 }
 
 function fail_tests() {
@@ -39,17 +39,16 @@ function fail_tests() {
   for file in test/fail/*.zc; do
     ERR=`grep ERROR $file | sed 's/ERROR: //'`
     printf "Testing $file, expecting error ''$ERR''\n"  
-    if ! ./zoocrypt.native $file 2>&1 | \
+    if ! ./autognp $file 2>&1 | \
          grep -F "$ERR"; then
       FAILED="$FAILED $file"
     else
       OK="$OK $file"
     fi
   done
-  echo "\nFailed: $FAILED"
-  echo "\nOK: $OK"
+  printf "\nFailed: $FAILED"
+  printf "\nOK: $OK\n"
 }
 
 ok_tests
 fail_tests
-
