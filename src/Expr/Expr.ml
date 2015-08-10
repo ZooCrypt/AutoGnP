@@ -1,14 +1,13 @@
-(*s This module implements hashconsed and non-hashconsed expressions. *)
+(* * Typed algebraic expressions *)
 
-(*i*)
+(* ** Imports *)
 open Abbrevs
 open Util
 open Type
 open Syms
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Expression data types} *)
+(* ** Expression data types
+ * ----------------------------------------------------------------------- *)
 
 type proj_type = ty * ty * ty
 
@@ -24,10 +23,10 @@ let key_elem_of_perm_type = function
 
 (** Constants. *)
 type cnst =
-    GGen        (*r generator of $\group$ (type defines group) *)
-  | FNat of int (*r Natural number in field, always $\geq 0$ *)
-  | Z           (*r $0$ bitstring (type defines length) *)
-  | B of bool   (*r boolean value *)
+  | GGen        (* generator of $\group$ (type defines group) *)
+  | FNat of int (* Natural number in field, always $\geq 0$ *)
+  | Z           (* $0$ bitstring (type defines length) *)
+  | B of bool   (* boolean value *)
 
 (** Hash constants. *)
 let cnst_hash = (*c ... *) (*i*)
@@ -40,22 +39,21 @@ let cnst_hash = (*c ... *) (*i*)
 
 (** Operators with fixed arity. *)
 type op =
- | GExp of Groupvar.id        (*r exponentiation in $\group_i$ *)
- | GLog of Groupvar.id        (*r discrete logarithm in $\group_i$ *)
+ | GExp of Groupvar.id        (* exponentiation in $\group_i$ *)
+ | GLog of Groupvar.id        (* discrete logarithm in $\group_i$ *)
  | GInv                       (* inverse in group *)
- | FOpp                       (*r additive inverse in $\field$ *)
- | FMinus                     (*r subtraction in $\field$ *)
- | FInv                       (*r mult. inverse in $\field$ *)
- | FDiv                       (*r division in $\field$ *)
- | Eq                         (*r equality *)
- | Not                        (*r negation *)
- | Ifte                       (*r if then else *)
- | EMap of Esym.t             (*r bilinear map *)
- | Perm of perm_type * Psym.t (*r permutation or inverse *)
+ | FOpp                       (* additive inverse in $\field$ *)
+ | FMinus                     (* subtraction in $\field$ *)
+ | FInv                       (* mult. inverse in $\field$ *)
+ | FDiv                       (* division in $\field$ *)
+ | Eq                         (* equality *)
+ | Not                        (* negation *)
+ | Ifte                       (* if then else *)
+ | EMap of Esym.t             (* bilinear map *)
+ | Perm of perm_type * Psym.t (* permutation or inverse *)
 
 (** Hash operators. *)
-let op_hash = (*c ... *) (*i*)
-  function
+let op_hash = function
   | GExp gv    -> hcomb 1 (Groupvar.hash gv)
   | GLog gv    -> hcomb 2 (Groupvar.hash gv)
   | GInv       -> 3
@@ -68,19 +66,17 @@ let op_hash = (*c ... *) (*i*)
   | Ifte       -> 10
   | EMap es    -> hcomb 11 (Esym.hash es)
   | Perm(pt,f) -> hcomb (hash_perm_type pt) (Psym.hash f)
-  (*i*)
 
 (** N-ary/associative operators with variable arity. *)
 type nop =
-    FPlus  (*r plus in Fq *)
-  | FMult  (*r multiplication in Fq *)
-  | Xor    (*r Xor of bitstrings *)
-  | Land   (*r logical and *)
-  | GMult  (*r multiplication in G (type defines group) *)
+  | FPlus  (* plus in Fq *)
+  | FMult  (* multiplication in Fq *)
+  | Xor    (* Xor of bitstrings *)
+  | Land   (* logical and *)
+  | GMult  (* multiplication in G (type defines group) *)
 
 (** Hash n-ary operators. *)
-let nop_hash = (*c ... *) (*i*)
-  function
+let nop_hash = function
   | FPlus  -> 1
   | FMult  -> 2
   | Xor    -> 3
@@ -103,13 +99,13 @@ type expr = {
   e_tag  : int
 }
 and expr_node =
-  | V           of Vsym.t          (*r variables (program, logical, random, ...) *)
-  | H           of Hsym.t * expr   (*r hash function application *)
-  | Tuple       of expr list       (*r tuples *)
-  | Proj        of int * expr      (*r projection *)
-  | Cnst        of cnst            (*r constants *)
-  | App         of op * expr list  (*r fixed arity operators *)
-  | Nary        of nop * expr list (*r variable arity AC operators *)
+  | V           of Vsym.t          (* variables (program, logical, random, ...) *)
+  | H           of Hsym.t * expr   (* hash function application *)
+  | Tuple       of expr list       (* tuples *)
+  | Proj        of int * expr      (* projection *)
+  | Cnst        of cnst            (* constants *)
+  | App         of op * expr list  (* fixed arity operators *)
+  | Nary        of nop * expr list (* variable arity AC operators *)
   | Quant       of quant * (Vsym.t list * Oracle.t) * expr
   | ProjPermKey of key_elem * expr	       
 
@@ -122,7 +118,7 @@ let e_compare e1 e2 = e1.e_tag - e2.e_tag
 module Hse = Hashcons.Make (struct
   type t = expr
 
-  let equal e1 e2 = (*c ... *) (*i*)
+  let equal e1 e2 =
     ty_equal e1.e_ty e2.e_ty &&
     match e1.e_node, e2.e_node with
     | V v1, V v2                 -> Vsym.equal v1 v2
@@ -141,8 +137,7 @@ module Hse = Hashcons.Make (struct
     | _, _ -> false
   (*i*)
 
-  let hash_node = (*c ... *) (*i*)
-    function
+  let hash_node = function
     | V(v)       -> Vsym.hash v
     | H(f,e)     -> hcomb (Hsym.hash f) (e_hash e)
     | ProjPermKey(ke,e) -> hcomb 2 (hcomb (Type.hash_key_elem ke) (e_hash e))
@@ -157,7 +152,6 @@ module Hse = Hashcons.Make (struct
         ; hcomb_h (List.map Vsym.hash vs)
         ; Oracle.hash o
         ; e_hash e ]
-  (*i*)
 
   let hash e = hcomb (ty_hash e.e_ty) (hash_node e.e_node)
 
@@ -180,8 +174,8 @@ module Me = E.M
 module Se = E.S
 module He = E.H
 
-(*i ----------------------------------------------------------------------- i*)
-(*  \hd{Constructor functions} *)
+(* ** Constructor functions
+ * ----------------------------------------------------------------------- *)
 
 exception TypeError of (ty * ty * expr * expr option * string)
 
@@ -374,8 +368,9 @@ let mk_Nary op es =
 
 let mk_InEq a b =
   mk_Not (mk_Eq a b)
-  (*i ----------------------------------------------------------------------- i*)
-(* \hd{Generic functions on expressions} *)
+
+(* ** Generic functions on expressions
+ * ----------------------------------------------------------------------- *)
 
 let sub_map g e = 
   match e.e_node with

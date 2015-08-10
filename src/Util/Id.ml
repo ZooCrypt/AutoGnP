@@ -1,9 +1,7 @@
-(*s The Id module. *)
+(* The Id module. *)
 
-(*i*)
 open Util
 open Abbrevs
-(*i*)
 
 type id = {
   name_ : string;

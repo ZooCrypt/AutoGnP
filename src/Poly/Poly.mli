@@ -1,4 +1,4 @@
-(*s [IntRing] implementation of [Ring] and [MakePoly] functor. *)
+(* * [IntRing] implementation of [Ring] and [MakePoly] functor. *)
 
 open PolyInterfaces
 

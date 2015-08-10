@@ -1,14 +1,15 @@
-(*s Use [Var] and [Ring] types to define [MakePoly] functor.
-    Also define [IntRing]. *)
-(*i*)
+(* * Polynomials
+ * Use [Var] and [Ring] types to define [MakePoly] functor.
+ * Also define [IntRing]. *)
+
+(* ** Imports *)
 open Abbrevs
 open Util
 open PolyInterfaces
 open Big_int
-(*i*)
 
-(* \hd{[Ring] instance for [int]} *)
-
+(* ** [Ring] instance for [int]
+ * ----------------------------------------------------------------------- *)
 
 module IntRing = struct
   type t = big_int
@@ -30,8 +31,8 @@ module IntRing = struct
   let use_parens = false
 end
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Functor for Polynomials} *)
+(* ** Functor for Polynomials
+ * ----------------------------------------------------------------------- *)
 
 module MakePoly (V : Var) (C : Ring) = struct
   type coeff = C.t
@@ -46,8 +47,8 @@ module MakePoly (V : Var) (C : Ring) = struct
 
   type t = term list
 
-  (*i ----------------------------------------------------------------------- i*)
-  (** \bf Equality and comparison. *)
+(* *** Equality and comparison
+ * ----------------------------------------------------------------------- *)
 
   let vexp_equal = pair_equal V.equal (=)
 
@@ -66,9 +67,9 @@ module MakePoly (V : Var) (C : Ring) = struct
 
   let compare = list_compare term_compare
 
-  (*i*)
-  (* ----------------------------------------------------------------------- *)
-  (** \bf Pretty printing *)
+(* *** Pretty printing
+ * ----------------------------------------------------------------------- *)
+
 
   let pp_vpow fmt (v,e) =
     if e = 1 then V.pp fmt v
@@ -104,10 +105,9 @@ module MakePoly (V : Var) (C : Ring) = struct
   let pp_break = pp_ true
 
   let pp_coeff = C.pp
-  (*i*)
 
-  (*i ----------------------------------------------------------------------- i*)
-  (** \bf Internal functions *)
+(* *** Internal functions
+ * ----------------------------------------------------------------------- *)
 
   let norm_monom (ves : (V.t * int) list) =
     let cmp_var (v1,_) (v2,_) = V.compare v1 v2 in
@@ -135,8 +135,8 @@ module MakePoly (V : Var) (C : Ring) = struct
   let mult_term_poly_int (m,c) f =
     L.map (fun (m',c') -> (m @ m', C.mult c c')) f
 
-  (*i ----------------------------------------------------------------------- i*)
-  (** \bf Ring operations on polynomials *)
+(* *** Ring operations on polynomials
+ * ----------------------------------------------------------------------- *)
 
   let one  = [([], C.one)]
 

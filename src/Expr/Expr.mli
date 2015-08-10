@@ -1,12 +1,11 @@
-(*s Typed algebraic expression. *)
+(* * Typed algebraic expression. *)
 
-(*i*)
+(* ** Imports *)
 open Type
 open Syms
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Expressions} *)
+(* ** Expression types
+ * ----------------------------------------------------------------------- *)
 
 type proj_type = Type.ty * Type.ty * Type.ty
 
@@ -23,18 +22,18 @@ type cnst =
 val cnst_hash : cnst -> int
 
 type op =
- | GExp of Groupvar.id        (*r exponentiation in $\group_i$ *)
- | GLog of Groupvar.id        (*r discrete logarithm in $\group_i$ *)
+ | GExp of Groupvar.id        (* exponentiation in $\group_i$ *)
+ | GLog of Groupvar.id        (* discrete logarithm in $\group_i$ *)
  | GInv                       (* inverse in group *)
- | FOpp                       (*r additive inverse in $\field$ *)
- | FMinus                     (*r subtraction in $\field$ *)
- | FInv                       (*r mult. inverse in $\field$ *)
- | FDiv                       (*r division in $\field$ *)
- | Eq                         (*r equality *)
- | Not                        (*r negation *)
- | Ifte                       (*r if then else *)
- | EMap of Esym.t             (*r bilinear map *)
- | Perm of perm_type * Psym.t (*r permutation or inverse *)
+ | FOpp                       (* additive inverse in $\field$ *)
+ | FMinus                     (* subtraction in $\field$ *)
+ | FInv                       (* mult. inverse in $\field$ *)
+ | FDiv                       (* division in $\field$ *)
+ | Eq                         (* equality *)
+ | Not                        (* negation *)
+ | Ifte                       (* if then else *)
+ | EMap of Esym.t             (* bilinear map *)
+ | Perm of perm_type * Psym.t (* permutation or inverse *)
 
 val op_hash : op -> int
 
@@ -52,13 +51,13 @@ val neg_quant : quant -> quant
                            
 type expr = private { e_node : expr_node; e_ty : Type.ty; e_tag : int; }
 and expr_node =
-  | V           of Vsym.t          (*r variables (program, logical, random, ...) *)
-  | H           of Hsym.t * expr   (*r hash function application *)
-  | Tuple       of expr list       (*r tuples *)
-  | Proj        of int * expr      (*r projection *)
-  | Cnst        of cnst            (*r constants *)
-  | App         of op * expr list  (*r fixed arity operators *)
-  | Nary        of nop * expr list (*r variable arity AC operators *)
+  | V           of Vsym.t          (* variables (program, logical, random, ...) *)
+  | H           of Hsym.t * expr   (* hash function application *)
+  | Tuple       of expr list       (* tuples *)
+  | Proj        of int * expr      (* projection *)
+  | Cnst        of cnst            (* constants *)
+  | App         of op * expr list  (* fixed arity operators *)
+  | Nary        of nop * expr list (* variable arity AC operators *)
   | Quant       of quant * (Vsym.t list * Oracle.t) * expr
   | ProjPermKey of key_elem * expr	       
 
@@ -73,8 +72,8 @@ module Se : Set.S with type elt = expr
 module He : Hashtbl.S with type key = expr
 module Me : Map.S with type key = expr
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Constructor functions} *)
+(* ** Constructor functions
+ * ----------------------------------------------------------------------- *)
 
 val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
 val ensure_ty_KeyPair : Type.ty -> string -> Type.Permvar.id
@@ -90,7 +89,7 @@ val mk_ProjPermKey : Type.key_elem -> expr -> expr
 val mk_Perm        : Psym.t -> perm_type -> expr -> expr -> expr
 val mk_Quant       : quant -> (Vsym.t list * Oracle.t) -> expr -> expr
 val mk_All         : (Vsym.t list * Oracle.t) -> expr -> expr
-val mk_Exists         : (Vsym.t list * Oracle.t) -> expr -> expr
+val mk_Exists      : (Vsym.t list * Oracle.t) -> expr -> expr
 val mk_Tuple       : expr list -> expr
 val mk_Proj        : int -> expr -> expr
 val mk_GGen        : Groupvar.id -> expr
@@ -119,10 +118,12 @@ val mk_FMult       : expr list -> expr
 val mk_Xor         : expr list -> expr
 val mk_Land        : expr list -> expr
 val mk_InEq        : expr -> expr -> expr
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Generic functions on [expr]} *)
 
-(** [e_sub_map f e] non-recursively applies [f] to all direct sub-expressions of [e], e.g.,
+(* ** Generic functions on [expr]
+ * ----------------------------------------------------------------------- *)
+
+(** [e_sub_map f e] non-recursively applies [f] to all
+    direct sub-expressions of [e], e.g.,
     if [e=Xor(a,b)] then a new term [Xor(f a, f b)] is returned.
     [e_sub_map] saves hashcons calls by detecting when [f] returns
     its argument unchanged.
@@ -166,7 +167,8 @@ val e_map_ty_maximal : ty -> (expr -> expr) -> expr -> expr
 (** [e_map_top f e] applies [f] recursively to all subterms of [e] proceeding
     in a top-down fashion. If [f] raises [Not_found], then [e_map_top]
     proceeds by applying [f] to the direct sub-expressions of the given
-    expression. Otherwise, it returns without applying [f] to the subexpressions.  *)
+    expression. Otherwise, it returns without applying [f] to the
+    subexpressions.  *)
 val e_map_top : (expr -> expr) -> expr -> expr
 
 (** [e_replace e1 e2 e] replaces all occurences of [e1] in [e] with [e2] *)

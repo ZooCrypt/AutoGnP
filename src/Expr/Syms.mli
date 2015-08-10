@@ -1,24 +1,12 @@
-(*s Symbols for variables and other objects. *)
+(* * Symbols for variables and other objects *)
 
-(*i*)
+(* ** Imports *)
 open Type
 open Abbrevs
-(*i*)
 
-module Asym : sig
-  type t = private { id : Id.id; dom : ty; codom : ty;}
 
-  val hash : t -> int
-  val equal : t -> t -> bool
-  val compare : t -> t -> int
-  val mk : string -> ty -> ty -> t
-  val pp : F.formatter -> t -> unit
-  val pp_long : F.formatter -> t -> unit
-  val to_string : t -> string
-  module M : Map.S with type key = t
-  module S : Set.S with type elt = t
-  module H : Hashtbl.S with type key = t
-end
+(* ** Oracle Symbols
+ * ----------------------------------------------------------------------- *)
 
 module Osym : sig
   type t = private { id : Id.id; dom : ty; codom : ty;}
@@ -35,8 +23,14 @@ module Osym : sig
   module H : Hashtbl.S with type key = t
 end
 
+(* ** Qualified Symbols
+ * ----------------------------------------------------------------------- *)
+
 type 'a qual = Unqual | Qual of 'a
 val map_qual : ('a -> 'b) -> 'a qual -> 'b qual
+
+(* ** Variable Symbols
+ * ----------------------------------------------------------------------- *)
 
 module Vsym : sig
   type t = private { id : Id.id; qual : Osym.t qual; ty : ty; }
@@ -56,6 +50,71 @@ module Vsym : sig
 
   val set_of_list : t list -> S.t
 end
+
+(* ** Adversary Symbols
+ * ----------------------------------------------------------------------- *)
+
+module Asym : sig
+  type t = private { id : Id.id; dom : ty; codom : ty;}
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val compare : t -> t -> int
+  val mk : string -> ty -> ty -> t
+  val pp : F.formatter -> t -> unit
+  val pp_long : F.formatter -> t -> unit
+  val to_string : t -> string
+  module M : Map.S with type key = t
+  module S : Set.S with type elt = t
+  module H : Hashtbl.S with type key = t
+end
+
+(* ** Bilinear map symbols
+ * ----------------------------------------------------------------------- *)
+            
+module Esym : sig
+  type t = private {
+    id : Id.id;
+    source1 : Groupvar.id;
+    source2 : Groupvar.id;
+    target : Groupvar.id; 
+  }
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val mk : string -> Groupvar.id -> Groupvar.id -> Groupvar.id -> t
+  val pp : F.formatter -> t -> unit
+  val name : t -> string
+
+  module M : Map.S with type key = t
+  module S : Set.S with type elt = t
+  module H : Hashtbl.S with type key = t
+end
+
+(* ** Permutation symbols
+ * ----------------------------------------------------------------------- *)
+
+module Psym : sig
+  type t = private { 
+      id : Id.id;
+      dom : ty;
+      pid : Permvar.id;
+  }
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val mk : string -> ty -> Permvar.id -> t
+  val pp : F.formatter -> t -> unit
+  val name : t -> string
+
+  module M : Map.S with type key = t
+  module S : Set.S with type elt = t
+  module H : Hashtbl.S with type key = t
+end
+	    
+
+(* ** Function symbols
+ * ----------------------------------------------------------------------- *)
 
 module Hsym : sig
   type t = private { 
@@ -79,6 +138,9 @@ module Hsym : sig
   module S : Set.S with type elt = t
   module H : Hashtbl.S with type key = t
 end
+
+(* ** Random oracle symbols
+ * ----------------------------------------------------------------------- *)
 
 module Oracle : sig
   type t = private
@@ -108,41 +170,3 @@ module Oracle : sig
   module H : Hashtbl.S with type key = t
 end
 
-            
-module Esym : sig
-  type t = private {
-    id : Id.id;
-    source1 : Groupvar.id;
-    source2 : Groupvar.id;
-    target : Groupvar.id; 
-  }
-
-  val hash : t -> int
-  val equal : t -> t -> bool
-  val mk : string -> Groupvar.id -> Groupvar.id -> Groupvar.id -> t
-  val pp : F.formatter -> t -> unit
-  val name : t -> string
-
-  module M : Map.S with type key = t
-  module S : Set.S with type elt = t
-  module H : Hashtbl.S with type key = t
-end
-
-module Psym : sig
-  type t = private { 
-      id : Id.id;
-      dom : ty;
-      pid : Permvar.id;
-  }
-
-  val hash : t -> int
-  val equal : t -> t -> bool
-  val mk : string -> ty -> Permvar.id -> t
-  val pp : F.formatter -> t -> unit
-  val name : t -> string
-
-  module M : Map.S with type key = t
-  module S : Set.S with type elt = t
-  module H : Hashtbl.S with type key = t
-end
-	    

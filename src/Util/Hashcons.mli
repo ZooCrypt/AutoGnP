@@ -1,9 +1,9 @@
-(*s Hash-consing registers all values of a given type in a hashtable.
-    If all values of the type are obtained using [S.hashcons] then this
-    guarantees that structural equality implies physical equality.
-    Additionally, the hash table maintains unique integer [tag]s
-    for each value of the type that can be used for [Map]s, [Set]s,
-    and [Hashtbl]s. *)
+(* Hash-consing registers all values of a given type in a hashtable.
+   If all values of the type are obtained using [S.hashcons] then this
+   guarantees that structural equality implies physical equality.
+   Additionally, the hash table maintains unique integer [tag]s
+   for each value of the type that can be used for [Map]s, [Set]s,
+   and [Hashtbl]s. *)
 
 module type HashedType = HashconsTypes.HashedType
 

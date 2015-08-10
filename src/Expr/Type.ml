@@ -1,14 +1,21 @@
-(*s This module implements hashconsed and non-hashconsed types. *)
+(* * Types (hashconsed) *)
 
-(*i*)
+(* ** Imports *)
 open Abbrevs
 open Util
-(*i*)
 
-(** Identifier for (bitstring) length and group variables. *)
+(* ** Identiers *)
+
+(** Identifier for (bitstring) length variables. *)
 module Lenvar : IdType.ID = Id
+
+(** Identifier for group variables. *)
 module Groupvar : IdType.ID = Id
+
+(** Identifier for permutations. *)
 module Permvar : IdType.ID = Id
+
+(* ** Permutation keys *)
 
 type key_elem = SKey | PKey
 
@@ -20,7 +27,8 @@ let string_of_key_elem = function
   | SKey -> "Secret Key"
   | PKey -> "Public Key"
 
-(** Types and type nodes. *)
+(* ** Types and type nodes *)
+
 type ty = {
   ty_node : ty_node;
   ty_tag : int
@@ -84,6 +92,8 @@ let mk_ty n = Hsty.hashcons {
   ty_tag  = (-1)
 }
 
+(* ** Constructor functions *)
+
 (** Create types: bitstring, group, field, boolean, tuple. *)
 let mk_BS lv = mk_ty (BS lv)
 let mk_G gv = mk_ty (G gv)
@@ -97,21 +107,24 @@ let mk_Prod tys =
   | [t] -> t 
   | _ -> mk_ty (Prod tys)
 
-(** Indicator functions for types. *)
+(* ** Indicator and destructor functions *)
+
 let is_G ty = match ty.ty_node with
   | G _ -> true
   | _ -> false
+
 let is_Fq ty = match ty.ty_node with
   | Fq -> true
   | _  -> false
+
 let is_Prod ty = match ty.ty_node with
   | Prod _ -> true
   | _  -> false
 
-(** Destructor functions for types. *)
 let destr_G ty = match ty.ty_node with
   | G gv -> gv
   | _    -> assert false
+
 let destr_BS ty = 
   match ty.ty_node with
   | BS lv -> lv
@@ -137,7 +150,7 @@ let destr_Prod_no_fail ty =
   | Prod ts -> Some ts
   | _ -> None
 
-(*i*)
+(* ** Pretty printing *)
 
 let pp_group fmt gv =
   if Groupvar.name gv = ""
@@ -159,4 +172,4 @@ let rec pp_ty fmt ty =
     then F.fprintf fmt "G" 
     else F.fprintf fmt "G_%s" (Groupvar.name gv)
 
-(*i*)
+

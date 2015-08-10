@@ -1,42 +1,13 @@
-(*s Symbols for variables and other objects. *)
+(* * Symbols for variables and other objects *)
 
-(*i*)
+(* ** Imports *)
 open Abbrevs
 open Util
 open Id
 open Type
-(*i*)
 
-module Asym = struct
-  type t = { 
-    id : Id.id;
-    dom : ty;
-    codom : ty;
-  }
-
-  type tt = t
-
-  let hash asym = Id.hash asym.id 
-  let equal : t -> t -> bool = (==)
-  let compare (x : t) (y : t) = hash x - hash y
-
-  module As = StructMake (struct
-    type t = tt
-    let tag = hash
-  end) 
-
-  module M = As.M
-  module S = As.S
-  module H = As.H
-
-  let mk name dom codom = 
-    { id = Id.mk name; dom = dom; codom = codom }
-
-  let pp fmt asym = F.fprintf fmt "%s" (Id.name asym.id)
-  let pp_long fmt asym =
-    F.fprintf fmt "%s : %a -> %a" (Id.name asym.id) pp_ty asym.dom pp_ty asym.codom
-  let to_string os = Id.name os.id
-end
+(* ** Oracle Symbols
+ * ----------------------------------------------------------------------- *)
 
 module Osym = struct
   type t = { 
@@ -45,12 +16,11 @@ module Osym = struct
     codom : ty;
   }
 
-  type tt = t
-
   let hash os = Id.hash os.id 
   let equal : t -> t -> bool = (==)
   let compare (x : t) (y : t) = hash x - hash y
 
+  type tt = t
   module Os = StructMake (struct
     type t = tt
     let tag = hash
@@ -69,11 +39,17 @@ module Osym = struct
   let to_string os = Id.name os.id
 end
 
+(* ** Qualified Symbols
+ * ----------------------------------------------------------------------- *)
+
 type 'a qual = Unqual | Qual of 'a
 
 let map_qual f = function
   | Unqual -> Unqual
   | Qual x -> Qual (f x)
+
+(* ** Variable Symbols
+ * ----------------------------------------------------------------------- *)
 
 module Vsym = struct
 
@@ -129,6 +105,110 @@ module Vsym = struct
       S.empty
 end
 
+(* ** Adversary Symbols
+ * ----------------------------------------------------------------------- *)
+
+module Asym = struct
+  type t = { 
+    id : Id.id;
+    dom : ty;
+    codom : ty;
+  }
+
+  type tt = t
+
+  let hash asym = Id.hash asym.id 
+  let equal : t -> t -> bool = (==)
+  let compare (x : t) (y : t) = hash x - hash y
+
+  module As = StructMake (struct
+    type t = tt
+    let tag = hash
+  end) 
+
+  module M = As.M
+  module S = As.S
+  module H = As.H
+
+  let mk name dom codom = 
+    { id = Id.mk name; dom = dom; codom = codom }
+
+  let pp fmt asym = F.fprintf fmt "%s" (Id.name asym.id)
+  let pp_long fmt asym =
+    F.fprintf fmt "%s : %a -> %a" (Id.name asym.id) pp_ty asym.dom pp_ty asym.codom
+  let to_string os = Id.name os.id
+end
+
+(* ** Bilinear map symbols
+ * ----------------------------------------------------------------------- *)
+                            
+module Esym = struct
+  type t = { 
+    id : Id.id;
+    source1 : Groupvar.id;
+    source2 : Groupvar.id;
+    target  : Groupvar.id;
+  }
+
+  type tt = t
+
+  let hash es = Id.hash es.id 
+  let equal es1 es2 = Id.equal es1.id es2.id
+
+  module Es = StructMake (struct
+    type t = tt
+    let tag = hash
+  end) 
+
+  module M = Es.M
+  module S = Es.S
+  module H = Es.H
+
+  let mk name source1 source2 target =
+    { id = Id.mk name; source1 = source1;
+      source2 = source2; target = target }
+
+  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
+
+  let name hs = Id.name hs.id
+end
+
+(* ** Permutation symbols
+ * ----------------------------------------------------------------------- *)
+
+module Psym = struct
+  type t = { 
+      id : Id.id;
+      dom : ty;
+      pid : Permvar.id;
+  }
+
+  type tt = t
+
+  let hash ps = Id.hash ps.id 
+  let equal ps1 ps2 = Id.equal ps1.id ps2.id
+
+  module Ps = StructMake (struct
+    type t = tt
+    let tag = hash
+  end) 
+
+  module M = Ps.M
+  module S = Ps.S
+  module H = Ps.H
+
+  let mk name dom pid =
+    assert (name = Permvar.name pid);
+    { id = Id.mk name; dom; pid}
+
+  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
+
+  let name hs = Id.name hs.id
+end
+
+(* ** Function symbols
+ * ----------------------------------------------------------------------- *)
+
 module Hsym = struct
   type t = {
     id    : Id.id;
@@ -162,6 +242,8 @@ module Hsym = struct
   let pp fmt hs = F.fprintf fmt (if is_lkup hs then "m_%s" else "%s") (Id.name hs.id)
 end
 
+(* ** Random oracle symbols
+ * ----------------------------------------------------------------------- *)
 
 module Oracle = struct
   type t =
@@ -236,65 +318,4 @@ module Oracle = struct
     | _ -> raise (Destr_failure "Oracle.destr_as_Osym_t cast failure: received RANDOM Oracle")
                  
 end
-                            
-module Esym = struct
-  type t = { 
-    id : Id.id;
-    source1 : Groupvar.id;
-    source2 : Groupvar.id;
-    target  : Groupvar.id;
-  }
-
-  type tt = t
-
-  let hash es = Id.hash es.id 
-  let equal es1 es2 = Id.equal es1.id es2.id
-
-  module Es = StructMake (struct
-    type t = tt
-    let tag = hash
-  end) 
-
-  module M = Es.M
-  module S = Es.S
-  module H = Es.H
-
-  let mk name source1 source2 target =
-    { id = Id.mk name; source1 = source1;
-      source2 = source2; target = target }
-
-  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
-
-  let name hs = Id.name hs.id
-end
-
-
-module Psym = struct
-  type t = { 
-      id : Id.id;
-      dom : ty;
-      pid : Permvar.id;
-  }
-
-  type tt = t
-
-  let hash ps = Id.hash ps.id 
-  let equal ps1 ps2 = Id.equal ps1.id ps2.id
-
-  module Ps = StructMake (struct
-    type t = tt
-    let tag = hash
-  end) 
-
-  module M = Ps.M
-  module S = Ps.S
-  module H = Ps.H
-
-  let mk name dom pid =
-    assert (name = Permvar.name pid);
-    { id = Id.mk name; dom; pid}
-
-  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
-
-  let name hs = Id.name hs.id
-end
+		  

@@ -1,15 +1,16 @@
-(*s Functions on expressions that do not require access to internals *)
+(* * Additional functions on expressions
+ * These functions do not require access to expression internals. *)
 
-(*i*)
+(* ** Imports *)
 open Abbrevs
 open Syms
 open Expr
 open Type
-(*i*)
 
 val ty_prod_vs : Vsym.t list -> ty
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Indicator functions} *)
+
+(* ** Indicator functions
+ * ----------------------------------------------------------------------- *)
 
 val is_V           : expr -> bool
 val is_H           : expr -> bool
@@ -51,8 +52,8 @@ val is_field_nop   : nop -> bool
 val is_field_exp   : expr -> bool
 val is_Land        : expr -> bool
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Destructor functions} *)
+(* ** Destructor functions
+ * ----------------------------------------------------------------------- *)
 
 exception Destr_failure of string
 
@@ -87,8 +88,8 @@ val destr_Xor_nofail   : expr -> expr list
 val destr_Land_nofail  : expr -> expr list
 val destr_Tuple_nofail : expr -> expr list
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Pretty printing} *)
+(* ** Pretty printing
+ * ----------------------------------------------------------------------- *)
 
 val pp_sort_expensive : bool ref
 
@@ -101,8 +102,8 @@ val pp_op   : F.formatter -> op * expr list -> unit
 val pp_nop  : F.formatter -> nop * expr list -> unit
 val pp_exp_tnp : F.formatter -> expr -> unit
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Useful functions on [expr]} *)
+(* ** Useful functions on [expr]
+ * ----------------------------------------------------------------------- *)
 
 val e_iter_ty_maximal : ty -> (expr -> unit) -> expr -> unit
 

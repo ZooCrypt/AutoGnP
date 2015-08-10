@@ -1,8 +1,6 @@
-(*s Type for exported and internal (abstract) identifiers. *)
+(* Type for exported and internal (abstract) identifiers. *)
 
-(*i*)
 open Abbrevs
-(*i*)
 
 module type ID = sig
 

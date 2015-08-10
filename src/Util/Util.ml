@@ -1,13 +1,13 @@
-(*s This module defines types tagged with [int]s, some convenience functor
-    applications for maps, sets, hashtables, and some convenience functions
-    for lists and pretty printing. *)
+(* * Utility functions
+ * This module defines types tagged with [int]s, some convenience functor
+ *  applications for maps, sets, hashtables, and some convenience functions
+ *  for lists and pretty printing.
+ *)
 
-(*i*)
 open Abbrevs
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Convenience Functors} *)
+(* ** Convenience Functors
+ * ----------------------------------------------------------------------- *)
 
 module type Tagged = sig
   type t
@@ -49,9 +49,8 @@ module Hint = Ints.H
 module Mstring = Map.Make(String)
 module Sstring = Set.Make(String)
 
-
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Misc functions} *)
+(* ** Misc functions
+ * ----------------------------------------------------------------------- *)
 
 let fixme s = failwith ("FIXME: "^s)
 
@@ -119,8 +118,8 @@ let string_of_dir = function
 
 let id x = x
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{List functions} *)
+(* ** List functions
+ * ----------------------------------------------------------------------- *)
 
 let find_at f l = 
   let i = ref 0 in
@@ -316,8 +315,8 @@ let last xs =
 
 let drop_last n xs = L.rev xs |> drop n |> L.rev
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{String functions} *)
+(* ** String functions
+ * ----------------------------------------------------------------------- *)
 
 let splitn s sep =
   if s = "" then []
@@ -386,8 +385,8 @@ let split s sep =
       Some (a, b)
   | None   -> None
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Pretty printing} *)
+(* ** Pretty printing
+ * ----------------------------------------------------------------------- *)
 
 let rec pp_list sep pp_elt f l =
   match l with
@@ -425,8 +424,8 @@ let fsprintf fmt =
       (Buffer.contents buf))
     fbuf fmt
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Logging and exceptions for Logic module} *)
+(* ** Logging and exceptions for Logic module
+ * ----------------------------------------------------------------------- *)
 
 let no_log = ref false
 

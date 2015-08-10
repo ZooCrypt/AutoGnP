@@ -1,20 +1,20 @@
-(*s Functions on expressions that do not require access to internals *)
+(* * Additional functions on expressions
+ * These functions do not require access to expression internals. *)
 
-(*i*)
+(* ** Imports *)
 open Expr
 open Type
 open Syms
 open Abbrevs
 open Util
-(*i*)
 
 let ty_prod_vs vs =
   match List.map (fun vs -> vs.Vsym.ty) vs with
   | [a] -> a
   | ts  -> mk_Prod ts
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Indicator functions} *)
+(* ** Indicator functions
+ * ----------------------------------------------------------------------- *)
 
 let is_V e = match e.e_node with V _ -> true | _ -> false
 
@@ -104,18 +104,18 @@ let is_field_exp e = match e.e_node with
   | Nary(o,_)    -> is_field_nop o
   | _            -> false
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Pretty printing} *)
+(* ** Pretty printing
+ * ----------------------------------------------------------------------- *)
 
 let pp_sort_expensive = ref false
 
 let pp_number_tuples = ref false
 
-(** The term $*(+(a,b),c)$ can be printed as $(a + b) * c$
-    or $a + b * c$.
-    We pass enough information to the function call
-    printing $a + b$ to decide if parentheses are
-    required around this expression or not.
+(* The term $*(+(a,b),c)$ can be printed as $(a + b) * c$
+   or $a + b * c$.
+   We pass enough information to the function call
+   printing $a + b$ to decide if parentheses are
+   required around this expression or not.
 *)
 
 (** Pretty print constant. *)
@@ -293,8 +293,9 @@ let pp_exp_tnp fmt e = pp_exp_p ~qual:Unqual PrefixApp fmt e
 
 let pp_ctxt fmt (v,e) = 
   F.fprintf fmt "@[<hov>(%a ->@ %a)@]" Vsym.pp v pp_exp e 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Destructor functions} *)
+
+(* ** Destructor functions
+ * ----------------------------------------------------------------------- *)
 
 exception Destr_failure of string
 
@@ -409,9 +410,8 @@ let destr_Tuple_nofail e =
   | Tuple(es) -> es 
   | _ -> [e] 
 
-
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Useful functions on [expr]} *)
+(* ** Useful functions on [expr]
+ * ----------------------------------------------------------------------- *)
 
 let e_iter_ty_maximal ty g e0 = 
   let rec go ie e0 =

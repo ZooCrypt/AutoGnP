@@ -1,14 +1,14 @@
-(*s Nondeterministic computations (aka lazy lists) *)
-(*i*)
+(* * Nondeterministic computations (aka lazy lists) *)
+
+(* ** Imports and logging*)
 open Lazy
 open Abbrevs
 open Util
 
 let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Nondet" ls
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Nondeterminism Monad} *)
+(* ** Nondeterminism Monad
+ * ----------------------------------------------------------------------- *)
 
 type 'a stream =
     Nil  of (string lazy_t) option
@@ -58,8 +58,8 @@ let run n m =
       | Cons (a, b) -> go (pred n) b (a::acc)
   in go n m []
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Useful functions} *)
+(* ** Useful functions
+ * ----------------------------------------------------------------------- *)
 
 let iter n m f =
   let rec go n m =

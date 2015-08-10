@@ -1,11 +1,13 @@
-(*s This module defines types tagged with [int]s, some convenience functor
-    applications for maps, sets, hashtables, and some convenience functions
-    for lists and pretty printing. *)
+(* * Utility functions
+ * This module defines types tagged with [int]s, some convenience functor
+ * applications for maps, sets, hashtables, and some convenience functions
+ * for lists and pretty printing. *)
 
+(* ** Imports *)
 open Abbrevs
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Convenience Functors} *)
+(* ** Convenience Functors
+ * ----------------------------------------------------------------------- *)
 
 (** [tag] converts [t] into an [int]. The function must be injective. *)
 module type Tagged = sig type t val tag : t -> int end
@@ -46,8 +48,8 @@ module Hint : Hashtbl.S with type key = int
 module Sstring : Set.S with type elt = string
 module Mstring : Map.S with type key = string
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Misc functions} *)
+(* ** Misc functions
+ * ----------------------------------------------------------------------- *)
 
 (* placeholder for incomplete code *)
 val fixme: string -> 'a
@@ -72,8 +74,8 @@ val id : 'a -> 'a
 
 val eq_on : ('a -> 'b) -> 'a -> 'a -> bool
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{File I/O} *)
+(* ** File I/O
+ * ----------------------------------------------------------------------- *)
 
 val input_file : string -> string
 
@@ -81,8 +83,8 @@ val output_file : string -> string -> unit
 
 val append_file : string -> string -> unit
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Options} *)
+(* ** Options
+ * ----------------------------------------------------------------------- *)
 
 (** [exc_to_opt f] returns [None] if [f ()] raises an
     exception and [Some (f ())] otherwise. *)
@@ -100,9 +102,8 @@ val opt : ('a -> 'b) -> 'b -> 'a option -> 'b
 
 val opt_f : ('a -> 'b) -> (unit -> 'b) -> 'a option -> 'b
 
-
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{List functions} *)
+(* ** List functions
+ * ----------------------------------------------------------------------- *)
 
 (** Same as [List.list_for_all2], but returns [false] if lists have different lengths. *)
 val list_eq_for_all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
@@ -199,8 +200,8 @@ val catSome : ('a option) list -> 'a list
 
 val last : 'a list -> 'a
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{String functions} *)
+(* ** String functions
+ * ----------------------------------------------------------------------- *)
 
 val splitn : string -> char -> string list
 
@@ -212,8 +213,8 @@ val string_rfind_from : string -> string -> int -> int option
 
 val split : string -> char -> (string * string) option
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Pretty printing} *)
+(* ** Pretty printing
+ * ----------------------------------------------------------------------- *)
 
 (** [pplist sep pp_elt f l] takes a formatter [f], a separator
     [sep], and a pretty printer for ['e] and returns a
@@ -244,8 +245,8 @@ val pp_pair : (F.formatter -> 'a -> unit) -> (F.formatter -> 'b -> unit) -> F.fo
     string formatter. *)
 val fsprintf : ('a, F.formatter, unit, string) format4 -> 'a
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Logging and exceptions for Logic module} *)
+(* ** Logging and exceptions for Logic module
+ * ----------------------------------------------------------------------- *)
 
 exception Invalid_rule of string 
 

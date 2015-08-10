@@ -1,11 +1,10 @@
-(*s Nondeterministic computations (aka lazy lists) *)
+(* * Nondeterministic computations (aka lazy lists) *)
 
-(*i*)
+(* ** Imports *)
 open Util
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Nondeterminism Monad} *)
+(* ** Nondeterminism Monad
+ * ----------------------------------------------------------------------- *)
 
 type 'a stream
 
@@ -29,8 +28,8 @@ val guard : bool -> unit nondet
 (** Execute and get first [n] results as list, use [n=-1] to get all values. *)
 val run : int -> 'a nondet -> 'a list
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Useful functions} *)
+(* ** Useful functions
+ * ----------------------------------------------------------------------- *)
 
 (** Apply function [f] to the first n values, use [n=-1] to apply [f] to all values. *)
 val iter : int -> 'a nondet -> ('a -> unit) -> unit

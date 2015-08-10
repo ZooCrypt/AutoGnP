@@ -1,9 +1,12 @@
-(*s Module types for variables, ring, and polynomials
-    shared between [Poly.ml] and [Poly.mli]. *)
-(*i*)
-open Abbrevs
-(*i*)
+(* * Interfaces for Polynomials
+ * Module types for variables, ring, and polynomials
+ * shared between [Poly.ml] and [Poly.mli]. *)
 
+(* ** Imports *)
+open Abbrevs
+
+
+(* ** Variables *)
 module type Var = sig
   type t
   val pp : F.formatter -> t -> unit
@@ -11,6 +14,7 @@ module type Var = sig
   val compare : t -> t -> int
 end
 
+(* ** Rings *)
 module type Ring = sig
   type t
   val pp : F.formatter -> t -> unit
@@ -27,6 +31,7 @@ module type Ring = sig
   val use_parens : bool
 end
 
+(* ** Polynomials *)
 module type Poly = sig
   type t
   type var

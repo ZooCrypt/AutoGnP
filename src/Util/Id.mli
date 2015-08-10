@@ -1,3 +1,3 @@
-(*s Unique identifiers. *)
+(* Unique identifiers. *)
 
 include IdType.ID
