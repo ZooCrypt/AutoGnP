@@ -1,6 +1,6 @@
 true: bin_annot, debug
 
-<src/**/*>: package(bolt), package(batteries)
+<src/**/*>: package(bolt), package(batteries), syntax(camlp4o), package(comparelib.syntax)
 
 <src/Util> or <src/Expr> or <src/Test> or <src/Poly>: include
 

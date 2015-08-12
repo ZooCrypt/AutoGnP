@@ -451,14 +451,14 @@ let pp_bilinear_mod file fmt bvars =
     F.fprintf fmt "@ "
 
 let pp_hash_mod fmt file = 
-  if Hsym.H.length file.hvar <> 0 then 
+  if Fsym.H.length file.hvar <> 0 then 
     let out h info =
       match info.h_kind with
       | Hop oinfo ->
         F.fprintf fmt "@[<hov 2>op %s :@ %a ->@ %a.@]@ "
-          oinfo.o_name (pp_type file) h.Hsym.dom (pp_type file) h.Hsym.codom in
+          oinfo.o_name (pp_type file) h.Fsym.dom (pp_type file) h.Fsym.codom in
     F.fprintf fmt "(** { operators declarations. } *)@ @ ";
-    Hsym.H.iter out file.hvar;
+    Fsym.H.iter out file.hvar;
     F.fprintf fmt "@ "
   
 
@@ -617,7 +617,7 @@ and pp_section file fmt s =
       
 (*let pp_adv_decl fmt file = 
   let r = [] in
-  (*  Hsym.H.fold (fun _ info r -> (info.h_th^"."^info.h_mod)::r)
+  (*  Fsym.H.fold (fun _ info r -> (info.h_th^"."^info.h_mod)::r)
       file.hvar [] in *)
   let add_mod r = function
     | Cmod md -> md.mod_name :: r

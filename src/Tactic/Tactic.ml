@@ -474,7 +474,7 @@ let rec handle_tactic ts tac =
     | PT.Rbad(i,None,vsx) ->
       raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx)))
     | PT.Rcheck_hash_args(opos) ->
-       let gen_o_lkup o  = Mstring.find (Hsym.to_string o) ts.ts_lkupdecls in
+       let gen_o_lkup o  = Mstring.find (Fsym.to_string o) ts.ts_lkupdecls in
        CR.t_check_hash_args opos gen_o_lkup ju
     | PT.Rbad _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
     | PT.Rguess(aname, fvs) ->
@@ -666,11 +666,11 @@ let handle_instr verbose ts instr =
     if Mstring.mem s ts.ts_rodecls then
       tacerror "%s with same name already declared." oname;
     let dom,codom=(PU.ty_of_parse_ty ts t1),(PU.ty_of_parse_ty ts t2) in
-    let hs = Hsym.mk s ~ro dom codom in
+    let hs = Fsym.mk s ~ro dom codom in
     let ts_rodecls = Mstring.add s hs ts.ts_rodecls in
     let ts_lkupdecls =
       if ro then
-        Mstring.add s (Hsym.mk s ~ro:true ~lkup:true dom codom) ts.ts_lkupdecls
+        Mstring.add s (Fsym.mk s ~ro:true ~lkup:true dom codom) ts.ts_lkupdecls
                     else ts.ts_lkupdecls in
     let ts = { ts with ts_rodecls; ts_lkupdecls} in
     (ts, fsprintf "Declared %s" oname)

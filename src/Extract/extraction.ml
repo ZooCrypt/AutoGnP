@@ -47,11 +47,11 @@ let globals gdef =
      MCvar(pvar [] v, Tzc v.Vsym.ty)) (Vsym.S.elements glob)
 
 let mk_eget file h e = 
-  let hi = Hsym.H.find file.hvar h in
+  let hi = Fsym.H.find file.hvar h in
   hi.h_eget e
 
 let mk_fget file mem h f = 
-  let hi = Hsym.H.find file.hvar h in
+  let hi = Fsym.H.find file.hvar h in
   hi.h_fget mem f
 
 let op_of_op file ty = function

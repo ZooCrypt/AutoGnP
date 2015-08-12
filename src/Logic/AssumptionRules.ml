@@ -314,7 +314,7 @@ let match_expr (vars : Vsym.t list) pat e =
     | V(vs1),_
       when Vsym.S.mem vs1 vars_set  -> inst vs1 e
     | V(vs1),        V(vs2)         -> ensure (Vsym.equal vs1 vs2)
-    | H(hs1,e1),     H(hs2,e2)      -> ensure (Hsym.equal hs1 hs2); pmatch e1 e2
+    | H(hs1,e1),     H(hs2,e2)      -> ensure (Fsym.equal hs1 hs2); pmatch e1 e2
     | Tuple(es1),    Tuple(es2)     -> pmatchl es1 es2
     | Proj(i1,e1),   Proj(i2,e2)    -> ensure (i1 = i2); pmatch e1 e2
     | Cnst(c1),      Cnst(c2)       -> ensure (c1 = c2)

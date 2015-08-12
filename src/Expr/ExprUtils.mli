@@ -12,18 +12,15 @@ val ty_prod_vs : Vsym.t list -> ty
 (* ** Indicator functions
  * ----------------------------------------------------------------------- *)
 
+(* val is_H           : expr -> bool *)
 val is_V           : expr -> bool
-val is_H           : expr -> bool
 val is_Perm        : expr -> bool
-val is_Quant       : quant -> expr -> bool
-val is_SomeQuant   : expr -> bool
+val is_Quant       : expr -> bool
 val is_All         : expr -> bool
 val is_Exists      : expr -> bool
 val is_Tuple       : expr -> bool
 val is_Proj        : expr -> bool
-val is_some_Cnst   : expr -> bool
-val is_Cnst        : cnst -> expr -> bool
-val is_ProjPermKey : key_elem -> Psym.t -> expr -> bool
+val is_Cnst        : expr -> bool
 val is_FNat        : expr -> bool
 val is_FOne        : expr -> bool
 val is_FZ          : expr -> bool
@@ -32,6 +29,8 @@ val is_False       : expr -> bool
 val is_GGen        : expr -> bool
 val is_GOne        : expr -> bool
 val is_GLog        : expr -> bool
+val is_RoCall      : expr -> bool
+val is_RoCall_rso  : ROsym.t -> expr -> bool
 val is_GLog_gv     : Groupvar.id -> expr -> bool
 val is_some_App    : expr -> bool
 val is_App         : op -> expr -> bool
@@ -58,18 +57,19 @@ val is_Land        : expr -> bool
 exception Destr_failure of string
 
 val destr_V            : expr -> Vsym.t
-val destr_H            : expr -> Hsym.t * expr
-val destr_Quant        : expr -> quant * (Vsym.t list * Oracle.t) * expr
-val destr_All        : expr -> (Vsym.t list * Oracle.t) * expr
+(* val destr_H            : expr -> Fsym.t * expr *)
+val destr_Quant        : expr -> quant * (Vsym.t list * Olist.t) * expr
+val destr_All          : expr -> (Vsym.t list * Olist.t) * expr
 val destr_Tuple        : expr -> expr list
 val destr_Proj         : expr -> int * expr
 val destr_Cnst         : expr -> cnst
 val destr_Perm         : expr -> Psym.t * perm_type * expr * expr
-val destr_ProjPermKey  : expr -> key_elem * expr
+(* val destr_ProjPermKey  : expr -> KeyElem.t * expr *)
 val destr_FNat         : expr -> int
 val destr_App          : expr -> op * expr list
 val destr_GMult        : expr -> (expr) list
 val destr_GExp         : expr -> expr * expr
+val destr_RoCall       : expr -> ROsym.t * expr
 val destr_GLog         : expr -> expr
 val destr_EMap         : expr -> Esym.t * expr * expr
 val destr_FOpp         : expr -> expr
@@ -109,7 +109,7 @@ val e_iter_ty_maximal : ty -> (expr -> unit) -> expr -> unit
 
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
-val e_hash_calls : expr -> Se.t
+(* val e_hash_calls : expr -> Se.t *)
                              
 val has_log : expr -> bool
 

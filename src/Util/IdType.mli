@@ -29,7 +29,7 @@ module type ID = sig
       to be unique (in a program run). *)
   val mk : string -> id
 
-  module M : Map.S with type key = id
-  module S : Set.S with type elt = id
-  module H : Hashtbl.S  with type key = id
+  module M : Map.S     with type key = id
+  module S : Set.S     with type elt = id
+  module H : Hashtbl.S with type key = id
 end

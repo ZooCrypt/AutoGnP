@@ -86,7 +86,7 @@ let bind_of_parse_bind (vmap : G.vmap) ts lH =
          with Not_found ->
            fail_parse (F.sprintf "undefined random oracle %s" h)
        in
-       let x = create_var vmap ts Unqual s h.Hsym.dom in
+       let x = create_var vmap ts Unqual s h.Fsym.dom in
        (x, h))
     lH
 

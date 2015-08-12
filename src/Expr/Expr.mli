@@ -4,64 +4,92 @@
 open Type
 open Syms
 
-(* ** Expression types
+
+(* ** Expressions (hashconsed)
  * ----------------------------------------------------------------------- *)
+
+(* *** Quantifiers *)
+
+type quant = All | Exists
+
+val neg_quant : quant -> quant
+
+module Olist : sig
+  type t =
+    | ROlist of ROsym.t (* list of adversary queries to random oracle *)
+    | Olist  of Osym.t  (* list of adversary queries to ordinary oracle *)
+
+  val hash : t -> int
+  
+  val equal : t -> t -> bool
+  
+  val pp : Format.formatter -> t -> unit
+end
+
+(* *** Types *)
 
 type proj_type = Type.ty * Type.ty * Type.ty
 
 type perm_type = IsInv | NotInv
-                                    
-val key_elem_of_perm_type : perm_type -> key_elem
-                
+
 type cnst =
-    GGen
-  | FNat of int
-  | Z
-  | B of bool
-
-val cnst_hash : cnst -> int
-
+  | GGen        (* generator of $\group$ (type defines group) *)
+  | FNat of int (* Natural number in field, always $\geq 0$ *)
+  | Z           (* $0$ bitstring (type defines length) *)
+  | B of bool   (* boolean value *)
 type op =
- | GExp of Groupvar.id        (* exponentiation in $\group_i$ *)
- | GLog of Groupvar.id        (* discrete logarithm in $\group_i$ *)
- | GInv                       (* inverse in group *)
- | FOpp                       (* additive inverse in $\field$ *)
- | FMinus                     (* subtraction in $\field$ *)
- | FInv                       (* mult. inverse in $\field$ *)
- | FDiv                       (* division in $\field$ *)
- | Eq                         (* equality *)
- | Not                        (* negation *)
- | Ifte                       (* if then else *)
- | EMap of Esym.t             (* bilinear map *)
- | Perm of perm_type * Psym.t (* permutation or inverse *)
-
-val op_hash : op -> int
+  (* bilinear groups *)
+  | GExp of Groupvar.id        (* exponentiation in $\group_i$ *)
+  | GLog of Groupvar.id        (* discrete logarithm in $\group_i$ *)
+  | GInv                       (* inverse in group *)
+  | EMap of Esym.t             (* bilinear map *)
+  (* prime field *)
+  | FOpp                       (* additive inverse in $\field$ *)
+  | FMinus                     (* subtraction in $\field$ *)
+  | FInv                       (* mult. inverse in $\field$ *)
+  | FDiv                       (* division in $\field$ *)
+  (* logical operators *)
+  | Eq                         (* equality *)
+  | Not                        (* negation *)
+  | Ifte                       (* if then else *)
+  (* permutations *)
+  | ProjKeyElem of KeyElem.t   (* project out secret/public key *)
+  | Perm of perm_type * Psym.t (* permutation or inverse permutation *)
+  (* uninterpreted functions and random oracles *)
+  | FunCall  of Fsym.t         (* function call (uninterpreted) *)
+  | RoCall   of ROsym.t        (* random oracle call *)
+  | RoLookup of ROsym.t        (* random oracle lookup *)
 
 type nop =
-    FPlus
-  | FMult
-  | Xor
-  | Land
-  | GMult
+  | GMult  (* multiplication in G (type defines group) *)
+  | FPlus  (* plus in Fq *)
+  | FMult  (* multiplication in Fq *)
+  | Xor    (* Xor of bitstrings *)
+  | Land   (* logical and *)
 
-val nop_hash : nop -> int
-                        
-type quant = All | Exists
-val neg_quant : quant -> quant
-                           
-type expr = private { e_node : expr_node; e_ty : Type.ty; e_tag : int; }
+type binding = Vsym.t list * Olist.t
+
+type expr = private {
+  e_node : expr_node;
+  e_ty   : ty;
+  e_tag  : int
+}
 and expr_node =
-  | V           of Vsym.t          (* variables (program, logical, random, ...) *)
-  | H           of Hsym.t * expr   (* hash function application *)
-  | Tuple       of expr list       (* tuples *)
-  | Proj        of int * expr      (* projection *)
-  | Cnst        of cnst            (* constants *)
-  | App         of op * expr list  (* fixed arity operators *)
-  | Nary        of nop * expr list (* variable arity AC operators *)
-  | Quant       of quant * (Vsym.t list * Oracle.t) * expr
-  | ProjPermKey of key_elem * expr	       
+  | V     of Vsym.t                 (* variables (program/logic/...) *)
+  | Tuple of expr list              (* tuples *)
+  | Proj  of int * expr             (* projection *)
+  | Cnst  of cnst                   (* constants *)
+  | App   of op * expr list         (* fixed arity operators *)
+  | Nary  of nop * expr list        (* variable arity AC operators *)
+  | Quant of quant * binding * expr (* quantifier *)
 
+(* *** Equality, hashing, hash consing *)
 
+val perm_type_hash : perm_type -> int
+val cnst_hash : cnst -> int
+val op_hash : op -> int
+val nop_hash : nop -> int
+ 
 val e_equal : expr -> expr -> bool
 val e_hash : expr -> int
 val e_compare : expr -> expr -> int
@@ -75,21 +103,24 @@ module Me : Map.S with type key = expr
 (* ** Constructor functions
  * ----------------------------------------------------------------------- *)
 
-val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
-val ensure_ty_KeyPair : Type.ty -> string -> Type.Permvar.id
-val ensure_ty_KeyElem : Type.key_elem -> Type.ty -> string -> Type.Permvar.id
+(* *** Type checking *)
 
 exception TypeError of (ty *  ty * expr * expr option * string)
+
+val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
+val ensure_ty_KeyPair : Type.ty -> string -> Type.Permvar.id
+val ensure_ty_KeyElem : Type.KeyElem.t -> Type.ty -> string -> Type.Permvar.id
+
+(* *** Constant mk functions *)
 
 val mk_V           : Vsym.t -> expr
 val mk_App         : op -> expr list -> ty -> expr
 val mk_Nary        : nop -> expr list -> expr
-val mk_H           : Hsym.t -> expr -> expr
-val mk_ProjPermKey : Type.key_elem -> expr -> expr
+val mk_ProjKeyElem : Type.KeyElem.t -> expr -> expr
 val mk_Perm        : Psym.t -> perm_type -> expr -> expr -> expr
-val mk_Quant       : quant -> (Vsym.t list * Oracle.t) -> expr -> expr
-val mk_All         : (Vsym.t list * Oracle.t) -> expr -> expr
-val mk_Exists      : (Vsym.t list * Oracle.t) -> expr -> expr
+val mk_Quant       : quant -> (Vsym.t list * Olist.t) -> expr -> expr
+val mk_All         : (Vsym.t list * Olist.t) -> expr -> expr
+val mk_Exists      : (Vsym.t list * Olist.t) -> expr -> expr
 val mk_Tuple       : expr list -> expr
 val mk_Proj        : int -> expr -> expr
 val mk_GGen        : Groupvar.id -> expr

@@ -203,7 +203,7 @@ let wf_lcmds ctype wfs0 exported_vsyms odef0 =
       let wfs = wf_samp ctype wfs v t es in
       go wfs ~do_export lcmds
     | LBind (vs,hsym)::lcmds -> 
-      assert (ty_equal (ty_prod_vs vs) hsym.Hsym.dom);
+      assert (ty_equal (ty_prod_vs vs) hsym.Fsym.dom);
       go wfs ~do_export:false lcmds
     | LGuard e::lcmds ->
       assert (ty_equal e.e_ty mk_Bool);

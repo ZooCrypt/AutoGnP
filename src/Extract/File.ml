@@ -293,7 +293,7 @@ type file = {
   mutable top_name : Sstring.t;
   levar : tvar_info Lenvar.H.t;
   grvar : tvar_info Groupvar.H.t;
-  hvar  : hash_info Hsym.H.t;
+  hvar  : hash_info Fsym.H.t;
   bvar  : bmap_info Esym.H.t;
   assump_dec  : (string, assumption_dec_info) Ht.t;
   assump_comp : (string, assumption_comp_info) Ht.t;
@@ -323,7 +323,7 @@ let empty_file =
     top_name     = Sstring.empty;
     levar        = Lenvar.H.create 7;
     grvar        = Groupvar.H.create 7;
-    hvar         = Hsym.H.create 7;
+    hvar         = Fsym.H.create 7;
     bvar         = Esym.H.create 7;
     assump_dec   = Ht.create 3;
     assump_comp  = Ht.create 3;
@@ -376,16 +376,16 @@ let bvar_mod file bv =
   try Esym.H.find file.bvar bv with Not_found -> assert false
 
 let add_hash file h = 
-  if Hsym.is_ro h then 
+  if Fsym.is_ro h then 
     failwith "No able to extract random oracle for the moment"
   else
-    let name = top_name file (Hsym.to_string h) in
+    let name = top_name file (Fsym.to_string h) in
     let info = { 
       h_kind = Hop {o_name = name };
       h_eget = (fun e -> Eapp(Ostr name, [e]));
       h_fget = (fun _ f -> Fapp(Ostr name, [f]));
     } in
-    Hsym.H.add file.hvar h info
+    Fsym.H.add file.hvar h info
  
 let add_hashs file ts = 
   Mstring.iter (fun _ h -> add_hash file h) ts.ts_rodecls

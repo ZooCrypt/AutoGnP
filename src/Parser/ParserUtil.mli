@@ -25,7 +25,7 @@ val ty_of_parse_ty : theory_state -> parse_ty -> ty
 val mk_Tuple : expr list -> expr
 
 val bind_of_parse_bind :
-  vmap -> theory_state -> (string * string) list -> (Vsym.t * Hsym.t) list
+  vmap -> theory_state -> (string * string) list -> (Vsym.t * Fsym.t) list
 
 val expr_of_parse_expr : vmap -> theory_state -> string qual -> parse_expr -> expr
 

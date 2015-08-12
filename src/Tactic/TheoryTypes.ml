@@ -35,21 +35,20 @@ type theory_state = {
   (* implicitly defined and shared *)
   ts_lvars      : (string,Lenvar.id)   Hashtbl.t;
   ts_gvars      : (string,Groupvar.id) Hashtbl.t;
-  ts_permvars   : (string,Permvar.id) Hashtbl.t;
+  ts_permvars   : (string,Permvar.id)  Hashtbl.t;
 
   (* explicitly defined *)
-  ts_permdecls  : Psym.t      Mstring.t;
-  ts_rodecls    : Hsym.t      Mstring.t;
-  ts_lkupdecls  : Hsym.t      Mstring.t;
-  ts_odecls     : Osym.t      Mstring.t;
-  ts_adecls     : Asym.t      Mstring.t;
-  ts_emdecls    : Esym.t      Mstring.t;
-  ts_assms_dec  : assm_dec    Mstring.t;
-  ts_assms_comp : assm_comp   Mstring.t;
+  ts_permdecls  : Psym.t    Mstring.t;
+  ts_rodecls    : Fsym.t    Mstring.t;
+  ts_lkupdecls  : Fsym.t    Mstring.t;
+  ts_odecls     : Osym.t    Mstring.t;
+  ts_adecls     : Asym.t    Mstring.t;
+  ts_emdecls    : Esym.t    Mstring.t;
+  ts_assms_dec  : assm_dec  Mstring.t;
+  ts_assms_comp : assm_comp Mstring.t;
 
   ts_ps         : theory_proof_state;
 
-  (*c FIXME: Add some state to increase sharing during
-      proof search. We want rules to commute. *)
-
+  (* FIXME: Add some state to increase sharing during
+     proof search. We want rules to commute. *)
 }

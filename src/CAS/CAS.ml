@@ -1,16 +1,15 @@
-(*s Using CAS to perform computations on polynomials *)
+(* * Use Factory to perform computations on polynomials *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Expr
 open NormField
 open PolyInsts
 
 module Ht = Hashtbl
 module YS = Yojson.Safe
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Using CAS to perform polynomial computations} *)
+(* ** Using CAS to perform polynomial computations
+ * ----------------------------------------------------------------------- *)
 
 let cache_norm_factory = Ht.create 17
 
@@ -76,9 +75,8 @@ let check_nz ~is_nz:a b =
       Ht.add ht_check_nz (sa,sb) res;
       res
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Computing the normal form and reducing modulo a polynomial} *)
-
+(* ** Computing the normal form and reducing modulo a polynomial
+ * ----------------------------------------------------------------------- *)
 
 let norm before e =
   let (se,_c,hv) = abstract_non_field before e in

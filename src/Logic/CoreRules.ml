@@ -1309,10 +1309,10 @@ let rbad which_bad p gen_vsx ju =
     let vsx = gen_vsx e in
     if (Vsym.S.mem vsx (expr_vars e)) then
       tacerror "Error, var '%a' appears in expr '%a'" Vsym.pp vsx pp_exp e;
-    if not (Hsym.is_ro h) then
-      tacerror "Error, the function '%a' is not a random oracle" Hsym.pp h;
-    if (Hsym.is_lkup h) then
-      tacerror "Error, 'bad' rule cannot be applied to the oracle lookup '%a'" Hsym.pp h;
+    if not (Fsym.is_ro h) then
+      tacerror "Error, the function '%a' is not a random oracle" Fsym.pp h;
+    if (Fsym.is_lkup h) then
+      tacerror "Error, 'bad' rule cannot be applied to the oracle lookup '%a'" Fsym.pp h;
      
     let cmds = [ GSamp(vs, (e'.e_ty,[]) )] in
     (* ju1 is ju with a random sampling instead of the hash call *)
@@ -1325,7 +1325,7 @@ let rbad which_bad p gen_vsx ju =
         (gdef_all_hash_args h se_ctxt.sec_right)
     in
      if (Se.mem e all_other_hash_calls_args) then
-       tacerror "Error, there cannot be other '%a' calls querying the expression '%a'" Hsym.pp h pp_exp e;
+       tacerror "Error, there cannot be other '%a' calls querying the expression '%a'" Fsym.pp h pp_exp e;
      let create_ju = match which_bad with
        | UpToBad -> fun ei ->
          { ju_pr = Pr_Succ ;
@@ -1388,7 +1388,7 @@ let rcheck_hash_args opos gen_o_lkup ju =
        tacerror "Error, '%a' is not a quantified expression" pp_exp eq;
      let _,(vs,o),eq = ExprUtils.destr_Quant eq in
      let o =
-       try Oracle.destr_as_Hsym_t o
+       try Oracle.destr_as_Fsym_t o
        with
          Oracle.Destr_failure _ ->
          tacerror "Error, '%a' is not a random oracle" Oracle.pp o
@@ -1398,13 +1398,13 @@ let rcheck_hash_args opos gen_o_lkup ju =
        try ExprUtils.destr_Eq eq
        with
          ExprUtils.Destr_failure _ ->
-           tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Hsym.pp o
+           tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Fsym.pp o
      in                    
      if not (List.exists (fun v -> e_equal ve (mk_V v)) vs) then
-       tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Hsym.pp o;
+       tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Fsym.pp o;
      let seoc_cright = se_octxt.seoc_cright in
      let to_lkup = function
-       | (h,e') when (Hsym.equal h o && e_equal e e') -> o_lkup
+       | (h,e') when (Fsym.equal h o && e_equal e e') -> o_lkup
        | (h,_) -> h
      in
      let seoc_cright = subst_lkup_lcmds to_lkup seoc_cright in
@@ -1418,9 +1418,15 @@ let t_check_hash_args opos gen_o_lkup =
            
 let runwrap_quant_ev j ju =
   let ev = ju.ju_se.se_ev in
-  let q_expr = try Event.nth j ev with
-                 Failure _ -> tacerror "unwrap_quant_ev: bad index %i" j in
-  let (q,b,e) = try destr_Quant q_expr with Destr_failure _ -> tacerror "unwrap_quant_ev : no quantification in event %a" pp_exp q_expr in
+  let q_expr =
+    try Event.nth j ev
+    with Failure _ -> tacerror "unwrap_quant_ev: bad index %i" j
+  in
+  let (q,b,e) =
+    try destr_Quant q_expr
+    with Destr_failure _ ->
+      tacerror "unwrap_quant_ev : no quantification in event %a" pp_exp q_expr
+  in
   let new_ev = Event.insert
                  ~quant:q
                  ~binding:b
@@ -1433,7 +1439,15 @@ let t_unwrap_quant_ev j = prove_by (runwrap_quant_ev j)
                                  
 let rswap_quant_ev j ju =
   let ev = ju.ju_se.se_ev in
-  let (q,b,e) = try Event.destr_exn ev with Event.NoQuant -> tacerror "swap_quant_ev: no quantification in event %a.\n%s" Event.pp ev (if is_SomeQuant (Event.expr ev) then "(Remember there is an \'unwrap_quant_ev\' rule)" else "") in
+  let (q,b,e) =
+    try Event.destr_exn ev
+    with Event.NoQuant ->
+      tacerror "swap_quant_ev: no quantification in event %a.\n%s"
+        Event.pp ev
+        (if is_SomeQuant (Event.expr ev) then
+           "(Remember there is an \'unwrap_quant_ev\' rule)"
+         else "")
+  in
   let rec go j e = match e.e_node with
     | Quant(q0,b0,e0) when j <= 0 -> (q0,b0,e0)
     | Quant(q,b,e) ->

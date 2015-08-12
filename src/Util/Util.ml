@@ -1,7 +1,7 @@
 (* * Utility functions
  * This module defines types tagged with [int]s, some convenience functor
- *  applications for maps, sets, hashtables, and some convenience functions
- *  for lists and pretty printing.
+ * applications for maps, sets, hashtables, and some convenience functions
+ * for lists and pretty printing.
  *)
 
 open Abbrevs
@@ -14,8 +14,7 @@ module type Tagged = sig
   val tag : t -> int
 end
 
-module type OrderedHash =
-sig
+module type OrderedHash = sig
   type t
   val hash : t -> int
   val equal : t -> t -> bool
@@ -29,12 +28,11 @@ module OrderedHash (X : Tagged) : OrderedHash with type t = X.t = struct
   let compare t1 t2 = Pervasives.compare (X.tag t1) (X.tag t2)
 end
 
-module StructMake (X:Tagged) =
-  struct
-    module T = OrderedHash(X)
-    module M = Map.Make(T)
-    module S = Set.Make(T)
-    module H = Hashtbl.Make(T)
+module StructMake (X : Tagged) = struct
+  module T = OrderedHash(X)
+  module M = Map.Make(T)
+  module S = Set.Make(T)
+  module H = Hashtbl.Make(T)
 end
 
 module Ints = StructMake (struct
@@ -309,7 +307,6 @@ let last xs =
     | []              -> raise Not_found
     | x::[]           -> x
     | _::(_::_ as xs) -> go xs
-
   in
   go xs
 

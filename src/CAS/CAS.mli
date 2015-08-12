@@ -1,8 +1,6 @@
-(*s Interface to computer algebra systems Singular, Sage, and Macaulay. *)
+(* * Use Factory to perform computations on polynomials *)
 
-(*i*)
 open Expr
-(*i*)
 
 (** [mod_reduce a b] returns [true] if
     [a mod b = 0] for polynomials [a] and [b].

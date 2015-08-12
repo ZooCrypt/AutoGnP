@@ -11,7 +11,7 @@ let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Nondet" ls
  * ----------------------------------------------------------------------- *)
 
 type 'a stream =
-    Nil  of (string lazy_t) option
+  | Nil  of (string lazy_t) option
   | Cons of 'a * ('a stream) lazy_t
 
 type 'a nondet = 'a stream lazy_t
@@ -56,7 +56,8 @@ let run n m =
       match sforce m with
       | Nil _       -> List.rev acc
       | Cons (a, b) -> go (pred n) b (a::acc)
-  in go n m []
+  in
+  go n m []
 
 (* ** Useful functions
  * ----------------------------------------------------------------------- *)
@@ -68,7 +69,8 @@ let iter n m f =
       match sforce m with
       | Nil _       -> ()
       | Cons (a, b) -> f a; go (pred n) b
-  in go n m
+  in
+  go n m
 
 let pull m =
   match sforce m with
@@ -94,6 +96,7 @@ let sequence ms =
   List.fold_right go ms (ret [])
 
 let mapM f ms = sequence (List.map f ms)
+
 let foreachM ms f = mapM f ms
 
 let rec msum ms =
@@ -138,8 +141,8 @@ let rec insertions left z right =
   mplus
     (ret (L.rev_append left (z::right)))
     (match right with
-    | []    -> mempty
-    | x::xs -> insertions (x::left) z xs)
+     | []    -> mempty
+     | x::xs -> insertions (x::left) z xs)
 
 let rec permutations xs =
   match xs with

@@ -6,26 +6,27 @@ open Util
 
 (* ** Identiers *)
 
-(** Identifier for (bitstring) length variables. *)
 module Lenvar : IdType.ID = Id
 
-(** Identifier for group variables. *)
 module Groupvar : IdType.ID = Id
 
-(** Identifier for permutations. *)
 module Permvar : IdType.ID = Id
 
 (* ** Permutation keys *)
 
-type key_elem = SKey | PKey
+module KeyElem = struct
+  type t = SKey | PKey
+    with compare
+  
+  let hash = Hashtbl.hash
 
-let hash_key_elem = function
-  | SKey -> 1
-  | PKey -> 2
+  let equal ke1 ke2 =
+    compare ke1 ke2 = 0
 
-let string_of_key_elem = function
-  | SKey -> "Secret Key"
-  | PKey -> "Public Key"
+  let pp fmt = function
+    | SKey -> pp_string fmt "SKey"
+    | PKey -> pp_string fmt "Pkey"
+end
 
 (* ** Types and type nodes *)
 
@@ -41,14 +42,14 @@ and ty_node =
   | Prod of ty list
   | Int 
   | KeyPair of Permvar.id
-  | KeyElem of key_elem * Permvar.id
+  | KeyElem of KeyElem.t * Permvar.id
 
-(** Type equality and hashing. *)
+(* ** Equality, hashing, and hash consing *)
+
 let ty_equal : ty -> ty -> bool = (==)
 let ty_hash t = t.ty_tag
 let ty_compare t1 t2 = t1.ty_tag - t2.ty_tag
 
-(** Hashconsing for types. *)
 module Hsty = Hashcons.Make (struct
   type t = ty
 
@@ -57,10 +58,10 @@ module Hsty = Hashcons.Make (struct
     | BS lv1, BS lv2                 -> Lenvar.equal lv1 lv2
     | Bool, Bool                     -> true
     | G gv1, G gv2                   -> Groupvar.equal gv1 gv2
-    | KeyPair p1, KeyPair p2         -> Permvar.equal p1 p2
-    | KeyElem(k1,p1), KeyElem(k2,p2) -> k1 = k2 && Permvar.equal p1 p2
     | Fq, Fq                         -> true
     | Prod ts1, Prod ts2             -> list_eq_for_all2 ty_equal ts1 ts2
+    | KeyPair p1, KeyPair p2         -> Permvar.equal p1 p2
+    | KeyElem(k1,p1), KeyElem(k2,p2) -> KeyElem.equal k1 k2 && Permvar.equal p1 p2
     | _                              -> false
 
   let hash t =
@@ -72,7 +73,7 @@ module Hsty = Hashcons.Make (struct
     | Prod ts       -> hcomb_l ty_hash 3 ts
     | Int           -> 6
     | KeyPair p     -> hcomb 7 (Permvar.hash p)
-    | KeyElem(ke,p) -> hcomb 8 (hcomb (hash_key_elem ke) (Permvar.hash p))
+    | KeyElem(ke,p) -> hcomb 8 (hcomb (KeyElem.hash ke) (Permvar.hash p))
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -86,32 +87,37 @@ module Mty = Ty.M
 module Sty = Ty.S
 module Hty = Ty.H
 
-(** Create type. *)
+(* ** Constructor functions *)
+
 let mk_ty n = Hsty.hashcons {
   ty_node = n;
   ty_tag  = (-1)
 }
 
-(* ** Constructor functions *)
-
-(** Create types: bitstring, group, field, boolean, tuple. *)
 let mk_BS lv = mk_ty (BS lv)
+
 let mk_G gv = mk_ty (G gv)
+
 let mk_KeyPair pid = mk_ty (KeyPair pid)
+
 let mk_KeyElem ke pid = mk_ty (KeyElem(ke,pid))
+
 let mk_Fq = mk_ty Fq
+
 let mk_Bool = mk_ty Bool
+
 let mk_Int = mk_ty Int
+
 let mk_Prod tys = 
   match tys with
   | [t] -> t 
-  | _ -> mk_ty (Prod tys)
+  | _   -> mk_ty (Prod tys)
 
 (* ** Indicator and destructor functions *)
 
 let is_G ty = match ty.ty_node with
   | G _ -> true
-  | _ -> false
+  | _   -> false
 
 let is_Fq ty = match ty.ty_node with
   | Fq -> true
@@ -119,36 +125,37 @@ let is_Fq ty = match ty.ty_node with
 
 let is_Prod ty = match ty.ty_node with
   | Prod _ -> true
-  | _  -> false
+  | _      -> false
 
-let destr_G ty = match ty.ty_node with
+let destr_G_exn ty =
+  match ty.ty_node with
   | G gv -> gv
-  | _    -> assert false
+  | _    -> raise Not_found
 
-let destr_BS ty = 
+let destr_BS_exn ty = 
   match ty.ty_node with
   | BS lv -> lv
-  | _     -> assert false
+  | _     -> raise Not_found
 
-let destr_KeyPair ty = 
+let destr_KeyPair_exn ty = 
   match ty.ty_node with
   | KeyPair lv -> lv
-  | _     -> assert false
+  | _          -> raise Not_found
 
-let destr_KeyElem ty = 
+let destr_KeyElem_exn ty = 
   match ty.ty_node with
   | KeyElem(ke,lv) -> (ke,lv)
-  | _              -> assert false
+  | _              -> raise Not_found
+
+let destr_Prod_exn ty =
+  match ty.ty_node with
+  | Prod ts -> ts
+  | _       -> raise Not_found
 
 let destr_Prod ty =
   match ty.ty_node with
-  | Prod ts -> ts
-  | _ -> assert false
-
-let destr_Prod_no_fail ty =
-  match ty.ty_node with
   | Prod ts -> Some ts
-  | _ -> None
+  | _       -> None
 
 (* ** Pretty printing *)
 
@@ -158,6 +165,7 @@ let pp_group fmt gv =
   else F.fprintf fmt "G_%s" (Groupvar.name gv)
 
 let rec pp_ty fmt ty =
+  let open KeyElem in
   match ty.ty_node with
   | BS lv             -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
   | Bool              -> F.fprintf fmt "Bool"

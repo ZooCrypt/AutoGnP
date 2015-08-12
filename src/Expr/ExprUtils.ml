@@ -18,18 +18,22 @@ let ty_prod_vs vs =
 
 let is_V e = match e.e_node with V _ -> true | _ -> false
 
-let is_H e = match e.e_node with H _ -> true | _ -> false
+let is_Quant e = match e.e_node with Quant(_,_,_) -> true | _ -> false
 
-let is_Quant q e = match e.e_node with Quant(q',_,_) when q=q' -> true | _ -> false
-let is_SomeQuant e = match e.e_node with Quant(_,_,_) -> true | _ -> false
-let is_All = is_Quant All
-let is_Exists = is_Quant Exists
+let is_Quant_fixed q e =
+  match e.e_node with
+  | Quant(q',_,_) when q=q' -> true
+  | _ -> false
+
+let is_All = is_Quant_fixed All
+
+let is_Exists = is_Quant_fixed Exists
 
 let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
 
 let is_Proj e = match e.e_node with Proj _ -> true | _ ->  false
 
-let is_some_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
+let is_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
 
 let is_FNat e = match e.e_node with Cnst (FNat _) -> true | _ -> false
 
@@ -37,20 +41,18 @@ let is_FOne e = match e.e_node with Cnst (FNat 1) -> true | _ -> false
 
 let is_FZ e = match e.e_node with Cnst (FNat 0) -> true | _ -> false
 
-let is_Cnst c e = match e.e_node with Cnst c' -> c = c' | _ -> false
-
-let is_ProjPermKey ke f e = match e.e_node with
-  | ProjPermKey(ke', kp) when ke = ke' ->
-     let kp_ty = mk_ty (KeyPair f.Psym.pid) in ty_equal kp.e_ty kp_ty
+let is_Cnst_fixed c e =
+  match e.e_node with
+  | Cnst c' -> c = c'
   | _ -> false
-				     
-let is_True e = is_Cnst (B true) e
 
-let is_False e = is_Cnst (B false) e
+let is_True e = is_Cnst_fixed (B true) e
 
-let is_GGen e = is_Cnst GGen e
+let is_False e = is_Cnst_fixed (B false) e
 
-let is_GOne e = is_G e.e_ty && e_equal e (mk_GOne (destr_G e.e_ty))
+let is_GGen e = is_Cnst_fixed GGen e
+
+let is_GOne e = is_G e.e_ty && e_equal e (mk_GOne (destr_G_exn e.e_ty))
 
 let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
@@ -82,6 +84,11 @@ let is_Land e = is_Nary Land e
 
 let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
+let is_RoCall e = match e.e_node with App(RoCall _, _) -> true | _ -> false
+
+let is_RoCall_ros e ros =
+  match e.e_node with App(RoCall ros', _) -> ROsym.equal ros ros' | _ -> false
+
 let is_GLog_gv gv e =
   match e.e_node with App(GLog gv', _) -> Groupvar.equal gv gv' | _ -> false
 
@@ -91,8 +98,11 @@ let is_Not e = is_App Not e
 
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
-  | GExp _ | GLog _ | GInv | EMap _ | Perm _
-  | Eq | Ifte | Not -> false 
+  | GExp _ | GLog _ | GInv
+  | EMap _ | Perm _ 
+  | RoCall _ | RoLookup _
+  | Eq | Ifte | Not
+  | ProjKeyElem _ | FunCall _   -> false 
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -121,8 +131,8 @@ let pp_number_tuples = ref false
 (** Pretty print constant. *)
 let pp_cnst fmt c ty =
   match c with
-  | GGen   -> if Groupvar.name (destr_G ty) <> ""
-              then F.fprintf fmt "g_%a" Groupvar.pp (destr_G ty)
+  | GGen   -> if Groupvar.name (destr_G_exn ty) <> ""
+              then F.fprintf fmt "g_%a" Groupvar.pp (destr_G_exn ty)
               else F.fprintf fmt "g"
   | FNat n -> F.fprintf fmt "%i" n
   | Z      -> F.fprintf fmt "0%%%a" pp_ty ty
@@ -155,13 +165,15 @@ let pp_paren hv = pp_enclose hv ~pre:"(" ~post:")"
 (** Enclose with parens depending on boolean argument. *)
 let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 
+
 let pp_binder fmt (vs,o) =
   let l_paren,r_paren =
     match vs with
     | [_] -> "",""
     | _   -> "(",")"
   in
-  F.fprintf fmt "%s%a%s in L_%a" l_paren (pp_list "," Vsym.pp) vs r_paren Oracle.pp o
+  F.fprintf fmt "%s%a%s in L_%a"
+    l_paren (pp_list "," Vsym.pp) vs r_paren Olist.pp o
 
 (** Pretty-prints expression assuming that
     the expression above is of given type. *)
@@ -170,11 +182,13 @@ let rec pp_exp_p ~qual above fmt e =
   | V(v)       -> 
     (* F.fprintf fmt "%a.%i" Vsym.pp v (Vsym.hash v) *)
     F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
+  (*
   | H(h,e)     -> 
-    F.fprintf fmt "@[<hov>%a(%a)@]" Hsym.pp h (pp_exp_p ~qual PrefixApp) e
+    F.fprintf fmt "@[<hov>%a(%a)@]" Fsym.pp h (pp_exp_p ~qual PrefixApp) e
   | ProjPermKey(ke,kp) -> F.fprintf fmt "@[<hov>get_%s(%a)@]"
                                     (if ke = PKey then "pk" else "sk")
                                     (pp_exp_p ~qual PrefixApp) kp
+   *)
   | Tuple(es) -> 
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -301,8 +315,10 @@ exception Destr_failure of string
 
 let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
 
+(*
 let destr_H e = 
   match e.e_node with H(h,e) -> (h,e) | _ -> raise (Destr_failure "H")
+*)
 
 let destr_Perm e =
   match e.e_node with
@@ -312,10 +328,12 @@ let destr_Perm e =
       | _ -> raise (Destr_failure "Perm"))
   | _ -> raise (Destr_failure "Perm")
 
+(*
 let destr_ProjPermKey e =
   match e.e_node with
   | ProjPermKey (ke,kp) -> (ke,kp)
   | _ -> raise (Destr_failure "ProjPermKey")
+ *)
 
 let destr_Quant e = 
   match e.e_node with Quant(q,b,e) -> (q,b,e) | _ -> raise (Destr_failure "Quant")
@@ -355,19 +373,24 @@ let destr_Nary s o e =
   | Nary(o',es) when o = o' -> es 
   | _ -> raise (Destr_failure s)
 
-let destr_GMult  e = destr_Nary "GMult"  GMult e
+let destr_GMult e = destr_Nary "GMult"  GMult e
 
-let destr_GExp   e = 
+let destr_GExp e = 
   match e.e_node with 
   | App(GExp _,[e1;e2]) -> e1,e2
   | _ -> raise (Destr_failure "GExp")
 
-let destr_GLog   e =
+let destr_RoCall e =
+  match e.e_node with 
+  | App(RoCall ros,[e1]) -> ros,,be1
+  | _ -> raise (Destr_failure "GLog")
+
+let destr_GLog e =
   match e.e_node with 
   | App(GLog _,[e1]) -> e1
   | _ -> raise (Destr_failure "GLog")
 
-let destr_EMap   e =
+let destr_EMap e =
   match e.e_node with 
   | App(EMap es,[e1;e2]) -> es,e1,e2
   | _ -> raise (Destr_failure (fsprintf "EMap for %a" pp_exp e))
@@ -376,13 +399,13 @@ let destr_FOpp   e = destr_App_uop "FOpp"   FOpp e
 let destr_FMinus e = destr_App_bop "FMinus" FMinus e
 let destr_FInv   e = destr_App_uop "FInv"   FInv e
 let destr_FDiv   e = destr_App_bop "FDiv"   FDiv e 
-let destr_FPlus  e = destr_Nary   "FPlus"  FPlus e
-let destr_FMult  e = destr_Nary   "FMult"  FMult e
+let destr_FPlus  e = destr_Nary    "FPlus"  FPlus e
+let destr_FMult  e = destr_Nary    "FMult"  FMult e
 
-let destr_Eq     e = destr_App_bop "Eq"   Eq e 
-let destr_Not    e = destr_App_uop "Not"  Not e
-let destr_Xor    e = destr_Nary   "Xor"  Xor e 
-let destr_Land   e = destr_Nary   "Land" Land e
+let destr_Eq   e = destr_App_bop "Eq"   Eq e 
+let destr_Not  e = destr_App_uop "Not"  Not e
+let destr_Xor  e = destr_Nary    "Xor"  Xor e 
+let destr_Land e = destr_Nary    "Land" Land e
 
 let is_InEq e = is_Not e && is_Eq (destr_Not e)
 
@@ -422,8 +445,7 @@ let e_iter_ty_maximal ty g e0 =
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
-    | ProjPermKey(_,kp) -> go ie kp; run e0
-    | H(_,e) | Proj(_,e) | Quant(_,_,e)-> 
+    | Proj(_,e) | Quant(_,_,e)-> 
       go ie e; run e0
     | Tuple(es) | App(_,es) | Nary(_,es) ->
       L.iter (go ie) es;  run e0
@@ -431,7 +453,8 @@ let e_iter_ty_maximal ty g e0 =
   go false e0
 
 let e_vars = e_find_all is_V
-let e_hash_calls = e_find_all is_H                        
+
+(* let e_hash_calls = e_find_all is_H *)
 
 let has_log e = e_exists (fun e -> is_GLog e) e
 

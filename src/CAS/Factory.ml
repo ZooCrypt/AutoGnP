@@ -1,6 +1,6 @@
-(*s Bindings to factory C++ library for polynomial arithmetic (used in Singular) *)
+(* * Bindings to factory C++ library for polynomial arithmetic (used in Singular) *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Util
 open Ctypes
 open Foreign
@@ -8,15 +8,13 @@ open PolyInsts
 open Abbrevs
 
 let _log_i ls = mk_logger "CAS" Bolt.Level.INFO "Factory" ls
-(*i*)
 
 module US = Unsigned.Size_t
 module UL = Unsigned.ULong
 module L  = List
 
-
-(*i ------------------------------------------------------------------------ i*)
-(* \hd{Type definitions} *)
+(* ** Type definitions
+ * ------------------------------------------------------------------------ *)
 
 let cexpvecs = ptr (ptr long)
 let ccoeffs  = ptr long
@@ -37,8 +35,8 @@ let dpl_tail     = field dpoly_list "tail" (ptr_opt dpoly_list)
 let () = seal dpoly_list
 
 
-(*i ------------------------------------------------------------------------ i*)
-(* \hd{Function bindings} *)
+(* ** Function bindings
+ * ------------------------------------------------------------------------ *)
 
 let c_print_cpoly =
   foreign "wrap_print" (int @-> int @-> cexpvecs @-> ccoeffs @-> returning void)
@@ -85,8 +83,8 @@ let c_factor = foreign "wrap_factor"
   (int @-> int @-> cexpvecs @-> ccoeffs @->
    returning (ptr dpoly_list))
 
-(*i ------------------------------------------------------------------------ i*)
-(* \hd{Conversions} *)
+(* ** Conversions
+ * ------------------------------------------------------------------------ *)
 
 let print_cpoly (maxvar,nterms,cexpvecs,ccoeffs) =
   c_print_cpoly maxvar nterms cexpvecs ccoeffs
@@ -239,9 +237,8 @@ let factor p =
   else
     facs
 
-(*i*)
-(* ------------------------------------------------------------------------ *)
-(* \hd{Testing} *)
+(* ** Testing
+ * ------------------------------------------------------------------------ *)
 
 let test_gcd_1 () =
   let open IP in
@@ -331,5 +328,3 @@ let test () =
   test_gcd_div_1 ();
   test_reduce_div ();
   test_factor ()
-
-(*i*)

@@ -1,6 +1,6 @@
-(*s Normal form computation for expressions. *)
+(* * Normal form computation for expressions. *)
 
-(*i*)
+(* ** Imports *)
 open Abbrevs
 open Type
 open Expr
@@ -10,7 +10,8 @@ open Util
 
 let _log_i ls = mk_logger "Norm" Bolt.Level.INFO "Norm" ls
 
-(*i*)
+(* ** ???
+ * ----------------------------------------------------------------------- *)
 
 let rm_tuple_proj e es =
   match es with
@@ -19,7 +20,7 @@ let rm_tuple_proj e es =
       try
         let i, e2 = destr_Proj e1 in
         if i <> 0 then raise Not_found;
-        if List.length es + 1 <> List.length (destr_Prod e2.e_ty) then
+        if List.length es + 1 <> List.length (destr_Prod_exn e2.e_ty) then
           raise Not_found;
         List.iteri (fun i e ->
           let i',e' = destr_Proj e in
@@ -164,7 +165,7 @@ and mk_simpl_nop strong op l =
   | FPlus  | FMult  ->
     assert false (*i norm_expr_field should be called instead i*)
   | GMult ->
-    let gv = match l with e::_ -> destr_G e.e_ty | _ -> assert false in
+    let gv = match l with e::_ -> destr_G_exnx e.e_ty | _ -> assert false in
     let l = List.map (destr_gexp gv) l in
     let p = norm_field_expr (mk_FPlus l) in
     mk_gexp gv p
@@ -209,11 +210,10 @@ and norm_expr ?strong:(strong=false) e =
   match e.e_node with
   | V _ -> norm_ggt e
   | Quant(q,b,e) -> mk_Quant q b (norm_expr ~strong e)
-  | Cnst GGen ->  mk_gexp (destr_G e.e_ty) mk_FOne
+  | Cnst GGen ->  mk_gexp (destr_G_exn e.e_ty) mk_FOne
   | Cnst _ -> e
-  | H(h,e) -> norm_ggt (mk_H h (norm_expr ~strong e))
   | App(Perm(ptype1,f),[k1;e1]) -> (
-    let k_o_p = key_elem_of_perm_type in
+    let k_o_p = KeyElem.key_elem_of_perm_type in
     let k1_norm = norm_expr ~strong k1 and
 	e1_norm = norm_expr ~strong e1 in
     match e1_norm.e_node with
@@ -221,9 +221,6 @@ and norm_expr ?strong:(strong=false) e =
 	 when (is_ProjPermKey (k_o_p ptype1) f k1_norm) && ptype1 <> ptype2 &&
                 (is_ProjPermKey (k_o_p ptype2) f k2_norm) -> e2_norm 
     | _ -> mk_Perm f ptype1 k1_norm e1_norm )
-  | ProjPermKey(ke,kp) ->
-     let kp_norm = norm_expr ~strong kp in
-     mk_ProjPermKey ke kp_norm
   | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
   | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)     
   | App (op, l) ->
@@ -341,8 +338,6 @@ let norm_split_if ~nf e =
     match e.e_node with
     | V _ | Cnst _ -> Iexpr e
     | Quant(q,b,e)     -> map_nif ~f:(mk_Quant q b) (go e)
-    | H(h,e)       -> map_nif ~f:(mk_H h) (go e)
-    | ProjPermKey(ke,kp)  -> map_nif ~f:(mk_ProjPermKey ke) (go kp)
     | Proj(i,e)    -> map_nif ~f:(mk_Proj i) (go e)
     | Tuple(es)    -> napp_nifs ~f:mk_Tuple (L.map go es)
     | App(_,_) when is_Ifte e ->
