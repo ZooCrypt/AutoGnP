@@ -94,14 +94,14 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
      normal form, we therefore require only an in_field flag *)
   let rec register_subexprs in_field e = 
     match e.e_node with
-    (* | H(_,e1)     -> add_sub e; register_subexprs false e1
-       | ProjPermKey(_,kp) -> add_sub e; register_subexprs false kp; *)
     | Tuple es    -> add_sub_constr e; List.iter (register_subexprs false) es
     | Quant(_,_,e1) -> add_sub e; register_subexprs true e1
     | Proj(_,e1)  -> add_sub e; (register_subexprs false) e1
     | App(op, es) -> 
-      begin match op with (* FIXME : Permutation handling *)
-      | (ProjKeyElem _|FunCall _|RoCall _|RoLookup _) -> fixme "no support for these"
+      begin match op with
+      | (ProjKeyElem _) -> fixme "no support for this"
+      | (FunCall _ | RoCall _ | RoLookup _) ->
+        add_sub e; List.iter (register_subexprs false) es
       | FOpp | FMinus | FInv | FDiv -> 
         if not in_field then add_sub_solver e;
         List.iter (register_subexprs true) es
@@ -147,7 +147,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       (* normal form is g^log(v) and must have been already added *)
     | V _ when is_G e.e_ty -> ()
     | V _                  -> add_sub_solver e
-    | Cnst _ -> add_sub_constr e
+    | Cnst _               -> add_sub_constr e
   in
 
   (* Try to construct unknown useful expressions *)

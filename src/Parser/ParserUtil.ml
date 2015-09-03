@@ -9,6 +9,7 @@ open Syms
 open ParserTypes
 
 module E = Expr
+module EU = ExprUtils
 module Ht = Hashtbl
 module G = Game
 module GU = GameUtils
@@ -208,7 +209,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       begin match e1.E.e_ty.T.ty_node with
       | T.Fq  -> E.mk_FDiv e1 e2
       | T.G _ -> E.mk_GMult [e1; E.mk_GInv e2]
-      | _     -> fail_parse "type error"
+      | _     -> tacerror "type error in division of %a / %a" EU.pp_expr e1 EU.pp_expr e2
       end
     | Mult(e1,e2)  ->
       let e1 = go e1 in
@@ -216,7 +217,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       begin match e1.E.e_ty.T.ty_node with
       | T.Fq  -> E.mk_FMult [e1;e2]
       | T.G _ -> E.mk_GMult [e1;e2]
-      | _     -> fail_parse "type error"
+      | _     -> tacerror "type error in multiplication of %a / %a" EU.pp_expr e1 EU.pp_expr e2
       end
   in
   go pe0

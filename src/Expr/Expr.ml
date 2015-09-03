@@ -311,13 +311,13 @@ let mk_Perm f ptype k e =
   mk_App (Perm(ptype,f)) [k; e] e.e_ty
 
 let mk_FunCall f e =
-  mk_App (FunCall(f)) [e] e.e_ty 
+  mk_App (FunCall(f)) [e] f.Fsym.codom
 
 let mk_RoCall h e =
-  mk_App (RoCall(h)) [e] e.e_ty 
+  mk_App (RoCall(h)) [e] h.ROsym.codom
 
 let mk_RoLookup h e =
-  mk_App (RoLookup(h)) [e] e.e_ty 
+  mk_App (RoLookup(h)) [e] h.ROsym.codom
  
 (* *** Nary mk functions *)
 

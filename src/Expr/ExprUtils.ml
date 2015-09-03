@@ -194,13 +194,6 @@ let rec pp_exp_p ~qual above fmt e =
   | V(v)       -> 
     (* F.fprintf fmt "%a.%i" Vsym.pp v (Vsym.hash v) *)
     F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
-  (*
-  | H(h,e)     -> 
-    F.fprintf fmt "@[<hov>%a(%a)@]" Fsym.pp h (pp_exp_p ~qual PrefixApp) e
-  | ProjPermKey(ke,kp) -> F.fprintf fmt "@[<hov>get_%s(%a)@]"
-                                    (if ke = PKey then "pk" else "sk")
-                                    (pp_exp_p ~qual PrefixApp) kp
-   *)
   | Tuple(es) -> 
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -274,9 +267,9 @@ and pp_op_p ~qual above fmt (op, es) =
     | _ ->
       pp_prefix Not   "not "  ""    a
     end
-  | EMap es,[a;b] ->
-    let ppe i = pp_exp_p ~qual (Infix(EMap es,i)) in
-    F.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
+  | EMap _,[a;b] ->
+    let ppe = pp_exp_p ~qual PrefixApp in
+    F.fprintf fmt "e(%a,%a)" ppe a ppe b
   | Perm(ptype,f), [proj_ke;arg] ->
     F.fprintf fmt
       "%a%s(%a,%a)" Psym.pp f (if ptype = IsInv then "_inv" else "")
@@ -290,13 +283,13 @@ and pp_op_p ~qual above fmt (op, es) =
   | GInv, [a] ->
     pp_prefix GInv  ""      "^-1" a
   | ProjKeyElem kt, [e] ->
-    F.fprintf fmt "%a(%a)" Type.KeyElem.pp kt (pp_exp_p ~qual above) e 
+    F.fprintf fmt "%a(%a)" Type.KeyElem.pp kt (pp_exp_p ~qual PrefixApp) e 
   | FunCall f, [e] ->
-    F.fprintf fmt "%a(%a)" Fsym.pp f (pp_exp_p ~qual above) e 
+    F.fprintf fmt "%a(%a)" Fsym.pp f (pp_exp_p ~qual PrefixApp) e 
   | RoCall h, [e] ->
-    F.fprintf fmt "%a(%a)" ROsym.pp h (pp_exp_p ~qual above) e 
+    F.fprintf fmt "%a(%a)" ROsym.pp h (pp_exp_p ~qual PrefixApp) e 
   | RoLookup h, [e] ->
-    F.fprintf fmt "%a[%a]" ROsym.pp h (pp_exp_p ~qual above) e 
+    F.fprintf fmt "%a[%a]" ROsym.pp h (pp_exp_p ~qual PrefixApp) e 
   | (ProjKeyElem _ | FunCall _ | RoCall _ | RoLookup _), ([] | _::_::_)
   | (FOpp | FInv | Not | GInv | GLog _), ([] | _::_::_)
   | (Perm _ | FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)

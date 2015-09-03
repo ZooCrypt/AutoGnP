@@ -500,6 +500,7 @@ let t_rnd_oracle p c1 c2 = prove_by (rrnd_oracle p c1 c2)
 
 let rassert p e ju =
   let se = ju.ju_se in
+  assert (not (is_Quant se.se_ev));
   let cmd, sec = get_se_ctxt se p in
   assert (equal_ty e.e_ty mk_Bool);
   (* check that e well-defined at desired position, exploits
@@ -510,7 +511,7 @@ let rassert p e ju =
   let ju1 =
     { ju_pr = Pr_Succ;
       ju_se = { se with
-                se_ev = fixme "Event.insert ~e:(mk_Not e) se.se_ev" } }
+                se_ev = mk_Land [ mk_Not e; se.se_ev ] } }
   in
   let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
   Rassert(p,e), [ ju1; ju2 ]
@@ -710,14 +711,15 @@ let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   let se = ju.ju_se in
   ensure_pr_Succ_or_Adv "case_ev" ju;
   let ev = se.se_ev in
+  assert (not (is_Quant ev));
   if not ae && conj_or_negation_included e ev then
     tacerror "case_ev: event or negation already in event";
   let ju1 =
     { ju with
-      ju_se = { se with se_ev = fixme "Event.insert ~e se.se_ev" } }
+      ju_se = { se with se_ev = mk_Land [ e; se.se_ev] } }
   in
   let ju2 = { ju with ju_se =
-                { se with se_ev = fixme "Event.insert ~e:(mk_Not e) se.se_ev" } }
+                { se with se_ev = mk_Land [ mk_Not e; se.se_ev] } }
   in
   Rcase_ev(flip,e), if flip then [ju2; ju1] else [ju1;ju2]
 
