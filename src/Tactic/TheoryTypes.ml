@@ -23,8 +23,7 @@ open CoreRules
    \end{itemize} *)
 type theory_proof_state =
   | BeforeProof
-  | ActiveProof
-    of proof_state * proof_state list * proof_state nondet * proof_state option
+  | ActiveProof of proof_state * proof_state list * proof_state nondet * proof_state option
   | ClosedTheory of proof_tree
 
 (** We implicitly define length and group variables for which
@@ -38,8 +37,8 @@ type theory_state = {
 
   (* explicitly defined *)
   ts_permdecls  : Psym.t    Mstring.t;
-  ts_rodecls    : Fsym.t    Mstring.t;
-  ts_lkupdecls  : Fsym.t    Mstring.t;
+  ts_rodecls    : ROsym.t   Mstring.t;
+  ts_fundecls   : Fsym.t    Mstring.t;
   ts_odecls     : Osym.t    Mstring.t;
   ts_adecls     : Asym.t    Mstring.t;
   ts_emdecls    : Esym.t    Mstring.t;

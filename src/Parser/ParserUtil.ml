@@ -87,7 +87,7 @@ let bind_of_parse_bind (vmap : GU.vmap) ts lH =
          with Not_found ->
            fail_parse (F.sprintf "undefined random oracle %s" h)
        in
-       let x = create_var vmap ts Unqual s h.Fsym.dom in
+       let x = create_var vmap ts Unqual s h.ROsym.dom in
        (x, h))
     lH
 
@@ -96,24 +96,26 @@ let string_of_qvar (qual,s) =
   | Unqual -> s
   | Qual q -> q^"`"^s
 
-let init_odef_params vmap_g ts ?(qual=true) oname _vs = 
+let init_odef_params vmap_g ts ?(qual=true) oname vs = 
   let osym =
-    try fixme "Oracle.mk_O(Mstring.find oname ts.ts_odecls)"
-    with Not_found -> try fixme "Oracle.mk_RO(Mstring.find oname ts.ts_rodecls)"
-                      with Not_found -> fail_parse "oracle name not declared"
+    try E.Olist.Olist(Mstring.find oname ts.ts_odecls)
+    with Not_found ->
+      try E.Olist.ROlist(Mstring.find oname ts.ts_rodecls)
+      with Not_found -> fail_parse "oracle name not declared"
   in
   let qual = if qual then (Qual oname) else Unqual in
   let vs =
-    match fixme "(Oracle.get_dom osym).Type.ty_node, vs" with
+    match (E.Olist.dom osym).Type.ty_node, vs with
     | Type.Prod([]), [] -> []
     | Type.Prod(tys), vs when L.length tys = L.length vs ->
       L.map
         (fun (v,t) -> create_var vmap_g ts qual v t)
         (L.combine vs tys)
     | _, [v] ->
-      [create_var vmap_g ts qual v (fixme "Oracle.get_dom osym")]
+      [create_var vmap_g ts qual v (E.Olist.dom osym)]
     | _ ->
-      tacerror "Pattern matching in oracle definition invalid: %a" (fixme "Oracle.pp") osym
+      tacerror "Pattern matching in oracle definition invalid: %a"
+        E.Olist.pp osym
   in
   vs,osym
 
@@ -139,12 +141,11 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Tuple(es) -> E.mk_Tuple (L.map go es)
     | ProjPermKey(ke,kp) -> E.mk_ProjKeyElem ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
-
     | SLookUp(s,es) ->
-       let h = try Mstring.find s ts.ts_lkupdecls with
+       let h = try Mstring.find s ts.ts_rodecls with
                  Not_found -> fail_parse (F.sprintf "Undefined random oracle %s" s) in
        let es = mk_Tuple (L.map go es) in
-       E.mk_FunCall h es
+       E.mk_RoLookup h es
     | SApp(s,es) when Mstring.mem (s ^ "_inv") ts.ts_permdecls ->
        begin
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
@@ -165,8 +166,13 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (L.map go es) in
-      E.mk_FunCall h es
+      E.mk_RoCall h es
              
+    | SApp(s,es) when Mstring.mem s ts.ts_fundecls ->
+      let h = Mstring.find s ts.ts_fundecls in
+      let es = mk_Tuple (L.map go es) in
+      E.mk_FunCall h es
+
     | SApp(s,[a;b]) when Mstring.mem s ts.ts_emdecls ->
       let es = Mstring.find s ts.ts_emdecls in
       E.mk_EMap es (go a) (go b)
@@ -238,7 +244,7 @@ let obody_of_parse_obody vmap ts ~oname (m,e) =
   (m,e)
 
 let odec_of_parse_odec vmap_g ts ~oname od =
-  (*c create local vmap and use everywhere exceptin eq-hybrid-oracle *)
+  (* create local vmap and use everywhere except in eq-hybrid-oracle *)
   let vmap_l = Ht.copy vmap_g in
   match od with
   | Odef ob ->
@@ -251,11 +257,11 @@ let odec_of_parse_odec vmap_g ts ~oname od =
   
 let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
   let vs,osym = match init_odef_params vmap_g ts oname vs with
-    (* | vs,_ (* Osym.O osym *) -> vs,fixme "osym" *)
-    | _ -> tacerror "This should not be happening..."
+    | vs, E.Olist.Olist os -> vs, os
+    | _                    -> fail_parse "fixme"
   in
   let od = odec_of_parse_odec vmap_g ts ~oname odec in
-  (osym, vs, od)
+  osym, vs, od
 
 let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
   match gc with
@@ -289,15 +295,17 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       G.GCall([v], asym, e, os)
     | Type.Prod(tys), vs ->
       if L.length tys <> L.length vs then
-        tacerror "Parser: wrong argument for adversary return value, expected %i variables for type %a"
-          (L.length vs)Type.pp_ty cty;
+        tacerror
+          "Parser: wrong argument for adversary return value, expected %i variables for type %a"
+          (L.length vs) Type.pp_ty cty;
       let vts = L.combine vs tys in
       let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
     | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.KeyElem _|Type.KeyPair _)
       , ([] | _ :: _ :: _) -> 
-      tacerror "Parser: wrong argument for adversary return value, expected one variable for type Bool"
-          Type.pp_ty cty (L.length vs);
+      tacerror
+        "Parser: wrong argument for adversary return value, expected one variable (type %a), got %i"
+        Type.pp_ty cty (L.length vs)
     end
 
 let gdef_of_parse_gdef (vmap : GU.vmap) ts gd =

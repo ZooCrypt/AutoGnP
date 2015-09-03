@@ -29,7 +29,7 @@ rconv [
   a <-$ Fq;
   c <-$ Fq;
   (gu,gv) <- A1(g_1 ^ a, g_1 ^ (a*c));
-] : not (gv = (g_2 ^ 0)) /\ (e(g_1,gu)*e(g_1^c,gv) = (g_t ^ 0)). (* fixme: rnorm_unknown broken *)
+] : not (gv = (g_2 ^ 0)) /\ (e(g_1,gu)*e(g_1^c,gv) = (g_t ^ 0)). (* FIXME: rnorm_unknown broken *)
 rlet_abstract 3 ga g_1^a.
 rlet_abstract 4 gc g_1^c.
 rlet_abstract 5 gac g_1^(a*c).

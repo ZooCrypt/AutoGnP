@@ -68,7 +68,7 @@
       ; "bysimp", BYSIMP
       ; "split_ev", RSPLIT_EV
       ; "false_ev", RFALSE_EV
-      (* ; "with" , WITH *)
+      ; "with" , WITH
       ; "except", REXCEPT
       ; "except_oracle", REXCEPT_ORACLE
       ; "rnd", RRND

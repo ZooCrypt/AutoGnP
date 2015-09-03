@@ -88,7 +88,11 @@ function getPrevDot(from) {
 }
 var emacs = ace.require("ace/keyboard/emacs").handler;
 var editorProof = ace.edit("editor-proof");
-editorProof.setTheme("ace/theme/eclipse");
+editorProof.setTheme("ace/theme/solarized_light");
+editorProof.setOptions({
+  fontFamily: "Menlo",
+  fontSize: "10pt"
+});
 editorProof.setShowPrintMargin(false);
 editorProof.setDisplayIndentGuides(false);
 editorProof.setHighlightActiveLine(false);
@@ -130,13 +134,21 @@ function markLocked(c) {
 /* Goal and message editor and resizing                             */
 /* ******************************************************************/
 var editorGoal = ace.edit("editor-goal");
-editorGoal.setTheme("ace/theme/eclipse");
+editorGoal.setTheme("ace/theme/solarized_light");
+editorGoal.setOptions({
+  fontFamily: "Menlo",
+  fontSize: "10pt"
+});
 editorGoal.setHighlightActiveLine(false);
 editorGoal.setShowPrintMargin(false);
 editorGoal.setDisplayIndentGuides(false);
 editorGoal.renderer.setShowGutter(false);
 var editorMessage = ace.edit("editor-message");
-editorMessage.setTheme("ace/theme/eclipse");
+editorMessage.setTheme("ace/theme/solarized_light");
+editorMessage.setOptions({
+  fontFamily: "Menlo",
+  fontSize: "10pt"
+});
 editorMessage.setHighlightActiveLine(false);
 editorMessage.setDisplayIndentGuides(false);
 editorMessage.setShowPrintMargin(false);

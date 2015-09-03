@@ -387,8 +387,8 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   in
   let assm_se = norm_se ~norm:(fun x -> x) assm_se in
   let conjs = destr_Land assm_se.se_ev in
-  let _ineq = L.hd (L.filter is_Not conjs) in
-  let nineq = fixme "Norm.norm_expr_nice (mk_Not ineq)" in
+  let ineq = L.hd (L.filter is_Not conjs) in
+  let nineq = NormUtils.norm_expr_nice (mk_Not ineq) in
   guard (not (Se.mem nineq icases)) >>= fun _ ->
   let assm_len = L.length assm.ac_prefix in
   let ev_mapping' =
@@ -403,34 +403,38 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
       ev_mapping
       ev_mapping'
   in
-  let get_bind bindings = match bindings with [(vs,_)] -> vs | _ -> tacerror "fail" in
+  (* let get_bind bindings = match bindings with [(vs,_)] -> vs | _ -> tacerror "fail" in *)
   let argv = Vsym.mk "arg" aarg.e_ty in
   let assm_tac = 
     (    CR.t_case_ev ~flip:true nineq
      @>> [ before_t_assm
            @> (fun ju ->
-               t_abstract_deduce ~keep_going:false ts assm_len argv aarg (Some (L.length ju.ju_se.se_gdef - 1)) ju)
+               let last = Some (L.length ju.ju_se.se_gdef - 1) in
+               t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
            @> (fun ju ->
                let ev = ju.ju_se.se_ev in
-               let vs = get_bind (fixme "Event.binding ev") in
+               let vs = [] (* FIXME: get_bind Event.binding ev *) in
                let asym = Asym.mk "CC" argv.Vsym.ty (mk_Prod (L.map (fun v -> v.Vsym.ty) vs))  in
                let v = Vsym.mk "f_arg" aarg.e_ty in
                CR.t_find ([v],e_replace aarg (mk_V v) ev) aarg asym vs ju)
            @> (t_seq_fold
-                (L.map (fun (v,e) ju -> t_let_abstract (L.length ju.ju_se.se_gdef) v e None false ju) ev_mapping'))
+                (L.map
+                   (fun (v,e) ju -> t_let_abstract (L.length ju.ju_se.se_gdef) v e None false ju)
+                   ev_mapping'))
            @> t_print log_i ("before_comp_assm")
            @> (fun ju ->
                let argv = Vsym.mk "arg__" aarg.e_ty in
-               t_abstract_deduce ~keep_going:false ts assm_len argv aarg (Some (L.length ju.ju_se.se_gdef - 1)) ju)
+               let last = Some (L.length ju.ju_se.se_gdef - 1) in
+               t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
            @> (fun ju -> CR.t_assm_comp assm [assm_len,L.length ju.ju_se.se_gdef - 1] subst ju)
          ; CR.t_id])
   in
   let sconjs = destr_Land sassm_ev in
-  let _sineq = L.hd (L.filter is_Not sconjs) in
-  let snineq = fixme "Norm.abbrev_ggen sineq" in
+  let sineq = L.hd (L.filter is_Not sconjs) in
+  let snineq = NormUtils.abbrev_ggen sineq in
   if is_Land ju.ju_se.se_ev &&
-     L.exists (fun _e ->
-       equal_expr (fixme "Norm.abbrev_ggen e") snineq) (destr_Land ju.ju_se.se_ev)
+     L.exists (fun e ->
+       equal_expr (NormUtils.abbrev_ggen e) snineq) (destr_Land ju.ju_se.se_ev)
   then CR.t_assm_comp assm [] subst ju >>= fun ps -> ret (None,ps)
   else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
 

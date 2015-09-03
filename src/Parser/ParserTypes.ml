@@ -53,7 +53,7 @@ let mk_Tuple = function [t] -> t | ts -> Tuple ts
 type parse_ctx = string * parse_ty option * parse_expr
 
 type lcmd =
-    LLet of string * parse_expr
+  | LLet of string * parse_expr
   | LBind of string list * string
   | LSamp of string * parse_ty * parse_expr list
   | LGuard of parse_expr
@@ -65,7 +65,7 @@ type odec = Odef of lcomp | Ohybrid of (lcomp * lcomp * lcomp)
 type odef = string * string list * odec
 
 type gcmd =
-    GLet    of string * parse_expr
+  | GLet    of string * parse_expr
   | GAssert of parse_expr
   | GSamp   of string * parse_ty * parse_expr list
   | GCall   of string list * string * parse_expr * odef list
@@ -91,7 +91,6 @@ type range_pos = assgn_pos option * assgn_pos option
 
 type range = int * int
 type ranges = range_pos list
-
 
 type parse_ev = parse_expr
 
@@ -157,7 +156,8 @@ type tactic =
 
 type instr =
   | PermDecl   of string * parse_ty
-  | RODecl     of string * bool * parse_ty * parse_ty
+  | RODecl     of string * parse_ty * parse_ty
+  | FunDecl    of string * parse_ty * parse_ty
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty

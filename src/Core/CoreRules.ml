@@ -1192,8 +1192,8 @@ let rguard opos tnew ju =
     List.map (fun v -> Vsym.mk (Vsym.to_string v) v.Vsym.ty) seoc.seoc_oargs
   in
     
-  let _tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
-  let _subst =
+  let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
+  let subst =
     L.fold_left2
       (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
       Me.empty seoc.seoc_oargs vs
@@ -1202,13 +1202,14 @@ let rguard opos tnew ju =
   (* bad event *)
   let seoc_bad = 
     { seoc with 
-      seoc_sec = { seoc.seoc_sec with 
-        sec_right = [];
-        sec_ev = fixme
-                   "Event.mk ~quant:Exists
-                    ~binding:(vs,Oracle.mk_O seoc.seoc_osym)
-                    (e_subst subst (mk_Land (mk_Not t::tests)))"
-                 }
+      seoc_sec =
+        { seoc.seoc_sec with 
+          sec_right = [];
+          sec_ev = mk_Quant
+                     Exists
+                     (vs,Olist.Olist seoc.seoc_osym)
+                     (e_subst subst (mk_Land (mk_Not t::tests)))
+        }
     }
   in
   let i = if tnew = None then [] else [LGuard t] in
@@ -1227,11 +1228,8 @@ let t_guard p tnew = prove_by (rguard p tnew)
  * ----------------------------------------------------------------------- *)
 
 let rguess asym fvs ju = 
-  let _ev = ju.ju_se.se_ev in
-  let (q,b,ev_expr) = fixme "" (*
-    try Event.destr_exn ev
-    with Event.NoQuant -> tacerror "guess : invalid event, quantification required." *)
-  in
+  let ev = ju.ju_se.se_ev in
+  let (q,b,ev_expr) = destr_Quant ev in
   match q, b, ju.ju_pr with
   | Exists, (vs,_o), Pr_Succ ->
      if not(equal_ty (ty_prod_vs fvs) (ty_prod_vs vs)) then
@@ -1259,11 +1257,7 @@ let t_guess asym fvs = prove_by (rguess asym fvs)
 
 let rfind (bd,body) arg asym fvs ju =
   let ev = ju.ju_se.se_ev in
-  let (q,b,ev_expr) =
-    fixme "" (*
-    try Event.destr_exn ev
-    with Event.NoQuant -> tacerror "rfind : not a valid event, quantification required" *)
-  in
+  let (q,b,ev_expr) = destr_Quant ev in
   match q, b, ju.ju_pr with
   | Exists, (vs,_o), Pr_Succ ->
     assert (equal_ty (ty_prod_vs fvs) (ty_prod_vs vs));

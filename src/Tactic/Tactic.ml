@@ -676,21 +676,23 @@ let handle_instr verbose ts instr =
     (ts, fsprintf "Declared permutation %s : " s)
     *)
 
-  | PT.RODecl(_s,_ro,_t1,_t2) -> fixme "undefined"
-    (*
-    let oname = if ro then "random oracle" else "operator" in
+  | PT.FunDecl(s,t1,t2) ->
+    if Mstring.mem s ts.ts_fundecls then
+      tacerror "operator with same name already declared.";
+    let dom, codom = (PU.ty_of_parse_ty ts t1, PU.ty_of_parse_ty ts t2) in
+    let hs = Fsym.mk s dom codom in
+    let ts_fundecls = Mstring.add s hs ts.ts_fundecls in
+    let ts = { ts with ts_fundecls = ts_fundecls } in
+    (ts, fsprintf "Declared operator %s" s)
+
+  | PT.RODecl(s,t1,t2) ->
     if Mstring.mem s ts.ts_rodecls then
-      tacerror "%s with same name already declared." oname;
-    let dom,codom=(PU.ty_of_parse_ty ts t1),(PU.ty_of_parse_ty ts t2) in
-    let hs = Fsym.mk s ~ro dom codom in
+      tacerror "random oracle with same name already declared.";
+    let dom, codom = (PU.ty_of_parse_ty ts t1, PU.ty_of_parse_ty ts t2) in
+    let hs = ROsym.mk s dom codom in
     let ts_rodecls = Mstring.add s hs ts.ts_rodecls in
-    let ts_lkupdecls =
-      if ro then
-        Mstring.add s (Fsym.mk s ~ro:true ~lkup:true dom codom) ts.ts_lkupdecls
-                    else ts.ts_lkupdecls in
-    let ts = { ts with ts_rodecls; ts_lkupdecls} in
-    (ts, fsprintf "Declared %s" oname)
-    *)
+    let ts = { ts with ts_rodecls = ts_rodecls } in
+    (ts, fsprintf "Declared random oracle %s" s)
 
   | PT.EMDecl(s,g1,g2,g3) ->
     if Mstring.mem s ts.ts_emdecls then

@@ -24,8 +24,8 @@ module KeyElem = struct
     compare ke1 ke2 = 0
 
   let pp fmt = function
-    | SKey -> pp_string fmt "SKey"
-    | PKey -> pp_string fmt "Pkey"
+    | SKey -> pp_string fmt "get_sk"
+    | PKey -> pp_string fmt "get_pk"
 end
 
 (* ** Types and type nodes *)

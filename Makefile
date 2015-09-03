@@ -65,6 +65,9 @@ wsautognp.native : stubs
 dev : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Tactic.cma
 
+dev_server : wsautognp.native
+	-@ killall wsautognp.native
+
 %.deps :
 	ocamlfind ocamldep -package bolt -package batteries -syntax camlp4o \
             -package comparelib.syntax \

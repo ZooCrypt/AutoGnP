@@ -277,9 +277,10 @@ and pp_op_p ~qual above fmt (op, es) =
   | EMap es,[a;b] ->
     let ppe i = pp_exp_p ~qual (Infix(EMap es,i)) in
     F.fprintf fmt "e(%a,%a)" (ppe 0) a (ppe 1) b
-  | Perm(ptype,f), [proj_ke;arg] -> F.fprintf fmt
-     "%a%s(%a,%a)" Psym.pp f (if ptype = IsInv then "_inv" else "")
-                   (pp_exp_p ~qual above) proj_ke (pp_exp_p ~qual above) arg
+  | Perm(ptype,f), [proj_ke;arg] ->
+    F.fprintf fmt
+      "%a%s(%a,%a)" Psym.pp f (if ptype = IsInv then "_inv" else "")
+      (pp_exp_p ~qual above) proj_ke (pp_exp_p ~qual above) arg
   | Ifte, [a;b;d] ->
     let ppe i = pp_exp_p ~qual (Infix(Ifte,i)) in
     let pp fmt () =
@@ -288,7 +289,19 @@ and pp_op_p ~qual above fmt (op, es) =
     pp_maybe_paren true (notsep above) pp fmt ()
   | GInv, [a] ->
     pp_prefix GInv  ""      "^-1" a
-  | _             -> failwith "pp_op: invalid expression"
+  | ProjKeyElem kt, [e] ->
+    F.fprintf fmt "%a(%a)" Type.KeyElem.pp kt (pp_exp_p ~qual above) e 
+  | FunCall f, [e] ->
+    F.fprintf fmt "%a(%a)" Fsym.pp f (pp_exp_p ~qual above) e 
+  | RoCall h, [e] ->
+    F.fprintf fmt "%a(%a)" ROsym.pp h (pp_exp_p ~qual above) e 
+  | RoLookup h, [e] ->
+    F.fprintf fmt "%a[%a]" ROsym.pp h (pp_exp_p ~qual above) e 
+  | (ProjKeyElem _ | FunCall _ | RoCall _ | RoLookup _), ([] | _::_::_)
+  | (FOpp | FInv | Not | GInv | GLog _), ([] | _::_::_)
+  | (Perm _ | FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)
+  | Ifte, ([] | [_] | [_;_] | _::_::_::_::_) ->
+    failwith "pp_op: invalid expression"
 
 (** Pretty-prints n-ary operator assuming that
     the expression above is of given type. *)
