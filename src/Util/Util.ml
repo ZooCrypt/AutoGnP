@@ -56,26 +56,6 @@ let unique_int () = Oo.id (object end)
 
 let exc_to_opt f = try Some (f ()) with _ -> None
 
-let map_opt f m = match m with
-  | Some x -> Some (f x)
-  | None -> None
-
-let from_opt x o = match o with
-  | Some y -> y
-  | None   -> x
-
-let get_opt_exc o = match o with
-  | Some y -> y
-  | None   -> raise Not_found
-
-let opt f x o = match o with
-  | Some y -> f y
-  | None   -> x
-
-let opt_f f g o = match o with
-  | Some y -> f y
-  | None   -> g ()
-
 let swap (x,y) = (y,x)
 
 let compare_on f x y = compare (f x) (f y)
@@ -138,16 +118,6 @@ let smart_map f l =
         else List.rev_append r (hd' :: List.map f tl) in
   aux [] l
 
-let rec drop i l =
-  match l with
-  | _::xs when i > 0 -> drop (i - 1) xs
-  | _ -> l
-
-let rec take i l =
-  match l with
-  | x::xs when i > 0 -> x::(take (i - 1) xs)
-  | _ -> []
-
 let split_n i0 l = 
   assert (i0 >= 0);
   let rec aux i r l = 
@@ -167,14 +137,6 @@ let cut_n i0 l =
     | a::l -> aux (i-1) (a::r) l
   in
   aux i0 [] l
-
-let rec filter_map f l = 
-  match l with
-  | [] -> []
-  | x :: l ->
-    match f x with
-    | None -> filter_map f l
-    | Some z -> z::filter_map f l
 
 let list_from_to i j =
   let rec go aux i = if i >= j then aux else go (i::aux) (i+1)
@@ -204,57 +166,32 @@ let lefts_rights l =
   let rec go lacc racc xs = match xs with
     | Left(x)::xs  -> go (x::lacc) racc      xs
     | Right(x)::xs -> go lacc      (x::racc) xs
-    | [] -> (List.rev lacc, List.rev racc)
+    | []           -> (List.rev lacc, List.rev racc)
   in go [] [] l
 
 let cat_Some l =
-  let rec go acc xs = match xs with
+  let rec go acc = function
     | Some(x)::xs  -> go (x::acc) xs
     | None::xs     -> go acc      xs
-    | [] -> List.rev acc
-  in go [] l
+    | []           -> List.rev acc
+  in
+  go [] l
 
 let conc_map f xs =
   L.concat (L.map f xs)
 
 let map_accum f init xs =
-  let rec go acc xs res =
-    match xs with
+  let rec go acc res = function
     | []    -> (acc,L.rev res)
     | x::xs ->
       let (acc,y) = f acc x in
-      go acc xs (y::res)
+      go acc (y::res) xs
   in
-  go init xs []
-
-let group rel xs =
-  let rec go xs y acc = match xs with
-    | []                 -> [ L.rev acc ]
-    | x::xs when rel x y -> go xs y (x::acc)
-    | x::xs              -> (L.rev acc)::go xs x [x] 
-  in
-  match xs with
-  | []    -> []
-  | x::xs -> go xs x [x]
-
-let sorted_nub cmp xs =
-  xs |> L.sort cmp |> group (fun a b -> cmp a b = 0) |> L.map L.hd
-
-let nub eq xs =
-  let rec go left right =
-    match right with
-    | []    -> L.rev left
-    | r::rs ->
-      if L.exists (fun x -> eq r x) left then
-        go left rs
-      else
-        go (r::left) rs
-  in
-  go [] xs
+  go init [] xs
 
 let move_front p xs = let (u,v) = L.partition p xs in u @ v
 
-let list_equal eq xs0 ys0 =
+let equal_list eq xs0 ys0 =
   let rec go xs ys = 
     match xs,ys with
     | [], []       -> true
@@ -263,7 +200,7 @@ let list_equal eq xs0 ys0 =
   in
   (L.length xs0 = L.length ys0) && go xs0 ys0
 
-let list_compare cmp xs0 ys0 =
+let compare_list cmp xs0 ys0 =
   let rec go xs ys =
     match xs, ys with
     | [], []       -> 0
@@ -278,60 +215,20 @@ let list_compare cmp xs0 ys0 =
   else if d < 0 then -1
   else go xs0 ys0
 
-let pair_equal eq1 eq2 (x1,x2) (y1,y2) =
+let equal_pair eq1 eq2 (x1,x2) (y1,y2) =
   eq1 x1 y1 && eq2 x2 y2
 
-let pair_compare cmp1 cmp2 (x1,x2) (y1,y2) =
+let compare_pair cmp1 cmp2 (x1,x2) (y1,y2) =
   let r1 = cmp1 x1 y1 in
   if r1 <> 0 then r1
   else cmp2 x2 y2
 
-let sum xs =
-  match xs with
-  | []    -> 0
-  | x::xs -> L.fold_left (+) x xs
-
 let num_list l = L.mapi (fun i a -> i+1,a) l 
 
-let catSome xs0 =
-  let rec go xs acc =
-    match xs with
-    | [] -> L.rev acc
-    | Some x::xs -> go xs (x::acc)
-    | None::xs   -> go xs acc
-  in
-  go xs0 []
-
-let last xs =
-  let rec go xs = match xs with
-    | []              -> raise Not_found
-    | x::[]           -> x
-    | _::(_::_ as xs) -> go xs
-  in
-  go xs
-
-let drop_last n xs = L.rev xs |> drop n |> L.rev
+let drop_last n xs = L.rev xs |> BatList.drop n |> L.rev
 
 (* ** String functions
  * ----------------------------------------------------------------------- *)
-
-let splitn s sep =
-  if s = "" then []
-  else
-    let rec go acc ofs =
-      if ofs >= 0 then (
-        try
-          let idx = String.rindex_from s ofs sep in
-          if idx = ofs
-          then go (""::acc) (idx - 1)
-          else
-            let token = String.sub s (idx + 1) (ofs - idx) in
-            go (token::acc) (idx - 1)
-        with Not_found ->
-          (String.sub s 0 (ofs + 1))::acc
-      ) else ""::acc
-    in
-    go [] (String.length s - 1)
 
 let splitn_by s f =
   let rec go acc i len =
@@ -372,15 +269,8 @@ let string_rfind_from s t from =
   in go from
 
 let split s sep =
-  match (try Some (String.index s sep) with Not_found -> None) with
-  | Some i ->
-      let a = String.sub s 0 i in
-      let b = if String.length s > i + 1
-              then String.sub s (i + 1) (String.length s - i - 1)
-              else ""
-      in
-      Some (a, b)
-  | None   -> None
+  try Some (BatString.split s ~by:sep)
+  with Not_found -> None
 
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
@@ -450,4 +340,4 @@ let tacerror fmt =
 let fail_opt ox s =
   match ox with
   | Some x -> x
-  | None -> tacerror "%s" s
+  | None   -> tacerror "%s" s

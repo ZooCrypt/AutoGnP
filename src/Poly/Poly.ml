@@ -50,26 +50,25 @@ module MakePoly (V : Var) (C : Ring) = struct
 (* *** Equality and comparison
  * ----------------------------------------------------------------------- *)
 
-  let vexp_equal = pair_equal V.equal (=)
+  let vexp_equal = equal_pair V.equal (=)
 
-  let vexp_compare = pair_compare V.compare compare
+  let vexp_compare = compare_pair V.compare compare
 
-  let mon_equal = list_equal vexp_equal
+  let mon_equal = equal_list vexp_equal
 
-  let mon_compare = list_compare vexp_compare
+  let mon_compare = compare_list vexp_compare
 
   let equal =
-    list_equal (fun (m1,c1) (m2,c2) -> C.equal c1 c2 && mon_equal m1 m2)
+    equal_list (fun (m1,c1) (m2,c2) -> C.equal c1 c2 && mon_equal m1 m2)
 
   let term_compare (m1,c1) (m2,c2) =
     let cmp = C.compare c1 c2 in
     if cmp <> 0 then - cmp else mon_compare m1 m2
 
-  let compare = list_compare term_compare
+  let compare = compare_list term_compare
 
 (* *** Pretty printing
  * ----------------------------------------------------------------------- *)
-
 
   let pp_vpow fmt (v,e) =
     if e = 1 then V.pp fmt v
@@ -113,8 +112,8 @@ module MakePoly (V : Var) (C : Ring) = struct
     let cmp_var (v1,_) (v2,_) = V.compare v1 v2 in
     let equal_var (v1,_) (v2,_) = V.equal v1 v2 in
     L.sort cmp_var ves
-    |> group equal_var
-    |> L.map (fun ves -> (fst (L.hd ves), sum (L.map snd ves)))
+    |> L.group_consecutive equal_var
+    |> L.map (fun ves -> (fst (L.hd ves), L.sum (L.map snd ves)))
     |> L.filter (fun (_,e) -> e <> 0)
     |> L.sort vexp_compare
 
@@ -128,7 +127,7 @@ module MakePoly (V : Var) (C : Ring) = struct
   let norm (f : t) =
     f |> L.map (fun (m,c) -> (norm_monom m,c))
       |> L.sort (fun (m1,_) (m2,_) -> mon_compare m1 m2)
-      |> group  (fun (m1,_) (m2,_) -> mon_equal m1 m2)
+      |> L.group_consecutive  (fun (m1,_) (m2,_) -> mon_equal m1 m2)
       |> L.map (fun ys -> (fst (L.hd ys), C.ladd (L.map snd ys)))
       |> L.filter (fun (_,c) -> not (C.equal c C.zero))
 
@@ -171,8 +170,8 @@ module MakePoly (V : Var) (C : Ring) = struct
   let ladd  = L.fold_left (fun acc f -> add acc f) zero
 
   let vars f =
-    sorted_nub V.compare
-      (conc_map (fun (m,_) -> sorted_nub V.compare (L.map fst m)) f)
+    L.sort_uniq V.compare
+      (conc_map (fun (m,_) -> L.sort_uniq V.compare (L.map fst m)) f)
 
   let partition p f =
     let (t1s, t2s) = L.partition p f in
@@ -208,11 +207,11 @@ module MakePoly (V : Var) (C : Ring) = struct
 
   let is_var = function [([_x],c)] when C.equal c C.one -> true | _ -> false
 
-  let mons (f : t) = sorted_nub (list_compare vexp_compare) (L.map fst f)
+  let mons (f : t) = L.sort_uniq (compare_list vexp_compare) (L.map fst f)
   let coeff f m = try L.assoc m f with Not_found -> C.zero
 
   let map_coeffs cf f =
-    catSome
+    cat_Some
       (L.map (fun (m,c) -> let c = cf c in if C.equal c C.zero then None else Some (m,c)) f)
 
   let ( *@) = mult
@@ -220,3 +219,24 @@ module MakePoly (V : Var) (C : Ring) = struct
   let ( -@) = minus
 
 end
+
+
+(* ** Module of polynomials with integer coefficients and string variables *)
+module SP = MakePoly(
+  struct
+    type t = string
+    let pp = pp_string
+    let equal = (=)
+    let compare = compare
+  end) (IntRing)
+
+(* ** Module of polynomials with integer coefficients and integer variables. *)
+module IP = MakePoly(
+  struct
+    type t = int
+    let pp fmt i =F.fprintf fmt "v_%i" i
+    let equal = (=)
+    let compare = compare
+  end) (IntRing)
+
+type ipoly = IP.t

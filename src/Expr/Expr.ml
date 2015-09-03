@@ -21,6 +21,10 @@ module Olist = struct
     | Olist  of Osym.t  (* list of adversary queries to ordinary oracle *)
     with compare
 
+  let dom = function
+    | ROlist ros -> ros.ROsym.dom
+    | Olist  os  -> os.Osym.dom
+
   let hash = function
     | ROlist ros -> hcomb 1 (ROsym.hash ros)
     | Olist  os  -> hcomb 2 (Osym.hash  os)
@@ -132,43 +136,43 @@ let quant_hash= function
   | All    -> 1
   | Exists -> 2
 
-let e_equal : expr -> expr -> bool = (==) 
-let e_hash e = e.e_tag
-let e_compare e1 e2 = e1.e_tag - e2.e_tag
+let equal_expr : expr -> expr -> bool = (==) 
+let hash_expr e = e.e_tag
+let compare_expr e1 e2 = e1.e_tag - e2.e_tag
 
 module Hse = Hashcons.Make (struct
   type t = expr
 
   let equal e1 e2 =
-    ty_equal e1.e_ty e2.e_ty &&
+    equal_ty e1.e_ty e2.e_ty &&
     match e1.e_node, e2.e_node with
     | V v1, V v2                       -> Vsym.equal v1 v2
-    | Tuple es1, Tuple es2             -> list_eq_for_all2 e_equal es1 es2
-    | Proj(i1,e1), Proj(i2,e2)         -> i1 = i2 && e_equal e1 e2
+    | Tuple es1, Tuple es2             -> list_eq_for_all2 equal_expr es1 es2
+    | Proj(i1,e1), Proj(i2,e2)         -> i1 = i2 && equal_expr e1 e2
     | Cnst c1, Cnst c2                 -> c1 = c2
-    | App(o1,es1), App(o2,es2)         -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
-    | Nary(o1,es1), Nary(o2,es2)       -> o1 = o2 && list_eq_for_all2 e_equal es1 es2
+    | App(o1,es1), App(o2,es2)         -> o1 = o2 && list_eq_for_all2 equal_expr es1 es2
+    | Nary(o1,es1), Nary(o2,es2)       -> o1 = o2 && list_eq_for_all2 equal_expr es1 es2
     | Quant(q1,b1,e1), Quant(q2,b2,e2) ->
       q1 = q2 &&
-        (pair_equal (list_equal Vsym.equal) Olist.equal) b1 b2 &&
-        e_equal e1 e2
+        (equal_pair (equal_list Vsym.equal) Olist.equal) b1 b2 &&
+        equal_expr e1 e2
     | _, _ -> false
 
   let hash_node = function
     | V(v)              -> Vsym.hash v
-    | Tuple(es)         -> hcomb_l e_hash 3 es
-    | Proj(i,e)         -> hcomb i (e_hash e)
+    | Tuple(es)         -> hcomb_l hash_expr 3 es
+    | Proj(i,e)         -> hcomb i (hash_expr e)
     | Cnst(c)           -> cnst_hash c
-    | App(o,es)         -> hcomb_l e_hash (op_hash o) es
-    | Nary(o,es)        -> hcomb_l e_hash (nop_hash o) es
+    | App(o,es)         -> hcomb_l hash_expr (op_hash o) es
+    | Nary(o,es)        -> hcomb_l hash_expr (nop_hash o) es
     | Quant(q,(vs,o),e) ->
       hcomb_h
         [ quant_hash q
         ; hcomb_h (List.map Vsym.hash vs)
         ; Olist.hash o
-        ; e_hash e ]
+        ; hash_expr e ]
 
-  let hash e = hcomb (ty_hash e.e_ty) (hash_node e.e_node)
+  let hash e = hcomb (hash_ty e.e_ty) (hash_node e.e_node)
 
   let tag n e = { e with e_tag = n }
 end)
@@ -181,7 +185,7 @@ let mk_e n ty = Hse.hashcons {
 
 module E = StructMake (struct
   type t = expr
-  let tag = e_hash
+  let tag = hash_expr
 end)
 module Me = E.M
 module Se = E.S
@@ -195,7 +199,7 @@ module He = E.H
 exception TypeError of (ty * ty * expr * expr option * string)
 
 let ensure_ty_equal ty1 ty2 e1 e2 s =
-  ignore (ty_equal ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
+  ignore (equal_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
 let ensure_ty_KeyPair ty s =
   match ty.ty_node with
@@ -299,12 +303,21 @@ let key_elem_of_perm_type = function
 let mk_Perm f ptype k e =
   let ke = key_elem_of_perm_type ptype in
   let k_pid = ensure_ty_KeyElem ke k.e_ty "mk_Perm - key" in
-  if (not (Type.Permvar.equal f.Psym.pid k_pid)) then
+  if (not (Type.Permvar.equal f.Psym.id k_pid)) then
     failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." Psym.pp f);
   ensure_ty_equal e.e_ty f.Psym.dom
     e (Some k)
     (fsprintf "mk_Perm for %a : expected arg of type %a" Psym.pp f pp_ty e.e_ty);
-  mk_App (Perm (ptype,f)) [k; e] e.e_ty
+  mk_App (Perm(ptype,f)) [k; e] e.e_ty
+
+let mk_FunCall f e =
+  mk_App (FunCall(f)) [e] e.e_ty 
+
+let mk_RoCall h e =
+  mk_App (RoCall(h)) [e] e.e_ty 
+
+let mk_RoLookup h e =
+  mk_App (RoLookup(h)) [e] e.e_ty 
  
 (* *** Nary mk functions *)
 
@@ -318,7 +331,7 @@ let rec flatten nop es =
 
 let mk_nary s sort o es ty =
   let es = flatten o es in
-  let es = if sort then L.sort e_compare es else es in
+  let es = if sort then L.sort compare_expr es else es in
   match es with
   | []  -> failwith (F.sprintf "%s: empty list given" s);
   | [a] -> a
@@ -487,9 +500,9 @@ let e_map f =
 let e_map_ty_maximal ty g e0 =
   let rec go ie e =
     (* me = e is a maximal expression of the desired type *)
-    let me = not ie && ty_equal e.e_ty ty in
+    let me = not ie && equal_ty e.e_ty ty in
     (* ie = immediate subterms of e inside larger expression of the desired type *)
-    let ie = me || (ie && ty_equal e.e_ty ty) in
+    let ie = me || (ie && equal_ty e.e_ty ty) in
     let trans = if me then g else id in
     match e.e_node with
     | V(_) | Cnst(_) -> e
@@ -523,7 +536,7 @@ let e_map_top f =
   aux 
 
 let e_replace e1 e2 = 
-  e_map_top (fun e -> if e_equal e e1 then e2 else raise Not_found)
+  e_map_top (fun e -> if equal_expr e e1 then e2 else raise Not_found)
 
 let e_subst s =
   e_map_top (fun e -> Me.find e s)

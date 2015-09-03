@@ -3,7 +3,7 @@
 (* ** Imports and abbreviations *)
 open Expr
 open NormField
-open PolyInsts
+open Poly
 
 module Ht = Hashtbl
 module YS = Yojson.Safe
@@ -17,7 +17,7 @@ let norm_factory se hv =
   let convert_polys (p1,p2) =
     let num   = import_ipoly "norm_factory" p1 hv in
     let denom = import_ipoly "norm_factory" p2 hv in
-    if e_equal denom mk_FOne then num
+    if equal_expr denom mk_FOne then num
     else mk_FDiv num denom
   in
   try
@@ -89,5 +89,5 @@ let norm before e =
   | SMult(SNat 1, SV i)
   | SMult(SV i, SNat 1)   -> Ht.find hv i
   | SMult(SNat i, SNat j) -> mk_FNat (i * j)
-  | SMult(SV i, SV j)     -> mk_FMult (List.sort e_compare [Ht.find hv i; Ht.find hv j])
+  | SMult(SV i, SV j)     -> mk_FMult (List.sort compare_expr [Ht.find hv i; Ht.find hv j])
   | _                     -> norm_factory se hv

@@ -19,6 +19,8 @@ module Olist : sig
     | ROlist of ROsym.t (* list of adversary queries to random oracle *)
     | Olist  of Osym.t  (* list of adversary queries to ordinary oracle *)
 
+  val dom : t -> ty
+
   val hash : t -> int
   
   val equal : t -> t -> bool
@@ -90,9 +92,9 @@ val cnst_hash : cnst -> int
 val op_hash : op -> int
 val nop_hash : nop -> int
  
-val e_equal : expr -> expr -> bool
-val e_hash : expr -> int
-val e_compare : expr -> expr -> int
+val equal_expr : expr -> expr -> bool
+val hash_expr : expr -> int
+val compare_expr : expr -> expr -> int
 
 module Hse : Hashcons.S with type t = expr
 
@@ -113,11 +115,16 @@ val ensure_ty_KeyElem : Type.KeyElem.t -> Type.ty -> string -> Type.Permvar.id
 
 (* *** Constant mk functions *)
 
+val key_elem_of_perm_type : perm_type -> KeyElem.t
+
 val mk_V           : Vsym.t -> expr
 val mk_App         : op -> expr list -> ty -> expr
 val mk_Nary        : nop -> expr list -> expr
 val mk_ProjKeyElem : Type.KeyElem.t -> expr -> expr
 val mk_Perm        : Psym.t -> perm_type -> expr -> expr -> expr
+val mk_FunCall     : Fsym.t -> expr -> expr
+val mk_RoCall      : ROsym.t -> expr -> expr
+val mk_RoLookup    : ROsym.t -> expr -> expr
 val mk_Quant       : quant -> (Vsym.t list * Olist.t) -> expr -> expr
 val mk_All         : (Vsym.t list * Olist.t) -> expr -> expr
 val mk_Exists      : (Vsym.t list * Olist.t) -> expr -> expr

@@ -1,6 +1,6 @@
-(*s Well-formedness of games. *)
+(* * Well-formedness of games. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open Expr
@@ -13,7 +13,10 @@ open Norm
 let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
 let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
 let _log_i ls = mk_logger "Logic.Wf" Bolt.Level.INFO "Wf" ls
-(*i*)
+
+
+(* ** Exceptions, state, helper functions
+ * ----------------------------------------------------------------------- *)
 
 exception Wf_var_undef of Vsym.t * expr * Vsym.S.t
 
@@ -54,14 +57,17 @@ let ensure_varnames_fresh wfs vs =
   List.fold_left ensure_varname_fresh wfs vs
 
 let check_binding1 wfs (vs,ors) =
-  assert (ty_equal (ty_prod_vs vs) (Oracle.get_dom ors));
+  assert (equal_ty (ty_prod_vs vs) (Olist.dom ors));
   ensure_varnames_fresh wfs vs
+
+(* ** Well-formedness of expressions
+ * ----------------------------------------------------------------------- *)
 
 let rec add_ineq ctype wfs e1 e2 =
   try
     if ctype = NoCheckDivZero then (
-      wf_exp CheckDivZero wfs e1;
-      wf_exp CheckDivZero wfs e2;
+      wf_expr CheckDivZero wfs e1;
+      wf_expr CheckDivZero wfs e2;
     );
     let e1 = norm_expr_weak e1 in
     let e2 = norm_expr_weak e2 in
@@ -109,7 +115,7 @@ and check_nonzero ctype wfs e =
       | Nary(FMult,es) -> L.for_all check_simp es
       | App(Ifte, [c; _a; b]) when is_False c -> check b
       | App(Ifte, [c; a; b]) when
-          is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in e_equal u b && is_Zero v) ->
+          is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in equal_expr u b && is_Zero v) ->
         true
       | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
       | _                 -> check e (* e is polynomial *)
@@ -117,8 +123,8 @@ and check_nonzero ctype wfs e =
     check_simp e
   )
 
-and wf_exp ctype wfs e0 =
-  log_t (lazy (fsprintf "checking expression: %a" pp_exp e0));
+and wf_expr ctype wfs e0 =
+  log_t (lazy (fsprintf "checking expression: %a" pp_expr e0));
   let rec go wfs e =
     match e.e_node with
     | Cnst _ -> ()
@@ -127,10 +133,9 @@ and wf_exp ctype wfs e0 =
         (fun () -> raise (Wf_var_undef(vs,e0,wfs.wf_bvars)))
     | Quant(_,bind,e1) ->
       let wfs = check_binding1 wfs bind in
-      assert (ty_equal mk_Bool e1.e_ty);
+      assert (equal_ty mk_Bool e1.e_ty);
       go wfs e1
-    | ProjPermKey(_,kp) -> go wfs kp
-    | H(_,e1) | Proj(_,e1) -> go wfs e1
+    | Proj(_,e1) -> go wfs e1
     | Nary(Land,es) ->
       let is_InEq e =
         if is_App Not e then is_App Eq (destr_Not e) else false
@@ -170,19 +175,22 @@ and wf_exp ctype wfs e0 =
   in
   go wfs e0
 
+(* ** Well-formedness of games
+ * ----------------------------------------------------------------------- *)
+
 let wf_samp ctype wfs v t es =
-  assert (ty_equal v.Vsym.ty t &&
-            List.for_all (fun e -> ty_equal t e.e_ty) es &&
-            (es = [] || not (ty_equal t mk_Bool)));
-  List.iter (wf_exp ctype wfs) es;
+  assert (equal_ty v.Vsym.ty t &&
+            List.for_all (fun e -> equal_ty t e.e_ty) es &&
+            (es = [] || not (equal_ty t mk_Bool)));
+  List.iter (wf_expr ctype wfs) es;
   let wfs = ensure_varname_fresh wfs v in
   let v = mk_V v in
   List.fold_left (fun wfs e -> add_ineq ctype wfs v e) wfs es
 
 let wf_let ctype wfs v e =
   let wfs = ensure_varname_fresh wfs v in
-  assert (ty_equal v.Vsym.ty e.e_ty);
-  wf_exp ctype wfs e;
+  assert (equal_ty v.Vsym.ty e.e_ty);
+  wf_expr ctype wfs e;
   wfs
 
 let wf_lcmds ctype wfs0 exported_vsyms odef0 =
@@ -203,11 +211,11 @@ let wf_lcmds ctype wfs0 exported_vsyms odef0 =
       let wfs = wf_samp ctype wfs v t es in
       go wfs ~do_export lcmds
     | LBind (vs,hsym)::lcmds -> 
-      assert (ty_equal (ty_prod_vs vs) hsym.Fsym.dom);
+      assert (equal_ty (ty_prod_vs vs) hsym.Fsym.dom);
       go wfs ~do_export:false lcmds
     | LGuard e::lcmds ->
-      assert (ty_equal e.e_ty mk_Bool);
-      wf_exp ctype wfs e;
+      assert (equal_ty e.e_ty mk_Bool);
+      wf_expr ctype wfs e;
       let wfs =
         match e.e_node with
         | App(Not,[eeq]) ->
@@ -221,8 +229,8 @@ let wf_lcmds ctype wfs0 exported_vsyms odef0 =
   go wfs0 ~do_export odef0
 
 let wf_obody ctype wfs osym vs exported_vsyms (lcmds,e) =
-   assert (ty_equal osym.Osym.dom (ty_prod_vs vs) &&
-             ty_equal osym.Osym.codom e.e_ty);
+   assert (   equal_ty osym.Osym.dom (ty_prod_vs vs)
+           && equal_ty osym.Osym.codom e.e_ty);
    let wfs = ensure_varnames_fresh wfs vs in
    begin match exported_vsyms with
    | None -> ()
@@ -230,22 +238,22 @@ let wf_obody ctype wfs osym vs exported_vsyms (lcmds,e) =
      L.iter (fun v -> vsyms_r := Vsym.S.add v !vsyms_r) vs;
    end;
    let wfs = wf_lcmds ctype wfs exported_vsyms lcmds in
-   wf_exp ctype wfs e
+   wf_expr ctype wfs e
 
 let wf_odef ctype wfs exported_vsyms (osym,vs,od) =
   match od with
-  | Odef ob    -> wf_obody ctype wfs osym vs None ob
-  | Ohybrid oh ->
-    wf_obody ctype wfs osym vs None           oh.odef_less;
-    wf_obody ctype wfs osym vs exported_vsyms oh.odef_eq;
-    wf_obody ctype wfs osym vs None           oh.odef_greater
+  | Oreg ob -> wf_obody ctype wfs osym vs None ob
+  | Ohyb oh ->
+    wf_obody ctype wfs osym vs None           oh.oh_less;
+    wf_obody ctype wfs osym vs exported_vsyms oh.oh_eq;
+    wf_obody ctype wfs osym vs None           oh.oh_greater
 
 let wf_gdef ctype gdef0 =
   let rec go wfs gdef = match gdef with
     | [] -> wfs
     | GAssert(e)::gcmds ->
-      assert (ty_equal e.e_ty mk_Bool);
-      wf_exp ctype wfs e;
+      assert (equal_ty e.e_ty mk_Bool);
+      wf_expr ctype wfs e;
       let wfs =
         match e.e_node with
         | App(Not,[eeq]) ->
@@ -264,28 +272,22 @@ let wf_gdef ctype gdef0 =
     | GCall(vs,asym,e,os)::gcmds ->
       let wfs = ensure_varnames_fresh wfs vs in
       let wfs = ensure_name_fresh wfs (Id.name asym.Asym.id) in
-      assert (ty_equal (ty_prod_vs vs) asym.Asym.codom &&
-                ty_equal asym.Asym.dom e.e_ty);
+      assert (equal_ty (ty_prod_vs vs) asym.Asym.codom &&
+                equal_ty asym.Asym.dom e.e_ty);
       let wfs =
         ensure_names_fresh wfs
           (List.map (fun (osym,_,_) -> Id.name osym.Osym.id) os)
       in
       let exported_vsyms = ref Vsym.S.empty in
       List.iter (wf_odef ctype wfs (Some exported_vsyms)) os;
-      (* log_i (lazy (fsprintf "exported %a" (pp_list "," Vsym.pp) (Vsym.S.elements !exported_vsyms))); *)
+      (* log_i (lazy (fsprintf "exported %a" (pp_list "," Vsym.pp)
+                        (Vsym.S.elements !exported_vsyms))); *)
       let wfs = { wfs with wf_bvars = Vsym.S.union wfs.wf_bvars !exported_vsyms } in
       go wfs gcmds
   in
   go (mk_wfs ()) gdef0
 
-let wf_ev ctype wfs ev = 
-  let wfs = List.fold_left check_binding1 wfs (Event.binding ev) in
-  let ev_expr = Event.expr ev in
-  assert (ty_equal mk_Bool ev_expr.e_ty);
-  log_t (lazy (fsprintf "checking ev-expression: %a" pp_exp ev_expr));
-  wf_exp ctype wfs ev_expr
-
 let wf_se ctype se =
   let wfs = wf_gdef ctype se.se_gdef in
-  wf_ev ctype wfs se.se_ev
+  wf_expr ctype wfs se.se_ev
 

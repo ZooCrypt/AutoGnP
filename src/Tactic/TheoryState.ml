@@ -12,7 +12,6 @@ module G = Game
 let mk_ts () = {
   ts_lvars      = Hashtbl.create 20;
   ts_gvars      = Hashtbl.create 20;
-  ts_permvars   = Hashtbl.create 20;
   ts_rodecls    = Mstring.empty;
   ts_lkupdecls  = Mstring.empty;  
   ts_permdecls  = Mstring.empty;
@@ -57,9 +56,13 @@ let create_groupvar ps s =
     gv
 
       
-let create_permvar ps s =
-  try Ht.find ps.ts_permvars s
+let create_psym ps s ty_dom =
+  try
+    let ps = Ht.find ps.ts_permdecls s in
+    assert (equal_ty ps.Psym.dom ty_dom);
+    ps
   with Not_found ->
+    
     let pid = T.Permvar.mk s in
     Ht.add ps.ts_permvars s pid;
     pid

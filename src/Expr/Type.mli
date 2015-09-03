@@ -38,9 +38,9 @@ and ty_node =
   | KeyPair of Permvar.id
   | KeyElem of KeyElem.t * Permvar.id
       
-val ty_equal   : ty -> ty -> bool
-val ty_hash    : ty -> int
-val ty_compare : ty -> ty -> int
+val equal_ty   : ty -> ty -> bool
+val hash_ty    : ty -> int
+val compare_ty : ty -> ty -> int
 
 module Hsty : Hashcons.S with type t = ty
 

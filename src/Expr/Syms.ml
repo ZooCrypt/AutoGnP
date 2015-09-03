@@ -187,15 +187,15 @@ end
  * ----------------------------------------------------------------------- *)
 
 module Psym = struct
+  (* We ensure that same id implies same dom. *)
   type t = { 
-    id  : Id.id;
+    id  : Permvar.id;
     dom : ty;
-    pid : Permvar.id;
   }
 
-  let hash ps = Id.hash ps.id 
-  let equal ps1 ps2 = Id.equal ps1.id ps2.id
-  let compare x y = Id.tag x.id - Id.tag y.id
+  let hash ps = Permvar.hash ps.id 
+  let equal ps1 ps2 = Permvar.equal ps1.id ps2.id
+  let compare x y = Permvar.tag x.id - Permvar.tag y.id
 
   type tt = t
   module Ps = StructMake (struct
@@ -207,11 +207,10 @@ module Psym = struct
   module S = Ps.S
   module H = Ps.H
 
-  let mk dom pid = { id = Id.mk (Permvar.name pid); dom = dom; pid = pid; }
+  let mk s dom = { id = Permvar.mk s; dom = dom }
+  let pp fmt hs = F.fprintf fmt "%s" (Permvar.name hs.id)
 
-  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
-
-  let name hs = Id.name hs.id
+  let name hs = Permvar.name hs.id
 end
 
 (* ** Uninterpreted function symbols

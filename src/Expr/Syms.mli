@@ -109,15 +109,14 @@ end
 
 module Psym : sig
   type t = private { 
-    id  : id;
+    id  : Permvar.id;
     dom : ty;
-    pid : Permvar.id;
   }
 
   val hash : t -> int
   val equal : t -> t -> bool
   val compare : t -> t -> int
-  val mk : ty -> Permvar.id -> t
+  val mk : string -> ty -> t
   val pp : F.formatter -> t -> unit
   val name : t -> string
 

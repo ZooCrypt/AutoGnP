@@ -4,7 +4,7 @@
 open Util
 open Ctypes
 open Foreign
-open PolyInsts
+open Poly
 open Abbrevs
 
 let _log_i ls = mk_logger "CAS" Bolt.Level.INFO "Factory" ls
@@ -86,7 +86,7 @@ let c_factor = foreign "wrap_factor"
 (* ** Conversions
  * ------------------------------------------------------------------------ *)
 
-let print_cpoly (maxvar,nterms,cexpvecs,ccoeffs) =
+let _print_cpoly (maxvar,nterms,cexpvecs,ccoeffs) =
   c_print_cpoly maxvar nterms cexpvecs ccoeffs
 
 (** The order of coefficients / exponent vectors does not matter,
@@ -321,7 +321,7 @@ let test_factor () =
   let res = L.fold_right (fun (f,e) g -> ring_exp f e *@ g) ps one in
   assert (equal res w)
 
-let test () =
+let _test () =
   test_conversion ();
   test_gcd_1 ();
   test_gcd_2 ();

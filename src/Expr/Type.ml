@@ -4,7 +4,7 @@
 open Abbrevs
 open Util
 
-(* ** Identiers *)
+(* ** Identifiers *)
 
 module Lenvar : IdType.ID = Id
 
@@ -46,9 +46,9 @@ and ty_node =
 
 (* ** Equality, hashing, and hash consing *)
 
-let ty_equal : ty -> ty -> bool = (==)
-let ty_hash t = t.ty_tag
-let ty_compare t1 t2 = t1.ty_tag - t2.ty_tag
+let equal_ty : ty -> ty -> bool = (==)
+let hash_ty t = t.ty_tag
+let compare_ty t1 t2 = t1.ty_tag - t2.ty_tag
 
 module Hsty = Hashcons.Make (struct
   type t = ty
@@ -59,7 +59,7 @@ module Hsty = Hashcons.Make (struct
     | Bool, Bool                     -> true
     | G gv1, G gv2                   -> Groupvar.equal gv1 gv2
     | Fq, Fq                         -> true
-    | Prod ts1, Prod ts2             -> list_eq_for_all2 ty_equal ts1 ts2
+    | Prod ts1, Prod ts2             -> list_eq_for_all2 equal_ty ts1 ts2
     | KeyPair p1, KeyPair p2         -> Permvar.equal p1 p2
     | KeyElem(k1,p1), KeyElem(k2,p2) -> KeyElem.equal k1 k2 && Permvar.equal p1 p2
     | _                              -> false
@@ -70,7 +70,7 @@ module Hsty = Hashcons.Make (struct
     | Bool          -> 2
     | G gv          -> hcomb 3 (Groupvar.hash gv)
     | Fq            -> 4
-    | Prod ts       -> hcomb_l ty_hash 3 ts
+    | Prod ts       -> hcomb_l hash_ty 3 ts
     | Int           -> 6
     | KeyPair p     -> hcomb 7 (Permvar.hash p)
     | KeyElem(ke,p) -> hcomb 8 (hcomb (KeyElem.hash ke) (Permvar.hash p))
@@ -81,7 +81,7 @@ end)
 (** Create [Map], [Set], and [Hashtbl] modules for types. *)
 module Ty = StructMake (struct
   type t = ty
-  let tag = ty_hash
+  let tag = hash_ty
 end)
 module Mty = Ty.M
 module Sty = Ty.S
@@ -179,5 +179,3 @@ let rec pp_ty fmt ty =
     if Groupvar.name gv = ""
     then F.fprintf fmt "G" 
     else F.fprintf fmt "G_%s" (Groupvar.name gv)
-
-

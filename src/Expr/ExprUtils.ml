@@ -13,6 +13,8 @@ let ty_prod_vs vs =
   | [a] -> a
   | ts  -> mk_Prod ts
 
+let mk_GExp_Gen gv p = mk_GExp (mk_GGen gv) p
+
 (* ** Indicator functions
  * ----------------------------------------------------------------------- *)
 
@@ -52,7 +54,7 @@ let is_False e = is_Cnst_fixed (B false) e
 
 let is_GGen e = is_Cnst_fixed GGen e
 
-let is_GOne e = is_G e.e_ty && e_equal e (mk_GOne (destr_G_exn e.e_ty))
+let is_GOne e = is_G e.e_ty && equal_expr e (mk_GOne (destr_G_exn e.e_ty))
 
 let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
@@ -61,6 +63,14 @@ let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
 let is_Perm e =  match e.e_node with
   | App(Perm _,_) -> true
   | _             -> false
+
+let is_ProjKeyElem ptype perm e = match e.e_node with
+  | App(ProjKeyElem(ptype'), [e2]) when KeyElem.equal ptype ptype' ->
+    begin match e2.e_ty.ty_node with
+    | KeyPair(perm') -> Permvar.equal perm.Psym.id perm'
+    | _              -> false
+    end
+  | _ -> false
 
 let is_FDiv e = is_App FDiv e
 
@@ -217,7 +227,7 @@ let rec pp_exp_p ~qual above fmt e =
         L.map (fun e -> (e, fsprintf "%a" (pp_exp_p ~qual Top) e)) es
         |> L.sort (fun (e1,s1) (e2,s2) ->
              let cmp = compare s1 s2 in
-             if cmp<>0 then cmp else e_compare e1 e2)
+             if cmp<>0 then cmp else compare_expr e1 e2)
         |> L.map fst
       ) else (
         es
@@ -297,16 +307,16 @@ and pp_nop_p ~qual above fmt (op,es) =
     pp_nary false FMult "@,*" p
 
 (** Pretty-print expressions/operators assuming they are topmost. *)
-let pp_exp fmt e = pp_exp_p ~qual:Unqual Top fmt e
-let pp_exp_qual ~qual fmt e = pp_exp_p ~qual Top fmt e
+let pp_expr fmt e = pp_exp_p ~qual:Unqual Top fmt e
+let pp_expr_qual ~qual fmt e = pp_exp_p ~qual Top fmt e
 let pp_op  fmt x = pp_op_p ~qual:Unqual Top fmt x
 let pp_nop fmt x = pp_nop_p ~qual:Unqual Top fmt x
 
 (** Pretty-printing without parens around tuples. *)
-let pp_exp_tnp fmt e = pp_exp_p ~qual:Unqual PrefixApp fmt e
+let pp_expr_tnp fmt e = pp_exp_p ~qual:Unqual PrefixApp fmt e
 
 let pp_ctxt fmt (v,e) = 
-  F.fprintf fmt "@[<hov>(%a ->@ %a)@]" Vsym.pp v pp_exp e 
+  F.fprintf fmt "@[<hov>(%a ->@ %a)@]" Vsym.pp v pp_expr e 
 
 (* ** Destructor functions
  * ----------------------------------------------------------------------- *)
@@ -315,25 +325,14 @@ exception Destr_failure of string
 
 let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
 
-(*
-let destr_H e = 
-  match e.e_node with H(h,e) -> (h,e) | _ -> raise (Destr_failure "H")
-*)
-
 let destr_Perm e =
   match e.e_node with
   | App(o,[k;e]) ->
-     (match o with
-      | Perm(ptype,f) -> (f,ptype,k,e)
-      | _ -> raise (Destr_failure "Perm"))
+    begin match o with
+    | Perm(ptype,f) -> (f,ptype,k,e)
+    | _ -> raise (Destr_failure "Perm")
+    end
   | _ -> raise (Destr_failure "Perm")
-
-(*
-let destr_ProjPermKey e =
-  match e.e_node with
-  | ProjPermKey (ke,kp) -> (ke,kp)
-  | _ -> raise (Destr_failure "ProjPermKey")
- *)
 
 let destr_Quant e = 
   match e.e_node with Quant(q,b,e) -> (q,b,e) | _ -> raise (Destr_failure "Quant")
@@ -382,7 +381,7 @@ let destr_GExp e =
 
 let destr_RoCall e =
   match e.e_node with 
-  | App(RoCall ros,[e1]) -> ros,,be1
+  | App(RoCall ros,[e1]) -> ros,e1
   | _ -> raise (Destr_failure "GLog")
 
 let destr_GLog e =
@@ -393,7 +392,7 @@ let destr_GLog e =
 let destr_EMap e =
   match e.e_node with 
   | App(EMap es,[e1;e2]) -> es,e1,e2
-  | _ -> raise (Destr_failure (fsprintf "EMap for %a" pp_exp e))
+  | _ -> raise (Destr_failure (fsprintf "EMap for %a" pp_expr e))
 
 let destr_FOpp   e = destr_App_uop "FOpp"   FOpp e
 let destr_FMinus e = destr_App_bop "FMinus" FMinus e
@@ -433,15 +432,23 @@ let destr_Tuple_nofail e =
   | Tuple(es) -> es 
   | _ -> [e] 
 
+let destr_GExp_Gen gv g =
+  let (g1,p) = try destr_GExp g with _ ->
+    F.printf "destr_gexp %a@." pp_expr g;
+    assert false
+  in
+  assert (equal_expr g1 (mk_GGen gv));
+  p
+
 (* ** Useful functions on [expr]
  * ----------------------------------------------------------------------- *)
 
 let e_iter_ty_maximal ty g e0 = 
   let rec go ie e0 =
     (* me = e is a maximal expression of the desired type *)
-    let me = not ie && ty_equal e0.e_ty ty in
+    let me = not ie && equal_ty e0.e_ty ty in
     (* ie = immediate subterms of e inside a larger expression of the desired type *)
-    let ie = me || (ie && ty_equal e0.e_ty ty) in
+    let ie = me || (ie && equal_ty e0.e_ty ty) in
     let run = if me then g else fun _ -> () in
     match e0.e_node with
     | V(_) | Cnst(_)  -> ()
@@ -465,13 +472,13 @@ let typeError_to_string (ty1,ty2,e1,me2,s) =
   | Some e2 -> 
     fsprintf
       "incompatible types `%a' vs. `%a' for expressions `%a' and `%a' in %s"
-      pp_ty ty1 pp_ty ty2 pp_exp e1 pp_exp e2 s
-  | None when ty_equal ty1 ty2 ->
-    fsprintf "type error in `%a' of type %a: %s" pp_exp e1 pp_ty ty1 s
+      pp_ty ty1 pp_ty ty2 pp_expr e1 pp_expr e2 s
+  | None when equal_ty ty1 ty2 ->
+    fsprintf "type error in `%a' of type %a: %s" pp_expr e1 pp_ty ty1 s
   | None ->
     fsprintf
       "expected type `%a', got  `%a' for Expression `%a': %s"
-      pp_ty ty2 pp_ty ty1 pp_exp e1 s
+      pp_ty ty2 pp_ty ty1 pp_expr e1 s
 
 let catch_TypeError f =
   try f()
@@ -531,4 +538,4 @@ type inverter = I of expr
 
 let expr_of_inverter (I e) = e
 
-let pp_inverter fmt i = pp_exp fmt (expr_of_inverter i)
+let pp_inverter fmt i = pp_expr fmt (expr_of_inverter i)

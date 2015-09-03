@@ -7,14 +7,20 @@ open Syms
 open Expr
 open Type
 
+
+(* ** Construction functions
+ * ----------------------------------------------------------------------- *)
+
 val ty_prod_vs : Vsym.t list -> ty
+
+val mk_GExp_Gen : Groupvar.id -> expr -> expr
 
 (* ** Indicator functions
  * ----------------------------------------------------------------------- *)
 
-(* val is_H           : expr -> bool *)
 val is_V           : expr -> bool
 val is_Perm        : expr -> bool
+val is_ProjKeyElem : KeyElem.t -> Psym.t -> expr -> bool
 val is_Quant       : expr -> bool
 val is_All         : expr -> bool
 val is_Exists      : expr -> bool
@@ -30,7 +36,7 @@ val is_GGen        : expr -> bool
 val is_GOne        : expr -> bool
 val is_GLog        : expr -> bool
 val is_RoCall      : expr -> bool
-val is_RoCall_rso  : ROsym.t -> expr -> bool
+val is_RoCall_ros  : expr -> ROsym.t -> bool
 val is_GLog_gv     : Groupvar.id -> expr -> bool
 val is_some_App    : expr -> bool
 val is_App         : op -> expr -> bool
@@ -57,14 +63,12 @@ val is_Land        : expr -> bool
 exception Destr_failure of string
 
 val destr_V            : expr -> Vsym.t
-(* val destr_H            : expr -> Fsym.t * expr *)
 val destr_Quant        : expr -> quant * (Vsym.t list * Olist.t) * expr
 val destr_All          : expr -> (Vsym.t list * Olist.t) * expr
 val destr_Tuple        : expr -> expr list
 val destr_Proj         : expr -> int * expr
 val destr_Cnst         : expr -> cnst
 val destr_Perm         : expr -> Psym.t * perm_type * expr * expr
-(* val destr_ProjPermKey  : expr -> KeyElem.t * expr *)
 val destr_FNat         : expr -> int
 val destr_App          : expr -> op * expr list
 val destr_GMult        : expr -> (expr) list
@@ -87,6 +91,7 @@ val destr_Quant_nofail : expr -> expr
 val destr_Xor_nofail   : expr -> expr list
 val destr_Land_nofail  : expr -> expr list
 val destr_Tuple_nofail : expr -> expr list
+val destr_GExp_Gen     : Groupvar.id -> expr -> expr
 
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
@@ -96,11 +101,11 @@ val pp_sort_expensive : bool ref
 val pp_number_tuples : bool ref
 
 val pp_cnst : F.formatter -> cnst -> Type.ty -> unit
-val pp_exp  : F.formatter -> expr -> unit
-val pp_exp_qual  : qual:Osym.t qual -> F.formatter -> expr -> unit
+val pp_expr  : F.formatter -> expr -> unit
+val pp_expr_qual  : qual:Osym.t qual -> F.formatter -> expr -> unit
 val pp_op   : F.formatter -> op * expr list -> unit
 val pp_nop  : F.formatter -> nop * expr list -> unit
-val pp_exp_tnp : F.formatter -> expr -> unit
+val pp_expr_tnp : F.formatter -> expr -> unit
 
 (* ** Useful functions on [expr]
  * ----------------------------------------------------------------------- *)
@@ -109,8 +114,7 @@ val e_iter_ty_maximal : ty -> (expr -> unit) -> expr -> unit
 
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
-(* val e_hash_calls : expr -> Se.t *)
-                             
+ 
 val has_log : expr -> bool
 
 val is_ppt : expr -> bool

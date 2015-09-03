@@ -62,6 +62,29 @@ wsautognp.native : stubs
 ##########################################################################
 # Used for development and testing
 
+dev : stubs
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) CoreRules.cma
+
+%.deps :
+	ocamlfind ocamldep -package bolt -package batteries -syntax camlp4o \
+            -package comparelib.syntax \
+            -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Logic -I src/Main \
+            -I src/Parser -I src/Poly -I src/Symbolic -I src/Tactic -I src/Util \
+            one-line src/$(basename $@).ml> .depend
+	ocamldot .depend > deps.dot
+	dot -Tsvg deps.dot >deps.svg
+
+depgraph :
+	ocamlfind ocamldep -package bolt -package batteries -syntax camlp4o \
+            -package comparelib.syntax \
+            -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Logic -I src/Main \
+            -I src/Parser -I src/Poly -I src/Symbolic -I src/Tactic -I src/Util \
+            one-line src/**/*.ml src/**/*.mli \
+        | grep -v Test | grep -v Extract > .depend
+	ocamldot .depend > deps.dot
+	dot -Tsvg deps.dot >deps.svg
+
+
 autognp.native-dev : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
 	rm autognp.log

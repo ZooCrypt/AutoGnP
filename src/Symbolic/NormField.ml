@@ -6,7 +6,6 @@ open Util
 open Expr
 open ExprUtils
 open Poly
-open PolyInsts
 open Factory
 
 let log_t ls = mk_logger "Norm" Bolt.Level.TRACE "NormField" ls
@@ -17,8 +16,8 @@ let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 module EP = MakePoly(
   struct
     type t = expr
-    let pp fmt e = F.fprintf fmt "[%a]" pp_exp e
-    let equal = e_equal
+    let pp fmt e = F.fprintf fmt "[%a]" pp_expr e
+    let equal = equal_expr
     let compare = compare
   end) (IntRing)
 
@@ -99,11 +98,11 @@ let factor_out a (p : EP.t) =
     lefts_rights
       (L.map
         (fun (es,c) ->
-           match L.partition (fun (e,_) -> e_equal e a) es with
+           match L.partition (fun (e,_) -> equal_expr e a) es with
            | ([(_,1)],others) -> Left(others,c)
            | ([],others)      -> Right(others,c)
            | _ ->
-             log_i (lazy (fsprintf "cannot factor out %a\n%!" pp_exp a));
+             log_i (lazy (fsprintf "cannot factor out %a\n%!" pp_expr a));
              raise Not_found)
         (EP.to_terms p))
   in
@@ -161,7 +160,7 @@ let norm_fe fe =
 let exps_of_monom (m : (expr * int) list) =
   let go acc (x,k) = replicate_r acc k x in 
   let l = L.fold_left go [] m in
-  L.sort e_compare l 
+  L.sort compare_expr l 
 
 let exp_of_polyl p =
   let to_i = Big_int.int_of_big_int in
@@ -177,7 +176,7 @@ let exp_of_polyl p =
       else mk_FOpp (mk_FMult (mk_FNat (-i) :: mes))        
   in
   let s = L.map summand p in
-  let e = if s = [] then mk_FZ else mk_FPlus (L.sort e_compare s) in
+  let e = if s = [] then mk_FZ else mk_FPlus (L.sort compare_expr s) in
   e
 
 let import_ipoly_aux (caller : string) poly (hv : (int, expr) Ht.t) =
@@ -256,7 +255,7 @@ let abstract_non_field_multiple before es =
     | _ -> SV (lookup e)
   in
   let ses = List.map go es in
-  let binding = List.sort e_compare (He.fold (fun e _ l -> e::l) he []) in
+  let binding = List.sort compare_expr (He.fold (fun e _ l -> e::l) he []) in
   let hr = Ht.create 17 in
   let hv = Ht.create 17 in
   let c = ref 1 in
@@ -288,7 +287,7 @@ let div_factor pe1 pe2 =
     | [] -> mk_FNat 0
     | [(a,1)] -> a
     | _ ->
-      let is_minus_one (e,exp) = e_equal (mk_FOpp mk_FOne) e && exp = 1 in
+      let is_minus_one (e,exp) = equal_expr (mk_FOpp mk_FOne) e && exp = 1 in
       let mopp =
         if L.exists is_minus_one es then (fun x -> mk_FOpp x) else id
       in

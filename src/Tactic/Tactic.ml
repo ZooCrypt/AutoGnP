@@ -615,6 +615,7 @@ let rec handle_tactic ts tac =
 
 let handle_instr verbose ts instr =
   match instr with
+
   | PT.Help(PT.Rinjective_ctxt_ev _) ->
     let msg =
       "Rule that allows replacing the i-th event expression (of type 'e1 = e2' or 'e1 <> e2')"^
@@ -622,6 +623,7 @@ let handle_instr verbose ts instr =
       "Usage : \n> injective_ctxt_ev [index] (x -> f(x)) (y -> f_i(y))."
     in
     (ts, msg)
+
   | PT.Help(PT.Rbad(i,_,_)) ->
     let msg =
       fsprintf
@@ -633,6 +635,7 @@ let handle_instr verbose ts instr =
         i
     in
     (ts, msg)
+
   | PT.Help(PT.Rfind _) ->
     let msg =
       "Rule to 'get' existential variable(s) 'vars' from the event into the main game \n"^
@@ -640,6 +643,7 @@ let handle_instr verbose ts instr =
       "Usage :\n> find (xs* -> f(xs,vars)) args A_name vars* ."
     in
     (ts, msg)
+
   | PT.Help (PT.Runwrap_quant_ev _) ->
     let msg =
       "Rule to unwrap the quantification from the j-th event to the main event quantification.\n"^
@@ -647,6 +651,7 @@ let handle_instr verbose ts instr =
       "Usage :\n> unwrap_quant_ev [j]."
     in
     (ts, msg)
+
   | PT.Help (PT.Rcheck_hash_args _) ->
     let msg =
       "Rule to deduce from a guarded expression of the form\n'Exists h in L_H : h = e',\n"^
@@ -654,13 +659,16 @@ let handle_instr verbose ts instr =
       "Usage :\n> check_hash_args (i,j,k)."
     in
     (ts, msg)
+
   | PT.Help _ -> assert false
+
   | PT.PermDecl(s,t) -> let s_inv = s ^ "_inv" in
      if Mstring.mem s_inv ts.ts_permdecls then
        tacerror "Permutation with the same name '%s' already declared." s;
-     let f = Psym.mk s (PU.ty_of_parse_ty ts t) (create_permvar ts s) in
+     let f = create_psym ts s (PU.ty_of_parse_ty ts t) in
      let ts = { ts with ts_permdecls = Mstring.add s_inv f ts.ts_permdecls } in
      (ts, fsprintf "Declared permutation %s : " s)
+
   | PT.RODecl(s,ro,t1,t2) ->
     let oname = if ro then "random oracle" else "operator" in
     if Mstring.mem s ts.ts_rodecls then

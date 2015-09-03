@@ -20,7 +20,8 @@ depends: [
   "ctypes"
   "ctypes-foreign"
   "menhir"
-  "websocket" { = "2.1" }
-  "cohttp" { = "0.18.3" }
+  "websocket"
+  "cohttp"
   "batteries"
+  "comparelib"
 ]

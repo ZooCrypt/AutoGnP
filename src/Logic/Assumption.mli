@@ -1,14 +1,16 @@
-(*s Decisional and computational assumptions. *)
+(* * Decisional and computational assumptions. *)
 
-(*i*)
+(* ** Imports *)
+
 open Abbrevs
 open Util
 open Syms
 open Expr
 open Game
-(*i*)
 
-(* \hd{Decisional assumptions.} *)
+(* ** Decisional assumptions
+ * ----------------------------------------------------------------------- *)
+
 type assm_dec = private {
   ad_name       : string;       (*r name of assumption *)
   ad_inf        : bool;         (*r information-theoretic assumption *)
@@ -30,7 +32,8 @@ val private_vars_dec : assm_dec -> Se.t
 
 val inst_dec : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
 
-(* \hd{Computational assumptions.} *)
+(* ** Computational assumptions
+ * ----------------------------------------------------------------------- *)
 
 type assm_type = A_Succ | A_Adv
 
@@ -41,7 +44,7 @@ type assm_comp = private {
   ac_inf        : bool;         (*r information-theoretic assumption *)
   ac_type       : assm_type;    (* type of assumption *)
   ac_prefix     : gdef;         (*r prefix of assumption *)
-  ac_event      : ev;           (*r event expression *)
+  ac_event      : expr;         (*r event expression *)
   ac_acalls     : (Asym.t * Vsym.t list * expr) list;
    (*r adversary calls (same asym) and arguments/returned variables *)
   ac_symvars    : vs list list; (*r symmetric in given variables *)
@@ -49,7 +52,7 @@ type assm_comp = private {
 
 val pp_assm_comp :  F.formatter -> assm_comp -> unit
 
-val mk_assm_comp : string -> bool -> assm_type -> gdef -> ev -> vs list list -> assm_comp
+val mk_assm_comp : string -> bool -> assm_type -> gdef -> expr -> vs list list -> assm_comp
 
 val private_vars_comp : assm_comp -> Se.t
 

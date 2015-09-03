@@ -1,6 +1,6 @@
-(*s Decisional and computational assumptions *)
+(* * Decisional and computational assumptions *)
 
-(*i*)
+(* ** Imports *)
 open Abbrevs
 open Util
 open Game
@@ -10,12 +10,11 @@ open Syms
 
 let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "Assumption" ls
 let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Decisional assumptions} *)
+(* ** Decisional assumptions
+ * ----------------------------------------------------------------------- *)
 
-(*i For simplicity, we restrict ourselves to assumptions to be of the form
+(* For simplicity, we restrict ourselves to assumptions to be of the form
      \verb!r1 <-$ D1; ...; rn <-$ Dn; (vs1) <- A1(e1); ...; (vsk) <- Ak(ek);!
    where 'Di' might be an excepted distribution [*].
    Then the right assumption has the form
@@ -60,23 +59,23 @@ let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
       very simple while allowing samplings in between the adversary calls
       might be more complicated. This would allow for adaptive sampling,
       i.e., using vsj in the excepted expressions.
-i*)
+*)
 
 type assm_dec = {
-  ad_name       : string;       (*r name of assumption *)
-  ad_inf        : bool;         (*r information-theoretic assumption *)
-  ad_prefix1    : gdef;         (*r prefix for left *)
-  ad_prefix2    : gdef;         (*r prefix for right *)
+  ad_name       : string;       (* name of assumption *)
+  ad_inf        : bool;         (* information-theoretic assumption *)
+  ad_prefix1    : gdef;         (* prefix for left *)
+  ad_prefix2    : gdef;         (* prefix for right *)
   ad_acalls     : (Asym.t * Vsym.t list * (expr * expr)) list;
-                                (*r adversary calls (same asym and
+                                (* adversary calls (same asym and
                                     returned variables and argument
                                     expression on left and right *)
-  ad_symvars    : vs list list; (*r symmetric in given variables *)
+  ad_symvars    : vs list list; (* symmetric in given variables *)
 }
 
 let pp_acall_dec fmt (asym,vs1,(args1,args2)) =
   F.fprintf fmt "(%a) <- %a(%a | %a)@\n"
-    (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_exp args1 pp_exp args2
+    (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_expr args1 pp_expr args2
 
 let pp_assm_dec fmt ad =
   F.fprintf fmt "assumption %s:@\n" ad.ad_name;
@@ -101,7 +100,7 @@ let mk_assm_dec name inf gd1 gd2 symvars =
           Asym.pp asym1 Asym.pp asym2;
       if not (od1 = [] && od2 = []) then
         tacerror "decisional assumption with oracles not supported";
-      if not (list_equal Vsym.equal vres1 vres2) then
+      if not (equal_list Vsym.equal vres1 vres2) then
         tacerror "decisional assumption return variables must match up: %a vs %a"
           (pp_list "," Vsym.pp) vres1 (pp_list "," Vsym.pp) vres2;
       go ((asym1,vres1,(arg1,arg2))::acc) acalls1 acalls2
@@ -148,8 +147,8 @@ let inst_dec ren assm =
     ad_symvars  = L.map (L.map ren_v) assm.ad_symvars;
   }
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Computational assumptions} *)
+(* ** Computational assumptions
+ * ----------------------------------------------------------------------- *)
 
 type assm_type = A_Succ | A_Adv
 
@@ -158,19 +157,19 @@ let pp_atype fmt = function
   | A_Adv  -> pp_string fmt "Adv"
 
 type assm_comp = {
-  ac_name       : string;       (*r name of assumption *)
-  ac_inf        : bool;         (*r information-theoretic assumption *)
+  ac_name       : string;       (* name of assumption *)
+  ac_inf        : bool;         (* information-theoretic assumption *)
   ac_type       : assm_type;
-  ac_prefix     : gdef;         (*r prefix of assumption *)
-  ac_event      : ev;           (*r event expression *)
+  ac_prefix     : gdef;         (* prefix of assumption *)
+  ac_event      : ev;           (* event expression *)
   ac_acalls     : (Asym.t * Vsym.t list * expr) list;
-   (*r adversary calls: asym, returned variables, and argument *)
-  ac_symvars    : vs list list; (*r symmetric in given variables *)
+   (* adversary calls: asym, returned variables, and argument *)
+  ac_symvars    : vs list list; (* symmetric in given variables *)
 }
 
 let pp_acall_comp fmt (asym,vs1,args1) =
   F.fprintf fmt "(%a) <- %a(%a)@\n"
-    (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_exp args1
+    (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_expr args1
 
 let pp_assm_comp fmt ac =
   F.fprintf fmt "assumption %s (%a):@\n" ac.ac_name pp_atype ac.ac_type;

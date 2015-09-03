@@ -215,7 +215,7 @@ val t_guess : Asym.t -> vs list ->  tactic
 val rfind  : vs list * expr -> expr -> Asym.t -> vs list -> rule
 val t_find : vs list * expr -> expr -> Asym.t -> vs list ->  tactic
 
-
+(*
 val rbad  : bad_version -> gcmd_pos -> (expr -> Vsym.t) -> rule       
 val t_bad : bad_version -> gcmd_pos -> (expr -> Vsym.t) -> tactic
 
@@ -227,4 +227,5 @@ val t_unwrap_quant_ev : int -> tactic
                                 
 val rswap_quant_ev : int -> rule
 val t_swap_quant_ev : int -> tactic
+*)
                                 
