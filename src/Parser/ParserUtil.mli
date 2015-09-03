@@ -4,6 +4,7 @@
 open Expr
 open Type
 open Game
+open GameUtils
 open Syms
 open TheoryTypes
 open ParserTypes

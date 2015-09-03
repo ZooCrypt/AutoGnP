@@ -9,12 +9,9 @@ open Type
 open Expr
 open ExprUtils
 open Game
-open GameUtils
 open Wf
 open Assumption
 open CoreTypes
-
-let undefined = failwith "undefined"
 
 let _log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "CoreRules" ls
 let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "CoreRules" ls
@@ -35,7 +32,7 @@ type proof_tree = unit iproof_tree
 
 (** Replace subproofs with (possibly) different proofs of the same facts. *)
 let pt_replace_children pt pts info =
-  let equal_fact pt1 pt2 = ju_equal pt1.pt_ju pt2.pt_ju in
+  let equal_fact pt1 pt2 = equal_judgment pt1.pt_ju pt2.pt_ju in
   assert (Util.list_eq_for_all2 equal_fact pt.pt_children pts);
   { pt with pt_children = pts; pt_info = info }
 
@@ -91,7 +88,7 @@ let prove_by ru g =
       { subgoals = subgoals;
         validation = fun pts ->
           assert (L.length pts = L.length subgoals);
-          assert (L.for_all2 (fun pt g -> ju_equal pt.pt_ju g) pts subgoals);
+          assert (L.for_all2 (fun pt g -> equal_judgment pt.pt_ju g) pts subgoals);
           { pt_ju       = g;
             pt_rule     = rn;
             pt_children = pts;
@@ -229,7 +226,7 @@ let t_fail fs _g =
 (** Tactical that fails if the given tactic returns the same proof state. *)
 let t_ensure_progress t g =
   t g >>= fun ps ->
-  guard (not (L.length ps.subgoals = 1 && ju_equal (L.hd ps.subgoals) g)) >>= fun _ ->
+  guard (not (L.length ps.subgoals = 1 && equal_judgment (L.hd ps.subgoals) g)) >>= fun _ ->
   ret ps
 
 (** Monadic bind for rtactics, expects that [t1] returns a single goal. *)
@@ -242,7 +239,7 @@ let t_bind (t1 : 'a rtactic) (ft2 : 'a -> 'b rtactic) g =
   | _ ->
     mfail (lazy "t_bind: expected exactly one goal")
 
-(** Monadic bind for a rtactic and a tactic. *)
+(** Monadic bind for an rtactic and a tactic. *)
 let t_bind_ignore (t1 : 'a rtactic) (ft2 : 'a -> tactic) g =
   t1 g >>= fun (x,ps1) ->
   mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
@@ -290,7 +287,7 @@ let ensure_pr_Succ_or_Adv rn ju =
  * ----------------------------------------------------------------------- *)
 
 let rename_if_required rn se1 se2 =
-  let ren = GameUtils.unif_se se1 se2 in
+  let ren = unif_se se1 se2 in
   if Vsym.M.is_empty ren then se1
   else (
     ensure_ren_inj rn ren;
@@ -426,8 +423,6 @@ let ensure_bijection ?partial:(partial=false) se c1 c2 rs = (* c1 = inverse, c2 
     tacerror "contexts %a and %a are not bijective"
       pp_ctxt c1 pp_ctxt c2
 
-(*  if not (equal_ty_size dty1 dty2) then
-    tacerror "rnd: invalid size type for contexts" *)
 
 let rrnd p c1 c2 ju =
   let se = ju.ju_se in
@@ -515,7 +510,7 @@ let rassert p e ju =
   let ju1 =
     { ju_pr = Pr_Succ;
       ju_se = { se with
-                se_ev = (* Event.insert ~e:(mk_Not e) se.se_ev *) undefined } }
+                se_ev = fixme "Event.insert ~e:(mk_Not e) se.se_ev" } }
   in
   let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
   Rassert(p,e), [ ju1; ju2 ]
@@ -546,7 +541,7 @@ let rrewrite_oracle op dir ju =
 
 let t_rewrite_oracle op dir = prove_by (rrewrite_oracle op dir)
 
-(* *** Merge conjucts in event with equalities.
+(* *** Merge conjuncts in event with equalities.
  * ----------------------------------------------------------------------- *)
 
 let merge_base_event ev1 ev2 =
@@ -571,7 +566,7 @@ let rmerge_ev i j ju =
 
 let t_merge_ev i j = prove_by (rmerge_ev i j)
 
-(* *** Split (in)equality on tuples into multiple equalities.
+(* *** Split (in)equality on tuples into multiple inequalities.
  * ----------------------------------------------------------------------- *)
 
 let rsplit_ev i ju =
@@ -646,7 +641,6 @@ let rswap_main ((i,j,k) as opos_eq) vname ju =
         sec_ev    = subst seoc.seoc_sec.sec_ev;
       }
     in
- 
     let seoc =
       { seoc with
           seoc_sec = sec;
@@ -718,11 +712,12 @@ let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   let ev = se.se_ev in
   if not ae && conj_or_negation_included e ev then
     tacerror "case_ev: event or negation already in event";
-  let ju1 = { ju with ju_se =
-      { se with se_ev = undefined (* Event.insert ~e se.se_ev *)}}
+  let ju1 =
+    { ju with
+      ju_se = { se with se_ev = fixme "Event.insert ~e se.se_ev" } }
   in
   let ju2 = { ju with ju_se =
-                { se with se_ev = undefined (* Event.insert ~e:(mk_Not e) se.se_ev *) } }
+                { se with se_ev = fixme "Event.insert ~e:(mk_Not e) se.se_ev" } }
   in
   Rcase_ev(flip,e), if flip then [ju2; ju1] else [ju1;ju2]
 
@@ -753,6 +748,9 @@ let rctxt_ev i c ju =
 
 let t_ctxt_ev i c = prove_by (rctxt_ev i c)
 
+(* *** Apply injective context to event
+ * ----------------------------------------------------------------------- *)
+
 let rinjective_ctxt_ev j c1 c2 ju =
   let se = ju.ju_se in
   let ev = se.se_ev in
@@ -777,7 +775,7 @@ let rinjective_ctxt_ev j c1 c2 ju =
   
 let t_injective_ctxt_ev j c1 c2 = prove_by (rinjective_ctxt_ev j c1 c2) 
   
-(* *** Remove an event
+(* *** Remove conjunct from event
  * ----------------------------------------------------------------------- *)
 
 let rremove_ev (rm:int list) ju =
@@ -794,18 +792,17 @@ let rremove_ev (rm:int list) ju =
 
 let t_remove_ev rm = prove_by (rremove_ev rm)
 
-(*i ----------------------------------------------------------------------- *)
-(* \hd{Core rules: Bound probability directly} *)
-(*i ----------------------------------------------------------------------- *)
+(* ** Core rules: Bound probability directly
+ * ----------------------------------------------------------------------- *)
 
-(*i ----------------------------------------------------------------------- *)
-(** {\bf Admit proof obligation} *)
+(* *** Admit proof obligation
+ * ----------------------------------------------------------------------- *)
 
 let radmit s _g = Radmit s, []
 let t_admit s = prove_by (radmit s)
 
-(*i ----------------------------------------------------------------------- *)
-(** {\bf Distinguishability judgments are symmetric} *)
+(* *** Distinguishability judgments are symmetric
+ * ----------------------------------------------------------------------- *)
 
 let rdist_sym ju =
   match ju.ju_pr with
@@ -816,8 +813,8 @@ let rdist_sym ju =
 
 let t_dist_sym = prove_by rdist_sym
 
-(*i ----------------------------------------------------------------------- *)
-(** {\bf Equal experiments cannot be distinguished} *)
+(* *** Equal experiments cannot be distinguished
+ * ----------------------------------------------------------------------- *)
 
 let rdist_eq ju =
   let rn = "rdist_eq" in
@@ -832,8 +829,8 @@ let rdist_eq ju =
 
 let t_dist_eq = prove_by rdist_eq
 
-(*i ----------------------------------------------------------------------- *)
-(** {\bf Bound false event} *)
+(* *** Bound false event
+ * ----------------------------------------------------------------------- *)
 
 let rfalse_ev ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
@@ -843,11 +840,11 @@ let rfalse_ev ju =
 
 let t_false_ev = prove_by rfalse_ev
 
-(*i ----------------------------------------------------------------------- *)
-(** {\bf Bound random independence} *)
+(* *** Bound random independence
+ * ----------------------------------------------------------------------- *)
 
 let check_event r ev =
-  if undefined (* Event.binding ev <> [] *)
+  if is_Quant ev 
      then tacerror "indep: the event can not be quantified";
   let r = mk_V r in
   let rec aux i evs =
@@ -888,8 +885,8 @@ let rrandom_indep ju =
 
 let t_random_indep = prove_by rrandom_indep
 
-(*i ----------------------------------------------------------------------- *)
-(** {\bf Apply computational assumption} *)
+(* *** Apply computational assumption
+ * ----------------------------------------------------------------------- *)
 
 let pp_range fmt (i,j) =
   F.fprintf fmt "%i - %i" i j
@@ -1029,9 +1026,8 @@ let rassm_dec dir ren rngs assm0 ju =
   (* check that event is equal to last returned variable *)
   let ev_is_last_returned = 
     match L.last acalls_ju with
-    | GLet(vs,_) when equal_expr se.se_ev (mk_V vs) &&
-                      undefined (* Event.binding se.se_ev = [] *) -> true
-    | _                                           -> false
+    | GLet(vs,_) when equal_expr se.se_ev (mk_V vs) -> true
+    | _                                             -> false
   in
   if not ev_is_last_returned then
     tacerror "assm_dec: event must be equal to variable defined in last line";
@@ -1094,7 +1090,7 @@ let t_trans new_se =
   prove_by (rtrans new_se)
 
 
-(* ** Hybrid argument.
+(* ** Core rule: Hybrid argument.
  * ----------------------------------------------------------------------- *)
 
 let rename_odef lcmds ret =
@@ -1127,7 +1123,7 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
             seoc_cright = new_lcmds } }
   in
   let ev = ju.ju_se.se_ev in
-  assert (undefined (* Event.binding ev = [] *));
+  assert (not (is_Quant ev));
   let splitEv =
     let conj = destr_Land_nofail ev in
     conc_map
@@ -1170,7 +1166,7 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
 let t_hybrid gpos oidx lcmds eret =
   prove_by (rhybrid gpos oidx lcmds eret)
 
-(* ** Guard rule.
+(* ** Core rule: Guard.
  * ----------------------------------------------------------------------- *)
 
 let rguard opos tnew ju =
@@ -1208,11 +1204,13 @@ let rguard opos tnew ju =
     { seoc with 
       seoc_sec = { seoc.seoc_sec with 
         sec_right = [];
-        sec_ev = undefined (*
-                 Event.mk ~quant:Exists
-                          ~binding:(vs,Oracle.mk_O seoc.seoc_osym)
-                          (e_subst subst (mk_Land (mk_Not t::tests))) *)
-      }} in
+        sec_ev = fixme
+                   "Event.mk ~quant:Exists
+                    ~binding:(vs,Oracle.mk_O seoc.seoc_osym)
+                    (e_subst subst (mk_Land (mk_Not t::tests)))"
+                 }
+    }
+  in
   let i = if tnew = None then [] else [LGuard t] in
   let ju1 = {ju_se = set_se_octxt i seoc_bad; ju_pr = Pr_Succ } in
   let ju2 = {ju with ju_se = set_se_octxt i seoc } in
@@ -1222,12 +1220,15 @@ let rguard opos tnew ju =
 
 let t_guard p tnew = prove_by (rguard p tnew)
 
-(* ** Guess rule.
+(* ** Core rules: Deal with existential quantifiers
+ * ----------------------------------------------------------------------- *)
+
+(* *** Guess rule.
  * ----------------------------------------------------------------------- *)
 
 let rguess asym fvs ju = 
   let _ev = ju.ju_se.se_ev in
-  let (q,b,ev_expr) = undefined (*
+  let (q,b,ev_expr) = fixme "" (*
     try Event.destr_exn ev
     with Event.NoQuant -> tacerror "guess : invalid event, quantification required." *)
   in
@@ -1253,13 +1254,13 @@ let rguess asym fvs ju =
 
 let t_guess asym fvs = prove_by (rguess asym fvs)
 
-(* ** Find rule.
+(* *** Find rule.
  * ----------------------------------------------------------------------- *)
 
 let rfind (bd,body) arg asym fvs ju =
   let ev = ju.ju_se.se_ev in
   let (q,b,ev_expr) =
-    undefined (*
+    fixme "" (*
     try Event.destr_exn ev
     with Event.NoQuant -> tacerror "rfind : not a valid event, quantification required" *)
   in

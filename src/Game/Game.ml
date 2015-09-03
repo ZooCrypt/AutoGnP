@@ -660,6 +660,146 @@ let ren_injective sigma =
 let pp_ren fmt ren =
   pp_list "," (pp_pair Vsym.pp Vsym.pp) fmt (Vsym.M.bindings ren)
 
+(* ** Unification
+ * ----------------------------------------------------------------------- *)
+
+let ensure_same_length l1 l2 =
+  if L.length l1 <> L.length l2 then raise Not_found
+
+let unif_vs ren v1 v2 =
+  if not (Vsym.equal v1 v2) then
+    Vsym.H.add ren v1 v2
+
+(* FIXME: pretty incomplete *)
+let unif_expr _ren _e1 _e2 = ()
+  (* match e1.e_node, e2.e_node with
+     | Exists(_,_,binders1), Exists(_,_,binders2) ->
+        ensure_same_length binders1 binders2;
+        L.iter2 (unif_vs ren) (L.map fst binders1) (L.map fst binders2)
+     | _ -> () *)
+
+let unif_lcmd ren lc1 lc2 =
+  match lc1,lc2 with
+  | LLet(v1,_), LLet(v2,_)
+  | LSamp(v1,_), LSamp(v2,_) ->
+    unif_vs ren v1 v2
+  | LBind(vss1,_), LBind(vss2,_) ->
+    ensure_same_length vss1 vss2;
+    L.iter2 (unif_vs ren) vss1 vss2
+  | LGuard(_), LGuard(_) ->
+    ()
+  | _ -> 
+    raise Not_found
+
+let unif_obody ren (lcmds1,_) (lcmds2,_) = 
+  ensure_same_length lcmds1 lcmds2;
+  L.iter2 (unif_lcmd ren) lcmds1 lcmds2
+
+let unif_odecl ren odecl1 odecl2 =
+  match odecl1, odecl2 with
+  | Oreg ob1,    Oreg ob2 -> unif_obody ren ob1 ob2
+  | Ohyb oh1, Ohyb oh2 ->
+    unif_obody ren oh1.oh_less    oh2.oh_less;
+    unif_obody ren oh1.oh_eq      oh2.oh_eq;
+    unif_obody ren oh1.oh_greater oh2.oh_greater
+  | _, _ -> raise Not_found
+
+let unif_odef ren (_,vs1,od1) (_,vs2,od2) =
+  ensure_same_length vs1 vs2;
+  L.iter2 (unif_vs ren) vs1 vs2;
+  unif_odecl ren od1 od2
+
+let unif_gcmd ren gcmd1 gcmd2 =
+  match gcmd1, gcmd2 with
+  | GLet(v1,_), GLet(v2,_)
+  | GSamp(v1,_), GSamp(v2,_) -> unif_vs ren v1 v2
+  | GAssert(_), GAssert(_) -> ()
+  | GCall(vs1,_,_,odefs1), GCall(vs2,_,_,odefs2) ->
+    ensure_same_length vs1 vs2;
+    ensure_same_length odefs1 odefs2;
+    L.iter2 (unif_vs ren) vs1 vs2;
+    L.iter2 (unif_odef ren) odefs1 odefs2
+  | _ -> raise Not_found
+
+let unif_gdef ren gd1 gd2 =
+  ensure_same_length gd1 gd2;
+  L.iter2 (unif_gcmd ren) gd1 gd2
+
+let vht_to_map ht =
+  Vsym.H.fold (fun v x m -> Vsym.M.add v x m) ht Vsym.M.empty
+
+(** We only support an outermost exists binder *)
+let unif_se se1 se2 =
+  try 
+    let ren = Vsym.H.create 134 in
+    unif_gdef ren se1.se_gdef se2.se_gdef;
+    unif_expr ren se1.se_ev se2.se_ev;
+    vht_to_map ren
+  with
+    Not_found ->
+      F.printf "no unifier found!\n%!";
+      raise Not_found 
+
+let unif_gdef g1 g2 = 
+  let ren = Vsym.H.create 134 in
+  unif_gdef ren g1 g2;
+  vht_to_map ren
+  
+(* ** Probabilistic polynomial time
+ * ----------------------------------------------------------------------- *)
+
+let has_log_distr (_,es) = L.exists has_log es
+  
+let has_log_lcmd = function
+  | LLet(_,e) | LGuard e -> has_log e
+  | LBind _              -> false
+  | LSamp(_,d)           -> has_log_distr d
+
+let has_log_lcmds c = L.exists has_log_lcmd c
+
+let has_log_obody (cmd,e) = has_log e || has_log_lcmds cmd
+
+let has_log_odecl od =
+  match od with
+  | Oreg od -> has_log_obody od
+  | Ohyb oh -> L.exists has_log_obody [ oh.oh_less; oh.oh_eq; oh.oh_greater ]
+
+let has_log_odef (_,_,od) = has_log_odecl od
+
+let has_log_gcmd = function
+  | GLet(_,e) | GAssert(e) -> has_log e
+  | GSamp(_,d) -> has_log_distr d
+  | GCall(_,_,e,ods) -> has_log e || L.exists has_log_odef ods
+
+let has_log_gcmds c = L.exists has_log_gcmd c
+
+let is_ppt_distr (_,es) = L.for_all is_ppt es
+  
+let is_ppt_lcmd = function
+  | LLet(_,e) | LGuard e -> is_ppt e
+  | LBind _              -> true
+  | LSamp(_,d)           -> is_ppt_distr d
+
+let is_ppt_lcmds c = L.for_all is_ppt_lcmd c
+
+let is_ppt_obody (cmd,e) = is_ppt e && is_ppt_lcmds cmd
+
+let is_ppt_odecl od =
+  match od with
+  | Oreg ob -> is_ppt_obody ob
+  | Ohyb oh -> L.exists is_ppt_obody [ oh.oh_less; oh.oh_eq; oh.oh_greater ]
+
+let is_ppt_odef (_,_,od) = is_ppt_odecl od
+
+let is_ppt_gcmd = function
+  | GLet(_,e) | GAssert(e) -> is_ppt e
+  | GSamp(_,d) -> is_ppt_distr d
+  | GCall(_,_,e,od) -> is_ppt e || L.for_all is_ppt_odef od
+
+let is_ppt_gcmds c = L.for_all is_ppt_gcmd c
+
+let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt se.se_ev
+
 (* ** Normal forms
  * ----------------------------------------------------------------------- *)
 

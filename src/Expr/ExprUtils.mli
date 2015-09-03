@@ -20,6 +20,8 @@ val mk_GExp_Gen : Groupvar.id -> expr -> expr
 
 val is_V           : expr -> bool
 val is_Perm        : expr -> bool
+val is_RoLookup    : expr -> bool
+val is_FunCall     : expr -> bool
 val is_ProjKeyElem : KeyElem.t -> Psym.t -> expr -> bool
 val is_Quant       : expr -> bool
 val is_All         : expr -> bool

@@ -1,13 +1,15 @@
-(*s Goals and mappings from strings to variables/symbols. *)
+(* * Goals and mappings from strings to variables/symbols. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Util
 open TheoryTypes
 
 module Ht = Hashtbl
 module T = Type
 module G = Game
-(*i*)
+
+(* ** Proof state creation and manipulation
+ * ----------------------------------------------------------------------- *)
 
 let mk_ts () = {
   ts_lvars      = Hashtbl.create 20;
@@ -55,14 +57,14 @@ let create_groupvar ps s =
     Ht.add ps.ts_gvars s gv;
     gv
 
-      
+(*
 let create_psym ps s ty_dom =
   try
     let ps = Ht.find ps.ts_permdecls s in
     assert (equal_ty ps.Psym.dom ty_dom);
     ps
-  with Not_found ->
-    
+  with Not_found -> 
     let pid = T.Permvar.mk s in
     Ht.add ps.ts_permvars s pid;
     pid
+*)

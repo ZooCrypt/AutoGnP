@@ -22,6 +22,7 @@ type pr_tag =
   | Pr_Succ
   | Pr_Adv
   | Pr_Dist of sec_exp
+  with compare
 
 let pr_exp_equal pre1 pre2 =
   match pre1, pre2 with
@@ -33,9 +34,10 @@ let pr_exp_equal pre1 pre2 =
     probability (see above) is negligible. A proof additionally
     establishes a concrete relation between judgments. *)
 type judgment = { ju_se : sec_exp; ju_pr : pr_tag }
+  with compare
 
-let ju_equal ju1 ju2 =
-  equal_sec_exp ju1.ju_se ju2.ju_se && pr_exp_equal ju1.ju_pr ju2.ju_pr
+let equal_judgment ju1 ju2 =
+  compare_judgment ju1 ju2 = 0
 
 let pp_ju fmt ju =
   match ju.ju_pr with

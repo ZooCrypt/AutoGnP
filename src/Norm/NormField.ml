@@ -8,11 +8,11 @@ open ExprUtils
 open Poly
 open Factory
 
-let log_t ls = mk_logger "Norm" Bolt.Level.TRACE "NormField" ls
+let _log_t ls = mk_logger "Norm" Bolt.Level.TRACE "NormField" ls
 let _log_d ls = mk_logger "Norm" Bolt.Level.DEBUG "NormField" ls
 let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 
-(** We use ints as variables here. *)
+(** We use expressions as variables here. *)
 module EP = MakePoly(
   struct
     type t = expr
@@ -200,7 +200,7 @@ let import_ipoly_EP (caller : string) poly (hv : (int, expr) Ht.t) =
 let exp_of_poly p = EP.to_terms p |> exp_of_polyl
 
 (** Pretty-printer function for already abstracted field expression. *)
-let string_of_fexp e =
+let _string_of_fexp e =
   let buf = Buffer.create 120 in
   let putc c = Buffer.add_char buf c in
   let puts s = Buffer.add_string buf s in

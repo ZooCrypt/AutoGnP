@@ -9,6 +9,7 @@ open Syms
 open Expr
 open ExprUtils
 open Game
+open GameUtils
 open Rules
 open CoreTypes
 open NormField
@@ -47,23 +48,23 @@ let useful_subexprs se rv mgen e =
   let fac_candidates =
     Se.elements (Se.diff evars avars)
     |> L.map (fun e -> if is_G e.e_ty then mk_GLog e else e)
-    |> L.filter (fun fe -> ty_equal fe.e_ty mk_Fq)
-    |> sorted_nub e_compare
+    |> L.filter (fun fe -> equal_ty fe.e_ty mk_Fq)
+    |> L.sort_uniq compare_expr
     |> move_front is_GLog
   in
 
   (* compute [e'] such that [e = e'*d + c] and [e'] contains [rv],
      random sampling can simplify [e] to [r*div + c] without dividing by d *)
   let get_coeff d =
-    log_t (lazy (fsprintf "trying factor_out=%a" pp_exp d));
+    log_t (lazy (fsprintf "trying factor_out=%a" pp_expr d));
     match polys_of_field_expr (CAS.norm id e) with
     | (fe, None) ->
       begin try
         let (g,_h) = factor_out d fe in
         let e' = exp_of_poly g in
-        guard (not (e_equal re e')) >>= fun _ ->
+        guard (not (equal_expr re e')) >>= fun _ ->
         guard (Se.mem re (e_vars e')) >>= fun _ ->
-        log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_exp e pp_exp e'));
+        log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_expr e pp_expr e'));
         ret e'
       with
         Not_found -> mempty
@@ -77,7 +78,7 @@ let useful_subexprs se rv mgen e =
   | None    -> mplus (ret e) (msum (L.map get_coeff fac_candidates))
   | Some ge ->
     let lge = if is_G ge.e_ty then  mk_GLog ge else ge in
-    let fac_candidates = L.filter (fun e -> not (e_equal e lge)) fac_candidates in
+    let fac_candidates = L.filter (fun e -> not (equal_expr e lge)) fac_candidates in
     msum ((get_coeff lge)::(ret e)::(L.map get_coeff fac_candidates))
 
 (** Compute useful contexts from occurences of random variable *)
@@ -99,9 +100,9 @@ let contexts se rv mgen =
       e
   in
   iter_gdef_exp add_subterms se.se_gdef;
-  add_subterms (Event.expr se.se_ev);
+  add_subterms se.se_ev;
   mconcat (L.rev !es) >>= fun e ->
-  log_t (lazy (fsprintf "possible expr=%a@\n%!" pp_exp e));
+  log_t (lazy (fsprintf "possible expr=%a@\n%!" pp_expr e));
 
   (* find useful subexpressions of e (in the right order) *)
   useful_subexprs se rv mgen e
@@ -111,7 +112,7 @@ let check_tannot ts ty mty =
   | None -> ()
   | Some pty ->
     let ety = ty_of_parse_ty ts pty in
-    if not (ty_equal ty ety) then
+    if not (equal_ty ty ety) then
       tacerror "wrong type annotation: expected %a, got %a" pp_ty ty pp_ty ety
 
 
@@ -136,19 +137,19 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     let (v2,e2) = parse v2_ty (sv2,se2) in
     ret (deduc e2 v2,(v2,e2))
   | Some (sv1,mt1,se1), None ->
-    let v1_ty = opt (ty_of_parse_ty ts) rv_ty mt1  in
+    let v1_ty = O.map_default (ty_of_parse_ty ts) rv_ty mt1  in
     let (v1,e1) = parse v1_ty (sv1,se1) in
     ret ((v1,e1), deduc e1 v1)
   | None, None ->
     let e2s =
-      run (-1) (contexts se rv mgen) |> L.map Norm.norm_expr_nice |> nub e_equal
+      run (-1) (contexts se rv mgen) |> L.map NormUtils.norm_expr_nice |> L.sort_uniq compare_expr
     in
     mconcat (L.map (fun e2 -> (rv,e2)) e2s) >>= fun (v2,e2) ->
     ret (deduc e2 v2, (v2,e2))
     (* FIXME: for CS bycrush, we excluded contexts rv -> - rv *)
   ) >>= fun ((v1,e1),(v2,e2)) ->
   log_t (lazy (fsprintf "t_rnd_pos: trying %a -> %a with inverse %a -> %a"
-                 Vsym.pp v1 pp_exp e1 Vsym.pp v2 pp_exp e2));
+                 Vsym.pp v1 pp_expr e1 Vsym.pp v2 pp_expr e2));
   try
     ignore (CR.rrnd i (v1,e1) (v2,e2) ju);
     CR.t_rnd i (v1,e1) (v2,e2) ju
@@ -158,18 +159,18 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
      mfail (lazy s)
    | Wf.Wf_var_undef(vs,e,def_vars) ->
      let ls = lazy (fsprintf "t_rnd_pos: variable %a undefined in %a, not in %a"
-                      Vsym.pp vs pp_exp e
+                      Vsym.pp vs pp_expr e
                       (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
      log_i ls;
      mfail ls
    | Wf.Wf_div_zero (ze::_ as es) ->
-     let ls = lazy (fsprintf "t_rnd_pos: non-zero required for %a" (pp_list ",@," pp_exp) es) in
+     let ls = lazy (fsprintf "t_rnd_pos: non-zero required for %a" (pp_list ",@," pp_expr) es) in
      log_i ls;
      let nz_in_ev () =
        let wfs = Wf.wf_gdef Wf.NoCheckDivZero se.se_gdef in
        try
-         let test_ev = mk_Land [(Event.expr se.se_ev); mk_Eq (mk_FDiv mk_FOne ze) mk_FOne] in
-         Wf.wf_exp Wf.CheckDivZero wfs test_ev;
+         let test_ev = mk_Land [se.se_ev; mk_Eq (mk_FDiv mk_FOne ze) mk_FOne] in
+         Wf.wf_expr Wf.CheckDivZero wfs test_ev;
          true
        with
          Wf.Wf_div_zero _ -> false
@@ -178,10 +179,10 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
        (* try to apply (d=0)?1:d trick here: We assume c2 is of the form r*ze + a *)
        let gze = mk_Ifte (mk_Eq ze mk_FZ) mk_FOne ze in
        let re  = mk_V rv in
-       let e2' = Norm.norm_expr_nice (e_replace re (mk_FMult [mk_FDiv re ze; gze]) e2) in
+       let e2' = NormUtils.norm_expr_nice (e_replace re (mk_FMult [mk_FDiv re ze; gze]) e2) in
        let e1' = DeducField.solve_fq_vars_known e2' v2 in
        let simp_guard ju =
-         let ev_idx = L.length (destr_Land_nofail (Event.expr ju.ju_se.se_ev)) -1 in
+         let ev_idx = L.length (destr_Land_nofail ju.ju_se.se_ev) -1 in
          (RewriteRules.t_let_unfold (L.length ju.ju_se.se_gdef - 1) @>
           CR.t_rw_ev ev_idx LeftToRight @>
           RewriteRules.t_subst 0 (mk_Ifte mk_False mk_FOne ze) ze None @>
@@ -266,12 +267,12 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
     let (v2,e2) = parse v2_ty (sv2,se2) in
     ret (deduc e2 v2,(v2,e2))
   | Some (sv1,mt1,se1), None ->
-    let v1_ty = opt (ty_of_parse_ty ts) rv_ty mt1  in
+    let v1_ty = O.map_default (ty_of_parse_ty ts) rv_ty mt1  in
     let (v1,e1) = parse v1_ty (sv1,se1) in
     ret ((v1,e1), deduc e1 v1)
   | None, None ->
     let e2s =
-      run (-1) (contexts se rv None) |> L.map Norm.norm_expr_nice |> nub e_equal
+      run (-1) (contexts se rv None) |> L.map NormUtils.norm_expr_nice |> L.sort_uniq compare_expr
     in
     mconcat (L.map (fun e2 -> (rv,e2)) e2s) >>= fun (v2,e2) ->
     ret (deduc e2 v2, (v2,e2))

@@ -1,8 +1,6 @@
-(*s Normal form computation for expressions. *)
+(* * Normal form computation for expressions. *)
 
-(*i*)
 open Expr
-(*i*)
 
 (** [norm_expr e] computes the normal form of the expression [e], if strong is true,
     then and will be sorted and equations a = b will be simplified to a - b = 0. *)

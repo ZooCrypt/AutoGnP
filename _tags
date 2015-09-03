@@ -1,10 +1,12 @@
 true: bin_annot, debug
 
-<src/**/*>: package(bolt), package(batteries), syntax(camlp4o), package(comparelib.syntax)
+<src/**/*>: package(bolt), package(batteries)
 
-<src/Util> or <src/Expr> or <src/Test> or <src/Poly>: include
+<src/Game/*> or <src/Core/*> or <src/Expr/*>: syntax(camlp4o), package(comparelib.syntax)
 
-<src/Logic> or <src/Tactic> or <src/Symbolic> or <src/Extract>: include
+<src/Util> or <src/Expr> or <src/Test> or <src/Poly> or <src/Core> or <src/Derived>: include
+
+<src/Tactic> or <src/Norm> or <src/Deduce> or <src/Extract>: include
 
 <src/Parser> or <src/CAS> or <src/Game> or <src/Main>: include
 

@@ -19,12 +19,12 @@ let log_i _ = ()
    reduce equality of field-expressions to equality of ring-expressions. *)
 let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   log_i (lazy (fsprintf "solve_group %a |- %a"
-                 (pp_list "," (pp_pair pp_exp pp_inverter)) ecs pp_exp e));
+                 (pp_list "," (pp_pair pp_expr pp_inverter)) ecs pp_expr e));
 
   (* helper functions *)
   let gexp e h =
     if is_FOne h then e
-    else if is_FZ h then mk_GExp (mk_GGen (destr_G e.e_ty)) h
+    else if is_FZ h then mk_GExp (mk_GGen (destr_G_exn e.e_ty)) h
     else mk_GExp e h
   in
   let gmult e1 e2 =
@@ -68,7 +68,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
     match mh with
     | None ->
       let (f,minv) = sub_f in
-      (f, opt (fun inv -> fun i -> I (gmult (expr_of_inverter i) inv)) id minv)
+      (f, O.map_default (fun inv -> fun i -> I (gmult (expr_of_inverter i) inv)) id minv)
     | Some h0 ->
       let (h,i_poly_h) = subtract_known h0 k_Fq in
       let (f,minv) = sub_f in
@@ -78,11 +78,11 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
         raise Not_found
       ) else (
         log_i (lazy (fsprintf "deduced denominator %a" EP.pp h0));
-        let inv_f = opt (fun inv -> fun i -> I (gmult (expr_of_inverter i) inv)) id minv in
+        let inv_f = O.map_default (fun inv -> fun i -> I (gmult (expr_of_inverter i) inv)) id minv in
         (f, fun i -> I (gexp (expr_of_inverter (inv_f i)) (mk_FInv i_poly_h)))
       )
   in
-  let gt = destr_G e.e_ty in
+  let gt = destr_G_exn e.e_ty in
 
   (* known expressions / polynomials *)
   let known_Fq  = He.create 17 in
@@ -93,7 +93,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   (* register known expressions in Fq *)
   let register_known_fq (e,i) =
     if (is_FPlus e || is_FOpp e || is_FMult e) then (
-      log_i (lazy (fsprintf "solve_group: known polynomial %a in Fq ignored" pp_exp e))
+      log_i (lazy (fsprintf "solve_group: known polynomial %a in Fq ignored" pp_expr e))
     ) else if is_Fq e.e_ty then (
       He.add known_Fq e i
     )
@@ -102,7 +102,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
 
   (* register known expressions in Gn *)
   let register_known k gn ((e,i) : expr * inverter) =
-    if ty_equal e.e_ty (mk_G gn) then (
+    if equal_ty e.e_ty (mk_G gn) then (
       let (f,i_trans) = group_to_poly_simp true e gn known_Fq in
       Hep.add k f (i_trans i)
     )
@@ -180,8 +180,8 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
         let d, i_poly_d = subtract_known d known_Fq in
         let r, i_poly_r = subtract_known r known_Fq in
       
-        log_i (lazy (fsprintf "d simpl: %a @\n  with %a" EP.pp d pp_exp i_poly_d));
-        log_i (lazy (fsprintf "r simpl: %a @\n  with %a" EP.pp r pp_exp i_poly_r));
+        log_i (lazy (fsprintf "d simpl: %a @\n  with %a" EP.pp d pp_expr i_poly_d));
+        log_i (lazy (fsprintf "r simpl: %a @\n  with %a" EP.pp r pp_expr i_poly_r));
         if (EP.equal EP.zero d) then (
           let i_trans = fun i ->
             let e1 = gmult (expr_of_inverter i) (gexp (mk_GGen gt) i_poly_r) in
@@ -209,12 +209,12 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   | I ie as i::_ ->
     let e' = norm_expr_strong (e_subst (me_of_list (L.map (fun (e,I e') -> (e',e)) ecs)) ie) in
     let e = norm_expr_strong e in
-    if e_equal e e' then (
+    if equal_expr e e' then (
       log_i (lazy "#### found inverter");
       i
     ) else (
       log_i (lazy (fsprintf "#### wrong inverter@\n  inv = %a@\n  inv[known] = %a@\n  e = %a"
-                     pp_exp ie pp_exp e' pp_exp e));
+                     pp_expr ie pp_expr e' pp_expr e));
       raise Not_found
     )
   | []  -> raise Not_found

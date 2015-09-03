@@ -1,9 +1,7 @@
-(*s Well-formedness of games. *)
+(* ** Well-formedness of games. *)
 
-(*i*)
 open Syms
 open Expr
-(*i*)
 
 exception Wf_var_undef of Vsym.t * expr * Vsym.S.t
 

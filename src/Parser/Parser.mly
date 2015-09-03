@@ -297,8 +297,8 @@ expr6 :
 | NOT e=expr6                    { Not(e) }
 | LOG LPAREN e1=expr RPAREN      { Log(e1) }
 | l=paren_list0(COMMA,expr)      { mk_Tuple l }
-| GETPK LPAREN e=expr RPAREN             { ProjPermKey(Type.PKey,e) }
-| GETSK LPAREN e=expr RPAREN             { ProjPermKey(Type.SKey,e) }
+| GETPK LPAREN e=expr RPAREN             { ProjPermKey(Type.KeyElem.PKey,e) }
+| GETSK LPAREN e=expr RPAREN             { ProjPermKey(Type.KeyElem.SKey,e) }
 | e1=expr6  SHARP i=NAT                       { Proj(i,e1) }
        
 
@@ -375,8 +375,8 @@ otype:
 | GREATER { G.OHgreater }
 
 opos:
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN                { (i-1, j-1, k-1, G.Onohyb) }
-| LPAREN i=NAT COMMA j=NAT COMMA k=NAT COMMA ot=otype RPAREN { (i-1, j-1, k-1, G.Ohyb ot) }
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN                { (i-1, j-1, k-1, G.Onothyb) }
+| LPAREN i=NAT COMMA j=NAT COMMA k=NAT COMMA ot=otype RPAREN { (i-1, j-1, k-1, G.Oishyb ot) }
 
 opos_partial:
 | LPAREN i=NAT COMMA j=NAT COMMA k=NAT RPAREN { (i-1, j-1, k-1) }
@@ -431,7 +431,7 @@ help_command :
 | HELP RINJECTIVE_CTXT_EV { Help(Rinjective_ctxt_ev(0,None,None)) }
 | HELP RBAD1 { Help(Rbad(1,None,"")) }
 | HELP RBAD2 { Help(Rbad(2,None,"")) }
-| HELP RCHECK_HASH_ARGS {Help(Rcheck_hash_args(0,0,0,Game.Onohyb))}
+| HELP RCHECK_HASH_ARGS {Help(Rcheck_hash_args(0,0,0,Game.Onothyb))}
 | HELP RFIND { Help(Rfind(([],CB(false)),CB(false),"",[])) }
 | HELP RUNWRAP_QUANT_EV { Help(Runwrap_quant_ev (0)) }
 | HELP RSWAP_QUANT_EV   { Help(Rswap_quant_ev   (0)) }
@@ -516,7 +516,7 @@ tactic :
 | RTRANSSTAR LBRACK dcmds=separated_nonempty_list(COMMA,diff_cmd) RBRACK
   { Rtrans_diff(dcmds) }
 | RSUBST i=inter_pos? LPAREN e1=expr TO e2=expr RPAREN
-  { let i, mupto = from_opt (None,None) i in
+  { let i, mupto = O.default (None,None) i in
     Rsubst(i,e1,e2,mupto) } 
 | RRENAME v1=ID v2=ID { Rrename(v1,v2) }
 | RLET_UNFOLD i=assgn_pos*            { Rlet_unfold(i) }
@@ -583,7 +583,7 @@ tactic :
 | RSPLIT_EV i=gpos                   { Rsplit_ev(i) }
 | RSPLIT_INEQ i=gpos                 { Rsplit_ineq(i) }
 | RCASE_EV e=uopt(expr)              { Rcase_ev(e) }
-| RREWRITE_EV i=gpos d=dir?          { Rrewrite_ev(i,from_opt LeftToRight d) }
+| RREWRITE_EV i=gpos d=dir?          { Rrewrite_ev(i,O.default LeftToRight d) }
 | RCTXT_EV oj=uopt(gpos) c=uopt(ctx) { Rctxt_ev(oj,c) }
 | RINJECTIVE_CTXT_EV c1=ctx_noty c2=ctx_noty { Rinjective_ctxt_ev(0,Some c1,Some c2) } (* Index 0 is optional *)
 | RINJECTIVE_CTXT_EV j=gpos c1=ctx_noty c2=ctx_noty { Rinjective_ctxt_ev(j,Some c1,Some c2) }

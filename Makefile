@@ -63,13 +63,14 @@ wsautognp.native : stubs
 # Used for development and testing
 
 dev : stubs
-	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) CoreRules.cma
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Tactic.cma
 
 %.deps :
 	ocamlfind ocamldep -package bolt -package batteries -syntax camlp4o \
             -package comparelib.syntax \
-            -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Logic -I src/Main \
-            -I src/Parser -I src/Poly -I src/Symbolic -I src/Tactic -I src/Util \
+            -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Deduce -I src/Main \
+            -I src/Parser -I src/Poly -I src/Norm -I src/Derived -I src/Core \
+            -I src/Tactic -I src/Util \
             one-line src/$(basename $@).ml> .depend
 	ocamldot .depend > deps.dot
 	dot -Tsvg deps.dot >deps.svg
@@ -77,8 +78,9 @@ dev : stubs
 depgraph :
 	ocamlfind ocamldep -package bolt -package batteries -syntax camlp4o \
             -package comparelib.syntax \
-            -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Logic -I src/Main \
-            -I src/Parser -I src/Poly -I src/Symbolic -I src/Tactic -I src/Util \
+            -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Deduce -I src/Main \
+            -I src/Parser -I src/Poly -I src/Norm -I src/Derived -I src/Core \
+            -I src/Tactic -I src/Util \
             one-line src/**/*.ml src/**/*.mli \
         | grep -v Test | grep -v Extract > .depend
 	ocamldot .depend > deps.dot

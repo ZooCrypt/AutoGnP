@@ -1,4 +1,4 @@
-(* Type for exported and internal (abstract) identifiers. *)
+(* Type for identifiers. *)
 
 open Abbrevs
 

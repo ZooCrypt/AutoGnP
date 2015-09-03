@@ -11,6 +11,7 @@ open ParserTypes
 module E = Expr
 module Ht = Hashtbl
 module G = Game
+module GU = GameUtils
 module F = Format
 module T = Type
 module S = String
@@ -25,7 +26,7 @@ exception ParseError of string
                                
 let fail_parse s = raise (ParseError s)
 
-let create_var (vmap : G.vmap) ts (qual : string qual) s ty =
+let create_var (vmap : GU.vmap) ts (qual : string qual) s ty =
   if Ht.mem vmap (qual,s) then (
     tacerror "create_var: variable %s already defined" s
   ) else (
@@ -57,17 +58,17 @@ let ty_of_parse_ty ts pty =
     | KeyPair s ->
        (try
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyPair f.Psym.pid
+           T.mk_KeyPair f.Psym.id
          with Not_found -> tacerror "Undefined permutation %s" s)
     | PKey s ->
        (try
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyElem T.PKey f.Psym.pid
+           T.mk_KeyElem T.KeyElem.PKey f.Psym.id
          with Not_found -> tacerror "Undefined permutation %s" s)
     | SKey s ->
        (try
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyElem T.SKey f.Psym.pid
+           T.mk_KeyElem T.KeyElem.SKey f.Psym.id
          with Not_found -> tacerror "Undefined permutation %s" s)         
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
@@ -78,7 +79,7 @@ let mk_Tuple es =
   | [e] -> e
   | _ -> E.mk_Tuple es
 
-let bind_of_parse_bind (vmap : G.vmap) ts lH =
+let bind_of_parse_bind (vmap : GU.vmap) ts lH =
   L.map
     (fun (s,h) ->
        let h =
@@ -94,28 +95,29 @@ let string_of_qvar (qual,s) =
   match qual with
   | Unqual -> s
   | Qual q -> q^"`"^s
-let init_odef_params vmap_g ts ?(qual=true) oname vs = 
+
+let init_odef_params vmap_g ts ?(qual=true) oname _vs = 
   let osym =
-    try Oracle.mk_O(Mstring.find oname ts.ts_odecls)
-    with Not_found -> try Oracle.mk_RO(Mstring.find oname ts.ts_rodecls)
-                                      with Not_found -> fail_parse "oracle name not declared"
+    try fixme "Oracle.mk_O(Mstring.find oname ts.ts_odecls)"
+    with Not_found -> try fixme "Oracle.mk_RO(Mstring.find oname ts.ts_rodecls)"
+                      with Not_found -> fail_parse "oracle name not declared"
   in
   let qual = if qual then (Qual oname) else Unqual in
   let vs =
-    match (Oracle.get_dom osym).Type.ty_node, vs with
+    match fixme "(Oracle.get_dom osym).Type.ty_node, vs" with
     | Type.Prod([]), [] -> []
     | Type.Prod(tys), vs when L.length tys = L.length vs ->
       L.map
         (fun (v,t) -> create_var vmap_g ts qual v t)
         (L.combine vs tys)
     | _, [v] ->
-      [create_var vmap_g ts qual v (Oracle.get_dom osym)]
+      [create_var vmap_g ts qual v (fixme "Oracle.get_dom osym")]
     | _ ->
-      tacerror "Pattern matching in oracle definition invalid: %a" Oracle.pp osym
+      tacerror "Pattern matching in oracle definition invalid: %a" (fixme "Oracle.pp") osym
   in
   vs,osym
 
-let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
+let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
   let rec go pe =
     match pe with
     | V(vqual,s) ->
@@ -135,14 +137,14 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (L.map go es)
-    | ProjPermKey(ke,kp) -> E.mk_ProjPermKey ke (go kp)
+    | ProjPermKey(ke,kp) -> E.mk_ProjKeyElem ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
 
     | SLookUp(s,es) ->
        let h = try Mstring.find s ts.ts_lkupdecls with
                  Not_found -> fail_parse (F.sprintf "Undefined random oracle %s" s) in
        let es = mk_Tuple (L.map go es) in
-       E.mk_H h es
+       E.mk_FunCall h es
     | SApp(s,es) when Mstring.mem (s ^ "_inv") ts.ts_permdecls ->
        begin
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
@@ -163,7 +165,7 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (L.map go es) in
-      E.mk_H h es
+      E.mk_FunCall h es
              
     | SApp(s,[a;b]) when Mstring.mem s ts.ts_emdecls ->
       let es = Mstring.find s ts.ts_emdecls in
@@ -213,7 +215,7 @@ let rec expr_of_parse_expr (vmap : G.vmap) ts (qual : string qual) pe0 =
   in
   go pe0
 
-let lcmd_of_parse_lcmd (vmap : G.vmap) ts ~oname lcmd =
+let lcmd_of_parse_lcmd (vmap : GU.vmap) ts ~oname lcmd =
   let qual = Qual oname in
   match lcmd with
   | LLet(s,e) ->
@@ -240,21 +242,22 @@ let odec_of_parse_odec vmap_g ts ~oname od =
   let vmap_l = Ht.copy vmap_g in
   match od with
   | Odef ob ->
-    G.Odef (obody_of_parse_obody vmap_l ts ~oname ob)
+    G.Oreg (obody_of_parse_obody vmap_l ts ~oname ob)
   | Ohybrid (ob1,ob2,ob3) ->
-    G.Ohybrid
-      { G.odef_less    = obody_of_parse_obody vmap_l ts ~oname ob1;
-        G.odef_eq      = obody_of_parse_obody vmap_g ts ~oname ob2;
-        G.odef_greater = obody_of_parse_obody vmap_l ts ~oname ob3; }
+    G.Ohyb
+      { G.oh_less    = obody_of_parse_obody vmap_l ts ~oname ob1;
+        G.oh_eq      = obody_of_parse_obody vmap_g ts ~oname ob2;
+        G.oh_greater = obody_of_parse_obody vmap_l ts ~oname ob3; }
   
 let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
   let vs,osym = match init_odef_params vmap_g ts oname vs with
-    | vs,(Oracle.O osym) -> vs,osym
-    | _ -> tacerror "This should not be happening..." in
+    (* | vs,_ (* Osym.O osym *) -> vs,fixme "osym" *)
+    | _ -> tacerror "This should not be happening..."
+  in
   let od = odec_of_parse_odec vmap_g ts ~oname odec in
   (osym, vs, od)
 
-let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
+let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
   match gc with
   | GLet(s,e) ->
     let e = expr_of_parse_expr vmap ts Unqual e in
@@ -274,7 +277,7 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
       with Not_found -> fail_parse "adversary name not declared"
     in
     let e = expr_of_parse_expr vmap ts Unqual e in
-    if not (Type.ty_equal e.E.e_ty asym.Asym.dom) then
+    if not (Type.equal_ty e.E.e_ty asym.Asym.dom) then
       fail_parse "adversary argument has wrong type";
     let os = L.map (odef_of_parse_odef vmap ts) os in
     let cty = asym.Asym.codom in
@@ -297,13 +300,13 @@ let gcmd_of_parse_gcmd (vmap : G.vmap) ts gc =
           Type.pp_ty cty (L.length vs);
     end
 
-let gdef_of_parse_gdef (vmap : G.vmap) ts gd =
+let gdef_of_parse_gdef (vmap : GU.vmap) ts gd =
   L.map (fun gc -> gcmd_of_parse_gcmd vmap ts gc) gd
 
 let ev_of_parse_ev vmap ts pe =
-  G.Event.mk (expr_of_parse_expr vmap ts Unqual pe)
+  expr_of_parse_expr vmap ts Unqual pe
                      
-let se_of_parse_se (vmap : G.vmap) ts gd ev =
+let se_of_parse_se (vmap : GU.vmap) ts gd ev =
   let gd = gdef_of_parse_gdef vmap ts gd in
   let ev  = ev_of_parse_ev vmap ts ev in
   let se = { G.se_gdef = gd; G.se_ev = ev } in

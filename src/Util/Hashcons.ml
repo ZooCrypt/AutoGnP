@@ -1,4 +1,4 @@
-(* Hash consing of values. *)
+(* * Hash consing of values. *)
 
 include HashconsTypes
 

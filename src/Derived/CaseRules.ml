@@ -1,12 +1,13 @@
-(*s Derived rules for dealing with [add_test], [case_ev], and [except]. *)
+(* *  Derived rules for dealing with [add_test], [case_ev], and [except]. *)
 
-(*i*)
+(* ** Imports and abbrivations *)
 open Abbrevs
 open Util
 open Type
 open Expr
 open ExprUtils
 open Game
+open GameUtils
 open Syms
 open Nondet
 open Rules
@@ -20,7 +21,6 @@ module CR = CoreRules
 
 let _log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
-(*i*)
 
 (* Useful (in)equalities that can be obtained by applying one of the three rules *)
 type useful_cases =
@@ -37,15 +37,15 @@ let compare_uc uc1 uc2 =
   match uc1, uc2 with
   | AppAddTest(opos1,e1,_,_), AppAddTest(opos2,e2,_,_) ->
     let cmp = compare opos1 opos2 in
-    if cmp <> 0 then cmp else e_compare e1 e2
+    if cmp <> 0 then cmp else compare_expr e1 e2
 (*i  | AppExceptOrcl(opos1,e1), AppExceptOrcl(opos2,e2) ->
       let cmp = compare opos1 opos2 in
       if cmp <> 0 then cmp else e_compare e1 e2 i*)
   | AppExcept(gpos1,e1), AppExcept(gpos2,e2) ->
     let cmp = compare gpos1 gpos2 in
-    if cmp <> 0 then cmp else e_compare e1 e2
+    if cmp <> 0 then cmp else compare_expr e1 e2
   | AppCaseEv(e1), AppCaseEv(e2) ->
-    e_compare e1 e2
+    compare_expr e1 e2
   | AppAddTest _, _ -> 1
   | _, AppAddTest _ -> -1
   | AppExcept _, _ -> 1
@@ -56,16 +56,17 @@ let compare_uc uc1 uc2 =
 let pp_useful_cases fmt uc =
   match uc with
   | AppAddTest((g_idx,oi,o_idx,otype),e,_,_) ->
-    F.fprintf fmt "app(raddtest (%i,%i,%i,%a)) %a)" g_idx oi o_idx pp_otype otype pp_exp e
+    F.fprintf fmt "app(raddtest (%i,%i,%i,%a)) %a)" g_idx oi o_idx pp_otype otype pp_expr e
   | AppExcept(g_idx,e) ->
-    F.fprintf fmt "app(rexcept (%i) %a)" g_idx pp_exp e
+    F.fprintf fmt "app(rexcept (%i) %a)" g_idx pp_expr e
   | AppCaseEv(e) ->
-    F.fprintf fmt "app(rcase_ev %a)" pp_exp e
+    F.fprintf fmt "app(rcase_ev %a)" pp_expr e
 (*i  | AppExceptOrcl((g_idx,oi,o_idx),e) ->
       F.fprintf fmt "app(rexcept_orcl (%i,%i,%i)) %a)" g_idx oi o_idx pp_exp e i*)
 
 let is_Useless e =
-  is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e)) || is_H e
+  is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e))
+  || is_RoCall e || is_FunCall e || is_RoLookup e
 
 let compute_case gdef mhidden _fbuf ctx e =
   let cases = ref [] in
@@ -98,7 +99,7 @@ let compute_case gdef mhidden _fbuf ctx e =
     L.for_all
       (fun uv ->
         L.mem (destr_V uv)
-          (catSome (L.map (fun (i,(v,_)) -> if i < j then Some(v) else None) samps)))
+          (cat_Some (L.map (fun (i,(v,_)) -> if i < j then Some(v) else None) samps)))
       (Se.elements uvs)
   in
   let add_case e =
@@ -152,7 +153,7 @@ let maybe_hidden_rvars gdef =
       go (v::hidden) gdef
     | GCall(_,_,e,_) :: gdef ->
       let es = if is_Tuple e then destr_Tuple e else [e] in
-      let revealed_vars = catSome (L.map destr_Rev_Var es) in 
+      let revealed_vars = cat_Some (L.map destr_Rev_Var es) in 
       let hidden = L.filter (fun v -> not (L.mem v revealed_vars)) hidden in
       go hidden gdef
     | _ :: gdef ->
@@ -174,11 +175,11 @@ let get_cases fbuf ju =
       let cs = compute_case se.se_gdef maybe_hidden fbuf ctx e in
       cases := cs @ !cases)
     se;
-  let cases = sorted_nub compare_uc !cases in
+  let cases = L.sort_uniq compare_uc !cases in
   (* we choose the earliest position if there are multiple occurences with the
      same expression *)
   let cases =
-    group (fun uc1 uc2 -> e_equal (uc_exp uc1) (uc_exp uc2)) cases
+    L.group_consecutive (fun uc1 uc2 -> equal_expr (uc_exp uc1) (uc_exp uc2)) cases
     |> L.map L.hd
   in
   cases
@@ -198,7 +199,7 @@ let t_rexcept_maybe mi mes ju =
   let fbuf = F.formatter_of_buffer buf in
   let cases = get_cases fbuf ju in
   let except =
-    catSome (L.map (function AppExcept(i,e) -> Some(i,e) | _ -> None) cases)
+    cat_Some (L.map (function AppExcept(i,e) -> Some(i,e) | _ -> None) cases)
   in
   mconcat except >>= fun (j,e) ->
   guard (match mi with Some i -> i = j | None -> true) >>= fun _ ->
@@ -207,7 +208,7 @@ let t_rexcept_maybe mi mes ju =
 let simp_eq e =
   assert (is_Fq e.e_ty);
   let sort_pair (a,b) =
-    if e_compare a b > 0 then (a,b) else (b,a)
+    if compare_expr a b > 0 then (a,b) else (b,a)
   in
   let res =
     match e.e_node with
@@ -220,17 +221,22 @@ let simp_eq e =
     | _ ->
       mk_Eq e mk_FZ
   in
-  Norm.norm_expr_nice res
+  NormUtils.norm_expr_nice res
 
 let t_case_ev_maybe ju =
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in
   let cases = get_cases fbuf ju in
-  let except = catSome (L.map (function AppCaseEv(e) -> Some(e) | _ -> None) cases) in
+  let except = cat_Some (L.map (function AppCaseEv(e) -> Some(e) | _ -> None) cases) in
   mconcat except >>= fun e ->
   CoreRules.t_case_ev (simp_eq e) ju
 
 let simp_eq_group e =
+  let both_args e1 e2 =
+       (is_FunCall e1 && is_FunCall e2)
+    || (is_RoLookup e1 && is_RoLookup e2)
+    || (is_RoCall e1 && is_RoCall e2) 
+  in
   let to_g =
     match (destr_GLog (e_find is_GLog e)).e_ty.ty_node with
     | Type.G gn ->
@@ -239,19 +245,19 @@ let simp_eq_group e =
   in
   assert (is_Fq e.e_ty);
   let sort_pair (a,b) =
-    if e_compare a b > 0 then (a,b) else (b,a)
+    if compare_expr a b > 0 then (a,b) else (b,a)
   in
   let res =
     match e.e_node with
     | Nary(FPlus,[a;b]) when is_FOpp a ->
       let (e1,e2) = sort_pair (destr_FOpp a, b) in
-      if is_H e1 && is_H e2 then
+      if both_args e1 e2 then
         mk_Eq e1 e2
       else
         mk_Eq (to_g e1) (to_g e2)
     | Nary(FPlus,[a;b]) when is_FOpp b ->
       let (e1,e2) = sort_pair (destr_FOpp b, a) in
-      if is_H e1 && is_H e2 then
+      if both_args e1 e2 then
         mk_Eq e1 e2
       else
         mk_Eq (to_g e1) (to_g e2)
@@ -259,8 +265,6 @@ let simp_eq_group e =
       mk_Eq e mk_FZ
   in
   Norm.norm_expr_strong res
-
-(* let case_vars = ref [] *)
 
 let t_add_test_maybe ju =
   let se = ju.ju_se in
@@ -271,7 +275,7 @@ let t_add_test_maybe ju =
     L.map
       (function AppAddTest(opos,e,aty,oty) -> Some(opos,e,aty,oty) | _ -> None)
       cases
-    |> catSome
+    |> cat_Some
   in
   mconcat except >>= fun (opos,t,_aty,_oty) ->
   let (i,j,k,l) = opos in
@@ -290,6 +294,6 @@ let t_add_test_maybe ju =
      of examples we consider *)
   guard (not (Se.subset (e_vars t) wvars)) >>= fun _ ->
   let test = simp_eq_group t in
-  (CoreRules.t_guard opos (Some (Norm.norm_expr_nice test))
+  (CoreRules.t_guard opos (Some (NormUtils.norm_expr_nice test))
    @> CoreRules.t_swap_oracle opos (-k)
    @> CoreRules.t_rewrite_oracle opos LeftToRight) ju

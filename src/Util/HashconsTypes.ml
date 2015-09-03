@@ -1,4 +1,4 @@
-(* Module types for hash-consing. *)
+(* * Module types for hash-consing. *)
 
 (** We can hashcons values for which the {!HashedType} interface is implemented. *)
 module type HashedType = sig

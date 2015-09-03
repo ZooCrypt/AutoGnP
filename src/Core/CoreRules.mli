@@ -1,6 +1,6 @@
-(*s Core rules and tactics. *)
+(* * Core rules of the logic. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Nondet
 open Game
 open Syms
@@ -10,10 +10,9 @@ open Assumption
 open Util
 open Abbrevs
 open CoreTypes
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Proof representation} *)
+(* ** Types for proofs and tactics
+ * ----------------------------------------------------------------------- *)
 
 type 'a iproof_tree = private {
   pt_children : 'a iproof_tree list;
@@ -44,8 +43,9 @@ type 'a rtactic = goal -> ('a * proof_state) nondet
 
 exception NoOpenGoal 
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Basic manipulation tactics}  *)
+
+(* ** Simple tactics and tacticals
+ * ----------------------------------------------------------------------- *)
 
 val get_proof : proof_state -> proof_tree
 val mk_name : ?name:string -> sec_exp -> string
@@ -73,8 +73,8 @@ val t_ensure_progress : tactic -> tactic
 val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Core rules of the logic} *)
+(* ** Core rules of the logic
+ * ----------------------------------------------------------------------- i*)
 
 val rconv  : bool -> sec_exp -> rule
 val t_conv : bool -> sec_exp -> tactic

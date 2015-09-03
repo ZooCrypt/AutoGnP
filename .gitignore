@@ -1,3 +1,8 @@
 autognp.native
 wsautognp.native
 zoocrypt.log
+/.depend
+/deps.dot
+/deps.svg
+/scripts/dot_of_depend.py
+*.bak

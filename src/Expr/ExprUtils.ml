@@ -60,9 +60,11 @@ let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
 let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
 
-let is_Perm e =  match e.e_node with
-  | App(Perm _,_) -> true
-  | _             -> false
+let is_Perm e =  match e.e_node with App(Perm _,_) -> true | _ -> false
+
+let is_RoLookup e = match e.e_node with App(RoLookup _,_) -> true | _ -> false
+
+let is_FunCall e = match e.e_node with App(FunCall _,_) -> true | _ -> false
 
 let is_ProjKeyElem ptype perm e = match e.e_node with
   | App(ProjKeyElem(ptype'), [e2]) when KeyElem.equal ptype ptype' ->

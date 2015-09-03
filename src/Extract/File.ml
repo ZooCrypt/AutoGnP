@@ -375,7 +375,8 @@ let add_bilinears file ts =
 let bvar_mod file bv =
   try Esym.H.find file.bvar bv with Not_found -> assert false
 
-let add_hash file h = 
+let add_hash _file _h = fixme "undefined"
+  (*
   if Fsym.is_ro h then 
     failwith "No able to extract random oracle for the moment"
   else
@@ -386,6 +387,7 @@ let add_hash file h =
       h_fget = (fun _ f -> Fapp(Ostr name, [f]));
     } in
     Fsym.H.add file.hvar h info
+   *)
  
 let add_hashs file ts = 
   Mstring.iter (fun _ h -> add_hash file h) ts.ts_rodecls
@@ -482,7 +484,7 @@ let game_info file gdef =
     add_top file (Cbound qname);
     add_top file (Clemma (false, qname^"_pos", 
                           f_lt f_r0 (Frofi (Fcnst qname)), None));
-    let e = match od with Odef (_body,e) -> e | _ -> assert false (* FIXME *) in
+    let e = match od with Oreg (_body,e) -> e | _ -> assert false (* FIXME *) in
     let info = { 
       obound  = qname; 
       oparams = params; 
@@ -560,7 +562,7 @@ let init_adv_info file gdef =
 let find_game file g = 
   let s = get_section file in
   (* try *)
-  snd (List.find (fun (g',_m) -> gdef_equal g g') s.game_trans)
+  snd (List.find (fun (g',_m) -> equal_gdef g g') s.game_trans)
   (* 
   with Not_found ->
     let gdef_equal g g' = 

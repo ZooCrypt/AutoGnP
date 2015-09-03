@@ -68,7 +68,7 @@
       ; "bysimp", BYSIMP
       ; "split_ev", RSPLIT_EV
       ; "false_ev", RFALSE_EV
-      ; "with" , WITH
+      (* ; "with" , WITH *)
       ; "except", REXCEPT
       ; "except_oracle", REXCEPT_ORACLE
       ; "rnd", RRND
@@ -118,7 +118,7 @@ rule lex = parse
   | "!"     { EXCL }
   | "Fq"    { TFQ }
   | "not"   { NOT }
-  | "log"   { LOG }
+  (* | "log"   { LOG } *)
   | "true"  { TRUE }
   | "false" { FALSE }
   | "trans*" { RTRANSSTAR }

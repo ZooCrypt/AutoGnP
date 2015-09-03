@@ -19,4 +19,4 @@ val create_lenvar : theory_state -> string -> Lenvar.id
 
 val create_groupvar : theory_state -> string -> Groupvar.id
 
-val create_permvar : theory_state -> string -> Permvar.id
+(* val create_permvar : theory_state -> string -> Permvar.id *)

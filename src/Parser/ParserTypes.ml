@@ -27,7 +27,7 @@ type parse_expr =
   | SApp of string * parse_expr list
   | SLookUp of string * parse_expr list
   | Tuple of parse_expr list
-  | ProjPermKey of Type.key_elem * parse_expr
+  | ProjPermKey of Type.KeyElem.t * parse_expr
   | Proj of int * parse_expr
   | CB of bool
   | CZ of string

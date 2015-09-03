@@ -1,12 +1,11 @@
-(*s Automated derived rules *)
+(* * Automated derived rules *)
 
-(*i*)
+(* ** Imports and Abbreviations *)
 open Abbrevs
 open Util
 open Nondet
 open Syms
 open Expr
-(* open ExprUtils *)
 open Game
 open Rules
 open CoreTypes
@@ -25,11 +24,10 @@ module Ht = Hashtbl
 let log_t ls  = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
 let _log_d ls = mk_logger "Logic.Crush" Bolt.Level.DEBUG "CrushRules" ls
 let log_i ls  = mk_logger "Logic.Crush" Bolt.Level.INFO  "CrushRules" ls
-(*i*)
 
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Automated crush tactic} *)
+(* ** Automated crush tactic
+ * ----------------------------------------------------------------------- *)
 
 type proof_search_info = {
   psi_assms  : Sstring.t;
@@ -189,7 +187,7 @@ and crush stats ts get_pt j ps1 =
   )
 
 and t_crush must_finish mi ts ps ju =
-  let i = from_opt 5 mi in
+  let i = O.default 5 mi in
   let get_pt ps' =
     CR.get_proof
       (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps') ps)))

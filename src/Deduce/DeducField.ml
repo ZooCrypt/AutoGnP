@@ -47,7 +47,9 @@ let solve_fq_vars_known e v =
 let solve_fq_var (ecs : (expr * inverter) list) e =
   if not (is_V e) then raise Not_found;
   let v = destr_V e in
-  let ecs_v,ecs_poly = L.partition (fun (e,_w) -> is_V e || is_H e) ecs in
+  let ecs_v,ecs_poly =
+    L.partition (fun (e,_w) -> is_V e || is_RoCall e || is_RoLookup e || is_FunCall e) ecs
+  in
   match L.filter (fun (f,_) -> Se.mem e (e_vars f)) ecs_poly with
   | [(f,w_f)] ->
     (* to check {w1->x1,...,wk->xk,wk+1->f} |- v, we take f and replace

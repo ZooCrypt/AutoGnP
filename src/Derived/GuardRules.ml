@@ -1,4 +1,5 @@
 open Abbrevs
+open Util
 open Type
 open Expr
 open Game
@@ -10,8 +11,8 @@ module CR = CoreRules
 
 let t_guess_maybe _ts masym mvars ju =
   let se = ju.ju_se in
-  let ev = se.se_ev in
-  (match Event.destr ev with
+  let _ev = se.se_ev in
+  (match fixme "Event.destr ev" with
    | Some (Exists,(vs,_), _) -> ret vs
    | None | Some _           -> mempty
   ) >>= fun vs ->

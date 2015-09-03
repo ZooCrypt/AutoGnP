@@ -59,7 +59,7 @@ let t_dist_eq ju =
   match ju.ju_pr with
   | Pr_Dist se' ->
     let se = ju.ju_se in
-    if se_equal se se' then
+    if equal_sec_exp se se' then
       CoreRules.t_dist_eq ju
     else
       (CoreRules.t_conv true se' @> CoreRules.t_dist_eq) ju
@@ -77,7 +77,7 @@ let pp_osamp fmt ((i,j,k,otype),(vs,d)) =
   F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k Vsym.pp vs (pp_distr ~qual:Unqual) d pp_otype otype
 
 let pp_let fmt (i,(vs,e)) =
-  F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_exp e
+  F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_expr e
 (*i*)
 
 let samplings gd =
@@ -100,11 +100,11 @@ let osamplings gd =
   in
   let odecl_samplings i opos od =
     match od with
-    | Odef ob -> obody_samplings i opos Onohyb ob
-    | Ohybrid oh ->
-      obody_samplings i opos (Ohyb OHless) oh.odef_less
-      @ obody_samplings i opos (Ohyb OHeq) oh.odef_eq
-      @ obody_samplings i opos (Ohyb OHgreater) oh.odef_greater
+    | Oreg ob -> obody_samplings i opos Onothyb ob
+    | Ohyb oh ->
+        obody_samplings i opos (Oishyb OHless)    oh.oh_less
+      @ obody_samplings i opos (Oishyb OHeq)      oh.oh_eq
+      @ obody_samplings i opos (Oishyb OHgreater) oh.oh_greater
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
@@ -126,11 +126,11 @@ let oguards gd =
   in
   let odecl_guards i opos od =
     match od with
-    | Odef ob -> obody_guards i opos Onohyb ob
-    | Ohybrid oh ->
-      obody_guards i opos (Ohyb OHless) oh.odef_less
-      @ obody_guards i opos (Ohyb OHeq) oh.odef_eq
-      @ obody_guards i opos (Ohyb OHgreater) oh.odef_greater
+    | Oreg ob -> obody_guards i opos Onothyb ob
+    | Ohyb oh ->
+        obody_guards i opos (Oishyb OHless)    oh.oh_less
+      @ obody_guards i opos (Oishyb OHeq)      oh.oh_eq
+      @ obody_guards i opos (Oishyb OHgreater) oh.oh_greater
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
@@ -193,9 +193,9 @@ let t_swap_others_max dir i ju =
   let se = ju.ju_se in
   let samps = samplings se.se_gdef in
   let samp_others =
-    filter_map
+    L.filter_map
       (fun (j,(rv,(ty,es))) ->
-        if ((j > i && dir=ToFront) || (j < i && dir=ToEnd)) && ty_equal ty mk_Fq
+        if ((j > i && dir=ToFront) || (j < i && dir=ToEnd)) && equal_ty ty mk_Fq
         then Some (j,(rv,vars_dexc rv es)) else None)
       samps
   in
@@ -233,7 +233,7 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   | Rconv ->
     F.fprintf fmt "rconv"
   | Rassert(p,e) ->
-    F.fprintf fmt "rassert %i %a" p pp_exp e
+    F.fprintf fmt "rassert %i %a" p pp_expr e
   | Rtrans ->
     F.fprintf fmt "rtrans"
   | Rdist_eq ->
@@ -247,9 +247,9 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   | Rswap(pos,delta) ->
     F.fprintf fmt "swap %i %i" pos delta
   | Rexc(pos,es) ->
-    F.fprintf fmt "except %i %a" pos (pp_list "," pp_exp) es
+    F.fprintf fmt "except %i %a" pos (pp_list "," pp_expr) es
   | Rrnd(pos,vs,_,(v2,c2)) ->
-    F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_exp c2
+    F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_expr c2
   | Rrw_orcl((i,j,k,otype),_dir) ->
     F.fprintf fmt "rw_orcl (%i,%i,%i,%a)" i j k pp_otype otype
   | Rswap_orcl((i,j,k,otype),_i) ->
@@ -259,9 +259,9 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   | Rexc_orcl((i,j,k,otype),_es)          ->
     F.fprintf fmt "exc_orcl (%i,%i,%i,%a)" i j k pp_otype otype
   | Radd_test((i,j,k,otype),e,_ads,_vss) ->
-    F.fprintf fmt "add_test (%i,%i,%i,%a) (%a)" i j k pp_exp e pp_otype otype
+    F.fprintf fmt "add_test (%i,%i,%i,%a) (%a)" i j k pp_expr e pp_otype otype
   | Rcase_ev(_,e)   ->
-    F.fprintf fmt "case @[<v 2>%a@]" pp_exp e
+    F.fprintf fmt "case @[<v 2>%a@]" pp_expr e
   | Rbad(i,_,_) | RbadOracle(i,_,_) ->
     F.fprintf fmt "bad%i" i
   | Rcheck_hash_args(i,j,k,_) ->
@@ -293,7 +293,7 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   | Rrnd_indep(b,i) ->
     F.fprintf fmt "rnd_indep %b %i" b i
   | Rguard ((i,j,k,otype),Some e) -> 
-    F.fprintf fmt "guard (%i,%i,%i,%a) (%a)" i j k pp_exp e pp_otype otype
+    F.fprintf fmt "guard (%i,%i,%i,%a) (%a)" i j k pp_expr e pp_otype otype
   | Rguard ((i,j,k,otype),None) -> 
     F.fprintf fmt "guard (%i,%i,%i) (%a)" i j k pp_otype otype
   | Rguess _ ->
@@ -303,7 +303,7 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
 
 let pp_path fmt path =
   let compressed_path =
-    Util.group (=) path
+    L.group_consecutive (=) path
     |> L.map (fun xs -> (L.hd xs, L.length xs))
   in
   let pp_entry fmt (p,l) =

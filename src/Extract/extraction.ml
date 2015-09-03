@@ -46,18 +46,18 @@ let globals gdef =
   List.map (fun v ->
      MCvar(pvar [] v, Tzc v.Vsym.ty)) (Vsym.S.elements glob)
 
-let mk_eget file h e = 
+let _mk_eget file h e = 
   let hi = Fsym.H.find file.hvar h in
   hi.h_eget e
 
-let mk_fget file mem h f = 
+let _mk_fget file mem h f = 
   let hi = Fsym.H.find file.hvar h in
   hi.h_fget mem f
 
 let op_of_op file ty = function
   | GExp _  -> Opow
   | GLog gv -> Ostr ((gvar_mod file gv) ^ ".log")
-  | GInv    -> Ostr ((gvar_mod file (destr_G ty)) ^ ".([-])") (* FIXME: this should be fixed in CyclicGroup *)
+  | GInv    -> Ostr ((gvar_mod file (destr_G_exn ty)) ^ ".([-])") (* FIXME: this should be fixed in CyclicGroup *)
   | FOpp    -> Oopp
   | FMinus  -> Osub
   | FInv    -> Ostr "F.inv"
@@ -67,6 +67,7 @@ let op_of_op file ty = function
   | Ifte    -> assert false
   | EMap bm -> Ostr  ((bvar_mod file bm) ^ ".e")
   | Perm _  -> assert false
+  | (ProjKeyElem _|FunCall _|RoCall _|RoLookup _) -> fixme "undefined"
 
 let op_of_nop ty = function
   | FPlus -> Oadd
@@ -81,15 +82,15 @@ let op_of_nop ty = function
   | GMult -> Omul
 
 let string_of_cnst file ty = function
-  | GGen   -> fsprintf "%s.g" (gvar_mod file (destr_G ty))
+  | GGen   -> fsprintf "%s.g" (gvar_mod file (destr_G_exn ty))
   | FNat i -> fsprintf "(F.ofint %i)" i
-  | Z      -> fsprintf "%s.zeros" (lvar_mod file (destr_BS ty))
+  | Z      -> fsprintf "%s.zeros" (lvar_mod file (destr_BS_exn ty))
   | B b    -> fsprintf "%b" b
 
 let rec expression file e = 
   match e.e_node with 
   | V v -> Epv (pvar [] v)
-  | H(h,e) ->  mk_eget file h (expression file e)
+  (* | H(h,e) ->  mk_eget file h (expression file e) *)
   | Tuple es -> Etuple (List.map (expression file) es)
   | Proj (i,e) -> Eproj(i+1, expression file e) 
   | Cnst c -> Ecnst (string_of_cnst file e.e_ty c)
@@ -114,7 +115,7 @@ let rec expression file e =
       List.fold_left (fun e e1 -> Eapp(op,[e;expression file e1])) 
         (expression file e) es 
     end
-  | Quant _ | ProjPermKey _ -> assert false
+  | Quant _ (* | ProjPermKey _ *) -> assert false
 
 let rec formula file prefix mem 
     ?(local=Vsym.S.empty) ?(flocal=Vsym.S.empty) e = 
@@ -123,7 +124,7 @@ let rec formula file prefix mem
     if Vsym.S.mem v flocal then Fv(pvar [] v, None)
     else if Vsym.S.mem v local then Fv (pvar [] v, mem)
     else Fv (pvar prefix v, mem)
-  | H(h,e) ->  mk_fget file mem h (formula file prefix mem ~local ~flocal e)
+  (* | H(h,e) ->  mk_fget file mem h (formula file prefix mem ~local ~flocal e) *)
   | Tuple es -> Ftuple (List.map (formula file prefix mem ~local ~flocal) es)
   | Proj (i,e) -> Fproj(i+1, formula file prefix mem ~local ~flocal e) 
   | Cnst c -> Fcnst (string_of_cnst file e.e_ty c)
@@ -154,7 +155,7 @@ let rec formula file prefix mem
         (fun e e1 -> Fapp(op,[e;formula file prefix mem ~local ~flocal e1])) 
         (formula file prefix mem ~local ~flocal e) es 
     end
-  | Quant _ | ProjPermKey _ -> assert false
+  | Quant _ (* | ProjPermKey _ *) -> assert false
   
 let rec init_res_expr ty = 
   match ty.ty_node with 
@@ -271,9 +272,9 @@ let add_assumption_dec file name assum =
       Icall(List.map (pvar []) xs, (mA, asym_to_string  a), 
             List.map (expression file) args)) assum.Ass.ad_acalls in
   let vres = 
-    let (_,xs,_) = last assum.Ass.ad_acalls in
-    last xs in
-  assert (ty_equal vres.Vsym.ty mk_Bool);
+    let (_,xs,_) = L.last assum.Ass.ad_acalls in
+    L.last xs in
+  assert (equal_ty vres.Vsym.ty mk_Bool);
   let game name gdef i = 
     let locals = 
       Vsym.S.fold (fun v l -> do_local v :: l) 
@@ -340,7 +341,7 @@ let add_assumption_comp file name assum =
         let args = destr_Tuple_nofail arg in
         Icall(List.map (pvar []) xs, (mA, asym_to_string  a), 
               List.map (expression file) args)) assum.Ass.ac_acalls in
-    let i_ret = [ Iasgn([res], expression file (Event.expr assum.Ass.ac_event))] in
+    let i_ret = [ Iasgn([res], expression file assum.Ass.ac_event)] in
     let main = {
       f_name = "main";
       f_def = Fbody {
@@ -399,7 +400,7 @@ let game ?(local=`Local) ?(pinfo=[]) file g =
   with Not_found ->
     let oinfo = Osym.H.create 7 in
     let add_oinfo (o,params,od) = 
-      let (body,e) = match od with Odef b -> b | _ -> assert false in
+      let (body,e) = match od with Oreg b -> b | _ -> assert false in
       Osym.H.add oinfo o (params,body,e) in
     let mk_info i = 
       match i with
@@ -455,16 +456,17 @@ let init_section file name pft =
   ignore (game ~local:`Global file g);
   name 
   
-let flocal_ev ev = 
+let flocal_ev _ev = 
   List.fold_left (fun se (vs,_) -> 
     List.fold_left (fun se v -> Vsym.S.add v se) se vs) 
-    Vsym.S.empty (Event.binding ev) 
+    Vsym.S.empty (fixme "Event.binding ev")
 
-let extract_ev file modm mem se =
+let extract_ev _file _modm _mem _se =
+  fixme "" (*
   let ev = se.se_ev in
   let ev = 
-    if (Event.binding ev) = [] then 
-      formula file modm mem (Event.expr ev) 
+    if not (is_Quant ev) then 
+      formula file modm mem ev 
     else      
       let flocal = flocal_ev ev in
       let do_bd (vs,ors) body =
@@ -480,7 +482,7 @@ let extract_ev file modm mem se =
         (formula ~flocal file modm mem (Event.expr ev))  in
   if Game.has_assert se.se_gdef then
     f_and (Fv((modm, assertion), mem)) ev
-  else ev   
+  else ev *)
 
 let extract_pr_se ?(local=`Local) file mem se =
   let modm  = game ~local file se.se_gdef in
@@ -641,7 +643,9 @@ let t_pr_if =
   (* Tstring "by progress;algebra *;smt" *)
   Tstring "by progress;algebra *"
 
-let pp_congr_quant ~semi fmt ev = 
+let pp_congr_quant ~_semi _fmt _ev =
+  fixme "undefined"
+  (*
   match (Event.binding ev) with
   | [] -> ()
   | [vs,_] -> 
@@ -651,8 +655,10 @@ let pp_congr_quant ~semi fmt ev =
       (pp_list " " (fun fmt _ -> F.fprintf fmt "_")) vs
       (if semi then ";" else "")
   | _ -> assert false (* Not implemented *)
+  *)
 
-let pp_impl_quant  fmt ev = 
+let _pp_impl_quant _fmt _ev = fixme "undefined"
+  (*
   match (Event.binding ev) with
   | [] -> F.fprintf fmt "by []."
   | [vs,_] -> 
@@ -660,8 +666,8 @@ let pp_impl_quant  fmt ev =
       "by move=> &hr;apply %s_impl=> [[%a]];iota."
       (if (Event.quant ev) = Expr.All then "all" else "any")
       (pp_list " " (fun fmt _ -> F.fprintf fmt "_")) vs
-  | _ -> assert false (* Not implemented *)
- 
+  | _ -> assert false *)
+
 let rec pp_tac fmt = function
   | Admit     -> F.fprintf fmt "admit" 
   | Rnd       -> F.fprintf fmt "rnd" 
@@ -909,9 +915,9 @@ let lossless_lcmds file lc =
 
 let lossless_orcl file (_,_,odecl) =  
   match odecl with
-  | Odef (lc, _) -> 
+  | Oreg (lc, _) -> 
     Tac (Tstring "proc;sp 1;if;[ | auto];sp 1") :: lossless_lcmds file lc
-  | Ohybrid _    -> assert false  
+  | Ohyb _       -> assert false  
 
 let pr_lossless g file form i lc = 
   let rec aux i lc tacs = 
@@ -955,8 +961,8 @@ let build_conv_proof nvc eqvc file g1 g2 lc1 lc2 =
   let add_rnd v1 v2 l1 l2 loc info = 
     add_rnd_info file g1 g2 v1 v2 l1 l2 loc info in
   let prove_orcl info (o1,p1,od1) (o2,p2,od2) =
-    let (lc1,_) = match od1 with Odef b -> b | _ -> assert false (* FIXME *) in
-    let (lc2,_) = match od2 with Odef b -> b | _ -> assert false (* FIXME *) in
+    let (lc1,_) = match od1 with Oreg b -> b | _ -> assert false (* FIXME *) in
+    let (lc2,_) = match od2 with Oreg b -> b | _ -> assert false (* FIXME *) in
     let rec aux lc1 lc2 info = 
       match lc1, lc2 with
       | [], [] -> add_wp info.pos1 info.pos2 info.tacs
@@ -1090,16 +1096,16 @@ let pr_conv sw1 ju1 ju ju' ju2 sw2 file =
   let info = 
     build_conv_proof nvc eqvc file g1 g2 ju.ju_se.se_gdef ju'.ju_se.se_gdef in 
   let forpost = 
-    if ExprUtils.is_False (Event.expr ju1.ju_se.se_ev) 
-       || ExprUtils.is_False (Event.expr ju2.ju_se.se_ev) then
+    if ExprUtils.is_False ju1.ju_se.se_ev
+       || ExprUtils.is_False ju2.ju_se.se_ev then
       "progress[not];algebra*;(try done);elimIF;algebra*"
     else
       "progress;algebra*;(try done);elimIF;algebra*" in
   let forpost = 
-    if Event.binding ju.ju_se.se_ev = [] then forpost
+    if not (is_Quant ju.ju_se.se_ev) then forpost
     else 
       (F.fprintf F.str_formatter "progress [-split];%a%s"
-        (pp_congr_quant ~semi:true) ju.ju_se.se_ev forpost;
+        (pp_congr_quant ~_semi:true) ju.ju_se.se_ev forpost;
        F.flush_str_formatter ()) in
   let post,forpost = 
     if has_assert ju.ju_se.se_gdef then 
@@ -1158,14 +1164,14 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
     | _, _ -> assert false in
 
   let eqfv =  
-    mk_eq_exprs file g1 g2 (Se.remove (mk_V x1) (e_vars (Event.expr ju1.ju_se.se_ev))) in
+    mk_eq_exprs file g1 g2 (Se.remove (mk_V x1) (e_vars ju1.ju_se.se_ev)) in
   let eqx = 
     f_eq (Fv (pvar [g1.mod_name] x1, Some "1"))
          (Fv (pvar [g2.mod_name] x2, Some "2")) in
   let eqpost = f_and eqfv eqx in
   let npos = pos + nvc in
   let lc1 = List.rev hd1 in
-  let lc2 = Util.take pos ju2.ju_se.se_gdef in
+  let lc2 = L.take pos ju2.ju_se.se_gdef in
 
   let assert2, post, forpost = 
     if has_assert lc1 then 
@@ -1195,7 +1201,7 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
     if assert2 = None then [] 
     else 
       let assert2 = Fv(([g2.mod_name],assertion), None) in
-      pr_lossless g2 file (f_not assert2) 0 (drop pos ju2.ju_se.se_gdef) in
+      pr_lossless g2 file (f_not assert2) 0 (L.drop pos ju2.ju_se.se_gdef) in
 
   fun fmt () ->
     open_pp fmt ();
@@ -1208,7 +1214,7 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
       let ty = (fst inv1).Vsym.ty in 
       let ty' = (fst inv2).Vsym.ty in
       let mu_x_def fmt () = 
-        if ty_equal ty ty' then F.fprintf fmt "!%a" (mu_x_def file) ty
+        if equal_ty ty ty' then F.fprintf fmt "!%a" (mu_x_def file) ty
         else F.fprintf fmt "%a %a" (mu_x_def file) ty (mu_x_def file) ty' in
       F.fprintf fmt "progress; (by rewrite %a ||@ " mu_x_def ();
       F.fprintf fmt "           by apply %a ||@ " (supp_def file) ty;
@@ -1219,7 +1225,7 @@ let pr_random (pos,inv1,inv2) ju1 ju2 file =
       pr_end fmt ();
       close_pp fmt ()
     end else begin
-      let assert2 = get_opt_exc assert2 in
+      let assert2 = O.get assert2 in
       F.fprintf fmt "case (%a).@ " Printer.pp_form assert2; 
       F.fprintf fmt "  @[<v>%a@ " pp_cmds (auto_sim g1 g2 tl1 []);
       pr_rnd fmt ();
@@ -1524,7 +1530,7 @@ let extract_assum file ranges dir assum pft pft' =
     let arg, _ = get_asgn1 (List.hd c) in 
     let varg = ([],"_arg") in
     let c = List.tl c in
-    let retc = drop (List.length c - List.length lr) c in
+    let retc = L.drop (List.length c - List.length lr) c in
     let retv = List.map (fun i -> fst (get_asgn1 i)) retc in
     let vres = ([],"_res") in
     let tres = mk_Prod (List.map (fun v -> v.Vsym.ty) lr) in
@@ -1609,7 +1615,7 @@ let extract_assum_comp file ranges assum pft =
     let arg, _ = get_asgn1 (List.hd c) in 
     let varg = ([],"_arg") in
     let c = List.tl c in
-    let retc = drop (List.length c - List.length lr) c in
+    let retc = L.drop (List.length c - List.length lr) c in
     let retv = List.map (fun i -> fst (get_asgn1 i)) retc in
     let vres = ([],"_res") in
     let tres = mk_Prod (List.map (fun v -> v.Vsym.ty) lr) in
@@ -1677,7 +1683,7 @@ let bound_rnd_indep file pos ju =
     | _     -> assert false (* FIXME *) in
   let isize = f_rinv (Frofi size) in
   assert (l = []);
-  let evs = destr_Land_nofail (Event.expr ju.ju_se.se_ev) in
+  let evs = destr_Land_nofail ju.ju_se.se_ev in
   let ev = List.nth evs pos in
   if is_Eq ev then isize, ev, lemma 
   else assert false 
@@ -1779,20 +1785,20 @@ let extract_except file pos _l pft pft' =
   let g2 = if side = `LeftToRight then g' else g in
 
 
-  let mk_eqs g fv = 
+  let _mk_eqs g fv = 
     let mk_eq e = 
       f_eq (formula file [g] (Some "1") e) 
         (formula file [adv.mod_name] (Some "2") e) in
     match Se.elements fv with
     | [] -> f_true
     | e :: es -> List.fold_left (fun f e -> f_and f (mk_eq e)) (mk_eq e) es in
-  let fv = e_vars (Event.expr ju.ju_se.se_ev) in
+  let fv = e_vars ju.ju_se.se_ev in
   let flocal = flocal_ev ju.ju_se.se_ev in
   let flocal = Vsym.S.fold (fun v s -> Se.add (mk_V v) s) flocal Se.empty in
   let fv = Se.diff fv flocal in
-  let nA = adv_name file in
-  let eqvc = mk_eq_vcs g2 adv (List.map fst vcs) in
-  let form = extract_ev file [] None ju.ju_se in
+  let _nA = adv_name file in
+  let _eqvc = mk_eq_vcs g2 adv (List.map fst vcs) in
+  let _form = extract_ev file [] None ju.ju_se in
   let proof fmt () = 
     F.fprintf fmt "intros &m.@ ";
     F.fprintf fmt "pose EV := fun (g:glob %s) (u:unit),@ " adv.mod_name;
@@ -1801,6 +1807,8 @@ let extract_except file pos _l pft pft' =
       let s = snd (pvar [] v) in
       F.fprintf fmt "  let %s = g.`%s.%s in@ "
         s adv.mod_name (exclude_private s)) (Se.elements fv);
+    fixme "undefined"
+    (*
     List.iter (function
       | (_,Oracle.RO _) -> assert false
       | (_,Oracle.O o) ->
@@ -1826,6 +1834,7 @@ let extract_except file pos _l pft pft' =
       Printer.pp_form 
         (f_and eqvc (mk_eqs g2.mod_name 
                        (write_gcmds (Util.take pos ju.ju_se.se_gdef))))
+     *)
   in
   let concl = mk_cmp (Fabs (f_rsub pr pr')) cmp_le bound in
     
@@ -1899,11 +1908,12 @@ let proof_guess
         infob.adv_g.oinfo []; } in
   add_top file (Cclone clone_G); 
     (* build the adversary for GUESS *)
-  let vs, orcl = 
+  let vs, orcl = fixme "undefined" (*
     match Event.binding pft.pt_ju.ju_se.se_ev with
     | [vs,Oracle.O o] -> vs, o
-    | _ -> assert false in 
-  
+    | _ -> assert false
+    *)
+  in 
   let log = log_oracle [] orcl in
   let orcl_name = "o" ^ Osym.to_string orcl in
   let arg = ([],"_arg") in
@@ -2045,7 +2055,7 @@ let proof_guess
         (pp_list "" pp_let) fv 
         pp_let_quant vs
         Printer.pp_form f in
-    F.fprintf fmt "pose __F__ := %a.@ " pp_E (Event.expr pft.pt_ju.ju_se.se_ev);
+    F.fprintf fmt "pose __F__ := %a.@ " pp_E pft.pt_ju.ju_se.se_ev;
     F.fprintf fmt 
       "apply (Real.Trans _ (Pr[%s.main() @@ &%s :any (__F__ (glob %s)) res])).@ " 
       nAGL mem nAGL;
@@ -2179,11 +2189,11 @@ let proof_find
         infob.adv_g.oinfo []; } in
   add_top file (Cclone clone_G); 
     (* build the adversary for FIND *)
-  let vs, orcl = 
+  let vs, orcl = fixme "undefined" (*
     match Event.binding pft.pt_ju.ju_se.se_ev with
     | [vs,Oracle.O o] -> vs, o
-    | _ -> assert false in 
-  
+    | _ -> assert false *)
+  in 
   let log = log_oracle [] orcl in
   let orcl_name = "o" ^ Osym.to_string orcl in
   let arg = ([],"_arg") in
@@ -2383,7 +2393,7 @@ let proof_swap_oracle opos pft pft' file =
     i::tl, i'::tl' in
   let w = write_gcmds seoc.seoc_sec.sec_left in
   let w1 = 
-    let (n,_,_,_) = opos in write_gcmds (Util.take (n + 1) se.se_gdef) in
+    let (n,_,_,_) = opos in write_gcmds (L.take (n + 1) se.se_gdef) in
   let vcs = log_oracles file in
   let eqvc = mk_eq_vcs g g' (List.map fst vcs) in
   let eqw  = mk_eq_exprs file g g' w in
@@ -2407,7 +2417,7 @@ let proof_swap_oracle opos pft pft' file =
     | LGuard _:: _, _ -> i,w,lcmd1,lcmd2
     | _, LGuard _:: _ -> i,w,lcmd1,lcmd2
     | i1::lcmd1, i2::lcmd2 ->
-      assert (lcmd_equal i1 i2);
+      assert (equal_lcmd i1 i2);
       skip (i+1) (Se.union w (write_lcmd i1)) lcmd1 lcmd2
     | [], [] -> i,w,lcmd1,lcmd2
     | _, _ -> assert false in
@@ -2424,12 +2434,12 @@ let proof_swap_oracle opos pft pft' file =
     
     let rec aux_true t wl lcmd1 lcmd2 = 
       match lcmd1, lcmd2 with
-      | i1::_, _ when lcmd_equal i1 i ->
+      | i1::_, _ when equal_lcmd i1 i ->
         F.fprintf fmt "rcondt{1} 1;[by auto | sim].@ ";
-      | _, i2::_ when lcmd_equal i2 i ->
+      | _, i2::_ when equal_lcmd i2 i ->
         F.fprintf fmt "rcondt{2} 1;[by auto | sim].@ ";
       | (LGuard _ as i1) :: lcmd1, 
-        (LGuard _ as i2) :: lcmd2 when lcmd_equal i1 i2 ->
+        (LGuard _ as i2) :: lcmd2 when equal_lcmd i1 i2 ->
         F.fprintf fmt "if;[done | | done].@ ";
           aux_true t wl lcmd1 lcmd2  
       | _, _ -> 
@@ -2441,7 +2451,7 @@ let proof_swap_oracle opos pft pft' file =
 
     let rec aux_false t wl lcmd side =
       match lcmd with
-      | i1::_ when lcmd_equal i1 i ->
+      | i1::_ when equal_lcmd i1 i ->
         F.fprintf fmt "by rcondf{%i} 1;auto.@ " side
       | LGuard _ :: lcmd ->
         F.fprintf fmt "if{%i};[ | by auto].@ " side;
@@ -2460,7 +2470,7 @@ let proof_swap_oracle opos pft pft' file =
 
     let rec aux_hd wl lcmd1 lcmd2 = 
       match lcmd1, lcmd2 with
-      | (LGuard t as i1)::lcmd1, _ when lcmd_equal i1 i ->
+      | (LGuard t as i1)::lcmd1, _ when equal_lcmd i1 i ->
         let t = formula file [g.mod_name] (Some "1") ~local t in
         F.fprintf fmt "if{1}.@ ";
         F.fprintf fmt "+ @[<v>";
@@ -2470,7 +2480,7 @@ let proof_swap_oracle opos pft pft' file =
         aux_false (f_not t) wl lcmd2 2;
         F.fprintf fmt "@]";
 
-      | _, (LGuard t as i2)::lcmd2 when lcmd_equal i2 i ->
+      | _, (LGuard t as i2)::lcmd2 when equal_lcmd i2 i ->
         let t = formula file [g'.mod_name] (Some "2") ~local t in
         F.fprintf fmt "if{2}.@ ";
         F.fprintf fmt "+ @[<v>";
@@ -2480,7 +2490,7 @@ let proof_swap_oracle opos pft pft' file =
         aux_false (f_not t) wl lcmd1 1;
         F.fprintf fmt "@]";
       | (LGuard _ as i1) :: lcmd1, 
-        (LGuard _ as i2) :: lcmd2 when lcmd_equal i1 i2 ->
+        (LGuard _ as i2) :: lcmd2 when equal_lcmd i1 i2 ->
         F.fprintf fmt "if;[done | | done].@ ";
         aux_hd wl lcmd1 lcmd2  
       | _, _ -> 
@@ -2505,16 +2515,16 @@ let proof_swap_oracle opos pft pft' file =
 
     let rec aux_swap side wl k lcmd1 lcmd2 = 
       match lcmd1, lcmd2 with 
-      | i1::_, _ when lcmd_equal i1 i ->
+      | i1::_, _ when equal_lcmd i1 i ->
         assert (side = 2);
         pp_swap side k;
         F.fprintf fmt "by sim."
-      | _,i2::_ when lcmd_equal i2 i ->
+      | _,i2::_ when equal_lcmd i2 i ->
         assert (side = 1);
         pp_swap side k;
         F.fprintf fmt "by sim."
       | (LGuard _ as i1) :: lcmd1, (LGuard _ as i2) :: lcmd2 -> 
-        assert (lcmd_equal i1 i2);
+        assert (equal_lcmd i1 i2);
         pp_swap side k;
         pp_seq k wl;
         let oside = if side = 1 then 2 else 1 in
@@ -2529,7 +2539,7 @@ let proof_swap_oracle opos pft pft' file =
         pp_cmds fmt (lossless_lcmds file [i])
       | LBind _:: _, _ | _, LBind _::_ -> assert false
       | i1 :: lcmd1, i2 :: lcmd2 ->
-        assert (lcmd_equal i1 i2);
+        assert (equal_lcmd i1 i2);
         let wl = Se.elements (write_lcmd i1) @ wl in
         aux_swap side wl (k+1) lcmd1 lcmd2 
       | _, _ -> assert false in
@@ -2538,19 +2548,19 @@ let proof_swap_oracle opos pft pft' file =
     let rec aux_hd k wl lcmd1 lcmd2 =
       match lcmd1, lcmd2 with
       | (LGuard _ as i1) :: lcmd1, (LGuard _ as i2) :: lcmd2 -> 
-        assert (lcmd_equal i1 i2);
+        assert (equal_lcmd i1 i2);
         pp_seq k wl;
         F.fprintf fmt "if;[done | | done]@ ";
         aux_hd 0 wl lcmd1 lcmd2 
-      | i1::lcmd1, _ when lcmd_equal i1 i -> 
+      | i1::lcmd1, _ when equal_lcmd i1 i -> 
         pp_seq k wl;
         aux_swap 1 wl 0 lcmd1 lcmd2
-      | _, i2::lcmd2 when lcmd_equal i2 i ->
+      | _, i2::lcmd2 when equal_lcmd i2 i ->
         pp_seq k wl;
         aux_swap 2 wl 0 lcmd1 lcmd2
       | LBind _:: _, _ | _, LBind _::_ -> assert false
       | i1 :: lcmd1, i2 :: lcmd2 ->
-        assert (lcmd_equal i1 i2);
+        assert (equal_lcmd i1 i2);
         let wl = Se.elements (write_lcmd i1) @ wl in
         aux_hd (k+1) wl lcmd1 lcmd2 
       | _, _ -> assert false
@@ -2634,7 +2644,7 @@ let rec extract_proof file pft =
   | Rctxt_ev (i,_) ->
     pp_debug "ctxt_ev@.";
     let pft' = List.hd pft.pt_children in
-    let ev = (Event.expr pft.pt_ju.ju_se.se_ev) in
+    let ev = pft.pt_ju.ju_se.se_ev in
     let evs = destr_Land_nofail ev in
     let hs = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
     let proof _file fmt () = 
@@ -2647,7 +2657,7 @@ let rec extract_proof file pft =
     let pft' = List.hd  pft.pt_children in
     let proof _file fmt () = 
       F.fprintf fmt "@[<v>rewrite Pr [mu_sub];[ | by []].@ ";
-      pp_impl_quant fmt pft.pt_ju.ju_se.se_ev;
+      (* pp_impl_quant fmt pft.pt_ju.ju_se.se_ev; *)
       F.fprintf fmt "@]" in
     extract_proof_sb1_le "Remove_ev" file pft pft' proof
 
@@ -2720,6 +2730,7 @@ let rec extract_proof file pft =
     default_proof ~warning:false file mem "admit" pft
 
   | Rfalse_ev   -> 
+    fixme "undefined" (*
     pp_debug "false_ev @.";
     let ju = pft.pt_ju in
     let pr = extract_pr file mem ju in
@@ -2739,8 +2750,10 @@ let rec extract_proof file pft =
       | _ -> assert false (* Not implemented *) in
     let lemma = add_pr_lemma ~pinfo:pft.pt_info file (mk_cmp pr cmp_eq bound) (Some proof) in
     lemma, pr, cmp_eq, bound
+    *)
 
-  | Rcase_ev (flip, e) ->
+  | Rcase_ev (_flip, _e) -> fixme "undefined"
+    (*
     pp_debug "case_ev@."; 
     let pft1 = List.nth pft.pt_children (if flip then 1 else 0) in
     let pft2 = List.nth pft.pt_children (if flip then 0 else 1) in
@@ -2804,18 +2817,19 @@ let rec extract_proof file pft =
 
     let lemma3 = add_pr_lemma ~pinfo:pft.pt_info file (mk_cmp pr cmp bound) (Some proof) in
     lemma3, pr, cmp, bound
+    *)
 
   | Rsplit_ev _i -> 
     pp_debug "split_ev@.";
     let pft' = List.hd pft.pt_children in
     let proof _file fmt () = 
       F.fprintf fmt "(* split_ev *)@ ";
-      if Event.binding pft.pt_ju.ju_se.se_ev = [] then
+      if not (is_Quant pft.pt_ju.ju_se.se_ev) then
         F.fprintf fmt "by rewrite Pr [mu_eq]."
       else 
         (F.fprintf fmt "@[<v>rewrite Pr [mu_eq];[ | by []].@ ";
          F.fprintf fmt "move=> &hr;by %a.@]" 
-           (pp_congr_quant ~semi:false) pft.pt_ju.ju_se.se_ev)
+           (pp_congr_quant ~_semi:false) pft.pt_ju.ju_se.se_ev)
 
     in
     extract_proof_sb1 "split_ev" file pft pft' pft.pt_info proof
@@ -2824,13 +2838,13 @@ let rec extract_proof file pft =
     pp_debug "rewrite ev@."; 
     let pft' = List.hd pft.pt_children in
     let is_not = 
-      let ev = (Event.expr pft.pt_ju.ju_se.se_ev) in
+      let ev = pft.pt_ju.ju_se.se_ev in
       let evs = destr_Land_nofail ev in
       let _,b,_ = Util.split_n i evs in
       is_Not b in
  
     let pp_branch pft fmt dir = 
-      let ev = (Event.expr pft.pt_ju.ju_se.se_ev) in
+      let ev = pft.pt_ju.ju_se.se_ev in
       let evs = destr_Land_nofail ev in
       let his = List.mapi (fun i _ -> Format.sprintf "H%i" i) evs in
       let hi = Format.sprintf "H%i" i in
@@ -2850,7 +2864,7 @@ let rec extract_proof file pft =
     let proof _file fmt () =
       let dir1, dir2 = if dir = LeftToRight then true, false else false, true in
       F.fprintf fmt "@[<v>rewrite Pr [mu_eq];[move=> &hr | by done].@ ";
-      pp_congr_quant ~semi:true fmt pft.pt_ju.ju_se.se_ev;
+      (* pp_congr_quant ~semi:true fmt pft.pt_ju.ju_se.se_ev; *)
       F.fprintf fmt "split.@ ";
       F.fprintf fmt "+ @[<v>%a@]@ " (pp_branch pft) dir1;
       F.fprintf fmt "%a@]" (pp_branch pft') dir2 in
@@ -2973,13 +2987,15 @@ let rec extract_proof file pft =
     assert (seoc.seoc_oright = [] && seoc.seoc_oleft = []);
     let bad_t =
       let ev =  pftb.pt_ju.ju_se.se_ev in 
-      let local = 
+      let local = fixme "undefined" (*
         match (Event.binding ev) with
         | [vs,_] ->
           List.fold_left (fun s v -> Vsym.S.add v s) 
             Vsym.S.empty vs
-        | _ -> assert false in
-      formula file [g'.mod_name] (Some "2") ~local (Event.expr ev) in
+        | _ -> assert false
+        *)
+      in
+      formula file [g'.mod_name] (Some "2") ~local ev in
 
     let lossless_tl = 
       lossless_lcmds file seoc.seoc_cright in

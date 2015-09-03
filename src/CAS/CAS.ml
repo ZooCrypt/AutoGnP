@@ -1,12 +1,15 @@
 (* * Use Factory to perform computations on polynomials *)
 
 (* ** Imports and abbreviations *)
+open Util
 open Expr
 open NormField
 open Poly
 
 module Ht = Hashtbl
 module YS = Yojson.Safe
+
+let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 
 (* ** Using CAS to perform polynomial computations
  * ----------------------------------------------------------------------- *)
@@ -82,6 +85,7 @@ let norm before e =
   let (se,_c,hv) = abstract_non_field before e in
   (* handle some simple special cases without expensive computations *)
   match se with
+  (*
   | SV i                  -> Ht.find hv i
   | SNat n                -> mk_FNat n
   | SOpp(SNat n)          -> mk_FOpp (mk_FNat n)
@@ -90,4 +94,5 @@ let norm before e =
   | SMult(SV i, SNat 1)   -> Ht.find hv i
   | SMult(SNat i, SNat j) -> mk_FNat (i * j)
   | SMult(SV i, SV j)     -> mk_FMult (List.sort compare_expr [Ht.find hv i; Ht.find hv j])
+   *)
   | _                     -> norm_factory se hv

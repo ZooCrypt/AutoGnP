@@ -77,7 +77,7 @@ let t_last_random_indep ts ju =
   let se = ju.ju_se in
   match List.rev se.se_gdef with
   | Game.GSamp (r,_) :: _ ->
-    let ev = Event.expr se.se_ev in
+    let ev = se.se_ev in
     let fv = e_vars ev in
     let er = mk_V r in
     let bds, ms = init_inverters ev in
@@ -86,7 +86,7 @@ let t_last_random_indep ts ju =
     let bds = List.map (fun (x,_) -> let e = mk_V x in (e, I e)) bds in
     let known = vs@bds@msv in
     log_t (lazy (fsprintf ">>>>> trying to deduce %a from %a@\n"
-                   pp_exp er (pp_list "," (pp_pair pp_exp pp_exp))
+                   pp_expr er (pp_list "," (pp_pair pp_expr pp_expr))
                    (L.map (fun (a,b) -> (a,expr_of_inverter b)) known)));
     begin match exc_to_opt (fun () -> Deduc.invert ts known er) with
     | None -> CR.t_fail "cannot find inverter" ju
@@ -130,7 +130,7 @@ let t_random_indep_no_exact emaps ju =
   let se = ju.ju_se in
   log_t (lazy "###############################");
   log_t (lazy "t_random_indep\n%!");
-  let ev_vars = e_vars (Event.expr se.se_ev) in
+  let ev_vars = e_vars se.se_ev in
   let rec aux i rc =
     match rc with
     | Game.GSamp(v,_) :: rc ->
