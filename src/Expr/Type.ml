@@ -6,11 +6,11 @@ open Util
 
 (* ** Identifiers *)
 
-module Lenvar : IdType.ID = Id
+module Lenvar : (module type of Id) = Id
 
-module Groupvar : IdType.ID = Id
+module Groupvar : (module type of Id) = Id
 
-module Permvar : IdType.ID = Id
+module Permvar : (module type of Id) = Id
 
 (* ** Permutation keys *)
 

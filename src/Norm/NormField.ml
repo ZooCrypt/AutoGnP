@@ -113,7 +113,7 @@ let factor_out a (p : EP.t) =
 
 (** Field expression. *)
 type fexp =
-    SV of int
+  | SV of int
   | SNat of int
   | SOpp of fexp
   | SInv of fexp
@@ -125,9 +125,7 @@ let norm_fe fe =
     Big_int.lt_big_int c Big_int.zero_big_int
   in
   let norm_gcd (n,d) =
-    let h = gcd n d in
-    let n = div n h in
-    let d = div d h in
+    let (_,n,d) = gcd_div n d in
     (n,d)
   in
   let norm_sign (n,d) =

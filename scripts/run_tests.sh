@@ -8,15 +8,20 @@ function ok_tests() {
 
   FAILED=""
   OK=""
-  for file in examples/ok/*.zc test/ok/*.zc; do
+  for file in \
+              examples/ok/scheme-correct/*.zc \
+              examples/ok/assumptions/*.zc \
+              examples/ok/*.zc \
+              test/ok/*.zc \
+              ; do \
     printf "File $file: \n"
     before=$(date +%s)
     if ! ./autognp $file 2>&1 | \
          grep --colour=always -i \
            -e 'Finished Proof' -e 'EasyCrypt proof script.extracted'; then
-      FAILED="$FAILED $file"
+      FAILED="$FAILED\n  $file"
     else
-      OK="$OK `basename $file`"
+      OK="$OK\n  $file"
     fi
     after=$(date +%s)
     dt=$((after - before))
@@ -41,13 +46,13 @@ function fail_tests() {
     printf "Testing $file, expecting error ''$ERR''\n"  
     if ! ./autognp $file 2>&1 | \
          grep -F "$ERR"; then
-      FAILED="$FAILED $file"
+      FAILED="$FAILED\n  $file"
     else
-      OK="$OK $file"
+      OK="$OK\n  $file"
     fi
   done
-  printf "\nFailed: $FAILED"
-  printf "\nOK: $OK\n"
+  printf "\nFailed:$FAILED"
+  printf "\nOK:$OK\n"
 }
 
 ok_tests

@@ -173,7 +173,7 @@ let process_eval fname proofscript =
                L.fold_left
                  (fun (ts,msg0) i -> let (ts,msg) = handle_instr is_last_cmd ts i in (ts,msg0^msg))
                  (!rts,"")
-                 (Parse.instruction (cmd ^ "."))
+                (Parse.instruction (cmd ^ ".")) 
              in
              rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
              insert_ts_cache fname !rhandled (ts,!rmsgs))
@@ -225,10 +225,10 @@ let process_frame frame =
       
   | Opcode.Close ->
     (* Immediately echo and pass this last message to the user *)
-    (if String.length frame.content >= 2 then
+    if String.length frame.content >= 2 then
         Some (Frame.create ~opcode:Opcode.Close
                 ~content:(String.sub frame.content 0 2) ())
-     else None)
+    else None
   | Opcode.Pong -> None
   | Opcode.Text
   | Opcode.Binary ->

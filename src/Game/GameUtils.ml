@@ -179,13 +179,12 @@ let vmap_of_ves ves =
 let vmap_of_globals gdef = vmap_of_vss (gdef_global_vars gdef)
 
 let vmap_of_se se =
-  let vmap_aux _s0 _ev = fixme "undefined"
-    (*
-    try
-      let (_,(vs,_),ev) = Event.destr_exn ev in
+  let rec vmap_aux s0 ev =
+    if is_Quant ev then
+      let (_,(vs,_),ev) = destr_Quant ev in
       List.fold_left (fun s v -> Vsym.S.add v s) (vmap_aux s0 ev) vs
-    with Event.NoQuant -> s0
-    *)
+    else
+      s0
   in
   vmap_of_vss (vmap_aux (gdef_global_vars se.se_gdef) se.se_ev)
     

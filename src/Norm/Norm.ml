@@ -77,17 +77,16 @@ let rec norm_expr ~strong e =
 
 and mk_simpl_op ~strong op l =
   let mk_Ifte_simp e1 e2 e3 =
-    mk_simpl_op ~strong:false Ifte [e1; e2; e3]
+    mk_simpl_op ~strong Ifte [e1; e2; e3]
   in
   match op, l with
 
-  | (FunCall _ | ProjKeyElem _ | RoCall _ | RoLookup _), ([] | _::_::_) -> assert false
   | FunCall f,      [e] -> mk_FunCall f e
   | ProjKeyElem kt, [e] -> mk_ProjKeyElem kt e
   | RoCall h,       [e] -> mk_RoCall h e
   | RoLookup h,     [e] -> mk_RoLookup h e
+  | (FunCall _ | ProjKeyElem _ | RoCall _ | RoLookup _), ([] | _::_::_) -> assert false
 
-  | Perm(_, _),([] | [_] | _::_::_::_) -> assert false
   | Perm(ptype1, f1),[k1; e1] -> (* f(pk, finv(sk, e)) = e and vice-versa *)
     let k1 = norm_expr ~strong k1 in
     let e1 = norm_expr ~strong e1 in
@@ -100,6 +99,7 @@ and mk_simpl_op ~strong op l =
       e2
     | _ -> mk_Perm f1 ptype1 k1 e1
     end
+  | Perm(_, _),([] | [_] | _::_::_::_) -> assert false
 
   | GExp gv, [g1;p1] -> (* g1 is necessary of the form g ^ a *)
     let a = destr_GExp_Gen gv g1 in
@@ -176,7 +176,8 @@ and mk_simpl_op ~strong op l =
 and mk_simpl_nop ~strong op l =
   match op with
 
-  | FPlus  | FMult  -> assert false
+  | FPlus  | FMult -> (* handled by mk_simpl_field_expr *)
+    assert false
   
   | GMult ->
     let gv = match l with e::_ -> destr_G_exn e.e_ty | _ -> assert false in
@@ -220,24 +221,14 @@ and mk_simpl_nop ~strong op l =
  
   | Land ->
     let l = List.flatten (List.map destr_Land_nofail l) in
-    let l = if strong then List.sort compare_expr l else l in
-    let rec aux l =
-      match l with
-      | [] -> []
-      | [e] ->
-        if is_True e then []
-        else if is_False e then raise Not_found
-        else l
-      | e1::((e2::_) as l1) ->
-        if is_False e1 then raise Not_found
-        else if equal_expr e1 e2 || is_True e1 then aux l1
-        else e1 :: aux l1
-    in
-    try
-      let l = aux l in
-      if l = [] then mk_True
-      else mk_Land l
-    with Not_found -> mk_False
+    let s = se_of_list l in
+    if Se.mem mk_False s then
+      mk_False
+    else if strong then
+      mk_Land_nofail (Se.elements (Se.filter (fun e -> not (is_True e)) s))
+    else 
+      mk_Land_nofail (L.unique (L.filter (fun e -> not (is_True e)) l))
+
 
 and mk_simpl_field_expr ~strong e =
   let norm_subexpr e =
@@ -257,9 +248,9 @@ and mk_simpl_field_expr ~strong e =
   in
   CAS.norm norm_subexpr e
 
-let norm_expr_weak = norm_expr ~strong:true
+let norm_expr_weak = norm_expr ~strong:false
 
-let norm_expr_strong = norm_expr ~strong:false
+let norm_expr_strong = norm_expr ~strong:true
 
 (** use norm_expr to check equality modulo equational theory *)
 let equalmod_expr e e' = equal_expr (norm_expr_strong e) (norm_expr_strong e')

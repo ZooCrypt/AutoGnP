@@ -25,7 +25,9 @@ install: $(PGROOT)
 	fi
 	( cd $(PGROOT)/generic && patch -p0 -t ) < proof-site.patch
 	../scripts/install/install-sh -m 0755 -d $(PGROOT)/easycrypt
+	../scripts/install/install-sh -m 0755 -d $(PGROOT)/autognp
 	../scripts/install/install-sh -m 0644 -t $(PGROOT)/easycrypt easycrypt/*.el
+	../scripts/install/install-sh -m 0644 -t $(PGROOT)/autognp autognp/*.el
 
 install-soft: $(PGROOT)
 	@if [ -d $(PGROOT)/easycrypt ]; then \
@@ -35,6 +37,8 @@ install-soft: $(PGROOT)
 	( cd $(PGROOT)/generic && patch -p0 -t ) < proof-site.patch
 	../scripts/install/install-sh -m 0755 -d $(PGROOT)/easycrypt
 	for i in easycrypt/*.el; do ln -s $(CURDIR)/$$i $(PGROOT)/easycrypt; done
+	../scripts/install/install-sh -m 0755 -d $(PGROOT)/autognp
+	for i in autognp/*.el; do ln -s $(CURDIR)/$$i $(PGROOT)/autognp; done
 
 uninstall: $(PGROOT)/easycrypt
 	( cd $(PGROOT)/generic && patch -p0 -tR ) < proof-site.patch
@@ -54,14 +58,14 @@ endif
 local:
 	rm -rf _local && mkdir _local
 	cd _local; \
-	     curl -O $(PGURL) \
+             cp $(HOME)/Downloads/ProofGeneral-$(PGVER).tgz . \
 	  && tar -xof ProofGeneral-$(PGVER).tgz \
 	  && if [ -e $(CURDIR)/pg-$(PGVER).patch ]; then \
            (    cd $(CURDIR)/_local/ProofGeneral-$(PGVER) \
              && patch -t -p1 < $(CURDIR)/pg-$(PGVER).patch;  ); \
          fi \
 	  || exit 1
-	$(MAKE) PGROOT=$(CURDIR)/_local/ProofGeneral-$(PGVER) install
+	$(MAKE) PGROOT=$(CURDIR)/_local/ProofGeneral-$(PGVER) install-soft
 	$(MAKE) EMACS=$(EMACS) -C $(CURDIR)/_local/ProofGeneral-$(PGVER) clean
 	$(MAKE) EMACS=$(EMACS) -C $(CURDIR)/_local/ProofGeneral-$(PGVER)
 	sed -e s/@VERSION@/$(PGVER)/g config/emacs.rc.in > \

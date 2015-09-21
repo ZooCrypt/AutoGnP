@@ -2,4 +2,5 @@
 
 export LD_LIBRARY_PATH=_build/c_src
 export BOLT_CONFIG=etc/log_bolt.config
-./autognp.native $@
+cd /home/beschmi/git/AutoGnP/ 
+/home/beschmi/git/AutoGnP/autognp.native $@

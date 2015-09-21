@@ -15,6 +15,10 @@ let ty_prod_vs vs =
 
 let mk_GExp_Gen gv p = mk_GExp (mk_GGen gv) p
 
+let mk_Land_nofail = function
+  | [] -> mk_True
+  | l  -> mk_Land l
+
 (* ** Indicator functions
  * ----------------------------------------------------------------------- *)
 
@@ -210,8 +214,8 @@ let rec pp_exp_p ~qual above fmt e =
     in
     pp_maybe_paren false (above <> PrefixApp) pp fmt es
   | Quant(q,b,e) ->
-     F.fprintf fmt "%s (%a): %a" (if q = All then "forall" else "exists")
-               pp_binder b (pp_exp_p ~qual Top) e
+     F.fprintf fmt "%s %a: %a" (match q with All -> "forall" | Exists -> "exists")
+       pp_binder b (pp_exp_p ~qual Top) e
   | Proj(i,e)  -> 
     F.fprintf fmt "(%a)%s%i" (pp_exp_p ~qual Tup) e "#" i
   | Cnst(c)    -> pp_cnst fmt c e.e_ty

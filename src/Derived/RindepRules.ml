@@ -1,6 +1,6 @@
-(*s Derived rules for dealing with random independence. *)
+(* * Derived rules for dealing with random independence. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open Nondet
@@ -18,8 +18,10 @@ module CR = CoreRules
 
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RindepRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RindepRules" ls
-(*i*)
     
+(* ** Merging equalities in event.
+ * ----------------------------------------------------------------------- *)
+
 (** Merging equalities in conjuncts of event. *)
 let t_merge_ev tomerge ju = 
   let tomerge = List.sort Pervasives.compare tomerge in
@@ -30,9 +32,10 @@ let t_merge_ev tomerge ju =
       (CR.t_merge_ev (i-k) (j-k) @> tac (k+1) (j::tomerge)) ju in
   tac 0 tomerge ju
 
-(** A tactic to automate random independence. *)
+(* ** Automate random independence.
+ * ----------------------------------------------------------------------- *)
 
-(*i We known a set of facts 
+(* We know a set of facts 
    e1 = e2 
    exists x in L | e1 = e2 
    and inequalities 
@@ -44,7 +47,7 @@ let t_merge_ev tomerge ju =
    We look the equality which are used and we merge then in a single equivalent
    equality, again we build the inverter (this should works).
    We apply the inverter.
-i*)
+*)
 
 let init_inverter test =
   let e1, e2, bd =

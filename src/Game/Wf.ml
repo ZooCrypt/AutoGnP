@@ -27,10 +27,10 @@ let assert_exc c rf = if not c then rf ()
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
 type wf_state = {
-  wf_names : Sstring.t;  (*r used names for variables, adversaries, and oracles *)
-  wf_bvars : Vsym.S.t;   (*r bound variables.
-                               roughly: never two vsyms with the same name. *)
-  wf_nzero : expr option (*r product of all nonzero-assumptions for field-expressions *)
+  wf_names : Sstring.t;  (* used names for variables, adversaries, and oracles *)
+  wf_bvars : Vsym.S.t;   (* bound variables.
+                              roughly: never two vsyms with the same name. *)
+  wf_nzero : expr option (* product of all nonzero-assumptions for field-expressions *)
 }
 
 let mk_wfs () = {
@@ -125,16 +125,18 @@ and check_nonzero ctype wfs e =
 
 and wf_expr ctype wfs e0 =
   log_t (lazy (fsprintf "checking expression: %a" pp_expr e0));
-  let rec go wfs e =
+  let rec go ?outermost_conj:(outermost_conj=false) wfs e =
     match e.e_node with
     | Cnst _ -> ()
     | V vs ->
       assert_exc (Vsym.S.mem vs wfs.wf_bvars)
         (fun () -> raise (Wf_var_undef(vs,e0,wfs.wf_bvars)))
-    | Quant(_,bind,e1) ->
+    | Quant(_,bind,e1) when outermost_conj ->
       let wfs = check_binding1 wfs bind in
       assert (equal_ty mk_Bool e1.e_ty);
       go wfs e1
+    | Quant(_,_,_) ->
+      failwith (fsprintf "Wf: quantifiers must be outermost in %a" pp_expr e)  
     | Proj(_,e1) -> go wfs e1
     | Nary(Land,es) ->
       let is_InEq e =
@@ -159,7 +161,7 @@ and wf_expr ctype wfs e0 =
           wfs
           ineqs
       in
-      List.iter (go wfs) others
+      List.iter (go ~outermost_conj wfs) others
     | App(FInv,[e]) ->
       assert_exc
         (check_nonzero ctype wfs e)
@@ -173,7 +175,7 @@ and wf_expr ctype wfs e0 =
     | Tuple(es) | Nary(_,es) | App(_,es) ->
       L.iter (go wfs) es
   in
-  go wfs e0
+  go ~outermost_conj:true wfs e0
 
 (* ** Well-formedness of games
  * ----------------------------------------------------------------------- *)

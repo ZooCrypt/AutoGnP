@@ -803,7 +803,7 @@ let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt se.se_ev
 (* ** Normal forms
  * ----------------------------------------------------------------------- *)
 
-let norm_default = Norm.norm_expr ~strong:true
+let norm_default = Norm.norm_expr_strong
 
 let norm_distr ?norm:(nf=norm_default) s (ty,es) = 
   (ty, L.map (fun e -> nf (e_subst s e)) es)
@@ -875,7 +875,7 @@ let norm_gdef ?norm:(nf=norm_default) g =
 let norm_se ?norm:(nf=norm_default) se =
   let g,s = norm_gdef ~norm:nf se.se_gdef in
   { se_gdef = g;
-    se_ev = nf (e_subst s se.se_ev) }
+    se_ev   = nf (e_subst s se.se_ev) }
 
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
@@ -910,7 +910,7 @@ let pp_lcmd ~qual fmt = function
 let pp_ilcmd ~nonum ~qual fmt (i,lc) =
   if nonum
   then (pp_lcmd ~qual fmt) lc
-  else F.fprintf fmt "%i: %a" i (pp_lcmd ~qual) lc
+  else F.fprintf fmt "%3i: %a" i (pp_lcmd ~qual) lc
 
 let pp_lcomp ~nonum ~qual fmt (e,m) =
   match m with
@@ -923,7 +923,7 @@ let pp_lcomp ~nonum ~qual fmt (e,m) =
     F.fprintf fmt "@[%a;@\n%sreturn %a@]"
       (pp_list ";@\n" (pp_ilcmd ~nonum ~qual))
       (num_list m)
-      (if nonum then "" else F.sprintf "%i: " (L.length m + 1))
+      (if nonum then "" else F.sprintf "%3i: " (L.length m + 1))
       (pp_expr_qual ~qual) e
 
 let string_of_otype = function
@@ -977,7 +977,7 @@ let pp_gcmd ~nonum fmt gc = match gc with
       (pp_list ",@;" (pp_odef ~nonum)) od
 
 let pp_igcmd fmt (i,gc) = 
-  F.fprintf fmt "@[%i: %a@]" i (pp_gcmd ~nonum:false) gc 
+  F.fprintf fmt "@[%3i: %a@]" i (pp_gcmd ~nonum:false) gc 
 
 let pp_gdef ~nonum fmt gd =
   if nonum then

@@ -190,6 +190,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | EMap s, [e1;e2]    -> construct2 e e1 e2 (mk_EMap s)
     | Ifte,   [e1;e2;e3] -> construct3 e e1 e2 e3 mk_Ifte
     | FDiv,   [e1;e2]    -> construct_div e e1 e2
+    | FunCall f, [e1]    -> construct1 e e1 (mk_FunCall f)
+    | RoCall h, [e1]     -> construct1 e e1 (mk_RoCall h)
       (* in the PPT case, we always rely on the solver for groups *)
     | GExp _, [e1;e2] when not ppt ->
       construct2 e e1 e2 mk_GExp

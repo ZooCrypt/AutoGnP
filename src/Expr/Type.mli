@@ -6,13 +6,13 @@ open Abbrevs
 (* ** Identifiers *)
 
 (** length variables for bitstrings *)
-module Lenvar : IdType.ID
+module Lenvar : (module type of Id)  
 
 (** identifier for different permutations *)
-module Permvar : IdType.ID
+module Permvar : (module type of Id)
         
 (** identifier for different groups *)
-module Groupvar : IdType.ID
+module Groupvar : (module type of Id)
 
 (* ** Permutation keys *)
 

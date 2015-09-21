@@ -1,11 +1,11 @@
 {
   open Parser
-  exception Error of string
+  open ParserTools
 
   let unterminated_comment () =
-    raise (Error "unterminated comment")
+    raise (LexerError "unterminated comment")
   let unterminated_string () =
-    raise (Error "unterminated string")
+    raise (LexerError "unterminated string")
 
   let keyword_table = Hashtbl.create 53
   let _ =
@@ -118,7 +118,7 @@ rule lex = parse
   | "!"     { EXCL }
   | "Fq"    { TFQ }
   | "not"   { NOT }
-  (* | "log"   { LOG } *)
+  | "log"   { LOG }
   | "true"  { TRUE }
   | "false" { FALSE }
   | "trans*" { RTRANSSTAR }

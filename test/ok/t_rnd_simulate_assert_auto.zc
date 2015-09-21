@@ -6,7 +6,7 @@ bound_succ
     r <-$ Fq;
   ] : (r * s * w + s = 1) /\ (s <> 0).
 
-  rnd! r _ _. norm.
-  indep.
+  rnd! r _ _. //.
+  indep!.
 qed.
 extract "extraction/t_rnd_simulate_assert_auto.ec".

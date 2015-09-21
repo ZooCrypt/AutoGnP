@@ -329,9 +329,13 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   let frame = [(Norm.norm_expr_strong e,I ve)] in
   let maxlen = L.length se.se_gdef in
   let cache = He.create 17 in
-  assert (O.map_default (fun upto -> gpos <= upto && upto < maxlen) true mupto);
-  let abstract_len = O.map_default (fun upto -> upto - gpos) (maxlen - gpos) mupto in
+  if not (O.map_default (fun upto -> gpos <= upto && upto < maxlen) true mupto) then
+    tacerror "invalid upto-value %a, value must be >= %i and < %i"
+      (pp_opt pp_int) (O.map ((+) 1) mupto) (gpos + 1) (maxlen + 1);
+  let abstract_len = O.map_default (fun upto -> upto - gpos + 1) (maxlen - gpos) mupto in
   let a_cmds, sec = get_se_ctxt_len se ~pos:gpos ~len:abstract_len in
+  log_i (lazy (fsprintf "====================================@\nAbstracting in@\n  %a@\n"
+                 (pp_gdef ~nonum:true) a_cmds));
   let secret_vars =
     L.map (function GSamp(vs,_) -> Some (mk_V vs) | _ -> None) sec.sec_left
     |> cat_Some |> se_of_list
@@ -368,7 +372,7 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   let a_cmds = map_gdef_exp deduce a_cmds in
   let se_ev =
     match mupto with
-    | None   -> deduce sec.sec_ev (* FIXME : Potential problem ? *)
+    | None   -> deduce sec.sec_ev
     | Some _ -> sec.sec_ev
   in
   let sec = {sec with sec_ev = se_ev} in

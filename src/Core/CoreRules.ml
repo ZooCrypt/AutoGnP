@@ -294,40 +294,28 @@ let rename_if_required rn se1 se2 =
     subst_v_se (fun vs -> try Vsym.M.find vs ren with Not_found -> vs) se1
   )
 
-let rconv do_norm_terms new_se ju =
+let rconv do_norm_terms new_se0 ju =
   let rn = "conv" in
-  let se = ju.ju_se in
   (* check well-formedness without DivZero and then unfold *)
-  wf_se NoCheckDivZero se;
-  wf_se NoCheckDivZero new_se;
-  let se'     = norm_se ~norm:id se in
-  let new_se' = norm_se ~norm:id new_se in
+  wf_se NoCheckDivZero ju.ju_se;
+  wf_se NoCheckDivZero new_se0;
+  let se     = norm_se ~norm:id ju.ju_se in
+  let new_se = norm_se ~norm:id new_se0  in
   (* perform renaming if required *)
-  let se' = rename_if_required rn se' new_se' in
+  let se = rename_if_required rn se new_se in
   (* check DivZero for unfolded+renamed and normalize (if requested) *)
   if not do_norm_terms then (
-    ensure_gdef_eq  rn se'.se_gdef new_se'.se_gdef;
-    ensure_event_eq rn se'.se_ev   new_se'.se_ev;
+    ensure_gdef_eq  rn se.se_gdef new_se.se_gdef;
+    ensure_event_eq rn se.se_ev   new_se.se_ev;
   ) else (
-      (* try strong version first *)
-      wf_se CheckDivZero se';
-      wf_se CheckDivZero new_se';
+      wf_se CheckDivZero se;
+      wf_se CheckDivZero new_se;
       let norm_rw = map_sec_exp Norm.norm_expr_strong in
-      let se', new_se' = (norm_rw se', norm_rw new_se') in
-      (* try *)
-      ensure_gdef_eq  rn se'.se_gdef new_se'.se_gdef;
-      ensure_event_eq rn se'.se_ev   new_se'.se_ev
-      (*
-      with
-        _ ->
-          (* try version that deals better with if afterwards *)
-          let norm_rw = map_se_exp Norm.norm_expr_conv in
-          let se', new_se' = (norm_rw se', norm_rw new_se') in
-          ensure_gdef_eq  rn se'.se_gdef new_se'.se_gdef;
-          ensure_event_eq rn se'.se_ev   new_se'.se_ev
-      *)
+      let se, new_se = (norm_rw se, norm_rw new_se) in
+      ensure_gdef_eq  rn se.se_gdef new_se.se_gdef;
+      ensure_event_eq rn se.se_ev   new_se.se_ev
   );
-  Rconv, [{ ju with ju_se = new_se }]
+  Rconv, [{ ju with ju_se = new_se0 }]
 
 let t_conv do_norm_terms new_se = prove_by (rconv do_norm_terms new_se)
 
@@ -711,15 +699,24 @@ let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   let se = ju.ju_se in
   ensure_pr_Succ_or_Adv "case_ev" ju;
   let ev = se.se_ev in
-  assert (not (is_Quant ev));
   if not ae && conj_or_negation_included e ev then
     tacerror "case_ev: event or negation already in event";
+  let rec add_conj ev e =
+    (* FIXME: account for, e.g., e /\ (forall x, ...) *)
+    if is_Quant ev then (
+      let (q,bind,ev) = destr_Quant ev in
+      mk_Quant q bind (add_conj ev e)
+    ) else (
+      mk_Land [ e; ev ] 
+    )
+  in
   let ju1 =
     { ju with
-      ju_se = { se with se_ev = mk_Land [ e; se.se_ev] } }
+      ju_se = { se with se_ev = add_conj se.se_ev e } }
   in
-  let ju2 = { ju with ju_se =
-                { se with se_ev = mk_Land [ mk_Not e; se.se_ev] } }
+  let ju2 =
+    { ju with
+      ju_se = { se with se_ev = add_conj se.se_ev (mk_Not e) } }
   in
   Rcase_ev(flip,e), if flip then [ju2; ju1] else [ju1;ju2]
 
@@ -783,14 +780,27 @@ let t_injective_ctxt_ev j c1 c2 = prove_by (rinjective_ctxt_ev j c1 c2)
 let rremove_ev (rm:int list) ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
+  let ev = se.se_ev in
+  let quant, ev_body =
+    if is_Quant ev then (
+      let (q,bind,e) = destr_Quant ev in
+      Some (q,bind), e
+    ) else (
+      None,ev
+    )
+  in
   let evs =
-    destr_Land_nofail se.se_ev
+    destr_Land_nofail ev_body
     |> L.mapi (fun i e -> if L.mem i rm then None else Some e)
     |> cat_Some
   in
   let new_ev_expr = if evs = [] then mk_True else mk_Land evs in
-  let new_se = { se with se_ev = new_ev_expr } in
-  Rremove_ev rm, [ { ju with ju_se = new_se } ]
+  let new_ev =
+    match quant with
+    | Some (q, bind) -> mk_Quant q bind new_ev_expr
+    | None           -> new_ev_expr
+  in
+  Rremove_ev rm, [ { ju with ju_se = { se with se_ev = new_ev } } ]
 
 let t_remove_ev rm = prove_by (rremove_ev rm)
 
@@ -956,8 +966,10 @@ let rassm_comp assm0 rngs ren ju =
   let rname = "assumption_computational" in
   let se = ju.ju_se in
   let assm = Assumption.inst_comp ren assm0 in
-  if assm.ac_type = A_Adv then ensure_pr_Adv rname ju;
-  if assm.ac_type = A_Succ then ensure_pr_Succ_or_Adv rname ju;
+  (match assm.ac_type with
+   | A_Adv  -> ensure_pr_Adv rname ju
+   | A_Succ -> ensure_pr_Succ_or_Adv rname ju
+  );
   let pref = assm.ac_prefix in
   let pref_len = L.length pref in
   let pref_ju = L.take pref_len se.se_gdef in
@@ -1225,7 +1237,7 @@ let t_guard p tnew = prove_by (rguard p tnew)
 
 (* ** Core rules: Deal with existential quantifiers
  * ----------------------------------------------------------------------- *)
-
+ 
 (* *** Guess rule.
  * ----------------------------------------------------------------------- *)
 
@@ -1267,7 +1279,8 @@ let rfind (bd,body) arg asym fvs ju =
     assert (equal_ty (ty_prod_vs bd) arg.e_ty);
     let subst_bd = 
       L.fold_left2 (fun s v e -> Me.add (mk_V v) e s) Me.empty bd 
-        (if L.length bd > 1 then destr_Tuple_nofail arg else [arg]) in
+        (if L.length bd > 1 then destr_Tuple_nofail arg else [arg])
+    in
     let fv = e_vars body in
     let se_vs = List.fold_left (fun s v -> Se.add (mk_V v) s) Se.empty in
     let allowed = Se.union (se_vs vs) (se_vs bd) in
@@ -1275,8 +1288,8 @@ let rfind (bd,body) arg asym fvs ju =
       tacerror "find not a closed function: %a contains variables not in %a"
         pp_expr body (pp_list "," pp_expr) (Se.elements allowed);
     let e1 = e_subst subst_bd body in
-    if not (equal_expr e1 ev) then
-      tacerror "find: invalid event in function : %a \nvs %a" pp_expr e1 pp_expr ev;
+    if not (equal_expr e1 ev_expr) then
+      tacerror "find: invalid event in function : %a \nvs %a" pp_expr e1 pp_expr ev_expr;
     (* check that the function is PPT *)
     if not (is_ppt body) then 
       tacerror "find: the function is not ppt";

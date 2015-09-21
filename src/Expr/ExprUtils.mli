@@ -15,6 +15,8 @@ val ty_prod_vs : Vsym.t list -> ty
 
 val mk_GExp_Gen : Groupvar.id -> expr -> expr
 
+val mk_Land_nofail : expr list -> expr
+
 (* ** Indicator functions
  * ----------------------------------------------------------------------- *)
 

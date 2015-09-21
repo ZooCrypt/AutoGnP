@@ -114,12 +114,10 @@ let ranges ju l =
   let l = L.map (interval ju) l in
   if l = [] then None else Some l
 
-(*i ----------------------------------------------------------------------- i*)
 (* \hd{Tactic handling} *)
-exception Handle_this_tactic_instead of PT.tactic
-            
-let rec handle_tactic ts tac =
-  let input_ts = ts in try (
+(*i ----------------------------------------------------------------------- i*)
+
+let handle_tactic ts tac =
   let ps = get_proof_state ts in
   let ju = match ps.CR.subgoals with
     | ju::_ -> ju
@@ -216,9 +214,10 @@ let rec handle_tactic ts tac =
       let v = mk_new_var sv e.e_ty in
       t_let_abstract (get_pos i) v e (O.map get_pos mupto) (not no_norm) ju
 
-    | PT.Rlet_abstract(None,sv,Some(se),mupto,no_norm) ->
-       raise (Handle_this_tactic_instead(PT.Rlet_abstract(Some (PT.Pos(-1)),sv,Some se, mupto, no_norm)))
-                     
+    | PT.Rlet_abstract(None,_sv,Some(_se),_mupto,_no_norm) ->
+       fixme "give hints"
+       (*raise (Handle_this_tactic_instead(PT.Rlet_abstract(Some (PT.Pos(-1)),sv,Some se, mupto, no_norm))) *)
+     
     | PT.Rlet_abstract_oracle(opos,sv,se,len,no_norm) ->
        let qual = Qual (PU.get_oname_from_opos ju.ju_se opos) in
        let vmap_o = GameUtils.vmap_in_orcl ju.ju_se opos in
@@ -475,50 +474,53 @@ let rec handle_tactic ts tac =
                          Ht.find vmap_g (Unqual,_vsx) else
                          PU.create_var vmap_g ts Unqual _vsx e.Expr.e_ty in
       CR.t_bad CaseDist p gen_vsx ju *)
-    | PT.Rbad(i,None,vsx) ->
-      raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx)))
+    | PT.Rbad(_i,None,_vsx) ->
+      fixme "undefined"
+      (* raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx))) *)
     | PT.Rcheck_hash_args(_opos) -> fixme "undefined" (*
        let gen_o_lkup o  = Mstring.find (Fsym.to_string o) ts.ts_lkupdecls in
        CR.t_check_hash_args opos gen_o_lkup ju *)
     | PT.Rbad _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
-    | PT.Rguess(_aname, _fvs) -> fixme "undefined"
-      (*
+    | PT.Rguess(aname, fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
       let ev = ju.ju_se.se_ev in
       let vs = 
-        match Event.binding ev with
-        | (vs,_)::_ -> vs
-        | _ ->  tacerror "rguess: invalid binding" in
+        match destr_Quant ev with
+        | (Exists,(vs,_o),_e) -> vs
+        | _ ->  tacerror "rguess: invalid binding"
+      in
       let asym = Asym.mk aname (mk_Prod []) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
-        tacerror "Error, 'guess' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
-      let vmap = vmap_of_globals ju.ju_se.se_gdef in
+        tacerror "Error, 'guess' rule requires %i variable(s), but got %i"
+                 (L.length vs) (L.length fvs);
+      let vmap = GameUtils.vmap_of_globals ju.ju_se.se_gdef in
       let fvs = 
-        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
-          fvs vs in
+        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty)
+          fvs vs
+      in
       CR.t_guess asym fvs ju
-      *)        
-    | PT.Rfind((_bd,_body),_arg,_aname,_fvs) -> fixme "undefined"
-      (*
+    | PT.Rfind((bd,body),arg,aname,fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
       let ev = ju.ju_se.se_ev in
       let vs = 
-        match Event.binding ev with
-        | (vs,_)::_ -> vs
-        | _ ->  tacerror "rfind: invalid binding" in
+        match destr_Quant ev with
+        | (Exists,(vs,_),_) -> vs
+        | _ ->  tacerror "rfind: invalid binding"
+      in
       let arg = parse_e arg in
       let asym = Asym.mk aname (arg.e_ty) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
-        tacerror "Error, 'find' rule requires here %i variable(s), but got %i" (L.length vs) (L.length fvs);
-      let vmap = vmap_of_globals ju.ju_se.se_gdef in
+        tacerror "Error, 'find' rule requires here %i variable(s), but got %i"
+          (L.length vs) (L.length fvs);
+      let vmap = GameUtils.vmap_of_globals ju.ju_se.se_gdef in
       let fvs = 
         L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty) 
           fvs vs in
       (* typing of f *)
       let f = 
-        let vmap_se = vmap_of_se ju.ju_se in
+        let vmap_se = GameUtils.vmap_of_se ju.ju_se in
         let bd = 
           L.map2 (fun v e -> PU.create_var vmap_se ts Unqual v e.e_ty)
             bd (destr_Tuple_nofail arg) in
@@ -526,7 +528,7 @@ let rec handle_tactic ts tac =
           PU.expr_of_parse_expr vmap_se ts Unqual body in
         bd,body in
       
-      CR.t_find f arg asym fvs ju *)
+      CR.t_find f arg asym fvs ju
   in
 
   let vmap_g = GameUtils.vmap_of_globals ju.ju_se.se_gdef in
@@ -612,8 +614,6 @@ let rec handle_tactic ts tac =
 
   | _ ->
     apply (interp_tac tac)              
-                       ) with
-        Handle_this_tactic_instead new_tac -> handle_tactic input_ts new_tac
 
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Instruction handling} *)
@@ -901,9 +901,10 @@ let handle_instr verbose ts instr =
     | ClosedTheory _ -> (ts, "Proof finished.")
     end
 
-  | PT.Extract filename ->
-    Extraction.extract ts filename;
-    (ts, "EasyCrypt proof script extracted into file: "^filename)
+  | PT.Extract _filename ->
+    (*  Extraction.extract ts filename;
+        (ts, "EasyCrypt proof script extracted into file: "^filename) *)
+    (ts,"Extraction currently disabled")
 
   | PT.PrintGame filename ->
     let ps = get_proof_state ts in

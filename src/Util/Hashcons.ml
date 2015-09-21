@@ -1,6 +1,18 @@
 (* * Hash consing of values. *)
 
-include HashconsTypes
+(* Documented in mli file. *)
+module type HashedType = sig
+  type t
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val tag : int -> t -> t
+end
+
+(* Documented in mli file *)
+module type S = sig
+  type t
+  val hashcons : t -> t
+end
 
 module Make(H : HashedType) : (S with type t = H.t) = struct
   type t = H.t

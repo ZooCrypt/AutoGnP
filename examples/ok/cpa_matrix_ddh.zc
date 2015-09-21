@@ -1,4 +1,5 @@
-(* CPA secure encryption from the DDH assumption, we follow the matrix assumption paper *)
+(* CPA secure encryption from the DDH assumption,
+   we follow the matrix assumption paper *)
 
 adversary A_ddh : (G * G * G) -> Bool.
 

@@ -14,7 +14,7 @@ true: bin_annot, debug
 
 <src/Main/autognp.d.byte>: thread, package(unix), package(yojson), package(bolt)
 
-<src/Main/autognp.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num), package(bolt)
+<src/Main/autognp.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num), package(bolt), package(batteries)
 <src/Main/autognp.p.native>: thread, package(unix), package(yojson), package(bolt)
 
 <src/CAS/Factory.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num)
