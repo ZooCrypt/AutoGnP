@@ -136,7 +136,7 @@ let private_vars_dec assm =
 let inst_dec ren assm =
   let ren_v vs = try Vsym.M.find vs ren with Not_found -> vs in
   let ren_acall (asym,vres,(e1,e2)) =
-    (asym,L.map ren_v vres,(Game.subst_v_e ren_v e1,Game.subst_v_e ren_v e2))
+    (asym,L.map ren_v vres,(Game.subst_v_expr ren_v e1,Game.subst_v_expr ren_v e2))
   in
   let subst_g = Game.subst_v_gdef ren_v in
   { ad_name     = assm.ad_name;
@@ -213,11 +213,11 @@ let private_vars_comp assm =
 
 let inst_comp ren assm =
   let ren_v (x:Vsym.t) = try Vsym.M.find x ren with Not_found -> x in
-  let ren_acall (asym,vres,e) = (asym, L.map ren_v vres, subst_v_e ren_v e) in
+  let ren_acall (asym,vres,e) = (asym, L.map ren_v vres, subst_v_expr ren_v e) in
   let subst_g = Game.subst_v_gdef ren_v in
   { assm with
     ac_prefix     = subst_g assm.ac_prefix;
-    ac_event      = subst_v_ev ren_v assm.ac_event;
+    ac_event      = subst_v_expr ren_v assm.ac_event;
     ac_acalls     = L.map ren_acall assm.ac_acalls;
     ac_symvars    = L.map (L.map ren_v) assm.ac_symvars;
   }

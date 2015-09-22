@@ -1,6 +1,6 @@
-(*s Derived tactics for dealing with assumptions. *)
+(* * Derived tactics for dealing with assumptions. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open Nondet
@@ -23,10 +23,9 @@ module PU = ParserUtil
 let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "AssumptionRules" ls
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "AssumptionRules" ls
 let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "AssumptionRules" ls
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \subsection{Decisional assumptions} *)
+(* ** Decisional assumptions
+ * ----------------------------------------------------------------------- *)
 
 let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   let rn = "asumption_decisional" in
@@ -132,7 +131,7 @@ let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
   in
   log_i (lazy (fsprintf "ren %a" pp_ren ren));
 
-  let arg_e = Game.subst_v_e (fun vs -> Vsym.M.find vs ren) arg_e in
+  let arg_e = Game.subst_v_expr (fun vs -> Vsym.M.find vs ren) arg_e in
   let arg_v = Vsym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
   let pref_len = L.length assm_samps in
   if is_Quant ju.ju_se.se_ev then 
@@ -279,8 +278,8 @@ let t_assm_dec
   else
     t_assm_dec_non_exact ~i_assms:iassms ts massm_name mdir mrngs mvnames ju
 
-(*i ----------------------------------------------------------------------- i*)
-(* \subsection{Derived tactics for dealing with computational assumptions} *)
+(* ** Computational assumptions
+ * ----------------------------------------------------------------------- *)
 
 let e_eqs e =
   let comm_eq e =

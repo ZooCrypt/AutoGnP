@@ -41,7 +41,7 @@ let t_norm_tuple_proj ju =
 (** Norm without unfolding. *)
 let t_norm_nounfold ju = 
   let se = ju.ju_se in
-  let new_se = map_sec_exp NormUtils.norm_expr_nice se in
+  let new_se = map_se_exp NormUtils.norm_expr_nice se in
   t_conv true new_se ju
 
 (** Unfold without norm. *)
@@ -182,7 +182,7 @@ let t_norm_unknown ts unknown ju =
     rewrite_exps ts (se_of_list unknown) (norm_expr_weak e)
     |> abbrev_ggen |> remove_tuple_proj 
   in
-  let new_se = map_sec_exp norm se in
+  let new_se = map_se_exp norm se in
   t_conv true new_se ju
 
 let rewrite_div_reduce a e =
@@ -215,7 +215,7 @@ let t_norm_solve a ju =
   let norm e =
     abbrev_ggen (rewrite_div_reduce (norm_expr_weak a) (norm_expr_weak e))
   in
-  let new_se = map_sec_exp norm se in
+  let new_se = map_se_exp norm se in
   t_conv true new_se ju
 
 let t_let_abstract p vs e0 mupto do_norm_expr ju =

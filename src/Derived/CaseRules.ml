@@ -23,36 +23,20 @@ module T = Tactic
 let _log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
 
+(* ** Types for useful cases
+ * ----------------------------------------------------------------------- *)
+
 (* Useful (in)equalities that can be obtained by applying one of the three rules *)
 type useful_cases =
   | AppAddTest    of ocmd_pos * expr * ty * ty
   | AppExcept     of gcmd_pos * expr
   | AppCaseEv     of expr
-(*i | AppExceptOrcl of ocmd_pos * expr i*)
+(* | AppExceptOrcl of ocmd_pos * expr *)
+  with compare
 
 let uc_exp uc = match uc with
-  | AppAddTest(_,e,_,_) (*i | AppExceptOrcl(_,e)  i*)
+  | AppAddTest(_,e,_,_) (* | AppExceptOrcl(_,e)  *)
   | AppExcept(_,e) | AppCaseEv(e) -> e
-
-let compare_uc uc1 uc2 =
-  match uc1, uc2 with
-  | AppAddTest(opos1,e1,_,_), AppAddTest(opos2,e2,_,_) ->
-    let cmp = compare opos1 opos2 in
-    if cmp <> 0 then cmp else compare_expr e1 e2
-(*i  | AppExceptOrcl(opos1,e1), AppExceptOrcl(opos2,e2) ->
-      let cmp = compare opos1 opos2 in
-      if cmp <> 0 then cmp else e_compare e1 e2 i*)
-  | AppExcept(gpos1,e1), AppExcept(gpos2,e2) ->
-    let cmp = compare gpos1 gpos2 in
-    if cmp <> 0 then cmp else compare_expr e1 e2
-  | AppCaseEv(e1), AppCaseEv(e2) ->
-    compare_expr e1 e2
-  | AppAddTest _, _ -> 1
-  | _, AppAddTest _ -> -1
-  | AppExcept _, _ -> 1
-  | _, AppExcept _ -> -1
-(*i  | AppExceptOrcl _, _ -> 1
-     | _, AppExceptOrcl _ -> -1 i*)
 
 let pp_useful_cases fmt uc =
   match uc with
@@ -68,6 +52,9 @@ let pp_useful_cases fmt uc =
 let is_Useless e =
   is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e))
   || is_RoCall e || is_FunCall e || is_RoLookup e
+
+(* ** Compute and collect useful cases
+ * ----------------------------------------------------------------------- *)
 
 let compute_case gdef mhidden _fbuf ctx e =
   let cases = ref [] in
@@ -176,7 +163,7 @@ let get_cases fbuf ju =
       let cs = compute_case se.se_gdef maybe_hidden fbuf ctx e in
       cases := cs @ !cases)
     se;
-  let cases = L.sort_uniq compare_uc !cases in
+  let cases = L.sort_uniq compare_useful_cases !cases in
   (* we choose the earliest position if there are multiple occurences with the
      same expression *)
   let cases =
@@ -193,6 +180,9 @@ let print_cases ts =
   F.fprintf fbuf "@[cases after:@\n  %a@\n@\n@]" (pp_list ",@\n  " pp_useful_cases) cases;
   (ts, "Here:\n\n"^(Buffer.contents buf))
 
+(* ** Apply except with useful case
+ * ----------------------------------------------------------------------- *)
+
 let t_rexcept_maybe mi mes ju =
   if mes <> None
   then failwith "rexcept: placeholder for index, but not for expression not supported";
@@ -205,6 +195,9 @@ let t_rexcept_maybe mi mes ju =
   mconcat except >>= fun (j,e) ->
   guard (match mi with Some i -> i = j | None -> true) >>= fun _ ->
   T.t_except j [e] ju
+
+(* ** Apply case_ev with useful case
+ * ----------------------------------------------------------------------- *)
 
 let simp_eq e =
   assert (is_Fq e.e_ty);
@@ -267,7 +260,10 @@ let simp_eq_group e =
   in
   Norm.norm_expr_strong res
 
-let t_add_test_maybe ju =
+(* ** Apply guard with useful case
+ * ----------------------------------------------------------------------- *)
+
+let t_guard_maybe ju =
   let se = ju.ju_se in
   let buf  = Buffer.create 127 in
   let fbuf = F.formatter_of_buffer buf in

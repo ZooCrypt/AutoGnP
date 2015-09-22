@@ -1,6 +1,5 @@
 (*s Logical rules built on top of core rules. *)
 
-(*i*)
 open Abbrevs
 open Type
 open Syms
@@ -8,7 +7,6 @@ open Expr
 open Game
 open Tactic
 open CoreRules
-(*i*)
 
 
 (*i ----------------------------------------------------------------------- i*)

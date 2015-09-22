@@ -1,3 +1,5 @@
+(* * Define some abbreviations *)
+
 module L = BatList
 module F = Format
 module BL = Bolt.Logger

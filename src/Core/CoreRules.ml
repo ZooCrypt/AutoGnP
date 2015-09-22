@@ -56,7 +56,7 @@ type core_tactic = goal -> (proof_state,string lazy_t) BatResult.t
 
 (** Create a variable name that is fresh in the given security experiment *)
 let mk_name ?(name="r__") se =
-  let vars = gdef_all_vars se.se_gdef in
+  let vars = vars_all_gdef se.se_gdef in
   let name_of_int i = name^(string_of_int i) in
   let names =
     Vsym.S.fold
@@ -180,7 +180,7 @@ let r_conv do_norm_terms new_se0 ju =
   ) else (
       wf_se CheckDivZero se;
       wf_se CheckDivZero new_se;
-      let norm_rw = map_sec_exp Norm.norm_expr_strong in
+      let norm_rw = map_se_exp Norm.norm_expr_strong in
       let se, new_se = (norm_rw se, norm_rw new_se) in
       ensure_gdef_eq  rn se.se_gdef new_se.se_gdef;
       ensure_event_eq rn se.se_ev   new_se.se_ev
@@ -990,7 +990,7 @@ let rename_odef lcmds ret =
   in
   L.iter add_mapping lcmds;
   let sigma v = try Vsym.H.find vmap v with Not_found -> v in
-  (L.map (subst_v_lc sigma) lcmds, subst_v_e sigma ret)
+  (L.map (subst_v_lcmd sigma) lcmds, subst_v_expr sigma ret)
 
 let r_hybrid gpos oidx new_lcmds new_eret ju =
   let se = ju.ju_se in

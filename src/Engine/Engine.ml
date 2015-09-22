@@ -330,7 +330,7 @@ let handle_tactic ts tac =
           let a_cmds, sec = get_se_ctxt_len se ~pos:0 ~len:rn_len in
           let sigma v = if Vsym.equal v v1 then v2 else v in
           let a_cmds = subst_v_gdef sigma a_cmds in
-          let ev = if mupto=None then subst_v_ev sigma sec.sec_ev else sec.sec_ev in
+          let ev = if mupto=None then subst_v_expr sigma sec.sec_ev else sec.sec_ev in
           app_diff dcmds { ju with ju_se = (set_se_ctxt a_cmds { sec with sec_ev = ev }) }
         | PT.Dsubst(p,e1,e2)::dcmds ->
           let p = get_pos p in
@@ -563,7 +563,7 @@ let handle_tactic ts tac =
     apply ~adecls (T.t_add_test opos t asym fvs)
           
   | PT.Radd_test(None,None,None,None) ->
-    apply t_add_test_maybe
+    apply t_guard_maybe
           
   | PT.Radd_test(_,_,_,_) ->
     tacerror "radd_test expects either all values or only placeholders"

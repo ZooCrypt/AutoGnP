@@ -1,8 +1,6 @@
 (*s Automated derived rules *)
 
-(*i*)
 open Tactic
-(*i*)
 
 val t_simp : bool -> int -> tactic
 

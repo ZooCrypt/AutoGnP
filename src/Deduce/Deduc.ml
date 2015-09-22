@@ -1,6 +1,6 @@
 (* * Deducibility of expressions. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Type
 open Util
@@ -10,7 +10,9 @@ open ExprUtils
 (* let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Deduc" ls *)
 let log_i _ = ()
 
-(*i*)
+
+(* ** Deducibility function
+ * ----------------------------------------------------------------------- *)
 
 exception Found of expr
 
@@ -174,11 +176,11 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     if do_div && is_in e && not (is_in e1) && is_in e2 then (
       add_known e1 (mk_FMult [get e; get e2]); rm_sub_constr e
     )
-    (*i
+    (*
     if do_div && is_in e && not (is_in e2) && is_in e1 then (
       add_known e2 (mk_FMult [mk_FInv (get e); get e1]); rm_sub e
     )
-    i*)
+    *)
   in
   let construct_app e op es =
     match op, es with
@@ -275,7 +277,11 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     let err = Printexc.to_string e in
     let bt = Printexc.get_backtrace () in
     log_i (lazy (fsprintf "invert: %s\n %s" err bt)); raise e
-    
+
+
+(* ** Wrapper function
+ * ----------------------------------------------------------------------- *)
+   
 let invert ?ppt_inverter:(ppt=false) ts known_es to_ =
   let open TheoryTypes in
   let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in

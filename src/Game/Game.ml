@@ -117,10 +117,10 @@ let destr_guard lcmd =
   | _ -> assert false (* FIXME *)
 
 (** Hybrid oracle type *)
-type ohtype = OHless | OHeq | OHgreater 
+type ohtype = OHless | OHeq | OHgreater with compare 
 
 (** Oracle type *)
-type otype = Onothyb | Oishyb of ohtype
+type otype = Onothyb | Oishyb of ohtype with compare
 
 let is_hybrid = function Onothyb -> false | Oishyb _ -> true
 
@@ -163,7 +163,7 @@ let map_gcmd_exp f = function
 let map_gdef_exp f gdef =
   L.map (map_gcmd_exp f) gdef
 
-let map_sec_exp f se = {
+let map_se_exp f se = {
   se_gdef = map_gdef_exp f se.se_gdef;
   se_ev   = f se.se_ev;
 }
@@ -222,13 +222,13 @@ let iter_se_exp ?iexc:(iexc=false) f se =
 (* ** Positions and replacement functions
  * ----------------------------------------------------------------------- *)
 
-type gcmd_pos = int
+type gcmd_pos = int with compare
 
-type oh_pos = (int * int)
+type oh_pos = (int * int) with compare
 
-type ocmd_pos = (int * int * int * otype)
+type ocmd_pos = (int * int * int * otype) with compare
 
-type ocmd_pos_eq = (int * int * int)
+type ocmd_pos_eq = (int * int * int) with compare
 
 let get_se_gcmd se p = L.nth se.se_gdef p
 
@@ -438,57 +438,57 @@ let read_se se = Se.union (read_gcmds se.se_gdef) (e_vars se.se_ev)
 let fold_union_e f xs =
   L.fold_right Se.union (L.map f xs) Se.empty
 
-let expr_find p e = e_find_all p e
+let find_expr p e = e_find_all p e
 
-let exprs_find p es = fold_union_e (expr_find p) es
+let find_exprs p es = fold_union_e (find_expr p) es
 
-let lcmd_find p = function 
-  | LLet(_,e)  -> expr_find p e
-  | LSamp(_,d) -> exprs_find p (snd d)
+let find_lcmd p = function 
+  | LLet(_,e)  -> find_expr p e
+  | LSamp(_,d) -> find_exprs p (snd d)
   | LBind(_,_) -> Se.empty
-  | LGuard(e)  -> expr_find p e
+  | LGuard(e)  -> find_expr p e
 
-let lcmds_find p c = fold_union_e (lcmd_find p) c
+let find_lcmds p c = fold_union_e (find_lcmd p) c
 
-let obody_find p (cmd,e) =
-  Se.union (expr_find p e) (lcmds_find p cmd)
+let find_obody p (cmd,e) =
+  Se.union (find_expr p e) (find_lcmds p cmd)
 
-let ohybrid_find p oh =
-  Se.union (obody_find p oh.oh_less)
-    (Se.union (obody_find p oh.oh_eq) (obody_find p oh.oh_greater))
+let find_ohybrid p oh =
+  Se.union (find_obody p oh.oh_less)
+    (Se.union (find_obody p oh.oh_eq) (find_obody p oh.oh_greater))
 
-let odecl_find p = function
-  | Oreg od -> obody_find p od
-  | Ohyb oh -> ohybrid_find p oh
+let find_odecl p = function
+  | Oreg od -> find_obody p od
+  | Ohyb oh -> find_ohybrid p oh
 
-let oh_find p (_,_,odecl) = odecl_find p odecl
+let find_oh p (_,_,odecl) = find_odecl p odecl
 
-let gcmd_all_find p = function
-  | GLet(_,e)  -> expr_find p e
-  | GAssert(e) -> expr_find p e
-  | GSamp(_,d) -> exprs_find p (snd d)
+let find_all_gcmd p = function
+  | GLet(_,e)  -> find_expr p e
+  | GAssert(e) -> find_expr p e
+  | GSamp(_,d) -> find_exprs p (snd d)
   | GCall(_,_,e,odefs) ->
-    Se.add e (fold_union_e (oh_find p) odefs)
+    Se.add e (fold_union_e (find_oh p) odefs)
 
-let gdef_all_find p gdef =
-  fold_union_e (gcmd_all_find p) gdef
+let find_all_gdef p gdef =
+  fold_union_e (find_all_gcmd p) gdef
 
-let ohybrid_global_find p oh =
-  obody_find p oh.oh_eq
+let find_global_ohybrid p oh =
+  find_obody p oh.oh_eq
 
-let oh_global_find p (_,_,odecl) =
+let find_global_oh p (_,_,odecl) =
   match odecl with
   | Oreg _  -> Se.empty
-  | Ohyb oh -> ohybrid_global_find p oh
+  | Ohyb oh -> find_global_ohybrid p oh
 
-let gcmd_global_find p = function
-  | GLet(_,e)  -> expr_find p e
-  | GAssert(e) -> expr_find p e
-  | GSamp(_,d) -> exprs_find p (snd d)
+let find_global_gcmd p = function
+  | GLet(_,e)  -> find_expr p e
+  | GAssert(e) -> find_expr p e
+  | GSamp(_,d) -> find_exprs p (snd d)
   | GCall(_,_,e,odefs) ->
-    Se.add e (fold_union_e (oh_global_find p) odefs)
+    Se.add e (fold_union_e (find_global_oh p) odefs)
 
-let gdef_global_find p gdef = fold_union_e (gcmd_global_find p) gdef
+let find_global_gdef p gdef = fold_union_e (find_global_gcmd p) gdef
 
 (* ** Random oracle symbol occurences in RO calls
  * ----------------------------------------------------------------------- *)
@@ -496,13 +496,13 @@ let gdef_global_find p gdef = fold_union_e (gcmd_global_find p) gdef
 let ro_syms_of_es es =
   Se.fold (fun e s -> ROsym.S.add (fst (destr_RoCall e)) s) es ROsym.S.empty
 
-let expr_ro_syms e = ro_syms_of_es (expr_find is_RoCall e)
+let ro_syms_expr e = ro_syms_of_es (find_expr is_RoCall e)
 
-let gcmd_all_ro_syms gcmd = ro_syms_of_es (gcmd_all_find is_RoCall gcmd)
+let ro_syms_all_gcmd gcmd = ro_syms_of_es (find_all_gcmd is_RoCall gcmd)
 
-let gdef_all_ro_syms gdef = ro_syms_of_es (gdef_all_find is_RoCall gdef)
+let ro_syms_all_gdef gdef = ro_syms_of_es (find_all_gdef is_RoCall gdef)
 
-let gdef_global_ro_syms gdef = ro_syms_of_es (gdef_global_find is_RoCall gdef)
+let ro_syms_global_gdef gdef = ro_syms_of_es (find_global_gdef is_RoCall gdef)
 
 (* ** Random oracle arguments for given RO symbol
  * ----------------------------------------------------------------------- *)
@@ -514,13 +514,13 @@ let harg_of_es es =
 
 let is_H_call h e = is_RoCall e && ROsym.equal h (fst (destr_RoCall e))
 
-let expr_hash_args h e = harg_of_es (expr_find (is_H_call h) e)
+let hash_args_expr h e = harg_of_es (find_expr (is_H_call h) e)
 
-let gcmd_all_hash_args h gcmd = harg_of_es (gcmd_all_find (is_H_call h) gcmd)
+let hash_args_all_gcmd h gcmd = harg_of_es (find_all_gcmd (is_H_call h) gcmd)
 
-let gdef_all_hash_args h gdef = harg_of_es (gdef_all_find (is_H_call h) gdef)
+let hash_args_all_gdef h gdef = harg_of_es (find_all_gdef (is_H_call h) gdef)
 
-let gdef_global_hash_args h gdef = harg_of_es (gdef_global_find (is_H_call h) gdef)
+let hash_args_global_gdef h gdef = harg_of_es (find_global_gdef (is_H_call h) gdef)
 
 (* ** Variable occurences
  * ----------------------------------------------------------------------- *)
@@ -530,71 +530,71 @@ let fold_union_vs f xs =
 
 let set_of_list vs = L.fold_right Vsym.S.add vs Vsym.S.empty
 
-let expr_vars e =
+let vars_expr e =
   Se.fold (fun e s -> Vsym.S.add (destr_V e) s) (e_vars e) Vsym.S.empty
 
-let exprs_vars es = fold_union_vs expr_vars es
+let vars_exprs es = fold_union_vs vars_expr es
 
-let lcmd_vars = function 
-  | LLet(v,e)   -> Vsym.S.add v (expr_vars e)
-  | LSamp(v,d)  -> Vsym.S.add v (exprs_vars (snd d))
+let vars_lcmd = function
+  | LLet(v,e)   -> Vsym.S.add v (vars_expr e)
+  | LSamp(v,d)  -> Vsym.S.add v (vars_exprs (snd d))
   | LBind(vs,_) -> set_of_list vs
-  | LGuard(e)   -> expr_vars e
+  | LGuard(e)   -> vars_expr e
 
-let lcmds_vars c = fold_union_vs lcmd_vars c
+let vars_lcmds c = fold_union_vs vars_lcmd c
 
-let obody_vars (cmd,e) =
-  (Vsym.S.union (expr_vars e) (lcmds_vars cmd))
+let vars_obody (cmd,e) =
+  (Vsym.S.union (vars_expr e) (vars_lcmds cmd))
 
-let ohybrid_vars oh =
-  Vsym.S.union (obody_vars oh.oh_less)
-    (Vsym.S.union (obody_vars oh.oh_eq) (obody_vars oh.oh_greater))
+let vars_ohybrid oh =
+  Vsym.S.union (vars_obody oh.oh_less)
+    (Vsym.S.union (vars_obody oh.oh_eq) (vars_obody oh.oh_greater))
 
-let odecl_vars od =
+let vars_odecl od =
   match od with
-  | Oreg od -> obody_vars od
-  | Ohyb oh -> ohybrid_vars oh
+  | Oreg od -> vars_obody od
+  | Ohyb oh -> vars_ohybrid oh
 
-let oh_vars (_,vs,odecl) =
-  Vsym.S.union (set_of_list vs) (odecl_vars odecl)
+let vars_oh (_,vs,odecl) =
+  Vsym.S.union (set_of_list vs) (vars_odecl odecl)
 
-let gcmd_all_vars = function
-  | GLet(v,e)  -> Vsym.S.add v (expr_vars e)
-  | GAssert(e) -> expr_vars e
-  | GSamp(v,d) -> Vsym.S.add v (exprs_vars (snd d))
+let vars_all_gcmd = function
+  | GLet(v,e)  -> Vsym.S.add v (vars_expr e)
+  | GAssert(e) -> vars_expr e
+  | GSamp(v,d) -> Vsym.S.add v (vars_exprs (snd d))
   | GCall(vs,_,e,odefs) ->
     Vsym.S.union
-      (fold_union_vs oh_vars odefs)
-      (Vsym.S.union (expr_vars e) (set_of_list vs))
+      (fold_union_vs vars_oh odefs)
+      (Vsym.S.union (vars_expr e) (set_of_list vs))
 
-let gdef_all_vars gdef = fold_union_vs gcmd_all_vars gdef
+let vars_all_gdef gdef = fold_union_vs vars_all_gcmd gdef
 
-let obody_vars (cmd,e) =
-  (Vsym.S.union (expr_vars e) (lcmds_vars cmd))
+let vars_obody (cmd,e) =
+  (Vsym.S.union (vars_expr e) (vars_lcmds cmd))
 
-let ohybrid_global_vars oh =
-  (obody_vars oh.oh_eq)
+let vars_global_ohybrid oh =
+  (vars_obody oh.oh_eq)
 
-let oh_global_vars (_,vs,odecl) =
+let vars_global_oh (_,vs,odecl) =
   match odecl with
   | Oreg _  -> Vsym.S.empty
-  | Ohyb oh -> Vsym.S.union (set_of_list vs) (ohybrid_global_vars oh)
+  | Ohyb oh -> Vsym.S.union (set_of_list vs) (vars_global_ohybrid oh)
 
-let gcmd_global_vars = function
-  | GLet(v,e)  -> Vsym.S.add v (expr_vars e)
-  | GAssert(e) -> expr_vars e
-  | GSamp(v,d) -> Vsym.S.add v (exprs_vars (snd d))
+let vars_global_gcmd = function
+  | GLet(v,e)  -> Vsym.S.add v (vars_expr e)
+  | GAssert(e) -> vars_expr e
+  | GSamp(v,d) -> Vsym.S.add v (vars_exprs (snd d))
   | GCall(vs,_,e,odefs) ->
     Vsym.S.union
-      (fold_union_vs oh_global_vars odefs)
-      (Vsym.S.union (expr_vars e) (set_of_list vs))
+      (fold_union_vs vars_global_oh odefs)
+      (Vsym.S.union (vars_expr e) (set_of_list vs))
 
-let gdef_global_vars gdef = fold_union_vs gcmd_global_vars gdef
+let vars_global_gdef gdef = fold_union_vs vars_global_gcmd gdef
 
 (* ** Variable renaming
  * ----------------------------------------------------------------------- *)
 
-let subst_v_e tov =
+let subst_v_expr tov =
   let aux e =
     match e.e_node with
     | V v -> mk_V (tov v)
@@ -602,15 +602,15 @@ let subst_v_e tov =
   in
   e_map_top aux
 
-let subst_v_lc tov = function
-  | LLet (v, e)   -> LLet(tov v, subst_v_e tov e)
+let subst_v_lcmd tov = function
+  | LLet (v, e)   -> LLet(tov v, subst_v_expr tov e)
   | LBind (vs,lh) -> LBind (L.map tov vs, lh)
-  | LSamp(v,d)    -> LSamp(tov v, map_distr_exp (subst_v_e tov) d)
-  | LGuard e      -> LGuard (subst_v_e tov e)
+  | LSamp(v,d)    -> LSamp(tov v, map_distr_exp (subst_v_expr tov) d)
+  | LGuard e      -> LGuard (subst_v_expr tov e)
 
 let subst_v_obody tov (lc,e) =
-  let lc = L.map (subst_v_lc tov) lc in
-  let e = subst_v_e tov e in
+  let lc = L.map (subst_v_lcmd tov) lc in
+  let e = subst_v_expr tov e in
   (lc, e)
 
 let subst_v_odecl tov = function
@@ -622,17 +622,17 @@ let subst_v_odef tov (o,vs,od) =
   let od = subst_v_odecl tov od in
   (o, vs, od)
 
-let subst_v_gc tov = function
-  | GLet(v,e) -> GLet(tov v, subst_v_e tov e)
-  | GAssert(e) -> GAssert(subst_v_e tov e)
-  | GSamp(v, d) -> GSamp(tov v, map_distr_exp (subst_v_e tov) d)
+let subst_v_gcmd tov = function
+  | GLet(v,e) -> GLet(tov v, subst_v_expr tov e)
+  | GAssert(e) -> GAssert(subst_v_expr tov e)
+  | GSamp(v, d) -> GSamp(tov v, map_distr_exp (subst_v_expr tov) d)
   | GCall(vs, asym, e, odefs) ->
-    GCall(L.map tov vs, asym, subst_v_e tov e,
+    GCall(L.map tov vs, asym, subst_v_expr tov e,
           L.map (subst_v_odef tov) odefs)
 
-let subst_v_gdef tov = L.map (subst_v_gc tov)
+let subst_v_gdef tov = L.map (subst_v_gcmd tov)
 
-let subst_v_ev tov = subst_v_e tov
+let subst_v_ev tov = subst_v_expr tov
  
 let subst_v_se tov se = {
   se_gdef = subst_v_gdef tov se.se_gdef;
@@ -1001,87 +1001,8 @@ let pp_ps fmt ps =
   F.fprintf fmt "%a\n--------------------\n\n"
     (pp_list "\n\n" pp_se_idx) se_idxs
 
+
 (* ** Old *)
-(* *** Event module *)
-
-(*
-module Event = struct
-  type t = expr
-
-  let mk_from_expr (e : expr) : t = e
-
-  let mk ?quant ?binding e = match quant,binding with
-    | None,None -> mk_from_expr e
-    | Some q,Some b -> mk_Quant q b (mk_from_expr e)
-    | _ -> invalid_arg "Event.mk"
-
-  let equal = Expr.e_equal
-
-  let quant ev = match ev.e_node with
-    | Quant(q,_,_) -> q
-    | _ -> Expr.All
-
-  let rec binding ev = match ev.e_node with
-    | Quant(_,b,e) -> b :: (binding e)
-    | _ -> []
-
-  let rec expr ev = match ev.e_node with
-    | Quant(_,_,e) -> expr e
-    | _ -> ev
-               
-  let rec map f ev = match ev.e_node with
-    | Quant(q,b,e) -> mk_Quant q b (map f e)
-    | _ -> f ev
-
-  let rec insert ?quant ?binding ?e ev =
-    match quant,binding,e with
-    | None,   None,   Some e -> map (fun x -> mk_Land [x;e]) ev
-    | Some q, Some b, _      -> insert ?e (map (mk_Quant q b) ev)
-    | None,   None,   None   -> ev
-    | _                      -> invalid_arg "Event.insert"
-                       
-  let set_expr e ev = map (fun _ -> e) ev
-
-  let nth i ev =
-    let evs = destr_Land_nofail (expr ev) in
-    let _,e,_ = Util.split_n i evs in
-    e
-                                          
-  let set_nth_aux i e0 e =
-    let evs = destr_Land_nofail e in
-    let l,_,r = Util.split_n i evs in
-    mk_Land (List.rev_append l (e0::r))
-
-  let set_nth i e = map (set_nth_aux i e)
-
-  exception NoQuant
-
-  let destr_exn ev =
-    try  ExprUtils.destr_Quant ev
-    with Destr_failure _ -> raise NoQuant
-
-  let destr ev =
-    try  Some (ExprUtils.destr_Quant ev)
-    with Destr_failure _ -> None
-
-  let pp_q fmt = function
-    | All -> F.fprintf fmt "forall"
-    | Exists -> F.fprintf fmt "exists"
-
-  let pp_vs fmt = function
-    | [v] -> Vsym.pp fmt v
-    |  vs -> (pp_list "," Vsym.pp) fmt vs                                     
-
-  let pp_b fmt (vs,o) = 
-    F.fprintf fmt "%a in L_%a" pp_vs vs Oracle.pp o
-
-  let rec pp fmt ev = match ev.e_node with
-    | Quant(q,b,e) -> F.fprintf fmt "@[<hov>%a (%a):@ %a@]" pp_q q pp_b b pp e
-    | _ -> pp_exp fmt ev
-end
-*)
-
-
 (* *** Replace hash calls by lookups
  * ----------------------------------------------------------------------- *)
 

@@ -13,7 +13,6 @@ open NormUtils
 (* ** Iterate with context
  * ----------------------------------------------------------------------- *)
 
-
 type iter_pos =
   | InEv
   | InMain       of gcmd_pos
@@ -176,7 +175,7 @@ let vmap_of_ves ves =
     ves;
   vm
 
-let vmap_of_globals gdef = vmap_of_vss (gdef_global_vars gdef)
+let vmap_of_globals gdef = vmap_of_vss (vars_global_gdef gdef)
 
 let vmap_of_se se =
   let rec vmap_aux s0 ev =
@@ -186,7 +185,7 @@ let vmap_of_se se =
     else
       s0
   in
-  vmap_of_vss (vmap_aux (gdef_global_vars se.se_gdef) se.se_ev)
+  vmap_of_vss (vmap_aux (vars_global_gdef se.se_gdef) se.se_ev)
     
         
 let ves_to_vss ves =
@@ -201,6 +200,6 @@ let vmap_in_orcl se op =
   let _,seoc = get_se_octxt_len se op 0 in
   vmap_of_vss
     (Vsym.S.union
-       (Vsym.S.union (gdef_global_vars gdef_before)
+       (Vsym.S.union (vars_global_gdef gdef_before)
           (ves_to_vss (write_lcmds seoc.seoc_cleft)))
        (set_of_list seoc.seoc_oargs))

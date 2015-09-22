@@ -7,6 +7,6 @@ val t_rexcept_maybe : int option -> (ParserTypes.parse_expr list) option -> tact
 
 val t_case_ev_maybe : tactic
 
-val t_add_test_maybe : tactic
+val t_guard_maybe : tactic
 
 val print_cases : theory_state -> theory_state * string

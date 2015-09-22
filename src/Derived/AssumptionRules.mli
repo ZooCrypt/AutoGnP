@@ -1,3 +1,5 @@
+(* * Derived tactics for dealing with assumptions. *)
+
 open Util
 open TheoryTypes
 

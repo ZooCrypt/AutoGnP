@@ -149,7 +149,7 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
         -> if count_except ju >= 3 then (t_rexcept_maybe None None @> t_log "\nrexcept") ju
            else T.t_id ju)
     @| (t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None @> t_log "\nrnd_oracle")
-    @| (t_add_test_maybe @> t_log "\nadd_test")
+    @| (t_guard_maybe @> t_log "\nadd_test")
     @| (t_case_ev_maybe @> t_log "\ncase_ev")
   in
       (t_prepare @> t_after_simp)

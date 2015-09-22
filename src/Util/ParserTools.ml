@@ -1,5 +1,6 @@
-module S = String
-module F = Format
+(* * Useful functions for parsers and error messages *)
+
+open Abbrevs
 
 (* Use this in your lexer *)
 exception LexerError of string

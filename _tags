@@ -4,6 +4,8 @@ true: bin_annot, debug
 
 <src/Game/*> or <src/Core/*> or <src/Expr/*>: syntax(camlp4o), package(comparelib.syntax)
 
+<src/CAS/*> or <src/Derived/*> or <src/Engine/*>: syntax(camlp4o), package(comparelib.syntax)
+
 <src/Util> or <src/Expr> or <src/Test> or <src/Poly> or <src/Core> or <src/Derived>: include
 
 <src/Engine> or <src/Norm> or <src/Deduce> or <src/Extract>: include
