@@ -1,8 +1,6 @@
-(*s Derived rules for dealing with random independence. *)
+(* * Derived rules for dealing with random independence. *)
 
-(*i*)
-open CoreRules
+open CoreTactic
 open TheoryTypes
-(*i*)
 
 val t_random_indep : theory_state -> bool -> tactic

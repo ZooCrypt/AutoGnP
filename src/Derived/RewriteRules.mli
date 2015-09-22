@@ -2,7 +2,7 @@
 
 (*i*)
 open Expr
-open CoreRules
+open CoreTactic
 open TheoryTypes
 open Syms
 open Game

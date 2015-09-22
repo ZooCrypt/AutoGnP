@@ -6,6 +6,7 @@ open Type
 open Syms
 open Expr
 open Game
+open CoreTactic
 open CoreRules
 (*i*)
 

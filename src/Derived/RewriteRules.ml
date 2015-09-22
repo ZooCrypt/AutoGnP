@@ -1,6 +1,6 @@
-(*s Derived tactics for rewriting. *)
+(* * Derived tactics for rewriting. *)
 
-(*i*)
+(* * Imports and abbreviations *)
 open Abbrevs
 open Util
 open Type
@@ -12,17 +12,16 @@ open NormUtils
 open NormField
 open Game
 open CoreTypes
-open CoreRules
+open CoreTactic
 open TheoryTypes
 
 module Ht = Hashtbl
 
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RewriteRules" ls
 let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "RewriteRules" ls
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Derived rewriting tactics} *)
+(* * Derived rewriting tactics
+ * ----------------------------------------------------------------------- *)
 
 (** Unfold all lets and norm. *)
 let t_norm ?fail_eq:(fe=false) ju =
@@ -269,8 +268,10 @@ let t_let_abstract_oracle opos vs e0 len do_norm_expr ju =
   in
   log_t (lazy (fsprintf "t_let_abstr_oracle: %a" pp_expr e0));
   let nlen = match len with Some nlen -> nlen | _ -> 0 in
-  let cmds,octxt = try get_se_octxt_len se opos nlen
-                   with _ -> tacerror "Error, couldn't get octxt, probably due to given opos being wrong." in
+  let cmds,octxt =
+    try get_se_octxt_len se opos nlen
+    with _ -> tacerror "Error, couldn't get octxt, probably due to given opos being wrong."
+  in
   let cur_scope_cmds,out_of_scope_cmds = if (len <> None)
                     then cmds,octxt.seoc_cright
                     else octxt.seoc_cright,[] in

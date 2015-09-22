@@ -1,24 +1,22 @@
 (* * Core rules of the logic. *)
 
 (* ** Imports and abbreviations *)
-open Nondet
 open Game
 open Syms
 open Expr
 open ExprUtils
 open Assumption
 open Util
-open Abbrevs
 open CoreTypes
 
 (* ** Types for proofs and tactics
  * ----------------------------------------------------------------------- *)
 
-type 'a iproof_tree = private {
-  pt_children : 'a iproof_tree list;
+type 'info iproof_tree = private {
+  pt_children : ('info iproof_tree) list;
   pt_rule     : rule_name;
   pt_ju       : judgment;
-  pt_info     : 'a
+  pt_info     : 'info
 }
 
 type proof_tree = unit iproof_tree
@@ -28,8 +26,6 @@ val pt_replace_children :
 
 type goal = judgment
 
-type rule = goal -> rule_name * goal list
-
 type validation = proof_tree list -> proof_tree
 
 type proof_state = {
@@ -37,128 +33,83 @@ type proof_state = {
   validation : validation
 }
 
-type tactic = goal -> proof_state nondet
-
-type 'a rtactic = goal -> ('a * proof_state) nondet
-
-exception NoOpenGoal 
-
+type core_tactic = goal -> (proof_state, string lazy_t) BatResult.t
 
 (* ** Simple tactics and tacticals
  * ----------------------------------------------------------------------- *)
 
-val get_proof : proof_state -> proof_tree
 val mk_name : ?name:string -> sec_exp -> string
-val prove_by : rule -> tactic
-                                           
-val merge_proof_states :
-  proof_state list -> (proof_tree list -> proof_tree) -> proof_state
-
-val move_first_last : proof_state -> proof_state
-val apply_on_n : int -> tactic -> proof_state -> proof_state nondet
-val apply_first : tactic -> proof_state -> proof_state nondet
-val apply_all : tactic -> proof_state -> proof_state nondet
-val rapply_all : 'a rtactic -> proof_state -> ('a * proof_state) nondet
-
-val t_id : tactic
-val t_seq : tactic -> tactic -> tactic
-val t_seq_list : tactic -> tactic list -> tactic
-val t_cut : tactic -> tactic
-
-val t_try : tactic -> tactic
-val t_or  : tactic -> tactic -> tactic
-val t_fail : ('a, F.formatter, unit, 'b nondet) format4 -> 'c -> 'a
-val t_ensure_progress : tactic -> tactic
-
-val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
-val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
+val get_proof : proof_state -> proof_tree
+val merge_proof_states : proof_state list -> (proof_tree list -> proof_tree) -> proof_state
 
 (* ** Core rules of the logic
- * ----------------------------------------------------------------------- i*)
+ * ----------------------------------------------------------------------- *)
 
-val rconv  : bool -> sec_exp -> rule
-val t_conv : bool -> sec_exp -> tactic
+val ct_conv : bool -> sec_exp -> core_tactic
 
 (** [rtans new_se] an be used to replace the current security
     experiment [se] with [new_se] after proving that [se] and
     [new_se] are indistinguishable *)
-val rtrans  : sec_exp -> rule
-val t_trans : sec_exp -> tactic
+val ct_trans : sec_exp -> core_tactic
 
 (** [rswap p i ju] returns the judgment resulting from moving the
     command at position [p] [i] positions forward. *)
-val rswap  : gcmd_pos -> int -> rule 
-val t_swap : gcmd_pos -> int -> tactic
+val ct_swap : gcmd_pos -> int -> core_tactic
 
 (** [rrandom p ctx1 ctx2 ju] returns the judgment resulting
     from replacing the sampling [r <- d] at position [p]
     with [r <- d; let r = ctx1]. The rule checks that [ctx2]
     is the inverse of [ctx1]. *)
-val rrnd  : gcmd_pos -> ctxt -> ctxt -> rule
-val t_rnd : gcmd_pos -> ctxt -> ctxt -> tactic
+val r_rnd : gcmd_pos -> ctxt -> ctxt -> goal -> rule_name * goal list
+val ct_rnd : gcmd_pos -> ctxt -> ctxt -> core_tactic
 
-val rassert : gcmd_pos -> expr -> rule
-val t_assert : gcmd_pos -> expr -> tactic
+val ct_assert : gcmd_pos -> expr -> core_tactic
 
 (** [rctxt_ev ctx i ju] returns the judgment resulting from
     replacing the [i]-th conjunct in the event of [ju]
     with (a) [ctx(a) = ctx(b)] if it is equal to [a = b]
     and (b) [ ctx(a) in \[ ctx(b) | x in l \] ] if it
     is equal to [ a in \[ b | x in l\]]. *)
-val rctxt_ev  : int -> ctxt -> rule 
-val t_ctxt_ev : int -> ctxt -> tactic
+val ct_ctxt_ev : int -> ctxt -> core_tactic
 
-val rinjective_ctxt_ev  : int -> ctxt -> ctxt -> rule 
-val t_injective_ctxt_ev : int -> ctxt -> ctxt -> tactic
+val ct_injective_ctxt_ev : int -> ctxt -> ctxt -> core_tactic
 
-val rcase_ev  : ?flip:bool -> ?allow_existing:bool -> expr -> rule
-val t_case_ev : ?flip:bool -> ?allow_existing:bool -> expr -> tactic
+val ct_case_ev : ?flip:bool -> ?allow_existing:bool -> expr -> core_tactic
 
-val rremove_ev  : int list -> rule 
-val t_remove_ev : int list -> tactic 
+val ct_remove_ev : int list -> core_tactic 
 
-val rfalse_ev  : rule 
-val t_false_ev : tactic
+val ct_false_ev : core_tactic
 
-val radmit : string -> rule
-val t_admit : string -> tactic
+val ct_admit : string -> core_tactic
 
-val rdist_sym : rule
-val t_dist_sym :tactic
+val ct_dist_sym : core_tactic
 
-val rdist_eq : rule
-val t_dist_eq :tactic
+val ct_dist_eq : core_tactic
 
-val rrw_ev   : int -> direction -> rule
-val t_rw_ev  : int -> direction -> tactic
+val ct_rw_ev  : int -> direction -> core_tactic
 
-val rsplit_ev   : int -> rule
-val t_split_ev  : int -> tactic
+val ct_split_ev  : int -> core_tactic
 
-val rmerge_ev   : int -> int -> rule
-val t_merge_ev  : int -> int -> tactic
+val ct_merge_ev  : int -> int -> core_tactic
 
 (** [rrandom p ctx1 ctx2 v ju] returns the judgment resulting
     from replacing the sampling [r <- d] at oracle position [p]
     with [r <- d; let v = ctx1[r]] and substituting v for r
     in the judgment. The rule checks that [ctx2] is the inverse
     of [ctx1]. *)
-val rrnd_oracle  : ocmd_pos -> ctxt -> ctxt -> rule 
-val t_rnd_oracle : ocmd_pos -> ctxt -> ctxt -> tactic
+val ct_rnd_oracle : ocmd_pos -> ctxt -> ctxt -> core_tactic
 
 (** [rexcept p es ju] returns the judgment resulting from replacing
     the sampling [r <- d \ es'] at position [p] in [ju] with the
     sampling [r <- d \ es], i.e., it replaces the (possibly empty)
     set of excepted values [es'] with [es]. *)
-val rexcept  : gcmd_pos -> expr list -> rule 
-val t_except : gcmd_pos -> expr list -> tactic
+val ct_except : gcmd_pos -> expr list -> core_tactic
 
 (** [rexcept_oracle p es ju] returns the judgment resulting from
     replacing the sampling [r <- d \ es'] at oracle position [p]
     in [ju] with the sampling [r <- d \ es], i.e., it replaces the
     (possibly empty) set of excepted values [es'] with [es]. *)    
-val rexcept_oracle  : ocmd_pos -> expr list -> rule 
-val t_except_oracle : ocmd_pos -> expr list -> tactic
+val ct_except_oracle : ocmd_pos -> expr list -> core_tactic
 
 (** [radd_test p tnew asym vs ju] returns the judgments resulting from
     adding the test [tnew] at oracle position [p = (i,j,k)]. The two new
@@ -167,65 +118,39 @@ val t_except_oracle : ocmd_pos -> expr list -> tactic
     and (2) [ G'_{1..i}; vs <- A() : t /\ not tnew]
     where [G'_{1..i}] is the prefix of [G'] including [i] and [t] is
     the original test in the oracle. *)
-val radd_test  : ocmd_pos -> expr -> Asym.t -> vs list -> rule 
-val t_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> tactic
+val ct_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> core_tactic
 
-val rhybrid : gcmd_pos -> int -> lcmd list -> expr -> rule
-val t_hybrid : gcmd_pos -> int -> lcmd list -> expr -> tactic
+val ct_hybrid : gcmd_pos -> int -> lcmd list -> expr -> core_tactic
 
 (** [rrewrite_oracle p d j] returns the judgment resulting from rewriting
     commands after oracle position [p] with the equality at position [p]
     in direction [d]. *)
-val rrewrite_oracle  : ocmd_pos -> direction -> rule 
-val t_rewrite_oracle : ocmd_pos -> direction -> tactic
+val ct_rewrite_oracle : ocmd_pos -> direction -> core_tactic
 
 (** [rswap p i ju] returns the judgment resulting from swapping
     the command at oracle positions [p] [i] positons forward. *)
-val rswap_oracle  : ocmd_pos -> int -> rule 
-val t_swap_oracle : ocmd_pos -> int -> tactic
+val ct_swap_oracle : ocmd_pos -> int -> core_tactic
 
-val rswap_main : ocmd_pos_eq -> string -> rule
-val t_swap_main : ocmd_pos_eq -> string -> tactic
+val ct_swap_main : ocmd_pos_eq -> string -> core_tactic
 
 (** [rrandom_indep ju] completes the proof of judgments of the
      form [(G; r <- d) : E] where [E = /\_i ci] and
      (a) [ci = (r = e)]  where r does not occur in e,
      (b) [ci = (e = r)]  where r does not occur in e, or
      (c) [ci = (r in L)] where r does not occur in L. *)
-val rrandom_indep  : rule 
-val t_random_indep : tactic
+val ct_random_indep : core_tactic
 
 (** [rassm_dec dir vmap assm ju] returns the judgment resulting from
     applying the decisional assumption [assm] with the variable renaming
     [vmap] in direction [dir] to [ju]. *)
-val rassm_dec  : direction -> renaming -> (int * int) list -> assm_dec -> rule
-val t_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> tactic
+val ct_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> core_tactic
 
-val rassm_comp  : assm_comp -> (int * int) list -> renaming -> rule
-val t_assm_comp : assm_comp -> (int * int) list  -> renaming -> tactic
+val ct_assm_comp : assm_comp -> (int * int) list  -> renaming -> core_tactic
 
 (** [guard pos None] remove the test at position [pos].
     [guard pos (Some t)] add a test at postion  [pos]. *)
-val rguard  : ocmd_pos -> expr option -> rule 
-val t_guard : ocmd_pos -> expr option -> tactic
+val ct_guard : ocmd_pos -> expr option -> core_tactic
 
-val rguess  : Asym.t -> vs list -> rule
-val t_guess : Asym.t -> vs list ->  tactic
+val ct_guess : Asym.t -> vs list ->  core_tactic
 
-val rfind  : vs list * expr -> expr -> Asym.t -> vs list -> rule
-val t_find : vs list * expr -> expr -> Asym.t -> vs list ->  tactic
-
-(*
-val rbad  : bad_version -> gcmd_pos -> (expr -> Vsym.t) -> rule       
-val t_bad : bad_version -> gcmd_pos -> (expr -> Vsym.t) -> tactic
-
-val rcheck_hash_args  : ocmd_pos -> (Fsym.t -> Fsym.t) -> rule
-val t_check_hash_args : ocmd_pos -> (Fsym.t -> Fsym.t) -> tactic
-
-val runwrap_quant_ev : int -> rule
-val t_unwrap_quant_ev : int -> tactic
-                                
-val rswap_quant_ev : int -> rule
-val t_swap_quant_ev : int -> tactic
-*)
-                                
+val ct_find : vs list * expr -> expr -> Asym.t -> vs list ->  core_tactic 

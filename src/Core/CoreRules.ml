@@ -3,7 +3,6 @@
 (* ** Imports and abbreviations *)
 open Abbrevs
 open Util
-open Nondet
 open Syms
 open Type
 open Expr
@@ -21,11 +20,11 @@ let _log_i ls = mk_logger "Logic.Core" Bolt.Level.INFO "CoreRules" ls
  * ----------------------------------------------------------------------- *)
 
 (** Proof tree. *)
-type 'a iproof_tree = {
-  pt_children : ('a iproof_tree) list;
+type 'info iproof_tree = {
+  pt_children : ('info iproof_tree) list;
   pt_rule     : rule_name;
   pt_ju       : judgment;
-  pt_info     : 'a
+  pt_info     : 'info
 }
 
 type proof_tree = unit iproof_tree
@@ -36,11 +35,8 @@ let pt_replace_children pt pts info =
   assert (Util.list_eq_for_all2 equal_fact pt.pt_children pts);
   { pt with pt_children = pts; pt_info = info }
 
-(** A goal is just a judgment (for now). *)
+(** A [goal] is just a [judgment] (for now). *)
 type goal = judgment
-
-(** A rule takes a [goal] and returns a [rule_name] and the new goals. *)
-type rule = goal -> rule_name * goal list
 
 (** A validation is a proof tree with holes.
     It returns a proof tree given proof trees for the holes. *)
@@ -53,10 +49,7 @@ type proof_state = {
 }
 
 (** A tactic takes a goal and returns a proof state. *)
-type tactic = goal -> proof_state nondet
-
-(** A tactic that takes a goal and returns a result and a proof state. *)
-type 'a rtactic = goal -> ('a * proof_state) nondet
+type core_tactic = goal -> (proof_state,string lazy_t) BatResult.t
 
 (* ** General purpose functions
  * ----------------------------------------------------------------------- *)
@@ -77,14 +70,17 @@ let mk_name ?(name="r__") se =
     go 1
   else name 
 
-(** Raised if there is no open goal. *)
-exception NoOpenGoal
+(** Get proof from proof state with no open goals. *)
+let get_proof ps =
+  if ps.subgoals <> [] then tacerror "get_proof: open subgoals remaining";
+  ps.validation []
 
 (** Prove goal [g] by rule [ru] which yields a rule name and subgoals. *)
 let prove_by ru g =
+  let open BatResult in
   try
     let (rn,subgoals) = ru g in
-    ret
+    Monad.return
       { subgoals = subgoals;
         validation = fun pts ->
           assert (L.length pts = L.length subgoals);
@@ -97,17 +93,12 @@ let prove_by ru g =
       }
   with  
   | Invalid_rule s ->
-    mfail (lazy s)
+    Bad (lazy s)
   | Wf.Wf_div_zero es ->
-    mfail (lazy (fsprintf "Failed divzero check: %a" (pp_list "," pp_expr) es))
+    Bad (lazy (fsprintf "Failed divzero check: %a" (pp_list "," pp_expr) es))
   | Wf.Wf_var_undef(vs,e,def_vars) ->
-    mfail (lazy (fsprintf "Variable undefined: %a in %a not in %a"
-                   Vsym.pp vs pp_expr e (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)))
-
-(** Get proof from proof state with no open goals. *)
-let get_proof ps =
-  if ps.subgoals <> [] then tacerror "get_proof: open subgoals remaining";
-  ps.validation []
+    Bad (lazy (fsprintf "Variable undefined: %a in %a not in %a"
+                 Vsym.pp vs pp_expr e (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)))
 
 (** Given a list of proof states and a validation, create a new proof state
     with the combined subgoals and a combined validation. *)
@@ -121,129 +112,8 @@ let merge_proof_states pss validation =
       let hd, tl = Util.cut_n (L.length ps.subgoals) pts in
       validation' (ps.validation (L.rev hd) :: accu) pss tl
   in
-  { subgoals   = conc_map (fun gs -> gs.subgoals) pss;
+  { subgoals   = conc_map (fun ps -> ps.subgoals) pss;
     validation = validation' [] pss }
-
-(* ** Tactic application
- * ----------------------------------------------------------------------- *)
-
-(** Tactic that moves the first subgoal to the last position. *)
-let move_first_last ps =
-  match ps.subgoals with
-  | [] -> tacerror "last: no goals"
-  | ju :: jus ->
-    let validation pts =
-      match L.rev pts with
-      | pt :: pts -> ps.validation (pt::L.rev pts)
-      | _ -> assert false
-    in
-    { subgoals = jus @ [ju];
-      validation = validation }
-
-(** Apply the tactic [t] to the [n]-th subgoal of proof state [ps]. *)
-let apply_on_n n t ps =
-  let len = L.length ps.subgoals in
-  if len = 0 then raise NoOpenGoal;
-  if len <= n then tacerror "expected %i, got %i subgoal(s)" n len;
-  let hd, g, tl = Util.split_n n ps.subgoals in
-  t g >>= fun gsn ->
-  let validation pts =
-    let hd, tl = Util.cut_n n pts in
-    let ptn, tl = Util.cut_n (L.length gsn.subgoals) tl in
-    ps.validation (L.rev_append hd (gsn.validation (L.rev ptn) :: tl))
-  in
-  ret { subgoals = L.rev_append hd (gsn.subgoals @ tl);
-        validation = validation }
-
-(** Apply the tactic [t] to the first subgoal in proof state [ps]. *)
-let apply_first t ps = apply_on_n 0 t ps
-
-(** Apply the tactic [t] to all subgoals in proof state [ps]. *)
-let apply_all t ps =
-  mapM t ps.subgoals >>= fun pss ->
-  ret (merge_proof_states pss ps.validation)
-
-(** Apply the rtactic [t] to all subgoals in proof state [ps]
-    and returns [t's] result. *)
-let rapply_all rt ps =
-  mapM rt ps.subgoals >>= fun pss ->
-  match pss with
-  | [y,ps2] ->
-    ret (y,merge_proof_states [ps2] ps.validation)
-  | _ ->
-    mfail (lazy "t_bind: expected exactly one goal")
-
-(* ** Simple tactics and tacticals
- * ----------------------------------------------------------------------- *)
-
-(** Identity tactic. *)
-let t_id g = ret (
-  { subgoals = [g];
-    validation = fun pts -> match pts with [pt] -> pt | _ -> assert false })
-
-(** Apply the given tactic and cut the search space by returning
-    only the first possible proof state. *)
-let t_cut t g =
-  let pss = t g in
-  match pull pss with
-  | Left(Some s) -> mfail s
-  | Left None    -> mfail (lazy "t_cut: mempty")
-  | Right(x,_)   -> ret x
-
-(** Sequential composition of the tactic [t1] with the tactic [t2]. *)
-let t_seq t1 t2 g =
-  t1 g >>= fun ps1 ->
-  mapM t2 ps1.subgoals >>= fun ps2s ->
-  ret (merge_proof_states ps2s ps1.validation)
-
-(** Sequential composition of the tactic [t1] with the tactics [t2s]:
-    apply [t1] to get $|t2s|$ new proof states [ps2s], then
-    apply the i-th element of [t2s] to the i-th proof state in [ps2s]. *)
-let t_seq_list t1 t2s g =
-  t1 g >>= fun ps1 ->
-  assert (L.length t2s = L.length ps1.subgoals);
-  mapM (fun (t2,g) -> t2 g) (L.combine t2s ps1.subgoals) >>= fun ps2s ->
-  ret (merge_proof_states ps2s ps1.validation)
-
-(** Apply tactic [t1] to goal [g] or apply [t2] in case of failure. *)
-let t_or tn1 tn2 g = Nondet.mplus (tn1 g)  (tn2 g)
-
-(** Apply tactic [t] or [t_id] in case of failure. *)
-let t_try t g = t_or t t_id g
-
-(** Tactic that ignore the goal and fails with given format string. *)
-let t_fail fs _g =
-  let buf  = Buffer.create 127 in
-  let fbuf = F.formatter_of_buffer buf in
-  F.kfprintf
-    (fun _ ->
-      F.pp_print_flush fbuf ();
-      let s = Buffer.contents buf in
-      _log_t (lazy s);
-      mfail (lazy s))
-    fbuf fs
-
-(** Tactical that fails if the given tactic returns the same proof state. *)
-let t_ensure_progress t g =
-  t g >>= fun ps ->
-  guard (not (L.length ps.subgoals = 1 && equal_judgment (L.hd ps.subgoals) g)) >>= fun _ ->
-  ret ps
-
-(** Monadic bind for rtactics, expects that [t1] returns a single goal. *)
-let t_bind (t1 : 'a rtactic) (ft2 : 'a -> 'b rtactic) g =
-  t1 g >>= fun (x,ps1) ->
-  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
-  match ps2s with
-  | [y,ps2] ->
-    ret (y,merge_proof_states [ps2] ps1.validation)
-  | _ ->
-    mfail (lazy "t_bind: expected exactly one goal")
-
-(** Monadic bind for an rtactic and a tactic. *)
-let t_bind_ignore (t1 : 'a rtactic) (ft2 : 'a -> tactic) g =
-  t1 g >>= fun (x,ps1) ->
-  mapM (ft2 x) ps1.subgoals >>= fun ps2s ->
-  ret (merge_proof_states ps2s ps1.validation)
 
 (* ** Core rules: Helper functions
  * ----------------------------------------------------------------------- *)
@@ -294,7 +164,7 @@ let rename_if_required rn se1 se2 =
     subst_v_se (fun vs -> try Vsym.M.find vs ren with Not_found -> vs) se1
   )
 
-let rconv do_norm_terms new_se0 ju =
+let r_conv do_norm_terms new_se0 ju =
   let rn = "conv" in
   (* check well-formedness without DivZero and then unfold *)
   wf_se NoCheckDivZero ju.ju_se;
@@ -317,7 +187,7 @@ let rconv do_norm_terms new_se0 ju =
   );
   Rconv, [{ ju with ju_se = new_se0 }]
 
-let t_conv do_norm_terms new_se = prove_by (rconv do_norm_terms new_se)
+let ct_conv do_norm_terms new_se = prove_by (r_conv do_norm_terms new_se)
 
 (* *** Instruction swapping.
  * ----------------------------------------------------------------------- *)
@@ -353,9 +223,9 @@ let swap i delta ju =
     { ju with ju_se = set_se_ctxt c2 seoc }
   )
 
-let rswap i delta ju = Rswap(i, delta), [swap i delta ju]
+let r_swap i delta ju = Rswap(i, delta), [swap i delta ju]
 
-let t_swap i delta = prove_by (rswap i delta)
+let ct_swap i delta = prove_by (r_swap i delta)
 
 (* *** Instruction swapping for Oracle.
  * ----------------------------------------------------------------------- *)
@@ -381,10 +251,10 @@ let swap_oracle i delta ju =
     { ju with ju_se = set_se_octxt c2 seoc }
   )
 
-let rswap_oracle i delta ju =
+let r_swap_oracle i delta ju =
   Rswap_orcl(i,delta), [swap_oracle i delta ju]
 
-let t_swap_oracle i delta = prove_by (rswap_oracle i delta)
+let ct_swap_oracle i delta = prove_by (r_swap_oracle i delta)
 
 (* *** Random sampling.
  * ----------------------------------------------------------------------- *)
@@ -412,7 +282,7 @@ let ensure_bijection ?partial:(partial=false) se c1 c2 rs = (* c1 = inverse, c2 
       pp_ctxt c1 pp_ctxt c2
 
 
-let rrnd p c1 c2 ju =
+let r_rnd p c1 c2 ju =
   let se = ju.ju_se in
   match get_se_ctxt se p with
   | GSamp(rvs,(_,exc)), sec ->
@@ -439,12 +309,12 @@ let rrnd p c1 c2 ju =
   | _ ->
     tacerror "rnd: position given is not a sampling"
 
-let t_rnd p c1 c2 = prove_by (rrnd p c1 c2)
+let ct_rnd p c1 c2 = prove_by (r_rnd p c1 c2)
 
 (* *** Random sampling in oracle.
  * ----------------------------------------------------------------------- *)
 
-let rrnd_oracle p c1 c2 ju =
+let r_rnd_oracle p c1 c2 ju =
   let se = ju.ju_se in
   match get_se_octxt se p with
   | LSamp(rvs,(_,exc)), seoc ->
@@ -481,12 +351,12 @@ let rrnd_oracle p c1 c2 ju =
     Rrnd_orcl(p,c1,c2), [ { ju with ju_se = set_se_octxt cmds seoc } ]
   | _ -> tacerror "rnd_oracle: position given is not a sampling"
 
-let t_rnd_oracle p c1 c2 = prove_by (rrnd_oracle p c1 c2)
+let ct_rnd_oracle p c1 c2 = prove_by (r_rnd_oracle p c1 c2)
 
 (* *** Copy condition implied by event to assert.
  * ----------------------------------------------------------------------- *)
 
-let rassert p e ju =
+let r_assert p e ju =
   let se = ju.ju_se in
   assert (not (is_Quant se.se_ev));
   let cmd, sec = get_se_ctxt se p in
@@ -504,12 +374,12 @@ let rassert p e ju =
   let ju2 = { ju with ju_se = set_se_ctxt cmds sec } in
   Rassert(p,e), [ ju1; ju2 ]
 
-let t_assert p e = prove_by (rassert p e)
+let ct_assert p e = prove_by (r_assert p e)
 
 (* *** Rewrite oracle using test.
  * ----------------------------------------------------------------------- *)
 
-let rrewrite_oracle op dir ju =
+let r_rewrite_oracle op dir ju =
   let se = ju.ju_se in
   match get_se_octxt se op with
   | LGuard(t) as lc, seoc ->
@@ -528,7 +398,7 @@ let rrewrite_oracle op dir ju =
   | _ ->
     tacerror "rewrite_oracle: invalid position"
 
-let t_rewrite_oracle op dir = prove_by (rrewrite_oracle op dir)
+let ct_rewrite_oracle op dir = prove_by (r_rewrite_oracle op dir)
 
 (* *** Merge conjuncts in event with equalities.
  * ----------------------------------------------------------------------- *)
@@ -539,7 +409,7 @@ let merge_base_event ev1 ev2 =
     mk_Eq (mk_Tuple [e11;e21]) (mk_Tuple [e12;e22])
   | _, _ -> failwith "merge_ev: cannot merge the given events"
 
-let rmerge_ev i j ju =
+let r_merge_ev i j ju =
   let se = ju.ju_se in
   let i,j = if i <= j then i, j else j, i in
   let evs = destr_Land_nofail se.se_ev in
@@ -553,12 +423,12 @@ let rmerge_ev i j ju =
   let new_se = { se with se_ev = mk_Land evs } in
   Rmerge_ev(i,j), [ { ju with ju_se = new_se } ]
 
-let t_merge_ev i j = prove_by (rmerge_ev i j)
+let ct_merge_ev i j = prove_by (r_merge_ev i j)
 
 (* *** Split (in)equality on tuples into multiple inequalities.
  * ----------------------------------------------------------------------- *)
 
-let rsplit_ev i ju =
+let r_split_ev i ju =
   let rn = "split_ev" in
   let se = ju.ju_se in
   let ev = se.se_ev in
@@ -582,12 +452,12 @@ let rsplit_ev i ju =
   let new_se = { se with se_ev = mk_Land evs } in
   Rsplit_ev(i), [ { ju with ju_se = new_se } ]
 
-let t_split_ev i = prove_by (rsplit_ev i)
+let ct_split_ev i = prove_by (r_split_ev i)
 
 (* *** Use equality conjunct to rewrite other conjuncts
  * ----------------------------------------------------------------------- *)
 
-let rrw_ev i d ju =
+let r_rw_ev i d ju =
   let rn = "rewrite_ev" in
   let se = ju.ju_se in
   let ev = se.se_ev in
@@ -612,12 +482,12 @@ let rrw_ev i d ju =
   let new_se = { se with se_ev = mk_Land evs } in
   Rrw_ev(i,d), [ { ju with ju_se = new_se } ]
 
-let t_rw_ev i d = prove_by (rrw_ev i d)
+let ct_rw_ev i d = prove_by (r_rw_ev i d)
 
 (* *** Swap sampling from once-oracle to main.
  * ----------------------------------------------------------------------- *)
 
-let rswap_main ((i,j,k) as opos_eq) vname ju =
+let r_swap_main ((i,j,k) as opos_eq) vname ju =
   let se = ju.ju_se in
   match get_se_octxt se (i,j,k,Oishyb OHeq) with
   | LSamp(vs,d),seoc ->
@@ -643,8 +513,8 @@ let rswap_main ((i,j,k) as opos_eq) vname ju =
   | _ ->
     assert false
 
-let t_swap_main opos vname =
-  prove_by (rswap_main opos vname)
+let ct_swap_main opos vname =
+  prove_by (r_swap_main opos vname)
 
 (* ** Core rules: Bridging rules with small loss
  * ----------------------------------------------------------------------- *)
@@ -652,7 +522,7 @@ let t_swap_main opos vname =
 (* *** Sampling from excepted distribution.
  * ----------------------------------------------------------------------- *)
 
-let rexcept p es ju =
+let r_except p es ju =
   let se = ju.ju_se in
   let len = L.length se.se_gdef in
   if not (p < len) && p >= 0 then
@@ -667,12 +537,12 @@ let rexcept p es ju =
   | _ ->
     tacerror "except: position given is not a sampling"
 
-let t_except p es = prove_by (rexcept p es)
+let ct_except p es = prove_by (r_except p es)
 
 (* *** Sampling from excepted distribution for oracle.
  * ----------------------------------------------------------------------- *)
 
-let rexcept_oracle p es ju =
+let r_except_oracle p es ju =
   let se = ju.ju_se in
   match get_se_octxt se p with
   | LSamp(_,(_,es')), _ when equal_list equal_expr es' es ->
@@ -682,7 +552,7 @@ let rexcept_oracle p es ju =
     Rexc_orcl(p,es), [ { ju with ju_se = se } ]
   | _ -> tacerror "except_oracle: position given is not a sampling"
 
-let t_except_oracle p es = prove_by (rexcept_oracle p es)
+let ct_except_oracle p es = prove_by (r_except_oracle p es)
 
 (* ** Core rules: Weaken event.
  * ----------------------------------------------------------------------- *)
@@ -695,7 +565,7 @@ let conj_or_negation_included e ev =
   let evs = L.map norm (destr_Land_nofail ev) in
   (L.mem (norm e) evs || L.mem (norm (mk_Not e)) evs)
 
-let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
+let r_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   let se = ju.ju_se in
   ensure_pr_Succ_or_Adv "case_ev" ju;
   let ev = se.se_ev in
@@ -720,13 +590,13 @@ let rcase_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
   in
   Rcase_ev(flip,e), if flip then [ju2; ju1] else [ju1;ju2]
 
-let t_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
-  prove_by (rcase_ev ~flip ~allow_existing:ae e)
+let ct_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e =
+  prove_by (r_case_ev ~flip ~allow_existing:ae e)
 
 (* *** Apply context to event
  * ----------------------------------------------------------------------- *)
 
-let rctxt_ev i c ju =
+let r_ctxt_ev i c ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
   let ev = se.se_ev in
@@ -745,12 +615,12 @@ let rctxt_ev i c ju =
   let new_ju = { se with se_ev = ev } in
   Rctxt_ev(i,c), [ { ju with ju_se = new_ju } ]
 
-let t_ctxt_ev i c = prove_by (rctxt_ev i c)
+let ct_ctxt_ev i c = prove_by (r_ctxt_ev i c)
 
 (* *** Apply injective context to event
  * ----------------------------------------------------------------------- *)
 
-let rinjective_ctxt_ev j c1 c2 ju =
+let r_injective_ctxt_ev j c1 c2 ju =
   let se = ju.ju_se in
   let ev = se.se_ev in
   let evs = destr_Land_nofail ev in
@@ -772,12 +642,12 @@ let rinjective_ctxt_ev j c1 c2 ju =
   let new_ju = { se with se_ev = ev } in
   Rinjective_ctxt_ev(j,c1,c2), [ { ju with ju_se = new_ju } ]
   
-let t_injective_ctxt_ev j c1 c2 = prove_by (rinjective_ctxt_ev j c1 c2) 
+let ct_injective_ctxt_ev j c1 c2 = prove_by (r_injective_ctxt_ev j c1 c2) 
   
 (* *** Remove conjunct from event
  * ----------------------------------------------------------------------- *)
 
-let rremove_ev (rm:int list) ju =
+let r_remove_ev (rm:int list) ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   let se = ju.ju_se in
   let ev = se.se_ev in
@@ -802,7 +672,7 @@ let rremove_ev (rm:int list) ju =
   in
   Rremove_ev rm, [ { ju with ju_se = { se with se_ev = new_ev } } ]
 
-let t_remove_ev rm = prove_by (rremove_ev rm)
+let ct_remove_ev rm = prove_by (r_remove_ev rm)
 
 (* ** Core rules: Bound probability directly
  * ----------------------------------------------------------------------- *)
@@ -810,25 +680,25 @@ let t_remove_ev rm = prove_by (rremove_ev rm)
 (* *** Admit proof obligation
  * ----------------------------------------------------------------------- *)
 
-let radmit s _g = Radmit s, []
-let t_admit s = prove_by (radmit s)
+let r_admit s _g = Radmit s, []
+let ct_admit s = prove_by (r_admit s)
 
 (* *** Distinguishability judgments are symmetric
  * ----------------------------------------------------------------------- *)
 
-let rdist_sym ju =
+let r_dist_sym ju =
   match ju.ju_pr with
   | Pr_Dist se' ->
     Rdist_sym, [ { ju_se = se'; ju_pr = Pr_Dist ju.ju_se } ]
   | _ ->
     tacerror "dist_sym: Dist judgment expected"
 
-let t_dist_sym = prove_by rdist_sym
+let ct_dist_sym = prove_by r_dist_sym
 
 (* *** Equal experiments cannot be distinguished
  * ----------------------------------------------------------------------- *)
 
-let rdist_eq ju =
+let r_dist_eq ju =
   let rn = "rdist_eq" in
   match ju.ju_pr with
   | Pr_Dist se' ->
@@ -839,18 +709,18 @@ let rdist_eq ju =
   | _ ->
     tacerror "dist_eq: Dist judgment expected"
 
-let t_dist_eq = prove_by rdist_eq
+let ct_dist_eq = prove_by r_dist_eq
 
 (* *** Bound false event
  * ----------------------------------------------------------------------- *)
 
-let rfalse_ev ju =
+let r_false_ev ju =
   ensure_pr_Succ_or_Adv "ctxt_ev" ju;
   if is_False ju.ju_se.se_ev
   then Rfalse_ev, []
   else tacerror "false_ev: event false expected"
 
-let t_false_ev = prove_by rfalse_ev
+let ct_false_ev = prove_by r_false_ev
 
 (* *** Bound random independence
  * ----------------------------------------------------------------------- *)
@@ -887,7 +757,7 @@ let check_event r ev =
   in
   aux 0 (destr_Land_nofail ev)
 
-let rrandom_indep ju =
+let r_random_indep ju =
   let se = ju.ju_se in
   match L.rev se.se_gdef with
   | GSamp(r,_)::_ ->
@@ -895,7 +765,7 @@ let rrandom_indep ju =
     check_event r se.se_ev, []
   | _             -> tacerror "indep: the last instruction is not a random"
 
-let t_random_indep = prove_by rrandom_indep
+let ct_random_indep = prove_by r_random_indep
 
 (* *** Apply computational assumption
  * ----------------------------------------------------------------------- *)
@@ -962,7 +832,7 @@ let assm_comp_valid_ranges rn assm acalls_ju rngs =
   in
   go rngs assm.ac_acalls
 
-let rassm_comp assm0 rngs ren ju =
+let r_assm_comp assm0 rngs ren ju =
   let rname = "assumption_computational" in
   let se = ju.ju_se in
   let assm = Assumption.inst_comp ren assm0 in
@@ -982,7 +852,7 @@ let rassm_comp assm0 rngs ren ju =
   assm_comp_valid_ranges rname assm acalls_ju rngs;
   Rassm_comp(rngs,ren,assm0), []
 
-let t_assm_comp assm ev_e subst = prove_by (rassm_comp assm ev_e subst)
+let ct_assm_comp assm ev_e subst = prove_by (r_assm_comp assm ev_e subst)
 
 (* ** Core rules: Rules with computationally bounded loss
  * ----------------------------------------------------------------------- *)
@@ -1025,7 +895,7 @@ let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
   in
   go rngs assm.ad_acalls []
   
-let rassm_dec dir ren rngs assm0 ju =
+let r_assm_dec dir ren rngs assm0 ju =
   let rn = "assumption_decisional" in
   let se = ju.ju_se in
   let swap_dir = if dir = LeftToRight then id else Util.swap in
@@ -1051,12 +921,12 @@ let rassm_dec dir ren rngs assm0 ju =
   let se = { se with se_gdef = pref_new@acalls_ju_new } in
   Rassm_dec(rngs,dir,ren,assm0), [{ ju with ju_se = se }]
 
-let t_assm_dec dir ren rngs assm = prove_by (rassm_dec dir ren rngs assm)
+let ct_assm_dec dir ren rngs assm = prove_by (r_assm_dec dir ren rngs assm)
 
 (* *** Add a new test to oracle.
  * ----------------------------------------------------------------------- *)
 
-let radd_test opos tnew asym fvs ju =
+let r_add_test opos tnew asym fvs ju =
   let se = ju.ju_se in
   match get_se_octxt se opos with
   | LGuard(t), seoc ->
@@ -1088,20 +958,20 @@ let radd_test opos tnew asym fvs ju =
     Radd_test(opos, tnew, asym, fvs), [ ju1; ju2 ]
   | _ -> tacerror "add_test: given position is not a test"
 
-let t_add_test p tnew asym fvs = prove_by (radd_test p tnew asym fvs)
+let ct_add_test p tnew asym fvs = prove_by (r_add_test p tnew asym fvs)
 
 (* *** Transitivity: bound distance to given intermediate game.
  * ----------------------------------------------------------------------- *)
 
-let rtrans new_se ju =
+let r_trans new_se ju =
   wf_se NoCheckDivZero new_se;
   let se = ju.ju_se in
   let ju1 = { ju_se = se; ju_pr = Pr_Dist new_se } in
   let ju2 = { ju_se = new_se; ju_pr = ju.ju_pr } in
   Rtrans, [ ju1; ju2 ]
 
-let t_trans new_se =
-  prove_by (rtrans new_se)
+let ct_trans new_se =
+  prove_by (r_trans new_se)
 
 
 (* ** Core rule: Hybrid argument.
@@ -1122,7 +992,7 @@ let rename_odef lcmds ret =
   let sigma v = try Vsym.H.find vmap v with Not_found -> v in
   (L.map (subst_v_lc sigma) lcmds, subst_v_e sigma ret)
 
-let rhybrid gpos oidx new_lcmds new_eret ju =
+let r_hybrid gpos oidx new_lcmds new_eret ju =
   let se = ju.ju_se in
   let _, seoc = get_se_octxt_len se (gpos,oidx,0,Onothyb) 0 in
   let old_lcmds = seoc.seoc_cright in
@@ -1177,13 +1047,13 @@ let rhybrid gpos oidx new_lcmds new_eret ju =
   in
   Rhybrid, [ ju1; ju2 ]
 
-let t_hybrid gpos oidx lcmds eret =
-  prove_by (rhybrid gpos oidx lcmds eret)
+let ct_hybrid gpos oidx lcmds eret =
+  prove_by (r_hybrid gpos oidx lcmds eret)
 
 (* ** Core rule: Guard.
  * ----------------------------------------------------------------------- *)
 
-let rguard opos tnew ju =
+let r_guard opos tnew ju =
   let se = ju.ju_se in
   let seoc,t = 
     match tnew with
@@ -1233,7 +1103,7 @@ let rguard opos tnew ju =
   Wf.wf_se NoCheckDivZero ju2.ju_se;
   Rguard(opos, tnew), [ ju1; ju2 ]
 
-let t_guard p tnew = prove_by (rguard p tnew)
+let ct_guard p tnew = prove_by (r_guard p tnew)
 
 (* ** Core rules: Deal with existential quantifiers
  * ----------------------------------------------------------------------- *)
@@ -1241,7 +1111,7 @@ let t_guard p tnew = prove_by (rguard p tnew)
 (* *** Guess rule.
  * ----------------------------------------------------------------------- *)
 
-let rguess asym fvs ju = 
+let r_guess asym fvs ju = 
   let ev = ju.ju_se.se_ev in
   let (q,b,ev_expr) = destr_Quant ev in
   match q, b, ju.ju_pr with
@@ -1253,7 +1123,7 @@ let rguess asym fvs ju =
         (fun s ov fv -> Me.add (mk_V ov) (mk_V fv) s)
         Me.empty vs fvs in
     let e = e_subst subst ev_expr in
-    let ju1 = {ju with
+    let ju1 = { ju with
       ju_se = {
         se_gdef = ju.ju_se.se_gdef @ [GCall(fvs,asym,mk_Tuple [], [])];
         se_ev = e } }
@@ -1264,12 +1134,12 @@ let rguess asym fvs ju =
   | _ ->
     tacerror "guess: not a valid event"
 
-let t_guess asym fvs = prove_by (rguess asym fvs)
+let ct_guess asym fvs = prove_by (r_guess asym fvs)
 
 (* *** Find rule.
  * ----------------------------------------------------------------------- *)
 
-let rfind (bd,body) arg asym fvs ju =
+let r_find (bd,body) arg asym fvs ju =
   let ev = ju.ju_se.se_ev in
   let (q,b,ev_expr) = destr_Quant ev in
   match q, b, ju.ju_pr with
@@ -1310,7 +1180,7 @@ let rfind (bd,body) arg asym fvs ju =
   | _ ->
     tacerror "find: not a valid event"
 
-let t_find f arg asym fvs = prove_by (rfind f arg asym fvs)
+let ct_find f arg asym fvs = prove_by (r_find f arg asym fvs)
 
 (* ** Core rules: Rules for random oracles
  * ----------------------------------------------------------------------- *)
@@ -1390,7 +1260,7 @@ let rbad which_bad p gen_vsx ju =
        ^^">>\n(note that the 'abstract' rule can be used to fold a hash call into a variable).")
       (p+1)
      
-let t_bad which_bad p gen_vsx =
+let ct_bad which_bad p gen_vsx =
   prove_by (rbad which_bad p gen_vsx)
 
 (** Replace hash call by map lookup (still needs some work) *)  
@@ -1435,7 +1305,7 @@ let rcheck_hash_args opos gen_o_lkup ju =
      Rcheck_hash_args opos,[{ju with ju_se = set_se_octxt [lguard] se_octxt}]
   | _ -> bad_position ()
 
-let t_check_hash_args opos gen_o_lkup =
+let ct_check_hash_args opos gen_o_lkup =
   prove_by (rcheck_hash_args opos gen_o_lkup)
 
            
@@ -1458,7 +1328,7 @@ let runwrap_quant_ev j ju =
   let new_ju = {ju with ju_se = new_se} in
   Runwrap_quant_ev j,[new_ju]
 
-let t_unwrap_quant_ev j = prove_by (runwrap_quant_ev j)
+let ct_unwrap_quant_ev j = prove_by (runwrap_quant_ev j)
                                  
 let rswap_quant_ev j ju =
   let ev = ju.ju_se.se_ev in
@@ -1485,6 +1355,6 @@ let rswap_quant_ev j ju =
                         e0 in
   Rswap_quant_ev j,[{ju with ju_se = {ju.ju_se with se_ev = new_ev}}]
 
-let t_swap_quant_ev j ju =
+let ct_swap_quant_ev j ju =
   prove_by (rswap_quant_ev j) ju
  *)

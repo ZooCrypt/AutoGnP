@@ -12,6 +12,7 @@ open Game
 open Assumption
 open CoreTypes
 open CoreRules
+open CoreTactic
 
 module Ht = Hashtbl
 (*i*)
@@ -60,9 +61,9 @@ let t_dist_eq ju =
   | Pr_Dist se' ->
     let se = ju.ju_se in
     if equal_sec_exp se se' then
-      CoreRules.t_dist_eq ju
+      core_tactic CoreRules.ct_dist_eq ju
     else
-      (CoreRules.t_conv true se' @> CoreRules.t_dist_eq) ju
+      (CoreTactic.t_conv true se' @> core_tactic CoreRules.ct_dist_eq) ju
   | _ ->
     tacerror "dist_eq: Dist judgment expected"
 
@@ -185,7 +186,7 @@ let t_swap_max dir i vs ju =
   let swap_samp =
     if offset = 0
     then t_id
-    else t_swap i offset
+    else core_tactic (ct_swap i offset)
   in
   swap_samp ju >>= fun ps -> ret (i+offset,ps)
 
@@ -383,7 +384,7 @@ let rec prove_by_admit s ps =
   if ps.subgoals = [] then
     ps
   else
-    let ps = Nondet.first (apply_first (t_admit s) ps) in
+    let ps = Nondet.first (apply_first (core_tactic (ct_admit s)) ps) in
     prove_by_admit s ps
 
 let rec diff_proof_tree (pt1,pt2) =

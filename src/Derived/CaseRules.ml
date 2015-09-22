@@ -18,6 +18,7 @@ open NormField
 
 module Ht = Hashtbl
 module CR = CoreRules
+module CT = CoreTactic
 
 let _log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
@@ -203,7 +204,7 @@ let t_rexcept_maybe mi mes ju =
   in
   mconcat except >>= fun (j,e) ->
   guard (match mi with Some i -> i = j | None -> true) >>= fun _ ->
-  CoreRules.t_except j [e] ju
+  CT.t_except j [e] ju
 
 let simp_eq e =
   assert (is_Fq e.e_ty);
@@ -229,7 +230,7 @@ let t_case_ev_maybe ju =
   let cases = get_cases fbuf ju in
   let except = cat_Some (L.map (function AppCaseEv(e) -> Some(e) | _ -> None) cases) in
   mconcat except >>= fun e ->
-  CoreRules.t_case_ev (simp_eq e) ju
+  CT.t_case_ev (simp_eq e) ju
 
 let simp_eq_group e =
   let both_args e1 e2 =
@@ -294,6 +295,6 @@ let t_add_test_maybe ju =
      of examples we consider *)
   guard (not (Se.subset (e_vars t) wvars)) >>= fun _ ->
   let test = simp_eq_group t in
-  (CoreRules.t_guard opos (Some (NormUtils.norm_expr_nice test))
-   @> CoreRules.t_swap_oracle opos (-k)
-   @> CoreRules.t_rewrite_oracle opos LeftToRight) ju
+  (CT.t_guard opos (Some (NormUtils.norm_expr_nice test))
+   @> CT.t_swap_oracle opos (-k)
+   @> CT.t_rewrite_oracle opos LeftToRight) ju

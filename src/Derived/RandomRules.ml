@@ -17,6 +17,7 @@ open ParserUtil
 
 module Ht = Hashtbl
 module CR = CoreRules
+module CT = CoreTactic
 module PT = ParserTypes
 
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RandomRules" ls
@@ -158,8 +159,8 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
   log_t (lazy (fsprintf "t_rnd_pos: trying %a -> %a with inverse %a -> %a"
                  Vsym.pp v1 pp_expr e1 Vsym.pp v2 pp_expr e2));
   try
-    ignore (CR.rrnd i (v1,e1) (v2,e2) ju);
-    CR.t_rnd i (v1,e1) (v2,e2) ju
+    ignore (CR.r_rnd i (v1,e1) (v2,e2) ju);
+    CT.t_rnd i (v1,e1) (v2,e2) ju
    with
    (* try different strategies to prevent failures by applying other
       tactics beforehand *)
@@ -204,16 +205,16 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
        let simp_guard ju =
          let ev_idx = L.length (destr_Land_nofail ju.ju_se.se_ev) -1 in
          (RewriteRules.t_let_unfold (L.length ju.ju_se.se_gdef - 1) @>
-          CR.t_rw_ev ev_idx LeftToRight @>
+          CT.t_rw_ev ev_idx LeftToRight @>
           RewriteRules.t_subst 0 (mk_Ifte mk_False mk_FOne ze) ze None @>
           RewriteRules.t_norm_nounfold @>
-          CR.t_remove_ev [ev_idx]) ju
+          CT.t_remove_ev [ev_idx]) ju
        in
        let discharge ju =
          SimpRules.t_simp true 20 ju
        in
-       (CR.t_rnd i (v2,e1') (v2,e2') @>
-        CR.t_case_ev ~allow_existing:true (mk_Eq ze mk_FZ) @>>
+       (CT.t_rnd i (v2,e1') (v2,e2') @>
+        CT.t_case_ev ~allow_existing:true (mk_Eq ze mk_FZ) @>>
         [ discharge; simp_guard ]) ju
      ) else (
        mfail ls
@@ -299,4 +300,4 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctx1 mctx2 ju =
     ret (deduc e2 v2, (v2,e2))
     (* FIXME: for CS bycrush, we excluded contexts rv -> - rv *)
   ) >>= fun ((v1,e1),(v2,e2)) ->
-  CR.t_rnd_oracle (i,j,k,ootype) (v1,e1) (v2,e2) ju
+  CT.t_rnd_oracle (i,j,k,ootype) (v1,e1) (v2,e2) ju

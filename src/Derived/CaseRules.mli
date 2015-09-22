@@ -1,9 +1,7 @@
-(*s Derived rules for dealing with [add_test], [case_ev], and [except]. *)
+(* * Derived rules for dealing with [add_test], [case_ev], and [except]. *)
 
-(*i*)
-open CoreRules
+open CoreTactic
 open TheoryTypes
-(*i*)
 
 val t_rexcept_maybe : int option -> (ParserTypes.parse_expr list) option -> tactic
 

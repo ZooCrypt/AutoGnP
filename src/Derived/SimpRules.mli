@@ -1,7 +1,7 @@
 (*s Automated derived rules *)
 
 (*i*)
-open CoreRules
+open CoreTactic
 (*i*)
 
 val t_simp : bool -> int -> tactic

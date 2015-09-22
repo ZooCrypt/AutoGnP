@@ -18,7 +18,8 @@ open CaseRules
 open SimpRules
 
 module CR = CoreRules
-module CT = CoreTypes
+module CT = CoreTactic
+module CTy = CoreTypes
 module Ht = Hashtbl
 
 let log_t ls  = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
@@ -50,31 +51,31 @@ let psis_of_pt pt =
     let gd = pt.CR.pt_ju.ju_se.se_gdef in
     let children = pt.CR.pt_children in
     match pt.CR.pt_rule with
-    | CT.Rassm_dec(_,_,_,ad) ->
+    | CTy.Rassm_dec(_,_,_,ad) ->
       let psi =
         { psi with psi_assms = Sstring.add ad.ad_name psi.psi_assms }
       in
       L.iter (aux psi) children
-    | CT.Rcase_ev(_,e) ->
+    | CTy.Rcase_ev(_,e) ->
       let psi =
         { psi with psi_cases = Se.add e psi.psi_cases }
       in
       L.iter (aux psi) children    
-    | CT.Rrnd(pos,_,_,_) ->
+    | CTy.Rrnd(pos,_,_,_) ->
       let rands = samplings gd in
       let (rv,_) = L.assoc pos rands in
       let psi =
         { psi with psi_rvars = Vsym.S.add rv psi.psi_rvars }
       in
       L.iter (aux psi) children
-    | CT.Rrnd_orcl(opos,_,_) ->
+    | CTy.Rrnd_orcl(opos,_,_) ->
       let orands = osamplings gd in
       let (orv,_) = L.assoc opos orands in
       let psi =
         { psi with psi_orvars = Vsym.S.add orv psi.psi_orvars }
       in
       L.iter (aux psi) children
-    | CT.Radmit "current" ->
+    | CTy.Radmit "current" ->
       (* we ignore admits with label other from other branches of the proof *)
       admit_psis := psi::!admit_psis
     | _ ->
@@ -120,20 +121,20 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
         (s^(F.sprintf "\n depth %i\n" depth))
     );
     if is_old
-    then CR.t_fail "state already explored!" ju
-    else CR.t_id ju
+    then CT.t_fail "state already explored!" ju
+    else CT.t_id ju
   in
   let t_log s ju =
     if log_games then
       Util.append_file (F.sprintf "%s/g%i.zc" gdir !stats.nstates) s;
-    CR.t_id ju
+    CT.t_id ju
   in
   let t_prepare =
-    (   (CR.t_ensure_progress (t_simp false 40) @|| CR.t_id)
-        @> (t_norm ~fail_eq:true @|| CR.t_id))
+    (   (CT.t_ensure_progress (t_simp false 40) @|| CT.t_id)
+        @> (t_norm ~fail_eq:true @|| CT.t_id))
   in
   let t_close ju =
-    ((CR.t_try (GuardRules.t_guess_maybe ts None None)
+    ((CT.t_try (GuardRules.t_guess_maybe ts None None)
       @> (t_random_indep ts false @> t_log "random_indep"))
      @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp")) ju
   in
@@ -142,18 +143,18 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
         @> t_log "\nassm_dec")
     @| (fun ju
         -> if count_except ju < 3 then (t_rexcept_maybe None None @> t_log "\nrexcept") ju
-           else CR.t_id ju)
+           else CT.t_id ju)
     @| (t_rnd_maybe ~i_rvars:irvs ts false None None None None @> t_log "\nrnd")
     @| (fun ju
         -> if count_except ju >= 3 then (t_rexcept_maybe None None @> t_log "\nrexcept") ju
-           else CR.t_id ju)
+           else CT.t_id ju)
     @| (t_rnd_oracle_maybe ~i_rvars:iorvs ts None None None @> t_log "\nrnd_oracle")
     @| (t_add_test_maybe @> t_log "\nadd_test")
     @| (t_case_ev_maybe @> t_log "\ncase_ev")
   in
       (t_prepare @> t_after_simp)
    @> (    t_close
-       @|| (if must_finish && finish_now then CR.t_fail "not finished" else t_progress))
+       @|| (if must_finish && finish_now then CT.t_fail "not finished" else t_progress))
 
 and bycrush stats ts get_pt j ps1 =
   let step = t_crush_step j stats ts true in
@@ -190,15 +191,15 @@ and t_crush must_finish mi ts ps ju =
   let i = O.default 5 mi in
   let get_pt ps' =
     CR.get_proof
-      (prove_by_admit "others" (first (CR.apply_first (fun _ -> ret ps') ps)))
+      (prove_by_admit "others" (first (CT.apply_first (fun _ -> ret ps') ps)))
   in
   let stats = ref { nstates = 0; unqstates = 0; ses = [] } in
   if i > 0 then (
     let res =
       if must_finish then
-        bycrush stats ts get_pt i (first (CR.t_id ju))
+        bycrush stats ts get_pt i (first (CT.t_id ju))
       else
-        crush stats ts get_pt i (first (CR.t_id ju))
+        crush stats ts get_pt i (first (CT.t_id ju))
     in
     let s = match pull res with
       | Left _  -> "proof failed"
@@ -209,5 +210,5 @@ and t_crush must_finish mi ts ps ju =
                s !stats.nstates !stats.unqstates));
     res
   ) else (
-    CR.t_fail "crush: number of steps cannot be smaller than one" ju
+    CT.t_fail "crush: number of steps cannot be smaller than one" ju
   )

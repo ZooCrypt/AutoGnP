@@ -17,6 +17,7 @@ open RewriteRules
 
 module Ht = Hashtbl
 module CR = CoreRules
+module CT = CoreTactic
 module PU = ParserUtil
 
 let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "AssumptionRules" ls
@@ -102,10 +103,10 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
           | _ -> c)
         (L.drop pref_len se.se_gdef)
     in
-    (   CR.t_ensure_progress (CR.t_conv true { se with se_gdef=pref@grest })
-     @> CR.t_assm_dec dir ren rngs assm) ju
+    (   CT.t_ensure_progress (CT.t_conv true { se with se_gdef=pref@grest })
+     @> CT.t_assm_dec dir ren rngs assm) ju
   in
-  (CR.t_assm_dec dir ren rngs assm @|| conv_common_prefix) ju
+  (CT.t_assm_dec dir ren rngs assm @|| conv_common_prefix) ju
 
 (** Compute substitution and perform let abstraction. *)
 let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
@@ -232,7 +233,7 @@ let t_assm_dec_auto ts assm dir subst ju vnames =
   let swaps =
        parallel_swaps old_new_pos
     |> L.filter_map (fun (old_pos,delta) ->
-                       if delta = 0 then None else Some (CR.t_swap old_pos delta))
+                       if delta = 0 then None else Some (CT.core_tactic (CR.ct_swap old_pos delta)))
   in
   (t_seq_fold swaps @> t_assm_dec_aux ts assm dir subst assm_samps vnames) ju
 
@@ -406,7 +407,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   (* let get_bind bindings = match bindings with [(vs,_)] -> vs | _ -> tacerror "fail" in *)
   let argv = Vsym.mk "arg" aarg.e_ty in
   let assm_tac = 
-    (    CR.t_case_ev ~flip:true nineq
+    (    CT.core_tactic (CR.ct_case_ev ~flip:true nineq)
      @>> [ before_t_assm
            @> (fun ju ->
                let last = Some (L.length ju.ju_se.se_gdef - 1) in
@@ -416,7 +417,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
                let vs = [] (* FIXME: get_bind Event.binding ev *) in
                let asym = Asym.mk "CC" argv.Vsym.ty (mk_Prod (L.map (fun v -> v.Vsym.ty) vs))  in
                let v = Vsym.mk "f_arg" aarg.e_ty in
-               CR.t_find ([v],e_replace aarg (mk_V v) ev) aarg asym vs ju)
+               CT.core_tactic (CR.ct_find ([v],e_replace aarg (mk_V v) ev) aarg asym vs) ju)
            @> (t_seq_fold
                 (L.map
                    (fun (v,e) ju -> t_let_abstract (L.length ju.ju_se.se_gdef) v e None false ju)
@@ -426,8 +427,8 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
                let argv = Vsym.mk "arg__" aarg.e_ty in
                let last = Some (L.length ju.ju_se.se_gdef - 1) in
                t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
-           @> (fun ju -> CR.t_assm_comp assm [assm_len,L.length ju.ju_se.se_gdef - 1] subst ju)
-         ; CR.t_id])
+           @> (fun ju -> CT.t_assm_comp assm [assm_len,L.length ju.ju_se.se_gdef - 1] subst ju)
+         ; CT.t_id])
   in
   let sconjs = destr_Land sassm_ev in
   let sineq = L.hd (L.filter is_Not sconjs) in
@@ -435,8 +436,8 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   if is_Land ju.ju_se.se_ev &&
      L.exists (fun e ->
        equal_expr (NormUtils.abbrev_ggen e) snineq) (destr_Land ju.ju_se.se_ev)
-  then CR.t_assm_comp assm [] subst ju >>= fun ps -> ret (None,ps)
-  else CR.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
+  then CT.t_assm_comp assm [] subst ju >>= fun ps -> ret (None,ps)
+  else CT.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
 
 let t_assm_comp_aux ?icases:(icases=Se.empty) ts before_t_assm assm mev_e ju =
   let se = ju.ju_se in
@@ -458,8 +459,8 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) ts before_t_assm assm mev_e ju =
     (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
   incr tries;
   try
-    CR.t_id ju >>= fun ps ->
-    CR.rapply_all
+    CT.t_id ju >>= fun ps ->
+    CT.rapply_all
       (t_assm_comp_match ~icases ts (before_t_assm) assm subst mev_e) ps
   with
     Invalid_rule s -> log_d (lazy s); mempty
@@ -492,12 +493,12 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
        parallel_swaps old_new_pos
     |> L.filter_map
         (fun (old_p,delta) ->
-          if delta = 0 then None else Some (CR.t_swap old_p delta))
+          if delta = 0 then None else Some (CT.t_swap old_p delta))
   in
   (* let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) match_samps in *)
   let excepts =
     L.filter_map
-      (fun (i,(_,(_,es))) -> if es<>[] then Some (CR.t_except i []) else None)
+      (fun (i,(_,(_,es))) -> if es<>[] then Some (CT.t_except i []) else None)
       match_samps
   in
   (* FIXME: use case_ev and rfalse to handle case with missing events *)
@@ -519,14 +520,14 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
     )
   in
   let before_t_assm =
-    CR.t_remove_ev remove_events
+    CT.t_remove_ev remove_events
     (* @> t_norm_unknown ts priv_exprs *)
     @> t_seq_fold excepts
     @> t_seq_fold swaps
   in
   guard (not (is_Land aev && not (is_Land ev))) >>= fun _ ->
   before_t_assm ju >>= fun ps ->
-  CR.rapply_all
+  CT.rapply_all
     (t_assm_comp_aux ~icases ts before_t_assm assm mev_e) ps >>= fun (ot,ps) ->
   match ot with
   | Some t -> t ju
@@ -593,12 +594,12 @@ let t_assm_comp_exact ts maname mrngs ju =
   let conv_event ju =
     let se = ju.ju_se in
     let a_rn = inst_comp ren assm in
-    (   CR.t_conv true { se with se_ev=a_rn.ac_event }
-     @> CR.t_assm_comp assm rngs ren) ju
+    (   CT.t_conv true { se with se_ev=a_rn.ac_event }
+     @> CT.t_assm_comp assm rngs ren) ju
   in
 
   log_t (lazy (fsprintf "t_assm_comp_exact ren: %a" pp_ren ren));
-  (CR.t_assm_comp assm rngs ren @|| conv_event) ju
+  (CT.t_assm_comp assm rngs ren @|| conv_event) ju
 
 let t_assm_comp ?icases:(icases=Se.empty) ts exact maname mrngs ju =
   if exact then
