@@ -23,6 +23,8 @@
   "let"
   "extract"
   "bound_adv"
+  "bound_succ"
+  "bound_dist"
   "oracle"
   "bilinear map"
 
