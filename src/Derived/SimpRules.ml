@@ -14,8 +14,7 @@ open CoreTypes
 open RewriteRules
 
 module CR = CoreRules
-module CTy = CoreTypes
-module CT = CoreTactic
+module T  = Tactic
 module Ht = Hashtbl
 
 let _log_t ls  = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
@@ -39,7 +38,7 @@ let t_split_ev_maybe mi ju =
     guard (L.length (destr_Tuple a) = L.length (destr_Tuple b)) >>= fun _ ->
     ret i
   ) >>= fun i ->
-  CT.t_split_ev i ju
+  T.t_split_ev i ju
 
 let t_rewrite_ev_maybe mi mdir ju =
   let ev = ju.ju_se.se_ev in
@@ -67,7 +66,7 @@ let t_rewrite_ev_maybe mi mdir ju =
         then ret RightToLeft else mempty ] >>= fun dir ->
     ret (i,dir)
   ) >>= fun (i,dir) ->
-  (CT.t_ensure_progress (CT.t_rw_ev i dir)) ju
+  (T.t_ensure_progress (T.t_rw_ev i dir)) ju
 
 let t_ctx_ev_maybe mi ju =
   log_i (lazy (fsprintf "ctx_ev_maybe: %i" (O.default (-1) mi)));
@@ -91,7 +90,7 @@ let t_ctx_ev_maybe mi ju =
   let diff,cdiff = if is_FZ e2 then (e1,ce) else (mk_FMinus e1 e2,mk_FMinus ce e2) in
   let c = mk_FDiv cdiff diff in
   log_i (lazy (fsprintf "ctx_ev_maybe: %i, %a" i pp_expr e));
-  (CT.t_ctxt_ev i (cv,c) @> t_norm ~fail_eq:false) ju
+  (T.t_ctxt_ev i (cv,c) @> t_norm ~fail_eq:false) ju
 
 let t_rewrite_oracle_maybe mopos mdir ju =
   (match mopos with
@@ -109,10 +108,10 @@ let t_rewrite_oracle_maybe mopos mdir ju =
       ; if (is_V b || is_GLog b) then (ret RightToLeft) else mempty ] >>= fun dir ->
     ret (opos,dir)
   ) >>= fun (opos,dir) ->
-  (CT.t_ensure_progress (CT.t_rewrite_oracle opos dir)) ju
+  (T.t_ensure_progress (T.t_rewrite_oracle opos dir)) ju
 
 let t_fix must_finish max t ju =
-  let ps0 = first (CT.t_id ju) in
+  let ps0 = first (T.t_id ju) in
   let rec aux i ps =
     let gs = ps.CR.subgoals in
     let npss = mapM t gs in
@@ -158,14 +157,14 @@ let rec t_split_ineq i ju =
   let rec tac eqs =
     match eqs with
     | []      -> t_simp true 20
-    | eq::eqs -> CT.t_case_ev eq @>> [ tac eqs; CT.t_id ]
+    | eq::eqs -> T.t_case_ev eq @>> [ tac eqs; T.t_id ]
   in
   tac (eqs@deqs) ju
 
 and t_simp i must_finish ju =
   let step =
-    (   (t_norm ~fail_eq:true @|| CT.t_id)
-     @> (    CT.t_false_ev 
+    (   (t_norm ~fail_eq:true @|| T.t_id)
+     @> (    T.t_false_ev 
          @|| t_rewrite_oracle_maybe None None
          @|| t_split_ev_maybe None
          @|| t_ctx_ev_maybe None

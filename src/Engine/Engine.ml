@@ -24,7 +24,7 @@ module Ht = Hashtbl
 module PT = ParserTypes
 module PU = ParserUtil
 module CR = CoreRules
-module CT = CoreTactic
+module T = Tactic
 
 let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
 (*i*)
@@ -107,7 +107,7 @@ let t_swap inter delta ju =
       else tacerror "swap: invalid position %i" p
   in  
   let li = list_from_to i1 (i2+1) in
-  let lt = L.map (fun i -> CT.t_swap i delta) li in
+  let lt = L.map (fun i -> T.t_swap i delta) li in
   if delta < 0 then Rules.t_seq_fold lt ju
   else Rules.t_seq_fold (L.rev lt) ju
 
@@ -127,7 +127,7 @@ let handle_tactic ts tac =
   let apply ?adecls r =
     try
       let ts = O.map_default (fun ad -> { ts with ts_adecls = ad }) ts adecls in
-      let pss = CT.apply_first r ps in
+      let pss = T.apply_first r ps in
       begin match pull pss with
       | Left None     -> tacerror "tactic failed, no error message"
       | Left (Some s) -> tacerror "%s" (Lazy.force s)
@@ -167,11 +167,11 @@ let handle_tactic ts tac =
   
     | PT.Rswap(i,j)            -> t_swap i j ju
     | PT.Rdist_eq              -> Rules.t_dist_eq ju
-    | PT.Rdist_sym             -> CT.t_dist_sym ju
-    | PT.Rremove_ev(is)        -> CT.t_remove_ev is ju
-    | PT.Rsplit_ev(i)          -> CT.t_split_ev (e_pos i) ju
+    | PT.Rdist_sym             -> T.t_dist_sym ju
+    | PT.Rremove_ev(is)        -> T.t_remove_ev is ju
+    | PT.Rsplit_ev(i)          -> T.t_split_ev (e_pos i) ju
     | PT.Rsplit_ineq(i)        -> SimpRules.t_split_ineq (e_pos i) ju
-    | PT.Rrewrite_ev(i,d)      -> CT.t_rw_ev (e_pos i) d ju
+    | PT.Rrewrite_ev(i,d)      -> T.t_rw_ev (e_pos i) d ju
     | PT.Rcrush(finish,mi)     -> t_crush finish mi ts ps ju
   
       (* FIXME: all tactics interpreted wrt. the same theory state,
@@ -180,7 +180,7 @@ let handle_tactic ts tac =
       t_seq_fold (L.map interp_tac tacs) ju
 
     | PT.Rcase_ev(Some(se)) ->
-      CT.t_case_ev (parse_ev se) ju
+      T.t_case_ev (parse_ev se) ju
   
     | PT.Rsubst(i,e1,e2,mupto) ->
       t_subst (O.map_default get_pos 0 i) (parse_e e1) (parse_e e2)
@@ -195,15 +195,15 @@ let handle_tactic ts tac =
       t_case_ev_maybe ju
   
     | PT.Rexcept(Some(i),Some(ses)) ->
-      CT.t_except (get_pos i) (L.map (parse_e) ses) ju
+      T.t_except (get_pos i) (L.map (parse_e) ses) ju
   
     | PT.Rexcept(i,ses) ->
       t_rexcept_maybe (O.map get_pos i) ses ju
   
-    | PT.Rswap_oracle(op,j)    -> CT.t_swap_oracle op j ju
-    | PT.Rrewrite_orcl(op,dir) -> CT.t_rewrite_oracle op dir ju
+    | PT.Rswap_oracle(op,j)    -> T.t_swap_oracle op j ju
+    | PT.Rrewrite_orcl(op,dir) -> T.t_rewrite_oracle op dir ju
   
-    | PT.Rfalse_ev             -> CT.t_false_ev ju
+    | PT.Rfalse_ev             -> T.t_false_ev ju
     | PT.Rindep(exact)         -> t_random_indep ts exact ju
   
     | PT.Rnorm_unknown(is) ->
@@ -234,7 +234,7 @@ let handle_tactic ts tac =
       
     | PT.Rassert(i,Some se) ->
       let e = parse_e se in
-      CT.t_assert (get_pos i) e ju
+      T.t_assert (get_pos i) e ju
 
     | PT.Rassert(i,None) ->
       let t_remove_assert ju =
@@ -242,16 +242,16 @@ let handle_tactic ts tac =
         match get_se_ctxt se (get_pos i) with
         | GAssert(e), sec ->
           let se_new = set_se_ctxt [] sec in
-          (CT.core_tactic (CR.ct_trans se_new)
-           @>> [ CT.core_tactic CR.ct_dist_sym @> CT.core_tactic (CR.ct_assert (get_pos i) e)
-                 @>> [ CT.t_id; Rules.t_dist_eq]
-               ; CT.t_id ]) ju
+          (T.core_tactic (CR.ct_trans se_new)
+           @>> [ T.core_tactic CR.ct_dist_sym @> T.core_tactic (CR.ct_assert (get_pos i) e)
+                 @>> [ T.t_id; Rules.t_dist_eq]
+               ; T.t_id ]) ju
         | _ ->
           tacerror "no assert at given position %i" (get_pos i)
       in
       t_remove_assert ju
 
-    | PT.Rswap_to_main(i_j_k,vs)  -> CT.core_tactic (CR.ct_swap_main i_j_k vs) ju
+    | PT.Rswap_to_main(i_j_k,vs)  -> T.core_tactic (CR.ct_swap_main i_j_k vs) ju
 
     | PT.Rswap_to_orcl(p,(i,j,k),sv) ->
       let ci = get_pos p in
@@ -283,9 +283,9 @@ let handle_tactic ts tac =
           in
           let lcright = L.map (map_lcmd_exp subst) seoc.seoc_cright in
           let se = set_se_octxt [LSamp(vso,d)] { seoc with seoc_cright = lcright } in
-          (CT.t_trans se @>> [ CT.t_dist_sym
-                               @> CT.t_swap_main (i-1,j,k) "rr" @> t_dist_eq
-                             ; CT.t_id]) ju
+          (T.t_trans se @>> [ T.t_dist_sym
+                               @> T.t_swap_main (i-1,j,k) "rr" @> t_dist_eq
+                             ; T.t_id]) ju
         | _ -> tacerror "cannot swap sampling to oracle, given position not a sampling"
       in
       t_swap_to_orcl ju
@@ -302,17 +302,17 @@ let handle_tactic ts tac =
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
       let ev2 = PU.ev_of_parse_ev vmap2 ts sev in
-      CT.t_conv true { se_gdef = gd2; se_ev = ev2 } ju
+      T.t_conv true { se_gdef = gd2; se_ev = ev2 } ju
 
     | PT.Rconv(None,sev) ->
       let ev2 = PU.ev_of_parse_ev vmap_g ts sev in
-      CT.t_conv true { se_gdef = ju.ju_se.se_gdef; se_ev = ev2 } ju
+      T.t_conv true { se_gdef = ju.ju_se.se_gdef; se_ev = ev2 } ju
   
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
       let ev2 = PU.ev_of_parse_ev vmap2 ts sev in
-      CT.t_trans { se_gdef = gd2; se_ev = ev2 } ju
+      T.t_trans { se_gdef = gd2; se_ev = ev2 } ju
 
     | PT.Rtrans_diff(dcmds) ->
       let vmap = Hashtbl.copy vmap_g in
@@ -350,7 +350,7 @@ let handle_tactic ts tac =
           app_diff dcmds { ju with ju_se = (set_se_ctxt gcmds sec) }
       in
       let t_diff ju =
-        CT.t_trans (app_diff dcmds ju) ju
+        T.t_trans (app_diff dcmds ju) ju
       in
       t_diff ju
   
@@ -364,7 +364,7 @@ let handle_tactic ts tac =
     | PT.Rexcept_orcl(op,pes) ->
       let vmap = GameUtils.vmap_in_orcl ju.ju_se op in
       let es = L.map (PU.expr_of_parse_expr vmap ts Unqual) pes in
-      CT.t_except_oracle op es ju
+      T.t_except_oracle op es ju
   
     | PT.Rctxt_ev (mj,Some(sv,_mt,e)) ->
       let j = match mj with
@@ -389,7 +389,7 @@ let handle_tactic ts tac =
       let v1 = PU.create_var vmap ts Unqual sv ty in
       let e1 = PU.expr_of_parse_expr vmap ts Unqual e in
       let c = v1, e1 in
-      CT.t_ctxt_ev j c ju
+      T.t_ctxt_ev j c ju
 
     | PT.Rswap_quant_ev _j -> fixme "undefined"
        (* CR.t_swap_quant_ev j ju *)
@@ -458,7 +458,7 @@ let handle_tactic ts tac =
       let oname = Id.name seoc.seoc_osym.Osym.id in
       let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts ~oname) lcmds in
       let eret = PU.expr_of_parse_expr vmap ts (Qual oname) eret in
-      CT.t_hybrid i j lcmds eret ju
+      T.t_hybrid i j lcmds eret ju
 
     | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) | PT.Rguard _ ->
       tacerror "add_test and debugging tactics cannot be combined with ';'"
@@ -500,7 +500,7 @@ let handle_tactic ts tac =
         L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty)
           fvs vs
       in
-      CT.t_guess asym fvs ju
+      T.t_guess asym fvs ju
     | PT.Rfind((bd,body),arg,aname,fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
@@ -529,7 +529,7 @@ let handle_tactic ts tac =
           PU.expr_of_parse_expr vmap_se ts Unqual body in
         bd,body in
       
-      CT.t_find f arg asym fvs ju
+      T.t_find f arg asym fvs ju
   in
 
   let vmap_g = GameUtils.vmap_of_globals ju.ju_se.se_gdef in
@@ -560,7 +560,7 @@ let handle_tactic ts tac =
       | [fv] -> [ PU.create_var vmap ts Unqual fv oty ]
       | _    -> L.map2 (fun v ty -> PU.create_var vmap ts Unqual v ty) fvs tys
     in
-    apply ~adecls (CT.t_add_test opos t asym fvs)
+    apply ~adecls (T.t_add_test opos t asym fvs)
           
   | PT.Radd_test(None,None,None,None) ->
     apply t_add_test_maybe
@@ -611,7 +611,7 @@ let handle_tactic ts tac =
     let vmap = GameUtils.vmap_in_orcl se opos in
     let oname = Id.name seoc.seoc_osym.Osym.id in
     let t = O.map (PU.expr_of_parse_expr vmap ts (Qual oname)) t in
-    apply (CT.t_guard opos t)
+    apply (T.t_guard opos t)
 
   | _ ->
     apply (interp_tac tac)              
@@ -758,7 +758,7 @@ let handle_instr verbose ts instr =
     let se = PU.se_of_parse_se vmap ts gd e in
     let pt = match instr with PT.JudgAdv _ -> Pr_Adv | _ -> Pr_Succ in
     let ju = { ju_se = se; ju_pr = pt } in
-    let ps = first (CT.t_id ju) in
+    let ps = first (T.t_id ju) in
     ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }
     , "Started proof of judgment.")
 
@@ -768,7 +768,7 @@ let handle_instr verbose ts instr =
     let vmap2 = Ht.create 137 in
     let se2 = PU.se_of_parse_se vmap2 ts gd2 e2 in
     let ju = { ju_se = se1; ju_pr = Pr_Dist se2 } in
-    let ps = first (CT.t_id ju) in
+    let ps = first (T.t_id ju) in
     ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }
     , "Started proof of judgment.")
 
@@ -820,7 +820,7 @@ let handle_instr verbose ts instr =
   | PT.Last ->
     begin match ts.ts_ps with
     | ActiveProof(ps,uback,back,ops) ->
-      ({ ts with ts_ps = ActiveProof(CT.move_first_last ps,uback,back,ops) }
+      ({ ts with ts_ps = ActiveProof(T.move_first_last ps,uback,back,ops) }
       , "Delayed current goal")
     | _ -> tacerror "last: no goals"
     end
@@ -829,7 +829,7 @@ let handle_instr verbose ts instr =
     begin match ts.ts_ps with
     | ActiveProof(ps,_,_,_) ->
       ({ts with ts_ps =
-          ActiveProof(first (CT.apply_first (CT.t_admit "") ps),[],mempty,Some(ps))}
+          ActiveProof(first (T.apply_first (T.t_admit "") ps),[],mempty,Some(ps))}
       , "Admit goal.")
     | _ -> tacerror "admit: no goals"
     end

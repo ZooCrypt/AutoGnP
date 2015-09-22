@@ -13,7 +13,7 @@ val t_rnd_maybe :
   -> parse_ctx option
   -> parse_ctx option
   -> Expr.expr option
-  -> CoreTactic.tactic
+  -> Tactic.tactic
 
 val t_rnd_oracle_maybe :
   ?i_rvars:Syms.Vsym.S.t
@@ -21,4 +21,4 @@ val t_rnd_oracle_maybe :
   -> Game.ocmd_pos option
   -> parse_ctx option
   -> parse_ctx option
-  -> CoreTactic.tactic
+  -> Tactic.tactic

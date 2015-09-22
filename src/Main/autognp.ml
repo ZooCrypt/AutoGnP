@@ -1,6 +1,6 @@
 (* * Simple batch proof processor with Emacs mode *)
 
-open Tactic
+open Engine
 open ExprUtils
 open Abbrevs
 open Util

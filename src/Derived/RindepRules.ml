@@ -15,7 +15,7 @@ open RewriteRules
 
 module Ht = Hashtbl
 module CR = CoreRules
-module CT = CoreTactic
+module T  = Tactic
 
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RindepRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RindepRules" ls
@@ -28,9 +28,9 @@ let t_merge_ev tomerge ju =
   let tomerge = List.sort Pervasives.compare tomerge in
   let rec tac k tomerge ju = 
     match tomerge with
-    | [] | [_]-> CT.t_id ju
+    | [] | [_]-> T.t_id ju
     | i::j::tomerge -> 
-      (CT.t_merge_ev (i-k) (j-k) @> tac (k+1) (j::tomerge)) ju in
+      (T.t_merge_ev (i-k) (j-k) @> tac (k+1) (j::tomerge)) ju in
   tac 0 tomerge ju
 
 (* ** Automate random independence.
@@ -93,7 +93,7 @@ let t_last_random_indep ts ju =
                    pp_expr er (pp_list "," (pp_pair pp_expr pp_expr))
                    (L.map (fun (a,b) -> (a,expr_of_inverter b)) known)));
     begin match exc_to_opt (fun () -> Deduc.invert ts known er) with
-    | None -> CT.t_fail "cannot find inverter" ju
+    | None -> T.t_fail "cannot find inverter" ju
     | Some inv ->
       let used = e_vars inv in
       let tomerge = List.filter (fun (_,_,_,_,x) -> Se.mem x used) ms in
@@ -121,14 +121,14 @@ let t_last_random_indep ts ju =
       in
       let pos = pos - (L.length tomerge - 1) in
       (t_merge_ev tomergei @>
-        CT.t_ctxt_ev pos ctxt @>
+        T.t_ctxt_ev pos ctxt @>
         t_norm_tuple_proj  @>
-        CT.t_random_indep) ju
+        T.t_random_indep) ju
     end
-  | _ -> CT.t_fail "The last instruction is not a sampling" ju
+  | _ -> T.t_fail "The last instruction is not a sampling" ju
 
 let t_random_indep_exact ju =
-  CT.t_random_indep ju
+  T.t_random_indep ju
 
 let t_random_indep_no_exact emaps ju =
   let se = ju.ju_se in
@@ -140,7 +140,7 @@ let t_random_indep_no_exact emaps ju =
     | Game.GSamp(v,_) :: rc ->
       if Se.mem (mk_V v) ev_vars then (
         log_t (lazy (fsprintf "trying variable %a" Vsym.pp v));
-        (CT.t_swap (L.length rc) i @> (CT.t_random_indep @|| t_last_random_indep emaps)) @||
+        (T.t_swap (L.length rc) i @> (T.t_random_indep @|| t_last_random_indep emaps)) @||
         (aux (i+1) rc)
       ) else (
         aux (i+1) rc
@@ -149,7 +149,7 @@ let t_random_indep_no_exact emaps ju =
     | [] ->
       fun _ -> mfail (lazy "rindep auto: can not find an independent random variable")
   in
-  (CT.t_random_indep @|| aux 0 (L.rev se.se_gdef)) ju
+  (T.t_random_indep @|| aux 0 (L.rev se.se_gdef)) ju
 
 let t_random_indep ts exact ju =
   if exact

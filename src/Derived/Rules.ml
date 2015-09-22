@@ -12,7 +12,7 @@ open Game
 open Assumption
 open CoreTypes
 open CoreRules
-open CoreTactic
+open Tactic
 
 module Ht = Hashtbl
 (*i*)
@@ -63,7 +63,7 @@ let t_dist_eq ju =
     if equal_sec_exp se se' then
       core_tactic CoreRules.ct_dist_eq ju
     else
-      (CoreTactic.t_conv true se' @> core_tactic CoreRules.ct_dist_eq) ju
+      (Tactic.t_conv true se' @> core_tactic CoreRules.ct_dist_eq) ju
   | _ ->
     tacerror "dist_eq: Dist judgment expected"
 

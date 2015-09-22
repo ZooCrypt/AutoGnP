@@ -1,6 +1,6 @@
 (* * Automated derived rules *)
 
-open CoreTactic
+open Tactic
 open CoreRules
 open TheoryTypes
 

@@ -9,7 +9,7 @@ val t_assm_dec :
   direction option ->
   ((int * int) list) option ->
   (string list) option ->
-  CoreTactic.tactic
+  Tactic.tactic
 
 val t_assm_comp :
   ?icases:Expr.Se.t ->
@@ -17,4 +17,4 @@ val t_assm_comp :
   bool ->
   string option ->
   ((int * int) list) option ->
-  CoreTactic.tactic
+  Tactic.tactic

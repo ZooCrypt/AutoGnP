@@ -12,7 +12,7 @@ open NormUtils
 open NormField
 open Game
 open CoreTypes
-open CoreTactic
+open Tactic
 open TheoryTypes
 
 module Ht = Hashtbl

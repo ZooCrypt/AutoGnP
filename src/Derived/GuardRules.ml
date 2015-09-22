@@ -8,7 +8,7 @@ open CoreTypes
 open Nondet
 
 module CR = CoreRules
-module CT = CoreTactic
+module T = Tactic
 
 let t_guess_maybe _ts masym mvars ju =
   let se = ju.ju_se in
@@ -29,4 +29,4 @@ let t_guess_maybe _ts masym mvars ju =
     | None ->
       L.map (fun v -> Vsym.mk (Id.name v.Vsym.id) v.Vsym.ty) vs
   in
-  CT.t_guess asym vars ju
+  T.t_guess asym vars ju

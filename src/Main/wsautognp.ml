@@ -3,7 +3,7 @@
 (*i*)
 open Util
 open Abbrevs
-open Tactic
+open Engine
 open CoreRules
 open TheoryTypes
 open TheoryState

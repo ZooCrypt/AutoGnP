@@ -10,7 +10,7 @@ S src/Main/
 S src/Norm/
 S src/Parser/
 S src/Poly/
-S src/Tactic/
+S src/Engine/
 S src/Util/
 
 B _build/src/CAS/
@@ -24,7 +24,7 @@ B _build/src/Main/
 B _build/src/Norm/
 B _build/src/Parser/
 B _build/src/Poly/
-B _build/src/Tactic/
+B _build/src/Engine/
 B _build/src/Util/
 
 PKG unix websocket yojson ctypes bolt lwt lwt.ppx uri cohttp.lwt ppx_deriving.std containers nocrypto.lwt conduit batteries
