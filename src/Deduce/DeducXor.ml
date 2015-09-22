@@ -1,15 +1,18 @@
-(*s Deducibility for XOR expressions. *)
+(* * Deducibility for XOR expressions. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Expr
 open ExprUtils
 open Util
 open Type
 open Syms
-(*i*)
 
 module Ht = Hashtbl
 module L = List
+
+
+(* ** Solving function
+ * ----------------------------------------------------------------------- *)
 
 let direct_subterms o s es = 
   let go acc e =
@@ -63,7 +66,9 @@ let solve_xor (ecs : (expr * inverter) list) e =
   in
   I ctxt
 
-(*i*)
+(* ** Tests
+ * ----------------------------------------------------------------------- *)
+
 let _test_solve_xor_1 () =
   let l = Lenvar.mk "l" in
   let t = mk_BS l in
@@ -109,4 +114,3 @@ let _test_solve_xor_3 () =
   let p3 = mk_V (Vsym.mk "p3" t) in    
   let I s = solve_xor [(p1,I a); (p2,I b); (p3,I c)] d in
   failwith (fsprintf "3. Deduced context %a\n%!" pp_expr s)
-(*i*)

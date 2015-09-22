@@ -1,3 +1,5 @@
+(* * Bindings to factory C++ library for polynomial arithmetic (used in Singular) *)
+
 open Poly
 
 val div : ipoly -> ipoly -> ipoly

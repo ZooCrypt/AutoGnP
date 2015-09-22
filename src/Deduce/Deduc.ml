@@ -1,4 +1,4 @@
-(*s Deducibility of expressions. *)
+(* * Deducibility of expressions. *)
 
 (*i*)
 open Abbrevs

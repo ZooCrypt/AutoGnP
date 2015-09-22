@@ -1,6 +1,6 @@
-(*s Deducibility for group expressions. *)
+(* * Deducibility for group expressions. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open Syms
@@ -9,9 +9,11 @@ open Expr
 open ExprUtils
 open NormField
 open Norm
-(*i*)
 
 let log_i _ = ()
+
+(* ** Solving function
+ * ----------------------------------------------------------------------- *)
 
 (* NOTE: For now, we do not deal with rational functions in the
    exponent. It might be possible to generalize the current algorithm

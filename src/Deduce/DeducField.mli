@@ -1,10 +1,8 @@
-(*s Deducibility for field expressions. *)
+(* * Deducibility for field expressions. *)
 
-(*i*)
 open Syms
 open Expr
 open ExprUtils
-(*i*)
 
 (** [solve_fq ecs e] tries to compute a field context that
     deduces [e] from [List.map snd es] and returns the

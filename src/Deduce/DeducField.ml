@@ -1,6 +1,6 @@
-(*s Deducibility for field expressions. *)
+(* * Deducibility for field expressions. *)
 
-(*i*)
+(* ** Imports *)
 open Abbrevs
 open Util
 open Syms
@@ -9,7 +9,9 @@ open Expr
 open ExprUtils
 open NormField
 open Norm
-(*i*)
+
+(* ** Special purpose routines
+ * ----------------------------------------------------------------------- *)
 
 (** Special purpose routine to deduce a variable [v] from an expression [e]
     assuming all other variables are known. *)
@@ -90,6 +92,9 @@ let solve_fq (ecs : (expr * inverter) list) e =
   ) else (
     I (solve_fq_var ecs e)
   )
+
+(* ** Solving for mixed types
+ * ----------------------------------------------------------------------- *)
 
 let solve_mixed_type k s =
   let ty_k, ty_s = k.e_ty, s.Vsym.ty in
