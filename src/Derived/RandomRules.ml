@@ -1,6 +1,6 @@
-(*s Derived rules for dealing with random samplings. *)
+(* * Derived rules for dealing with random samplings. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open Nondet
@@ -22,10 +22,10 @@ module PT = ParserTypes
 let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RandomRules" ls
 let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RandomRules" ls
 let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "RandomRules" ls
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Derived rule for random sampling} *)
+
+(* ** Derived rule for random sampling
+ * ------------------------------------------------------------------- *)
 
 (** Parse given context: bound name overshadows name in game *)
 let parse_ctxt ts sec ty (sv,se) =
@@ -43,7 +43,9 @@ let useful_subexprs se rv mgen e =
      not chosen by adversary, avars cannot be made non-zero usually  *)
   let evars = e_vars e in
   let avars =
-    Se.of_list (conc_map (function GCall(vs,_,_,_) -> L.map mk_V vs | _ -> []) se.se_gdef)
+    Se.of_list
+      (conc_map (function GCall(vs,_,_,_) -> L.map mk_V vs | _ -> [])
+         se.se_gdef)
   in
   let fac_candidates =
     Se.elements (Se.diff evars avars)
@@ -78,7 +80,9 @@ let useful_subexprs se rv mgen e =
   | None    -> mplus (ret e) (msum (L.map get_coeff fac_candidates))
   | Some ge ->
     let lge = if is_G ge.e_ty then  mk_GLog ge else ge in
-    let fac_candidates = L.filter (fun e -> not (equal_expr e lge)) fac_candidates in
+    let fac_candidates =
+      L.filter (fun e -> not (equal_expr e lge)) fac_candidates
+    in
     msum ((get_coeff lge)::(ret e)::(L.map get_coeff fac_candidates))
 
 (** Compute useful contexts from occurences of random variable *)
@@ -113,7 +117,8 @@ let check_tannot ts ty mty =
   | Some pty ->
     let ety = ty_of_parse_ty ts pty in
     if not (equal_ty ty ety) then
-      tacerror "wrong type annotation: expected %a, got %a" pp_ty ty pp_ty ety
+      tacerror "wrong type annotation: expected %a, got %a"
+        pp_ty ty pp_ty ety
 
 
 (** rnd tactic that tries out useful contexts for given random variable *)
@@ -142,7 +147,9 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     ret ((v1,e1), deduc e1 v1)
   | None, None ->
     let e2s =
-      run (-1) (contexts se rv mgen) |> L.map NormUtils.norm_expr_nice |> L.sort_uniq compare_expr
+      run (-1) (contexts se rv mgen)
+      |> L.map NormUtils.norm_expr_nice
+      |> L.sort_uniq compare_expr
     in
     mconcat (L.map (fun e2 -> (rv,e2)) e2s) >>= fun (v2,e2) ->
     ret (deduc e2 v2, (v2,e2))
@@ -154,32 +161,45 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     ignore (CR.rrnd i (v1,e1) (v2,e2) ju);
     CR.t_rnd i (v1,e1) (v2,e2) ju
    with
-   (* try different strategies to prevent failures by applying other tactics beforehand *)
+   (* try different strategies to prevent failures by applying other
+      tactics beforehand *)
    | Invalid_rule s -> 
      mfail (lazy s)
    | Wf.Wf_var_undef(vs,e,def_vars) ->
-     let ls = lazy (fsprintf "t_rnd_pos: variable %a undefined in %a, not in %a"
-                      Vsym.pp vs pp_expr e
-                      (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
+     let ls =
+       lazy
+         (fsprintf "t_rnd_pos: variable %a undefined in %a, not in %a"
+            Vsym.pp vs pp_expr e
+            (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
      log_i ls;
      mfail ls
    | Wf.Wf_div_zero (ze::_ as es) ->
-     let ls = lazy (fsprintf "t_rnd_pos: non-zero required for %a" (pp_list ",@," pp_expr) es) in
+     let ls =
+       lazy
+         (fsprintf "t_rnd_pos: non-zero required for %a"
+            (pp_list ",@," pp_expr) es)
+     in
      log_i ls;
      let nz_in_ev () =
        let wfs = Wf.wf_gdef Wf.NoCheckDivZero se.se_gdef in
        try
-         let test_ev = mk_Land [se.se_ev; mk_Eq (mk_FDiv mk_FOne ze) mk_FOne] in
+         let test_ev =
+           mk_Land [se.se_ev; mk_Eq (mk_FDiv mk_FOne ze) mk_FOne]
+         in
          Wf.wf_expr Wf.CheckDivZero wfs test_ev;
          true
        with
          Wf.Wf_div_zero _ -> false
      in
      if not (Se.mem (mk_V rv) (read_gcmds se.se_gdef)) && nz_in_ev () then (
-       (* try to apply (d=0)?1:d trick here: We assume c2 is of the form r*ze + a *)
+       (* try to apply (d=0)?1:d trick here:
+          We assume c2 is of the form r*ze + a *)
        let gze = mk_Ifte (mk_Eq ze mk_FZ) mk_FOne ze in
        let re  = mk_V rv in
-       let e2' = NormUtils.norm_expr_nice (e_replace re (mk_FMult [mk_FDiv re ze; gze]) e2) in
+       let e2' =
+         NormUtils.norm_expr_nice
+           (e_replace re (mk_FMult [mk_FDiv re ze; gze]) e2)
+       in
        let e1' = DeducField.solve_fq_vars_known e2' v2 in
        let simp_guard ju =
          let ev_idx = L.length (destr_Land_nofail ju.ju_se.se_ev) -1 in
@@ -193,13 +213,14 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
          SimpRules.t_simp true 20 ju
        in
        (CR.t_rnd i (v2,e1') (v2,e2') @>
-        CR.t_case_ev ~allow_existing:true (mk_Eq ze mk_FZ) @>> [ discharge; simp_guard ]) ju
+        CR.t_case_ev ~allow_existing:true (mk_Eq ze mk_FZ) @>>
+        [ discharge; simp_guard ]) ju
      ) else (
        mfail ls
      )
 
 (** rnd tactic that tries all positions and contexts if none are given *)
-let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
+let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctx1 mctx2 mgen ju =
   let se = ju.ju_se in
 
   (* try all sampling positions if none is given *)
@@ -216,7 +237,7 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
   log_t (lazy (fsprintf "sampling: %i, %a@\n%!" i Vsym.pp rv));
 
   (* swap (if requested) and continue with fixed position *)
-  let rnd i = t_rnd_pos ts mctxt1 mctxt2 rv mgen i in
+  let rnd i = t_rnd_pos ts mctx1 mctx2 rv mgen i in
   if exact then rnd i ju
   else
     (t_swap_max ToEnd i vs @>= fun i ->
@@ -224,8 +245,8 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctxt1 mctxt2 mgen ju =
      rnd i)
     ju
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Random rule in oracle} *)
+(* ** Random rule in oracle
+ * ----------------------------------------------------------------------- *)
 
 (** Parse given context: bound name overshadows name in game *)
 let parse_ctxt_oracle ts opos sec ty (sv,se) =
@@ -238,8 +259,8 @@ let parse_ctxt_oracle ts opos sec ty (sv,se) =
   (v,expr_of_parse_expr vmap ts (Qual oname) se)
 
 
-(** rnd\_oracle tactic that tries all useful contexts if none are given *)
-let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
+(** [t_rnd_oracle_maybe] tries all useful contexts if none are given *)
+let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctx1 mctx2 ju =
   let se = ju.ju_se in
   let osamps = osamplings se.se_gdef in
   let deduc = DeducField.solve_mixed_type in
@@ -252,7 +273,7 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
   guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
   log_t (lazy (fsprintf "###############################\n%!"));
   log_t (lazy (fsprintf "t_rnd_oracle_maybe (%i,%i,%i)\n%!" i j k));
-  (match mctxt1, mctxt2 with
+  (match mctx1, mctx2 with
   | Some (sv1,mt1,se1), Some (sv2,mt2,se2) ->
     let v2_ty = rv_ty in
     check_tannot ts v2_ty mt2;
@@ -279,9 +300,3 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctxt1 mctxt2 ju =
     (* FIXME: for CS bycrush, we excluded contexts rv -> - rv *)
   ) >>= fun ((v1,e1),(v2,e2)) ->
   CR.t_rnd_oracle (i,j,k,ootype) (v1,e1) (v2,e2) ju
-
-
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Rule for handling b?r1:r2 where r1 and r2 are not used anywhere else} *)
-
-

@@ -22,8 +22,8 @@ let decode s =
   BatString.nreplace ~str:s ~sub:"\\<^newline>" ~by:"\n"
 
 let eval_emacs () =
-  let exec_instr cmd =
-    let cmd = decode cmd in
+  let exec_instr cmd0 =
+    let cmd = decode cmd0 in
     let (ts,msg) =
       if BatString.starts_with cmd "undo " then (
         let cur_statenum = ts_statenum () in
@@ -85,9 +85,10 @@ let eval_emacs () =
          outp (fsprintf "[error-%i-%i]%s"
                  pe.PT.pe_char_start pe.PT.pe_char_end
                  (PT.error_string "<emacs>" pe))
-       | Invalid_rule s ->
-         outp (fsprintf "[error-0-3]invalid rule application: %s" s)
-       | Expr.TypeError  e ->
+       | Invalid_rule es ->
+         outp (fsprintf "[error-0-%i]invalid rule application: %s"
+                           (String.length s) es)
+       | Expr.TypeError e ->
          outp (fsprintf "[error-0-3]type error: %s"
                  (ExprUtils.typeError_to_string e))
        | e ->

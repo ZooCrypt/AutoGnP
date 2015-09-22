@@ -6,3 +6,6 @@ zoocrypt.log
 /deps.svg
 /scripts/dot_of_depend.py
 *.bak
+_build/*
+proofgeneral/_local/*
+extraction/*.ec

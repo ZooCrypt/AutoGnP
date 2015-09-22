@@ -75,13 +75,15 @@ bound_adv
   
   (* add test to Dec2 *)
   guard (12,1,3) (a^w = a').
-    last. bycrush.
+    last.
+    bycrush.
   
   (* exclude hash collision *)
   swap (12,1,3) -1.
   simp. norm.
   case_ev H(a,a',c) = H(g^u,g^v,g^z2).
-    last. guess A3 a a' c d. bycrush. 
+    last. guess A3 a a' c d.
+    bycrush.
   simp. norm.
   case_ev (a,a',c) = (g^u,g^v,g^z2).
     guess A_guess a a' c d.
@@ -89,7 +91,8 @@ bound_adv
   swap u w. swap z2 w.
   except v []. swap v z2.
   remove_ev 3 4 5.
-  find ( gu gv gz2 ->  ((a,a',c) <> (gu,gv,gz2)) /\ (H(a,a',c) = H(gu,gv,gz2)))
+  find (gu gv gz2 ->
+          ((a,a',c) <> (gu,gv,gz2)) /\ (H(a,a',c) = H(gu,gv,gz2)))
        (g^u,g^v,g^z2)
        A3 a a' c d.
   abstract* 4 arg (g^u,g^v,g^z2) : 13.

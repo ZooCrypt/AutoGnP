@@ -4,6 +4,8 @@
 
 (defvar autognp-bytac-keywords '(
   "bycrush"
+  "bysimp"
+  "assumption_computational"
 ))
 
 (defvar autognp-dangerous-keywords '(
@@ -14,13 +16,37 @@
   "adversary"
   "assumption"
   "qed"
+  "operator"
+  "return"
   "print"
   "print_proof"
   "let"
   "extract"
-  "bound\_adv"
+  "bound_adv"
   "oracle"
   "bilinear map"
+
+  ;; tactics
+  "unfold"
+  "swap"
+  "assumption_decisional"
+  "rnd_exp"
+  "except"
+  "rnd"
+  "guard"
+  "guess"
+  "simp"
+  "unfold"
+  "norm_solve"
+  "abstract*"
+  "abstract"
+  "remove_ev"
+  "last"
+  "norm_unknown"
+  "norm"
+  "case_ev"
+  "find"
+  "rewrite_oracle"
 ))
 
 (defvar autognp-internal-keywords '(

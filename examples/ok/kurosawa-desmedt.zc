@@ -211,7 +211,11 @@ bound_adv
   (* Reduce hash collision case to TCR *)
   case_ev (H(i,u1,u2) = H(i,g^(e1*r1),g^(e1*r2*w))).
     norm. remove_ev 1 2 3. ///=.
-    find (ai gr1 gr2 -> (((u1,u2) <> (gr1,gr2)) /\ (H(ai,u1,u2) = H(ai,gr1,gr2)))) (i,g^(r1*e1),g^(r2*e1*w)) C1 u1 u2 e t. //.
+    find (ai gr1 gr2 ->
+           (((u1,u2) <> (gr1,gr2)) /\
+           (H(ai,u1,u2) = H(ai,gr1,gr2))))
+         (i,g^(r1*e1),g^(r2*e1*w))
+         C1 u1 u2 e t. //.
     rnd! r1 _ _. norm.
     except w [0].
     rnd! r2 _ _; //.
