@@ -9,14 +9,65 @@ open TheoryTypes
 
 module PT = ParserTools
 
+
+(* ** Logging
+ * ----------------------------------------------------------------------- *)
+
+let log_buf = Buffer.create 127
+
+let log_file = ref ""
+
+let log_settings = ref ""
+
+let enable_debug = ref false
+
+let no_rotation =
+  { Bolt.Output.seconds_elapsed = None; Bolt.Output.signal_caught = None }
+
+let register_buffer_logger () =
+  let open Bolt in
+  let buffer (_ : string) (_ : Output.rotation) (_ : Bolt.Layout.t lazy_t) =
+    object
+      method write msg =
+        Buffer.add_string log_buf msg;
+        Buffer.add_string log_buf "\n"
+      method close = ()
+    end
+  in
+  Bolt.Output.register "buffer" buffer
+
+let initialize_logging () =
+  let open Bolt in
+  register_buffer_logger ();
+  if !log_file<>"" then (
+    let mode = Mode.direct () in
+    Logger.register "" Level.TRACE "all" "simple" mode "file" (!log_file,no_rotation)
+  )
+
+let start_buffer_logging () =
+  let open Bolt in
+  let mode = Mode.direct () in
+  Logger.register "" Level.TRACE "all" "simple" mode "buffer" ("",no_rotation)
+
+let stop_buffer_logging () =
+  let open Bolt in
+  let mode = Mode.direct () in
+  let res = Buffer.contents log_buf in
+  Logger.register "" Level.TRACE "all" "simple" mode "void" ("",no_rotation);
+  Buffer.clear log_buf;
+  res
+
+(* ** Emacs mode
+ * ----------------------------------------------------------------------- *)
+
 let emacs_mode = ref false
+
 let ps_files = ref []
+
 let theory_states = ref [TheoryState.mk_ts ()]
   (* we will ensure that theory_states will be always non-empty *)
-let ts_statenum () = L.length !theory_states - 1
 
-let encode s = s
-  (* BatString.nreplace ~str:s ~by:"\\<^newline>" ~sub:"\n" *)
+let ts_statenum () = L.length !theory_states - 1
 
 let decode s =
   BatString.nreplace ~str:s ~sub:"\\<^newline>" ~by:"\n"
@@ -40,9 +91,19 @@ let eval_emacs () =
           (ts,"")
         | [] -> failwith "impossible"
         end
-      ) else ( 
+      ) else if cmd = "enable_debug." then (
+         let ts = L.hd !theory_states in
+         enable_debug := true;
+         (ts,"enabled debugging output")
+      ) else if cmd = "disable_debug." then (
+         let ts = L.hd !theory_states in
+         enable_debug := false;
+         (ts,"disabled debugging output")
+      ) else (
         let is = Parse.instruction cmd in
         let ts = L.hd !theory_states in
+        if !enable_debug then
+          start_buffer_logging ();
         let (ts,msg) =
           L.fold_left
             (fun (ts, msg) i ->
@@ -52,7 +113,12 @@ let eval_emacs () =
             is
         in
         theory_states := ts::!theory_states;
-        (ts,msg)
+        let debug =
+          if !enable_debug then
+            "\nDEBUG:\n"^stop_buffer_logging ()
+          else ""
+        in
+        (ts,msg^debug)
       )
     in
     let g =
@@ -69,11 +135,11 @@ let eval_emacs () =
              List.length gs.CoreRules.subgoals - 1 in if rem = 0 then "" else
           string_of_int rem^" other goals")
     in
-    (msg,g) 
+    (msg,g)
   in
   let print_prompt () = F.printf "[%i]>\n%!" (ts_statenum ()) in
   print_prompt ();
-  let outp s = print_endline (encode s) in
+  let outp s = print_endline s in
   while true do
     let s = read_line () in
     (try
@@ -99,22 +165,34 @@ let eval_emacs () =
     print_prompt ()
   done
 
+
+(* ** Argument handlingx
+ * ----------------------------------------------------------------------- *)
+
 let main =
   let speclist =
     Arg.align
       [ ("-emacs", Arg.Set emacs_mode,
-         "use with Emacs") ]
+         "   Use with Emacs")
+      ; ("-log_file", Arg.Set_string log_file,
+         "   Log information to given file")
+      ; ("-log_settings", Arg.Set_string log_settings,
+         "   Use given log settings")
+      ]
   in
   let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " <file>" in
   let parse_args s = ps_files := !ps_files @ [s] in
   Arg.parse speclist parse_args usage_msg;
+  initialize_logging ();
   if not !emacs_mode then (
-    if !ps_files = [] then (
-      prerr_endline "Input file required for non-emacs mode";
+    match !ps_files with
+    | [f] ->
+      let szc = input_file f in
+      F.printf "File %s\n%!" szc;
+      ignore (catch_TypeError (fun () -> eval_theory szc))
+    | _ ->
+      prerr_endline "Exactly one input file required for non-emacs mode";
       exit (-1)
-    );
-    let szc = Util.input_file Sys.argv.(1) in
-    ignore (catch_TypeError (fun () -> eval_theory szc))
   ) else (
     if !ps_files <> [] then (
       prerr_endline "Cannot give input files for emacs mode";

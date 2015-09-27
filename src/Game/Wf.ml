@@ -10,9 +10,9 @@ open Game
 open Syms
 open Norm
 
-let log_t ls = mk_logger "Logic.Wf" Bolt.Level.TRACE "Wf" ls
-let _log_d ls = mk_logger "Logic.Wf" Bolt.Level.DEBUG "Wf" ls
-let _log_i ls = mk_logger "Logic.Wf" Bolt.Level.INFO "Wf" ls
+let log_t ls = mk_logger "Game.Wf" Bolt.Level.TRACE "Wf" ls
+let _log_d ls = mk_logger "Game.Wf" Bolt.Level.DEBUG "Wf" ls
+let _log_i ls = mk_logger "Game.Wf" Bolt.Level.INFO "Wf" ls
 
 
 (* ** Exceptions, state, helper functions
@@ -136,7 +136,7 @@ and wf_expr ctype wfs e0 =
       assert (equal_ty mk_Bool e1.e_ty);
       go wfs e1
     | Quant(_,_,_) ->
-      failwith (fsprintf "Wf: quantifiers must be outermost in %a" pp_expr e)  
+      failwith (fsprintf "Wf: quantifiers must be outermost in %a" pp_expr e)
     | Proj(_,e1) -> go wfs e1
     | Nary(Land,es) ->
       let is_InEq e =

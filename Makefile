@@ -28,7 +28,7 @@ endif
 
 #############################################################################
 
-.PHONY : clean all doc test autognp.native wsautognp.native test \
+.PHONY : clean all doc test autognp.native wsautognp.native test autognp wsautognp \
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
 all: wsautognp.native autognp.native
@@ -63,7 +63,7 @@ wsautognp.native : stubs
 # Used for development and testing
 
 dev : stubs
-	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Tactic.cma
+	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Game.cma
 
 dev_server : wsautognp.native
 	-@ killall wsautognp.native
@@ -73,7 +73,7 @@ dev_server : wsautognp.native
             -package comparelib.syntax \
             -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Deduce -I src/Main \
             -I src/Parser -I src/Poly -I src/Norm -I src/Derived -I src/Core \
-            -I src/Tactic -I src/Util \
+            -I src/Engine -I src/Util \
             one-line src/$(basename $@).ml> .depend
 	ocamldot .depend > deps.dot
 	dot -Tsvg deps.dot >deps.svg
@@ -83,7 +83,7 @@ depgraph :
             -package comparelib.syntax \
             -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Deduce -I src/Main \
             -I src/Parser -I src/Poly -I src/Norm -I src/Derived -I src/Core \
-            -I src/Tactic -I src/Util \
+            -I src/Engine -I src/Util \
             one-line src/**/*.ml src/**/*.mli \
         | grep -v Test | grep -v Extract > .depend
 	ocamldot .depend > deps.dot

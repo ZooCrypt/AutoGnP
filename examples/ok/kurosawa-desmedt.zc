@@ -91,7 +91,7 @@ oracle Dec1 : (G * G * BS_enc * BS_tag) -> BS_msg.
 oracle Dec2 : (G * G * BS_enc * BS_tag) -> BS_msg.
 
 bound_adv
-  [ 
+  [
     (* Sample a hash function (its index) and two generators of G *)
     i <-$ BS_i;
     gen1, gen2 <-$ G;
@@ -100,7 +100,7 @@ bound_adv
     x1, x2, y1, y2 <-$ Fq;
     let c = gen1^x1*gen2^x2;
     let d = gen1^y1*gen2^y2;
-    
+
     (* give public key to adversary *)
     (m0,m1) <- A1(i,gen1,gen2,c,d) with
       Dec1(u1,u2,e,t) = {
@@ -112,7 +112,7 @@ bound_adv
         Mac(km,e) = t;
         return Dec(ks,e)
       };
-  
+
     b <-$ Bool;
     let mb = (b?m0:m1);
 
@@ -141,11 +141,11 @@ bound_adv
   (* apply DDH to g1,g2,r1 *)
   unfold; swap gen1 (1); swap gen2 (2); swap r1 (3).
   assumption_decisional! ddh -> r2; //; //=.
-  
+
   rnd_exp (gen1 e1) (gen2 w). //.
   except e1 [0].
   rnd! w _ (w -> w/e1); //.
-  
+
   rnd! x1 _ _ e1; //.
   rnd! y1 _ _ e1; //.
 

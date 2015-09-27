@@ -774,7 +774,7 @@ let handle_instr verbose ts instr =
 
   | PT.Apply(tac) ->
     let (ts,s) = handle_tactic ts tac in
-    (ts, "Applied tactic"^(if verbose then ": "^Lazy.force s else "."))
+    (ts, "Applied tactic"^(if verbose then ":"^Lazy.force s else "."))
 
   | PT.Back ->
     begin match ts.ts_ps with

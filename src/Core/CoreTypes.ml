@@ -160,7 +160,7 @@ type rule_name =
 
   | Rswap_main of ocmd_pos_eq
 
-(* *** New rules for add test *)
+(* *** Rules for add test *)
 
   | Rguard  of ocmd_pos * expr option
 

@@ -316,15 +316,15 @@ let fsprintf fmt =
 
 let no_log = ref false
 
-let mk_logger tag level file ls =
+let mk_logger logger_name level file ls =
   if not !no_log then
-    Bolt.Logger.log tag level ~file (Lazy.force ls)
+    Bolt.Logger.log logger_name level ~file (Lazy.force ls)
 
 let log_ig _ls = ()
 
 let log = mk_logger "Tacerror" Bolt.Level.INFO "Tacerror"
 
-exception Invalid_rule of string 
+exception Invalid_rule of string
 
 let tacerror fmt =
   let buf  = Buffer.create 127 in
