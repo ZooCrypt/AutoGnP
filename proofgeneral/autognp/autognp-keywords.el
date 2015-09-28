@@ -6,6 +6,8 @@
   "bycrush"
   "bysimp"
   "assumption_computational"
+  "dist_eq"
+  "indep"
 ))
 
 (defvar autognp-dangerous-keywords '(
@@ -27,8 +29,14 @@
   "bound_dist"
   "oracle"
   "bilinear map"
+  "trans"
+  "insert"
 
   ;; tactics
+  "hybrid"
+  "assert"
+  "rename"
+  "rnd_oracle"
   "unfold"
   "swap"
   "assumption_decisional"
@@ -39,6 +47,7 @@
   "guess"
   "simp"
   "unfold"
+  "dist_sym"
   "norm_solve"
   "abstract*"
   "abstract"
@@ -49,6 +58,7 @@
   "case_ev"
   "find"
   "rewrite_oracle"
+  "crush"
 ))
 
 (defvar autognp-internal-keywords '(
