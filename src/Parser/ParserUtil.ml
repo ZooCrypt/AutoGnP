@@ -1,6 +1,6 @@
-(*s Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
+(* * Types and conversion functions for parsed types, expressions, ... *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open TheoryTypes
@@ -17,14 +17,13 @@ module F = Format
 module T = Type
 module S = String
 
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Utility functions} *)
+(* ** Utility functions
+ * ----------------------------------------------------------------------- *)
 
 (** Parser error with explanation. *)
 exception ParseError of string
-                               
+
 let fail_parse s = raise (ParseError s)
 
 let create_var (vmap : GU.vmap) ts (qual : string qual) s ty =
@@ -37,7 +36,7 @@ let create_var (vmap : GU.vmap) ts (qual : string qual) s ty =
     v
   )
 
-let get_oname_from_opos (se : G.sec_exp) (opos : G.ocmd_pos) : string = 
+let get_oname_from_opos (se : G.sec_exp) (opos : G.ocmd_pos) : string =
   let (i,j,_,_) = opos in
   match G.get_se_ctxt se i with
   | G.GCall(_,_,_,os), _ ->
@@ -45,9 +44,9 @@ let get_oname_from_opos (se : G.sec_exp) (opos : G.ocmd_pos) : string =
      let (os,_,_) = od in
      Id.name os.Osym.id
   | _ -> tacerror "Error, no Oracle definition at line %i" (i+1)
-                  
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Conversion functions for parser-types} *)
+
+(* ** Conversion functions for parser-types
+ * ----------------------------------------------------------------------- *)
 
 let ty_of_parse_ty ts pty =
   let rec go pty =
@@ -70,7 +69,7 @@ let ty_of_parse_ty ts pty =
        (try
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
            T.mk_KeyElem T.KeyElem.SKey f.Psym.id
-         with Not_found -> tacerror "Undefined permutation %s" s)         
+         with Not_found -> tacerror "Undefined permutation %s" s)
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
   go pty
@@ -97,7 +96,7 @@ let string_of_qvar (qual,s) =
   | Unqual -> s
   | Qual q -> q^"`"^s
 
-let init_odef_params vmap_g ts ?(qual=true) oname vs = 
+let init_odef_params vmap_g ts ?(qual=true) oname vs =
   let osym =
     try E.Olist.Olist(Mstring.find oname ts.ts_odecls)
     with Not_found ->
@@ -163,12 +162,12 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
          | k::es -> E.mk_Perm f E.IsInv (go k) (E.mk_Tuple (L.map go es))
          | _ -> fail_parse (F.sprintf "Permutation %s expects 2 arguments" s_inv)
        end
-         
+
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
       let es = mk_Tuple (L.map go es) in
       E.mk_RoCall h es
-             
+
     | SApp(s,es) when Mstring.mem s ts.ts_fundecls ->
       let h = Mstring.find s ts.ts_fundecls in
       let es = mk_Tuple (L.map go es) in
@@ -197,7 +196,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | CGen(s)		-> E.mk_GGen (create_groupvar ts s)
     | CZ(s)		-> E.mk_Z (create_lenvar ts s)
     | Quant(q,bd,pe)   ->
-      let b = 
+      let b =
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
       in
       let e = expr_of_parse_expr vmap ts qual pe in
@@ -255,7 +254,7 @@ let odec_of_parse_odec vmap_g ts ~oname od =
       { G.oh_less    = obody_of_parse_obody vmap_l ts ~oname ob1;
         G.oh_eq      = obody_of_parse_obody vmap_g ts ~oname ob2;
         G.oh_greater = obody_of_parse_obody vmap_l ts ~oname ob3; }
-  
+
 let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
   let vs,osym = match init_odef_params vmap_g ts oname vs with
     | vs, E.Olist.Olist os -> vs, os
@@ -288,7 +287,7 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       fail_parse "adversary argument has wrong type";
     let os = L.map (odef_of_parse_odef vmap ts) os in
     let cty = asym.Asym.codom in
-    begin match cty.Type.ty_node, vs with      
+    begin match cty.Type.ty_node, vs with
     | Type.Prod([]), [] ->
       G.GCall([], asym, e, os)
     | _, [v] ->
@@ -303,7 +302,7 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
     | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.KeyElem _|Type.KeyPair _)
-      , ([] | _ :: _ :: _) -> 
+      , ([] | _ :: _ :: _) ->
       tacerror
         "Parser: wrong argument for adversary return value, expected one variable (type %a), got %i"
         Type.pp_ty cty (L.length vs)
@@ -314,7 +313,7 @@ let gdef_of_parse_gdef (vmap : GU.vmap) ts gd =
 
 let ev_of_parse_ev vmap ts pe =
   expr_of_parse_expr vmap ts Unqual pe
-                     
+
 let se_of_parse_se (vmap : GU.vmap) ts gd ev =
   let gd = gdef_of_parse_gdef vmap ts gd in
   let ev  = ev_of_parse_ev vmap ts ev in

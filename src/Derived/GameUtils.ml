@@ -24,7 +24,7 @@ let pp_iter_pos fmt ip =
   match ip with
   | InEv                                  -> F.fprintf fmt "inEv"
   | InMain(i)                             -> F.fprintf fmt "inMain(%i)" i
-  | InOrcl((gpos,o_idx,opos,otype),_,_)  -> 
+  | InOrcl((gpos,o_idx,opos,otype),_,_)  ->
     F.fprintf fmt "inOrcl(%i,%i,%i,%a)" gpos o_idx opos pp_otype otype
   | InOrclReturn((gpos,o_idx,_,_),_,_) -> F.fprintf fmt "inOreturn(%i,%i)" gpos o_idx
 
@@ -130,7 +130,7 @@ let iter_ctx_se_exp ?iexc:(iexc=false) f se =
     L.iter (f ctx) eqs
   ) else (
     let ctx = { ic_pos = InEv; ic_isZero = []; ic_nonZero = nz } in
-    f ctx main_expr 
+    f ctx main_expr
   )
 
 (* ** Mappings from strings to variables
@@ -150,7 +150,7 @@ let merge_vmap vm1 vm2 =
     (fun s vs ->
       if Hashtbl.mem vm1 s
       then Vsym.H.add sigma vs (Hashtbl.find vm1 s)
-      else Hashtbl.add vm s vs) 
+      else Hashtbl.add vm s vs)
     vm2;
   vm, (fun vs -> try Vsym.H.find sigma vs with Not_found -> vs)
 
@@ -186,8 +186,8 @@ let vmap_of_se se =
       s0
   in
   vmap_of_vss (vmap_aux (vars_global_gdef se.se_gdef) se.se_ev)
-    
-        
+
+
 let ves_to_vss ves =
   Se.fold (fun e vss -> Vsym.S.add (destr_V e) vss) ves Vsym.S.empty
 

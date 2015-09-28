@@ -1,4 +1,4 @@
-(*s Automated derived rules *)
+(* * Simplification rules *)
 
 open Tactic
 

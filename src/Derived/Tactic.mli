@@ -1,6 +1,7 @@
 (* * Tactics and Tacticals *)
 
-
+(* ** Imports and abbreviations
+ * ----------------------------------------------------------------------- *)
 open CoreRules
 open Nondet
 open Abbrevs
@@ -11,6 +12,9 @@ open Util
 open Assumption
 open Syms
 
+(* ** Types
+ * ----------------------------------------------------------------------- *)
+
 (** A tactic takes a goal and returns a proof state. *)
 type tactic = goal -> proof_state nondet
 
@@ -18,6 +22,9 @@ type tactic = goal -> proof_state nondet
 type 'a rtactic = goal -> ('a * proof_state) nondet
 
 exception NoOpenGoal
+
+(* ** Simple tactics and tacticals
+ * ----------------------------------------------------------------------- *)
 
 val move_first_last : proof_state -> proof_state
 val apply_on_n : int -> tactic -> proof_state -> proof_state nondet
@@ -38,6 +45,9 @@ val t_ensure_progress : tactic -> tactic
 val t_bind : 'a rtactic -> ('a -> 'b rtactic) -> 'b rtactic
 val t_bind_ignore : 'a rtactic -> ('a -> tactic) -> tactic
 
+(* ** Lifting core tactics
+ * ----------------------------------------------------------------------- *)
+
 val core_tactic : core_tactic -> tactic
 
 val t_conv : bool -> sec_exp -> tactic
@@ -50,7 +60,7 @@ val t_swap : gcmd_pos -> int -> tactic
 
 val t_except : gcmd_pos -> expr list -> tactic
 
-val t_remove_ev : int list -> tactic 
+val t_remove_ev : int list -> tactic
 
 val t_case_ev : ?flip:bool -> ?allow_existing:bool -> expr -> tactic
 
@@ -94,6 +104,6 @@ val t_swap_main : ocmd_pos_eq -> string -> tactic
 
 val t_hybrid : gcmd_pos -> int -> lcmd list -> expr -> tactic
 
-val t_find : vs list * expr -> expr -> Asym.t -> vs list -> tactic 
+val t_find : vs list * expr -> expr -> Asym.t -> vs list -> tactic
 
 val t_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> tactic

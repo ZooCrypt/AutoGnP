@@ -23,11 +23,11 @@ module Make(H : HashedType) : (S with type t = H.t) = struct
 
   let htable = WH.create 5003
 
-  let merge tbl d = 
-    try WH.find tbl d 
+  let merge tbl d =
+    try WH.find tbl d
     with Not_found ->
       WH.add tbl d d;
-      d 
+      d
 
   let hashcons d =
     let d = H.tag !next_tag d in

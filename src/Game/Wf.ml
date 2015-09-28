@@ -10,9 +10,10 @@ open Game
 open Syms
 open Norm
 
-let log_t ls = mk_logger "Game.Wf" Bolt.Level.TRACE "Wf" ls
-let _log_d ls = mk_logger "Game.Wf" Bolt.Level.DEBUG "Wf" ls
-let _log_i ls = mk_logger "Game.Wf" Bolt.Level.INFO "Wf" ls
+let mk_log level = mk_logger "Game.Wf" level "Wf.ml"
+let log_t  = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+let _log_i = mk_log Bolt.Level.INFO
 
 
 (* ** Exceptions, state, helper functions
@@ -124,7 +125,7 @@ and check_nonzero ctype wfs e =
   )
 
 and wf_expr ctype wfs e0 =
-  log_t (lazy (fsprintf "checking expression: %a" pp_expr e0));
+  log_t (lazy (fsprintf "@[<hov 2>checking expression:@ @[<hov 2>%a@]@]" pp_expr e0));
   let rec go ?outermost_conj:(outermost_conj=false) wfs e =
     match e.e_node with
     | Cnst _ -> ()
@@ -212,7 +213,7 @@ let wf_lcmds ctype wfs0 exported_vsyms odef0 =
       if do_export then export_vs v;
       let wfs = wf_samp ctype wfs v t es in
       go wfs ~do_export lcmds
-    | LBind (vs,hsym)::lcmds -> 
+    | LBind (vs,hsym)::lcmds ->
       assert (equal_ty (ty_prod_vs vs) hsym.Fsym.dom);
       go wfs ~do_export:false lcmds
     | LGuard e::lcmds ->
@@ -292,4 +293,3 @@ let wf_gdef ctype gdef0 =
 let wf_se ctype se =
   let wfs = wf_gdef ctype se.se_gdef in
   wf_expr ctype wfs se.se_ev
-

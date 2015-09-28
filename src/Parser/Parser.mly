@@ -15,7 +15,7 @@
 
 %token EOF
 %token HELP
-       
+
 /*----------------------------------------------------------------------*/
 /* Tokens for types */
 
@@ -39,7 +39,7 @@
 %token <string> PKEY
 %token <string> SKEY
 %token GETPK
-%token GETSK						  
+%token GETSK
 %token PLUS
 %left PLUS
 %token XOR
@@ -149,7 +149,7 @@
 %token RINDEP
 %token RCRUSH
 %token BYCRUSH
-%token RSIMP  
+%token RSIMP
 %token BYSIMP
 %token RBAD1
 %token RBAD2
@@ -300,7 +300,7 @@ expr6 :
 | GETPK LPAREN e=expr RPAREN             { ProjPermKey(Type.KeyElem.PKey,e) }
 | GETSK LPAREN e=expr RPAREN             { ProjPermKey(Type.KeyElem.SKey,e) }
 | e1=expr6  SHARP i=NAT                       { Proj(i,e1) }
-       
+
 
 /*======================================================================*/
 /* Oracle definitions */
@@ -386,7 +386,7 @@ ty_anno :
 
 ctx :
 | LPAREN i=ID ot=option(ty_anno) TO e=expr RPAREN { (i, ot, e) }
-                                           
+
 ctx_noty :
 | LPAREN i=ID TO e=expr RPAREN { (i,None,e) }
 
@@ -404,7 +404,7 @@ atype:
 | ADV  { A_Adv }
 
 decl :
-| ADVERSARY i=ID  COLON t1=typ TO t2=typ    { ADecl(i, t1, t2) } 
+| ADVERSARY i=ID  COLON t1=typ TO t2=typ    { ADecl(i, t1, t2) }
 | ORACLE    i=ID  COLON t1=typ TO t2=typ    { ODecl(i, t1, t2) }
 | RANDOM ORACLE i=ID COLON t1=typ TO t2=typ { RODecl(i, t1, t2) }
 | PERMUTATION i=ID COLON t=typ              { PermDecl(i, t) }
@@ -435,8 +435,8 @@ help_command :
 | HELP RFIND { Help(Rfind(([],CB(false)),CB(false),"",[])) }
 | HELP RUNWRAP_QUANT_EV { Help(Runwrap_quant_ev (0)) }
 | HELP RSWAP_QUANT_EV   { Help(Rswap_quant_ev   (0)) }
-       
-                
+
+
 /*----------------------------------------------------------------------*/
 /* proof commands */
 
@@ -469,14 +469,14 @@ gpos:
 
 assgn_pos:
 | n=int            { Pos(n) }
-| i=ID             { Var(i) } 
+| i=ID             { Var(i) }
 | LPAREN n=NAT RPAREN  { AbsPos(n-1) }
 
 inter_pos:
 | LBRACK i1=assgn_pos i2=assgn_pos? RBRACK { Some i1, i2 }
 
 swap_pos:
-| i=inter_pos  { i } 
+| i=inter_pos  { i }
 | i1=assgn_pos { Some i1 , Some i1 }
 
 diff_cmd:
@@ -497,7 +497,7 @@ maybe_upto:
 maybe_len:
 | COLON ap=int { ap }
 
-                     
+
 tactic :
 
 /* norm variants */
@@ -517,13 +517,13 @@ tactic :
   { Rtrans_diff(dcmds) }
 | RSUBST i=inter_pos? LPAREN e1=expr TO e2=expr RPAREN
   { let i, mupto = O.default (None,None) i in
-    Rsubst(i,e1,e2,mupto) } 
+    Rsubst(i,e1,e2,mupto) }
 | RRENAME v1=ID v2=ID { Rrename(v1,v2) }
 | RLET_UNFOLD i=assgn_pos*            { Rlet_unfold(i) }
-| RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos) 
+| RLET_ABSTRACT excl=EXCL? i=uopt(assgn_pos)
           i1=ID e1=uopt(expr) mupto=maybe_upto?
   { Rlet_abstract(i,i1,e1,mupto,excl=None) }
-| RLET_ABSTRACT excl=EXCL? op=opos 
+| RLET_ABSTRACT excl=EXCL? op=opos
           i1=ID e1=expr len=maybe_len?
   { Rlet_abstract_oracle(op,i1,e1,len,excl=None) }
 | RLET_ABSTRACT_DEDUCE excl=EXCL? i=assgn_pos
@@ -590,7 +590,7 @@ tactic :
 | RUNWRAP_QUANT_EV { Runwrap_quant_ev(0) }
 | RUNWRAP_QUANT_EV j=gpos { Runwrap_quant_ev(j) }
 | RSWAP_QUANT_EV j=gpos { Rswap_quant_ev(j) }
-                          
+
 
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Rindep(excl=None) }
@@ -616,7 +616,7 @@ instr :
 | hc=help_command    { [hc] }
 | i=decl { [i] }
 | i=proof_command { [i] }
-| ir=selector? is=separated_nonempty_list(SEMICOLON,tactic) 
+| ir=selector? is=separated_nonempty_list(SEMICOLON,tactic)
   { let tacs =
       match is with
       | [i] -> [Apply(i)]

@@ -5,7 +5,8 @@ open Lazy
 open Abbrevs
 open Util
 
-let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Nondet" ls
+let mk_log level = mk_logger "Util.Nondet" level "nondet.ml"
+let log_i = mk_log Bolt.Level.INFO
 
 (* ** Nondeterminism Monad
  * ----------------------------------------------------------------------- *)

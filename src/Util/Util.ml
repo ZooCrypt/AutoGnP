@@ -99,29 +99,29 @@ let id x = x
 (* ** List functions
  * ----------------------------------------------------------------------- *)
 
-let find_at f l = 
+let find_at f l =
   let i = ref 0 in
   let t a = if f a then true else (incr i; false) in
   ignore (List.find t l);
-  !i 
+  !i
 
 let list_eq_for_all2 f l1 l2 =
   try List.for_all2 f l1 l2 with _ -> false
 
 let smart_map f l =
-  let rec aux r l' = 
+  let rec aux r l' =
     match l' with
     | [] -> l
-    | hd::tl -> 
+    | hd::tl ->
         let hd' = f hd in
         if hd == hd' then aux (hd::r) tl
         else List.rev_append r (hd' :: List.map f tl) in
   aux [] l
 
-let split_n i0 l = 
+let split_n i0 l =
   assert (i0 >= 0);
-  let rec aux i r l = 
-    match l with 
+  let rec aux i r l =
+    match l with
     | [] -> failwith (Printf.sprintf "split_n: invalid index %i" i0)
     | x::xs ->
       if i = 0 then r,x,xs
@@ -129,8 +129,8 @@ let split_n i0 l =
   in
   aux i0 [] l
 
-let cut_n i0 l = 
-  let rec aux i r l = 
+let cut_n i0 l =
+  let rec aux i r l =
     match  l with
     | _ when i <= 0 -> r, l
     | [] -> failwith (Printf.sprintf "cut_n: invalid index %i" i0)
@@ -143,9 +143,9 @@ let list_from_to i j =
   in List.rev (go [] i)
 
 let rec replicate_r acc i x =
-  if i <= 0 then acc 
+  if i <= 0 then acc
   else replicate_r (x::acc) (i-1) x
-  
+
 let replicate i x = replicate_r [] i x
 
 let lefts l =
@@ -192,7 +192,7 @@ let map_accum f init xs =
 let move_front p xs = let (u,v) = L.partition p xs in u @ v
 
 let equal_list eq xs0 ys0 =
-  let rec go xs ys = 
+  let rec go xs ys =
     match xs,ys with
     | [], []       -> true
     | x::xs, y::ys -> eq x y && go xs ys
@@ -223,7 +223,7 @@ let compare_pair cmp1 cmp2 (x1,x2) (y1,y2) =
   if r1 <> 0 then r1
   else cmp2 x2 y2
 
-let num_list l = L.mapi (fun i a -> i+1,a) l 
+let num_list l = L.mapi (fun i a -> i+1,a) l
 
 let drop_last n xs = L.rev xs |> BatList.drop n |> L.rev
 
@@ -318,7 +318,10 @@ let no_log = ref false
 
 let mk_logger logger_name level file ls =
   if not !no_log then
-    Bolt.Logger.log logger_name level ~file (Lazy.force ls)
+    let lines = BatString.nsplit (Lazy.force ls) ~by:"\n" in
+    L.iter
+      (fun s -> Bolt.Logger.log logger_name level ~file s)
+      lines
 
 let log_ig _ls = ()
 

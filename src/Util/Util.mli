@@ -105,11 +105,11 @@ val smart_map : ('a -> 'a) -> 'a list -> 'a list
      shorter than [k], the empty list is returned. *)
 val drop_last : int -> 'a list -> 'a list
 
-(** [split_n k l] returns [(rhd,a,tl)] such that 
+(** [split_n k l] returns [(rhd,a,tl)] such that
     [l = rev_append rhd (a::tl)] and [k = length rhd] *)
 val split_n : int -> 'a list -> 'a list * 'a * 'a list
 
-(** [cut_n k l] returns [(rhd,tl)] such that 
+(** [cut_n k l] returns [(rhd,tl)] such that
     [l = List.rev_append rhd tl] and [k = List.length rhd] *)
 val cut_n : int -> 'a list -> 'a list * 'a list
 
@@ -197,7 +197,7 @@ val fsprintf : ('a, F.formatter, unit, string) format4 -> 'a
 (* ** Logging and exceptions for Logic module
  * ----------------------------------------------------------------------- *)
 
-exception Invalid_rule of string 
+exception Invalid_rule of string
 
 (** [tacerror s] raises a rule application error with information [s]. *)
 val tacerror : ('a, F.formatter, unit, 'b) format4 -> 'a

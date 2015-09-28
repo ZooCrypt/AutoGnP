@@ -24,8 +24,8 @@ val div : EP.t -> EP.t -> Expr.expr
 val abstract_non_field : (expr -> He.key) -> expr -> fexp * int * (int, expr) Hashtbl.t
 
 (* below not required for core rules *)
- 
-val polys_of_field_expr :  expr -> EP.t * EP.t option 
+
+val polys_of_field_expr :  expr -> EP.t * EP.t option
 
 val div_factors : EP.t -> EP.t -> expr list option
 

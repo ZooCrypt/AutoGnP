@@ -1,6 +1,6 @@
-(*s Websocket server for web interface *)
+(* * Websocket server for web interface *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Util
 open Abbrevs
 open Engine
@@ -12,8 +12,6 @@ open Lwt.Infix
 module YS = Yojson.Safe
 module PU = ParserUtil
 module WS = Websocket_lwt
-(*i*)
-
 
 
 let ps_file  = ref ""
@@ -22,8 +20,8 @@ let disallow_save = ref false
 let new_dir = ref ""
 let server_name = ref "localhost"
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Proofstate cache} *)
+(* ** Proofstate cache
+ * ----------------------------------------------------------------------- *)
 
 (** We use the reversed list of commands (without '.')
     as the key for the corresponding theory state. *)
@@ -55,8 +53,8 @@ let insert_ts_cache filename cmds (ts,msgs) =
   in
   Hashtbl.add fcache (List.rev cmds) (ts,msgs)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Handlers for different commands} *)
+(* ** Handlers for different commands
+ * ----------------------------------------------------------------------- *)
 
 let frame_of_string s = WS.Frame.create ~content:s ()
 
@@ -154,7 +152,7 @@ let process_eval fname proofscript =
     match ps.CoreRules.subgoals with
     | ju::_ ->
       begin match ju.CoreTypes.ju_pr with
-      | CoreTypes.Pr_Dist _ -> 
+      | CoreTypes.Pr_Dist _ ->
         ignore (handle_instr false ts (ParserTypes.PrintGames("g_left","g_right")))
       | _ -> ()
       end
@@ -173,7 +171,7 @@ let process_eval fname proofscript =
                L.fold_left
                  (fun (ts,msg0) i -> let (ts,msg) = handle_instr is_last_cmd ts i in (ts,msg0^msg))
                  (!rts,"")
-                (Parse.instruction (cmd ^ ".")) 
+                (Parse.instruction (cmd ^ "."))
              in
              rhandled := !rhandled @ [ cmd ]; rts := ts; rmsgs := !rmsgs @ [ msg ];
              insert_ts_cache fname !rhandled (ts,!rmsgs))
@@ -213,8 +211,8 @@ let process_eval fname proofscript =
   (try print_games !rts with Invalid_rule _ -> ());
   (frame_of_string (YS.to_string res))
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Frame processing and server setup} *)
+(* ** Frame processing and server setup
+ * ----------------------------------------------------------------------- *)
 
 let process_frame frame =
   let open WS in
@@ -222,7 +220,7 @@ let process_frame frame =
   match frame.opcode with
   | Opcode.Ping ->
     Some (Frame.create ~opcode:Opcode.Pong ~content:frame.content ())
-      
+
   | Opcode.Close ->
     (* Immediately echo and pass this last message to the user *)
     if String.length frame.content >= 2 then
@@ -279,8 +277,8 @@ let run_server _node _service =
 let rec wait_forever () =
   Lwt_unix.sleep 1000.0 >>= wait_forever
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Argument handling} *)
+(* ** Argument handling
+ * ----------------------------------------------------------------------- *)
 
 let main =
   Printexc.record_backtrace true;

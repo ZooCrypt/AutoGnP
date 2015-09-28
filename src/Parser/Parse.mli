@@ -1,6 +1,6 @@
-open ParserTypes
+(* * Wrapper functions for parser with error handling. *)
 
-(*s Wrapper functions for parser with error handling. *)
+open ParserTypes
 
 val odef : string -> odef
 

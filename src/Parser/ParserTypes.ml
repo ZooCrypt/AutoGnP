@@ -1,14 +1,13 @@
-(*s Types for parser *)
+(* * Types for parser *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Game
 open Syms
 open Assumption
 open Util
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Types for parsed types, expressions, and games} *)
+(* ** Types for parsed types, expressions, and games
+ * ----------------------------------------------------------------------- *)
 
 type parse_ty =
   | KeyPair of string
@@ -72,8 +71,8 @@ type gcmd =
 
 type gdef = gcmd list
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Types for parsed proof scripts and tactics} *)
+(* ** Types for parsed proof scripts and tactics
+ * ----------------------------------------------------------------------- *)
 
 type assgn_pos =
   | Pos    of int
@@ -123,21 +122,21 @@ type tactic =
   | Rassm_dec      of bool * string option * direction option * ranges *
                       (string list) option
   | Rassm_comp     of bool * string option * ranges
-  | Rlet_abstract  of assgn_pos option * string * parse_expr option * 
+  | Rlet_abstract  of assgn_pos option * string * parse_expr option *
                       assgn_pos option * bool
-  | Rlet_abstract_oracle  of ocmd_pos * string * parse_expr * 
+  | Rlet_abstract_oracle  of ocmd_pos * string * parse_expr *
                       int option * bool
   | Rlet_abstract_deduce
     of bool * assgn_pos * string * parse_expr * assgn_pos option
   | Rassert        of assgn_pos * parse_expr option
-  | Rsubst         of assgn_pos option * parse_expr * parse_expr * 
+  | Rsubst         of assgn_pos option * parse_expr * parse_expr *
                       assgn_pos option
   | Rlet_unfold    of assgn_pos list
   | Rindep         of bool
   | Rcrush         of bool * int option
   | Rbad           of int * assgn_pos option * string
   | Rcheck_hash_args of ocmd_pos
-  | Rexcept        of assgn_pos option * (parse_expr list) option 
+  | Rexcept        of assgn_pos option * (parse_expr list) option
   | Rexcept_orcl   of ocmd_pos * parse_expr list
   | Radd_test      of ocmd_pos option * parse_expr option * string option *
                       (string list) option
@@ -163,7 +162,7 @@ type instr =
   | ADecl      of string * parse_ty * parse_ty
   | AssmDec    of string * bool * gdef * gdef * (string list) list
   | AssmComp   of string * bool * assm_type * gdef * parse_ev * string list list
-  | JudgSucc   of gdef * parse_ev 
+  | JudgSucc   of gdef * parse_ev
   | JudgAdv    of gdef * parse_ev
   | JudgDist   of gdef * parse_ev * gdef * parse_ev
   | PrintGoal  of string

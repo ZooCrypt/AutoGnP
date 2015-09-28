@@ -17,29 +17,30 @@ module Ht = Hashtbl
 module CR = CoreRules
 module T  = Tactic
 
-let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RindepRules" ls
-let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RindepRules" ls
-    
+let mk_log level = mk_logger "Derive.RindepRules" level "RindepRules.ml"
+let log_t  = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+
 (* ** Merging equalities in event.
  * ----------------------------------------------------------------------- *)
 
 (** Merging equalities in conjuncts of event. *)
-let t_merge_ev tomerge ju = 
+let t_merge_ev tomerge ju =
   let tomerge = List.sort Pervasives.compare tomerge in
-  let rec tac k tomerge ju = 
+  let rec tac k tomerge ju =
     match tomerge with
     | [] | [_]-> T.t_id ju
-    | i::j::tomerge -> 
+    | i::j::tomerge ->
       (T.t_merge_ev (i-k) (j-k) @> tac (k+1) (j::tomerge)) ju in
   tac 0 tomerge ju
 
 (* ** Automate random independence.
  * ----------------------------------------------------------------------- *)
 
-(* We know a set of facts 
-   e1 = e2 
-   exists x in L | e1 = e2 
-   and inequalities 
+(* We know a set of facts
+   e1 = e2
+   exists x in L | e1 = e2
+   and inequalities
    We collect all the term we known and we try to invert the term we want.
    Assume we known e1 = e2 then we known e1 - e2 = 0
    as well for exists x in L | e1 = e2
@@ -68,7 +69,7 @@ let init_inverters test =
     match ts with
     | [] -> []
     | t::ts ->
-      try 
+      try
         let bd,e1me2,inv,z = init_inverter t in
         bds := bd @ !bds;
         (i,e1me2,inv, z, mk_V (Vsym.mk "x" e1me2.e_ty)) :: aux (i+1) ts
@@ -97,7 +98,7 @@ let t_last_random_indep ts ju =
     | Some inv ->
       let used = e_vars inv in
       let tomerge = List.filter (fun (_,_,_,_,x) -> Se.mem x used) ms in
-      let tomergei = List.map (fun (i,_,_,_,_) -> i) tomerge in 
+      let tomergei = List.map (fun (i,_,_,_,_) -> i) tomerge in
       let ctxt =
         if List.length tomerge = 1 then
           let  (_,_,c,_,x1) = List.hd tomerge in
@@ -133,7 +134,7 @@ let t_random_indep_exact ju =
 let t_random_indep_no_exact emaps ju =
   let se = ju.ju_se in
   log_t (lazy "###############################");
-  log_t (lazy "t_random_indep\n%!");
+  log_t (lazy "t_random_indep\n");
   let ev_vars = e_vars se.se_ev in
   let rec aux i rc =
     match rc with

@@ -1,6 +1,6 @@
-(*s Simplification rules *)
+(* * Simplification rules *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open Nondet
@@ -17,13 +17,13 @@ module CR = CoreRules
 module T  = Tactic
 module Ht = Hashtbl
 
-let _log_t ls  = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
-let _log_d ls = mk_logger "Logic.Crush" Bolt.Level.DEBUG "CrushRules" ls
-let log_i ls  = mk_logger "Logic.Crush" Bolt.Level.INFO  "CrushRules" ls
-(*i*)
+let mk_log level = mk_logger "Derive.SimpRules" level "SimpRules.ml"
+let _log_t = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+let log_i  = mk_log Bolt.Level.INFO
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Simplification} *)
+(* ** Simplification
+ * ----------------------------------------------------------------------- *)
 
 let t_split_ev_maybe mi ju =
   let ev = ju.ju_se.se_ev in
@@ -117,7 +117,7 @@ let t_fix must_finish max t ju =
     let npss = mapM t gs in
     if (is_nil npss || i < 0)
     then (
-      guard (not must_finish || ps.CR.subgoals = []) >>= fun _ -> 
+      guard (not must_finish || ps.CR.subgoals = []) >>= fun _ ->
       ret ps
     ) else (
       npss >>= fun pss ->
@@ -130,8 +130,8 @@ let t_fix must_finish max t ju =
   in
   aux max ps0
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Simp and split inequality on n-tuples to obtain n proof obligations} *)
+(* ** Simp and split inequality on n-tuples to obtain n proof obligations
+ * ----------------------------------------------------------------------- *)
 
 let rec t_split_ineq i ju =
   let rn = "split_ev" in
@@ -148,8 +148,9 @@ let rec t_split_ineq i ju =
     if not (is_Tuple e1 && is_Tuple e2)
       then tacerror "rsplit_ev: bad event, expected tuples, %a and %a" pp_expr e1 pp_expr e2;
     let es1, es2 = destr_Tuple e1, destr_Tuple e2 in
-    if not (L.length es1 = L.length es2)
-      then tacerror "rsplit_ev: bad event, got tuples of different lengths, %a and %a" pp_expr e1 pp_expr e2;
+    if not (L.length es1 = L.length es2) then
+      tacerror "rsplit_ev: bad event, got tuples of different lengths, %a and %a"
+        pp_expr e1 pp_expr e2;
     L.map (fun (e1,e2) -> mk_Eq e1 e2) (L.combine es1 es2)
   in
   (* delay inequalities with too many variables *)
@@ -164,7 +165,7 @@ let rec t_split_ineq i ju =
 and t_simp i must_finish ju =
   let step =
     (   (t_norm ~fail_eq:true @|| T.t_id)
-     @> (    T.t_false_ev 
+     @> (    T.t_false_ev
          @|| t_rewrite_oracle_maybe None None
          @|| t_split_ev_maybe None
          @|| t_ctx_ev_maybe None

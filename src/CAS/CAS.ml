@@ -9,7 +9,8 @@ open Poly
 module Ht = Hashtbl
 module YS = Yojson.Safe
 
-let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
+let mk_log level = mk_logger "CAS.CAS" level "CAS.ml"
+let log_i = mk_log Bolt.Level.INFO
 
 (* ** Using CAS to perform polynomial computations
  * ----------------------------------------------------------------------- *)

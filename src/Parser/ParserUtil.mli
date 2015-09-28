@@ -1,6 +1,5 @@
-(*s Types and conversion functions for parsed types, expressions, games, proof scripts, and tactics. *)
+(* * Types and conversion functions for parsed types, expressions, ... *)
 
-(*i*)
 open Expr
 open Type
 open Game
@@ -8,18 +7,14 @@ open GameUtils
 open Syms
 open TheoryTypes
 open ParserTypes
-(*i*)
 
 exception ParseError of string
-                               
+
 val fail_parse : string -> 'a
 
 val create_var : vmap -> theory_state -> string qual -> string -> ty -> Vsym.t
 
 val get_oname_from_opos : sec_exp -> ocmd_pos -> string
-                                       
-(*c functions that take a [theory_state] extend the state
-    with lenvars and groupvars *)
 
 val ty_of_parse_ty : theory_state -> parse_ty -> ty
 

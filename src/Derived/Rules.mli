@@ -1,4 +1,4 @@
-(*s Logical rules built on top of core rules. *)
+(* * Infrastructure for defining derived rules. *)
 
 open Abbrevs
 open Type
@@ -9,8 +9,8 @@ open Tactic
 open CoreRules
 
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Operators for tacticals} *)
+(* ** Operators for tacticals
+ * ----------------------------------------------------------------------- *)
 
 val ( @> ) : tactic -> tactic -> tactic
 val ( @>> ) : tactic -> tactic list -> tactic
@@ -31,8 +31,8 @@ val t_guard : (goal -> bool) -> tactic
 
 val t_dist_eq : tactic
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Extracting samplings, lets, and guards from game} *)
+(* ** Extracting samplings, lets, and guards from game
+ * ----------------------------------------------------------------------- *)
 
 val samplings : gcmd list -> (gcmd_pos * (vs * (ty * expr list))) list
 
@@ -42,8 +42,8 @@ val oguards : gcmd list -> (ocmd_pos * expr) list
 
 val lets :  gcmd list -> (int * (vs * expr)) list
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Swap maximum amount forward and backward} *)
+(* ** Swap maximum amount forward and backward
+ * ----------------------------------------------------------------------- *)
 
 type dir = ToFront | ToEnd
 
@@ -55,8 +55,8 @@ val t_swap_max : dir -> gcmd_pos -> Se.t -> int rtactic
 
 val t_swap_others_max : dir -> gcmd_pos -> int rtactic
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Simplification and pretty printing} *)
+(* ** Simplification and pretty printing
+ * ----------------------------------------------------------------------- *)
 
 val simplify_proof_tree : proof_tree -> proof_tree
 

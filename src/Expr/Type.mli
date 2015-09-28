@@ -6,11 +6,11 @@ open Abbrevs
 (* ** Identifiers *)
 
 (** length variables for bitstrings *)
-module Lenvar : (module type of Id)  
+module Lenvar : (module type of Id)
 
 (** identifier for different permutations *)
 module Permvar : (module type of Id)
-        
+
 (** identifier for different groups *)
 module Groupvar : (module type of Id)
 
@@ -37,7 +37,7 @@ and ty_node =
   | Int (* used during extraction *)
   | KeyPair of Permvar.id
   | KeyElem of KeyElem.t * Permvar.id
-      
+
 val equal_ty   : ty -> ty -> bool
 val hash_ty    : ty -> int
 val compare_ty : ty -> ty -> int

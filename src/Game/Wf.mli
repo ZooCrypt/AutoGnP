@@ -1,4 +1,4 @@
-(* ** Well-formedness of games. *)
+(* * Well-formedness of games. *)
 
 open Syms
 open Expr
@@ -10,7 +10,7 @@ exception Wf_div_zero of Expr.expr list
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
 type wf_state
- 
+
 val mk_wfs : unit -> wf_state
 
 val ensure_name_fresh : wf_state -> Util.Sstring.elt -> wf_state

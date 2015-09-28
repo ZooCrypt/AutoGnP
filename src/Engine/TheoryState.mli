@@ -1,11 +1,9 @@
-(*s Goals and mappings from strings to variables/symbols. *)
+(* * Goals and mappings from strings to variables/symbols. *)
 
-(*i*)
 open Type
 open Nondet
 open CoreRules
 open TheoryTypes
-(*i*)
 
 val mk_ts : unit -> theory_state
 

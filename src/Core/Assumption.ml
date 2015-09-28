@@ -8,8 +8,9 @@ open Expr
 open ExprUtils
 open Syms
 
-let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "Assumption" ls
-let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
+let mk_log level = mk_logger "Core.Assumption" level "Assumption.ml"
+let log_t  = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
 
 (* ** Decisional assumptions
  * ----------------------------------------------------------------------- *)
@@ -31,7 +32,7 @@ let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
    let a1 = e1;
    C1;                          |
    let vs1_1 =  a1_1;           \  := D1
-   ...;                         /  
+   ...;                         /
    let vs1_|vs1| =  a1_|vs1|;   |
 
    ...
@@ -42,7 +43,7 @@ let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "Assumption" ls
    ...;                         /
    let vsk_|vsk| = ak_|vsk|;    |
    --
-   
+
    where for all i in [k],
      vars(Di\sigma_i) \cap {r1,..,rn} = emptyset.
 

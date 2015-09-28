@@ -1,3 +1,6 @@
+(* * Guard rules (Guess) *)
+
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Type
 open Expr
@@ -8,9 +11,11 @@ open CoreTypes
 open Nondet
 
 module CR = CoreRules
-module T = Tactic
 
-let t_guess_maybe _ts masym mvars ju =
+(* ** Rule for guess
+ * ----------------------------------------------------------------------- *)
+
+let t_guess_maybe masym mvars ju =
   let se = ju.ju_se in
   let ev = se.se_ev in
   (match try Some (destr_Quant ev) with _ -> None with
@@ -29,4 +34,4 @@ let t_guess_maybe _ts masym mvars ju =
     | None ->
       L.map (fun v -> Vsym.mk (Id.name v.Vsym.id) v.Vsym.ty) vs
   in
-  T.t_guess asym vars ju
+  Tactic.t_guess asym vars ju

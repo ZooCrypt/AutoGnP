@@ -13,7 +13,7 @@ type os  = Osym.t
 type hs  = Fsym.t
 type ors = Olist.t
 
-(* ** Types for oracles, games, and security 
+(* ** Types for oracles, games, and security
  * ----------------------------------------------------------------------- *)
 
 (** (Excepted) Distributions for sampling. *)
@@ -42,7 +42,7 @@ type ohybrid = {
 (** Oracle declaration *)
 type odecl =
   | Oreg of obody   (* regular oracle *)
-  | Ohyb of ohybrid (* hybrid oracle *) 
+  | Ohyb of ohybrid (* hybrid oracle *)
   with compare
 
 (** Oracle definition. *)
@@ -56,7 +56,7 @@ type gcmd =
   | GAssert of expr                 (* GAssert(e):     assert(e)                        *)
   | GSamp   of Vsym.t * distr       (* GSamp(x,d):     x <$ d                           *)
   | GCall   of Vsym.t list * Asym.t (* GCall(xs,e,os): (x1,..,xk) <@ A(e) with o1,..,ol *)
-               * expr * odef list 
+               * expr * odef list
   with compare
 
 (** Game definition. *)
@@ -91,18 +91,18 @@ val equal_sec_exp : sec_exp   -> sec_exp   -> bool
 val is_call : gcmd -> bool
 val has_call : gcmd list -> bool
 
-val is_assert : gcmd -> bool 
+val is_assert : gcmd -> bool
 val has_assert : gcmd list -> bool
 
 val destr_guard : lcmd -> expr
 
 (** Hybrid oracle type *)
-type ohtype = OHless | OHeq | OHgreater with compare 
+type ohtype = OHless | OHeq | OHgreater with compare
 
 (** Oracle type *)
 type otype = Onothyb | Oishyb of ohtype with compare
 
-val is_hybrid : otype -> bool 
+val is_hybrid : otype -> bool
 
 (* ** Generic functions: [map_*_expr] and [iter_*_expr]
  * ----------------------------------------------------------------------- *)
@@ -167,7 +167,7 @@ type se_octxt = {
   seoc_cright    : lcmd list;
   seoc_sec       : se_ctxt;
 }
- 
+
 val get_se_gcmd : sec_exp -> gcmd_pos -> gcmd
 
 val get_se_ctxt_len : sec_exp -> pos:int -> len:int -> gdef * se_ctxt
@@ -186,9 +186,9 @@ val get_se_octxt_len : sec_exp -> ocmd_pos -> int -> lcmd list * se_octxt
 
 val set_se_octxt : lcmd list -> se_octxt -> sec_exp
 
-val get_se_octxt : sec_exp -> ocmd_pos -> lcmd * se_octxt 
+val get_se_octxt : sec_exp -> ocmd_pos -> lcmd * se_octxt
 
-val set_se_lcmd : sec_exp -> ocmd_pos -> lcmd list -> sec_exp 
+val set_se_lcmd : sec_exp -> ocmd_pos -> lcmd list -> sec_exp
 
 (* ** Read and write variables
  * ----------------------------------------------------------------------- *)
@@ -216,9 +216,9 @@ val asym_gcmds   : gcmd list -> Asym.t list
 
 (* val fold_union_e : string *)
 
-val find_expr           : (expr -> bool) -> expr -> Se.t 
-val find_exprs          : (expr -> bool) -> expr list -> Se.t 
-val find_lcmd           : (expr -> bool) -> lcmd -> Se.t 
+val find_expr           : (expr -> bool) -> expr -> Se.t
+val find_exprs          : (expr -> bool) -> expr list -> Se.t
+val find_lcmd           : (expr -> bool) -> lcmd -> Se.t
 val find_lcmds          : (expr -> bool) -> lcmd list -> Se.t
 val find_obody          : (expr -> bool) -> obody -> Se.t
 val find_ohybrid        : (expr -> bool) -> ohybrid -> Se.t
@@ -235,7 +235,7 @@ val find_global_gdef    : (expr -> bool) -> gdef -> Se.t
  * ----------------------------------------------------------------------- *)
 
 (* val ro_syms_of_es : string *)
-val ro_syms_expr        : expr -> ROsym.S.t 
+val ro_syms_expr        : expr -> ROsym.S.t
 val ro_syms_all_gcmd    : gcmd -> ROsym.S.t
 val ro_syms_all_gdef    : gdef -> ROsym.S.t
 val ro_syms_global_gdef : gdef -> ROsym.S.t
@@ -258,7 +258,7 @@ val hash_args_global_gdef : ROsym.t -> gdef -> Se.t
 (* val fold_union_vs : string *)
 val set_of_list : vs list -> Vsym.S.t
 
-val vars_expr : expr -> Vsym.S.t 
+val vars_expr : expr -> Vsym.S.t
 val vars_exprs : expr list -> Vsym.S.t
 val vars_lcmd : lcmd -> Vsym.S.t
 val vars_lcmds : lcmd list -> Vsym.S.t
@@ -289,7 +289,7 @@ type renaming = vs Vsym.M.t
 
 val id_renaming : renaming
 val ren_injective : renaming -> bool
-val pp_ren : F.formatter -> vs Vsym.M.t -> unit  
+val pp_ren : F.formatter -> vs Vsym.M.t -> unit
 
 (* ** Unification
  * ----------------------------------------------------------------------- *)
@@ -305,9 +305,9 @@ val unif_odecl : vs Vsym.H.t -> odecl -> odecl -> unit
 val unif_odef  : vs Vsym.H.t -> odef  -> odef  -> unit
 val unif_gcmd  : vs Vsym.H.t -> gcmd  -> gcmd  -> unit
 
-val unif_se    : sec_exp -> sec_exp -> vs Vsym.M.t 
+val unif_se    : sec_exp -> sec_exp -> vs Vsym.M.t
 val unif_gdef  : gdef    -> gdef    -> vs Vsym.M.t
-  
+
 (* ** Probabilistic polynomial time
  * ----------------------------------------------------------------------- *)
 
@@ -352,10 +352,10 @@ val pp_lcomp : nonum:bool -> qual:os qual -> F.formatter -> expr * lcmd list -> 
 val string_of_otype : ohtype -> string
 val pp_ohtype : F.formatter -> ohtype -> unit
 val pp_otype : F.formatter -> otype -> unit
-val pp_obody :nonum:bool -> os -> ohtype option -> F.formatter -> lcmd list * expr -> unit  
-val pp_ohybrid : nonum:bool -> os -> F.formatter -> ohybrid -> unit 
+val pp_obody :nonum:bool -> os -> ohtype option -> F.formatter -> lcmd list * expr -> unit
+val pp_ohybrid : nonum:bool -> os -> F.formatter -> ohybrid -> unit
 val pp_odecl : nonum:bool -> os -> F.formatter -> odecl -> unit
-val pp_odef : nonum:bool -> F.formatter -> os * vs list * odecl -> unit 
+val pp_odef : nonum:bool -> F.formatter -> os * vs list * odecl -> unit
 val pp_gcmd : nonum:bool -> F.formatter -> gcmd -> unit
 val pp_igcmd : F.formatter -> int * gcmd -> unit
 val pp_gdef : nonum:bool -> F.formatter -> gcmd list -> unit

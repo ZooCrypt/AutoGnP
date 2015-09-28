@@ -15,7 +15,7 @@ type os  = Osym.t
 type hs  = Fsym.t
 type ors = Olist.t
 
-(* ** Types for oracles, games, and security 
+(* ** Types for oracles, games, and security
  * ----------------------------------------------------------------------- *)
 
 (** (Excepted) Distributions for sampling. *)
@@ -44,7 +44,7 @@ type ohybrid = {
 (** Oracle declaration *)
 type odecl =
   | Oreg of obody   (* regular oracle *)
-  | Ohyb of ohybrid (* hybrid oracle *) 
+  | Ohyb of ohybrid (* hybrid oracle *)
   with compare
 
 (** Oracle definition. *)
@@ -58,7 +58,7 @@ type gcmd =
   | GAssert of expr                 (* GAssert(e):     assert(e)                        *)
   | GSamp   of Vsym.t * distr       (* GSamp(x,d):     x <$ d                           *)
   | GCall   of Vsym.t list * Asym.t (* GCall(xs,e,os): (x1,..,xk) <@ A(e) with o1,..,ol *)
-               * expr * odef list 
+               * expr * odef list
   with compare
 
 (** Game definition. *)
@@ -117,7 +117,7 @@ let destr_guard lcmd =
   | _ -> assert false (* FIXME *)
 
 (** Hybrid oracle type *)
-type ohtype = OHless | OHeq | OHgreater with compare 
+type ohtype = OHless | OHeq | OHgreater with compare
 
 (** Oracle type *)
 type otype = Onothyb | Oishyb of ohtype with compare
@@ -237,7 +237,7 @@ type se_ctxt = {
   sec_right : gdef;
   sec_ev    : expr
 }
-  
+
 let get_se_ctxt_len se ~pos ~len =
   let rhd,tl =  cut_n pos se.se_gdef in
   let cmds, cright = cut_n len tl in
@@ -266,7 +266,7 @@ let get_obody od otype =
   | Oishyb OHgreater, Ohyb oh -> oh.oh_greater
   | _ -> assert false
 
-let get_se_lcmd se (i,j,k,otype) = 
+let get_se_lcmd se (i,j,k,otype) =
   match get_se_gcmd se i with
   | GCall(_,_,_,ods) ->
     let (o,vs,od) = L.nth ods j in
@@ -291,7 +291,7 @@ type se_octxt = {
   seoc_sec       : se_ctxt
 }
 
-let get_se_octxt_len se (i,j,k,ootype) len = 
+let get_se_octxt_len se (i,j,k,ootype) len =
   match get_se_ctxt se i with
   | GCall(vsa,asym,e,os), sec ->
     let rohd, (o,vs,od), otl = split_n j os in
@@ -339,18 +339,18 @@ let set_se_octxt lcmds c =
     | Some ol, None,    Some og -> Ohyb { oh_less = ol; oh_eq = ob; oh_greater = og }
     | Some ol, Some oe, None    -> Ohyb { oh_less = ol; oh_eq = oe; oh_greater = ob }
     | _ -> assert false
-  in 
+  in
   let odef = (c.seoc_osym,c.seoc_oargs,odecl) in
   let os = L.rev_append c.seoc_oleft (odef :: c.seoc_oright) in
   let i = [GCall(c.seoc_avars, c.seoc_asym, c.seoc_aarg, os)] in
   set_se_ctxt i c.seoc_sec
 
-let get_se_octxt se p = 
+let get_se_octxt se p =
   match get_se_octxt_len se p 1 with
   | [cmd], ctxt -> cmd, ctxt
   | _           -> assert false
 
-let set_se_lcmd se p cmds = 
+let set_se_lcmd se p cmds =
   let _, ctxt = get_se_octxt se p in
   set_se_octxt cmds ctxt
 
@@ -371,7 +371,7 @@ let read_distr (_,es) = fold_union e_vars es
 
 (* *** Oracle definitions. *)
 
-let read_lcmd = function 
+let read_lcmd = function
   | LLet(_,e) | LGuard e -> e_vars e
   | LBind _              -> Se.empty
   | LSamp(_,d)           -> read_distr d
@@ -379,8 +379,8 @@ let read_lcmd = function
 let read_lcmds c = fold_union read_lcmd c
 
 let write_lcmd = function
-  | LLet(x,_) | LSamp(x,_) -> Se.singleton (mk_V x) 
-  | LBind (xs,_)           -> add_binding xs 
+  | LLet(x,_) | LSamp(x,_) -> Se.singleton (mk_V x)
+  | LBind (xs,_)           -> add_binding xs
   | LGuard _               -> Se.empty
 
 let write_lcmds c = fold_union write_lcmd c
@@ -388,7 +388,7 @@ let write_lcmds c = fold_union write_lcmd c
 let read_obody xs (lcmd,e) =
   let r = Se.union (read_lcmds lcmd) (e_vars e) in
   let w = Se.union (add_binding xs) (write_lcmds lcmd) in
-  Se.diff r w 
+  Se.diff r w
 
 let read_ohybrid xs oh =
   Se.union (read_obody xs oh.oh_less)
@@ -407,7 +407,7 @@ let read_odefs odefs = fold_union read_odef odefs
 (* *** Main body. *)
 
 let read_gcmd = function
-  | GLet(_,e)         -> e_vars e 
+  | GLet(_,e)         -> e_vars e
   | GAssert(e)        -> e_vars e
   | GSamp(_,d)        -> read_distr d
   | GCall(_,_,e,odefs) -> Se.union (e_vars e) (read_odefs odefs)
@@ -442,7 +442,7 @@ let find_expr p e = e_find_all p e
 
 let find_exprs p es = fold_union_e (find_expr p) es
 
-let find_lcmd p = function 
+let find_lcmd p = function
   | LLet(_,e)  -> find_expr p e
   | LSamp(_,d) -> find_exprs p (snd d)
   | LBind(_,_) -> Se.empty
@@ -633,7 +633,7 @@ let subst_v_gcmd tov = function
 let subst_v_gdef tov = L.map (subst_v_gcmd tov)
 
 let subst_v_ev tov = subst_v_expr tov
- 
+
 let subst_v_se tov se = {
   se_gdef = subst_v_gdef tov se.se_gdef;
   se_ev   = subst_v_ev tov se.se_ev;
@@ -688,10 +688,10 @@ let unif_lcmd ren lc1 lc2 =
     L.iter2 (unif_vs ren) vss1 vss2
   | LGuard(_), LGuard(_) ->
     ()
-  | _ -> 
+  | _ ->
     raise Not_found
 
-let unif_obody ren (lcmds1,_) (lcmds2,_) = 
+let unif_obody ren (lcmds1,_) (lcmds2,_) =
   ensure_same_length lcmds1 lcmds2;
   L.iter2 (unif_lcmd ren) lcmds1 lcmds2
 
@@ -730,7 +730,7 @@ let vht_to_map ht =
 
 (** We only support an outermost exists binder *)
 let unif_se se1 se2 =
-  try 
+  try
     let ren = Vsym.H.create 134 in
     unif_gdef ren se1.se_gdef se2.se_gdef;
     unif_expr ren se1.se_ev se2.se_ev;
@@ -738,18 +738,18 @@ let unif_se se1 se2 =
   with
     Not_found ->
       F.printf "no unifier found!\n%!";
-      raise Not_found 
+      raise Not_found
 
-let unif_gdef g1 g2 = 
+let unif_gdef g1 g2 =
   let ren = Vsym.H.create 134 in
   unif_gdef ren g1 g2;
   vht_to_map ren
-  
+
 (* ** Probabilistic polynomial time
  * ----------------------------------------------------------------------- *)
 
 let has_log_distr (_,es) = L.exists has_log es
-  
+
 let has_log_lcmd = function
   | LLet(_,e) | LGuard e -> has_log e
   | LBind _              -> false
@@ -774,7 +774,7 @@ let has_log_gcmd = function
 let has_log_gcmds c = L.exists has_log_gcmd c
 
 let is_ppt_distr (_,es) = L.for_all is_ppt es
-  
+
 let is_ppt_lcmd = function
   | LLet(_,e) | LGuard e -> is_ppt e
   | LBind _              -> true
@@ -805,7 +805,7 @@ let is_ppt_se se = is_ppt_gcmds se.se_gdef && is_ppt se.se_ev
 
 let norm_default = Norm.norm_expr_strong
 
-let norm_distr ?norm:(nf=norm_default) s (ty,es) = 
+let norm_distr ?norm:(nf=norm_default) s (ty,es) =
   (ty, L.map (fun e -> nf (e_subst s e)) es)
 
 let norm_obody ?norm:(nf=norm_default) s exported_defs (lc,e) =
@@ -814,7 +814,7 @@ let norm_obody ?norm:(nf=norm_default) s exported_defs (lc,e) =
     | None -> false, fun _ _ -> ()
     | Some map_r -> true, fun v e -> map_r := Me.add v e !map_r
   in
-  let rec aux s rc ~do_export lc = 
+  let rec aux s rc ~do_export lc =
     match lc with
     | [] -> (L.rev rc, nf (e_subst s e))
     | LLet (v, e) :: lc' ->
@@ -822,8 +822,8 @@ let norm_obody ?norm:(nf=norm_default) s exported_defs (lc,e) =
       let v = mk_V v in
       let s = Me.add v e s in
       add_export v e;
-      aux s rc ~do_export lc' 
-    | (LBind (vs,_) as i)::lc' -> 
+      aux s rc ~do_export lc'
+    | (LBind (vs,_) as i)::lc' ->
       let s = L.fold_left (fun s v -> Me.remove (mk_V v) s) s vs in
       aux s (i::rc) ~do_export:false lc'
     | LSamp(v,d)::lc' ->
@@ -847,7 +847,7 @@ let norm_odef ?norm:(nf=norm_default) s exported_defs (o,vs,od) =
   (o,vs,od)
 
 let norm_gdef ?norm:(nf=norm_default) g =
-  let rec aux s rc lc = 
+  let rec aux s rc lc =
     match lc with
     | [] -> L.rev rc, s
     | GLet(v,e) :: lc' ->
@@ -880,14 +880,14 @@ let norm_se ?norm:(nf=norm_default) se =
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
 
-let pp_distr ~qual fmt (ty,es) = 
+let pp_distr ~qual fmt (ty,es) =
   match es with
   | [] -> pp_ty fmt ty
   | _  -> F.fprintf fmt "@[<hov 2>%a \\ {@[<hov 0>%a}@]@]" pp_ty ty
             (pp_list "," (pp_expr_qual ~qual)) es
 
 (* let pp_v fmt v = F.fprintf fmt "%a_%i" Vsym.pp v (Id.tag v.Vsym.id) *)
-let pp_v fmt v = Vsym.pp fmt v 
+let pp_v fmt v = Vsym.pp fmt v
 
 let pp_binder ~qual fmt vs =
   match vs with
@@ -895,13 +895,13 @@ let pp_binder ~qual fmt vs =
   | _   -> F.fprintf fmt "(@[<hov 0>%a@])" (pp_list "," (Vsym.pp_qual ~qual)) vs
 
 let pp_lcmd ~qual fmt = function
-  | LLet(vs,e)  -> 
+  | LLet(vs,e)  ->
     F.fprintf fmt "@[<hov 2>let %a =@ %a@]"
       (pp_binder ~qual) [vs]
       (pp_expr_qual ~qual) e
-  | LBind(vs,h) -> 
+  | LBind(vs,h) ->
     F.fprintf fmt "@[<hov 2>%a <-@ L_%a@]" (pp_binder ~qual) vs Fsym.pp h
-  | LSamp(v,d)  -> 
+  | LSamp(v,d)  ->
     F.fprintf fmt "@[<hov 2>%a <-$@ %a@]"
       (pp_binder ~qual) [v]
       (pp_distr ~qual) d
@@ -918,7 +918,7 @@ let pp_lcomp ~nonum ~qual fmt (e,m) =
     F.fprintf fmt "%sreturn %a"
       (if nonum then "" else "1: ")
       (pp_expr_qual ~qual) e
-      
+
   | _  ->
     F.fprintf fmt "@[%a;@\n%sreturn %a@]"
       (pp_list ";@\n" (pp_ilcmd ~nonum ~qual))
@@ -938,8 +938,8 @@ let pp_otype fmt = function
   | Oishyb  oht -> pp_ohtype fmt oht
 
 let pp_obody ~nonum osym ootype fmt (ms,e) =
-  F.fprintf fmt "{ %s@\n  @[<v>%a@] }"
-    (match ootype with None -> "" | Some ot -> "(* "^string_of_otype ot^" *)")
+  F.fprintf fmt "{%s@\n  @[<v>%a@] }"
+    (match ootype with None -> "" | Some ot -> " (* "^string_of_otype ot^" *)")
     (pp_lcomp ~nonum ~qual:(Qual osym)) (e,ms)
 
 let pp_ohybrid ~nonum osym fmt oh =
@@ -953,31 +953,31 @@ let pp_odecl ~nonum osym fmt = function
   | Ohyb oh -> pp_ohybrid ~nonum osym fmt oh
 
 let pp_odef ~nonum fmt (o, vs, od) =
-  F.fprintf fmt "@[<v>%a(@[<hov 0>%a@]) = %a@]" 
+  F.fprintf fmt "@[<v>%a(@[<hov 0>%a@]) = %a@]"
     Osym.pp o
     (pp_list "," (Vsym.pp_qual ~qual:(Qual o))) vs
     (pp_odecl ~nonum o) od
 
 let pp_gcmd ~nonum fmt gc = match gc with
-  | GLet(vs,e) -> 
+  | GLet(vs,e) ->
     F.fprintf fmt "@[<hov 2>let %a =@ %a@]" (pp_binder ~qual:Unqual) [vs] pp_expr e
-  | GAssert(e) -> 
+  | GAssert(e) ->
     F.fprintf fmt "@[<hov 2>assert(%a)@]" pp_expr e
-  | GSamp(v,d) -> 
+  | GSamp(v,d) ->
     F.fprintf fmt "@[<hov 2>%a <-$@ %a@]"
       (pp_binder ~qual:Unqual) [v]
       (pp_distr ~qual:Unqual) d
-  | GCall(vs,asym,e,[]) -> 
-    F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@])@]" 
-      (pp_binder ~qual:Unqual) vs Asym.pp asym pp_expr_tnp e 
-  | GCall(vs,asym,e,od) -> 
+  | GCall(vs,asym,e,[]) ->
+    F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@])@]"
+      (pp_binder ~qual:Unqual) vs Asym.pp asym pp_expr_tnp e
+  | GCall(vs,asym,e,od) ->
     F.fprintf fmt "@[<hov 2>%a <-@ %a(@[%a@]) with@\n%a@]"
-      (pp_binder ~qual:Unqual) vs Asym.pp asym 
+      (pp_binder ~qual:Unqual) vs Asym.pp asym
       pp_expr_tnp e
       (pp_list ",@;" (pp_odef ~nonum)) od
 
-let pp_igcmd fmt (i,gc) = 
-  F.fprintf fmt "@[%3i: %a@]" i (pp_gcmd ~nonum:false) gc 
+let pp_igcmd fmt (i,gc) =
+  F.fprintf fmt "@[%3i: %a@]" i (pp_gcmd ~nonum:false) gc
 
 let pp_gdef ~nonum fmt gd =
   if nonum then
@@ -990,7 +990,7 @@ let pp_se fmt se =
     pp_expr se.se_ev
 
 let pp_se_nonum fmt se =
-  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:true) se.se_gdef 
+  F.fprintf fmt "@[<v 0>%a;@,: %a@]" (pp_gdef ~nonum:true) se.se_gdef
     pp_expr se.se_ev
 
 let pp_ps fmt ps =

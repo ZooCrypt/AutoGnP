@@ -1,11 +1,9 @@
-(*s Tactic engine: transformations of proof states. *)
+(* * Tactic engine: transformations of proof states. *)
 
-(*i*)
 open Abbrevs
 open CoreTypes
 open TheoryTypes
 open ParserTypes
-(*i*)
 
 val pp_jus : int -> F.formatter -> judgment list -> unit
 

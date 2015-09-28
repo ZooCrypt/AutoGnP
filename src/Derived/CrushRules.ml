@@ -22,9 +22,10 @@ module T = Tactic
 module CT = CoreTypes
 module Ht = Hashtbl
 
-let log_t ls  = mk_logger "Logic.Crush" Bolt.Level.TRACE "CrushRules" ls
-let _log_d ls = mk_logger "Logic.Crush" Bolt.Level.DEBUG "CrushRules" ls
-let log_i ls  = mk_logger "Logic.Crush" Bolt.Level.INFO  "CrushRules" ls
+let mk_log level = mk_logger "Derive.CrushRules" level "CrushRules.ml"
+let log_t  = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+let log_i  = mk_log Bolt.Level.INFO
 
 
 (* ** Automated crush tactic
@@ -60,7 +61,7 @@ let psis_of_pt pt =
       let psi =
         { psi with psi_cases = Se.add e psi.psi_cases }
       in
-      L.iter (aux psi) children    
+      L.iter (aux psi) children
     | CT.Rrnd(pos,_,_,_) ->
       let rands = samplings gd in
       let (rv,_) = L.assoc pos rands in
@@ -134,11 +135,12 @@ let rec t_crush_step depth stats ts must_finish finish_now psi =
         @> (t_norm ~fail_eq:true @|| T.t_id))
   in
   let t_close ju =
-    ((T.t_try (GuardRules.t_guess_maybe ts None None)
-      @> (t_random_indep ts false @> t_log "random_indep"))
+    ((T.t_try (GuardRules.t_guess_maybe None None)
+      @> (    t_random_indep ts false @> t_log "random_indep"
+          @|| t_simp true 40))
      @|| (t_assm_comp ~icases ts false None None @> t_log "assm_comp")) ju
   in
-  let t_progress = 
+  let t_progress =
        (t_assm_dec ~i_assms:ias ts false None (Some LeftToRight) None None
         @> t_log "\nassm_dec")
     @| (fun ju

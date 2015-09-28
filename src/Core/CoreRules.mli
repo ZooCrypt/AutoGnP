@@ -76,7 +76,7 @@ val ct_injective_ctxt_ev : int -> ctxt -> ctxt -> core_tactic
 
 val ct_case_ev : ?flip:bool -> ?allow_existing:bool -> expr -> core_tactic
 
-val ct_remove_ev : int list -> core_tactic 
+val ct_remove_ev : int list -> core_tactic
 
 val ct_false_ev : core_tactic
 
@@ -108,7 +108,7 @@ val ct_except : gcmd_pos -> expr list -> core_tactic
 (** [rexcept_oracle p es ju] returns the judgment resulting from
     replacing the sampling [r <- d \ es'] at oracle position [p]
     in [ju] with the sampling [r <- d \ es], i.e., it replaces the
-    (possibly empty) set of excepted values [es'] with [es]. *)    
+    (possibly empty) set of excepted values [es'] with [es]. *)
 val ct_except_oracle : ocmd_pos -> expr list -> core_tactic
 
 (** [radd_test p tnew asym vs ju] returns the judgments resulting from
@@ -153,4 +153,4 @@ val ct_guard : ocmd_pos -> expr option -> core_tactic
 
 val ct_guess : Asym.t -> vs list ->  core_tactic
 
-val ct_find : vs list * expr -> expr -> Asym.t -> vs list ->  core_tactic 
+val ct_find : vs list * expr -> expr -> Asym.t -> vs list ->  core_tactic

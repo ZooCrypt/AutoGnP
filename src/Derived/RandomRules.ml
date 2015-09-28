@@ -20,10 +20,10 @@ module CR = CoreRules
 module T  = Tactic
 module PT = ParserTypes
 
-let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RandomRules" ls
-let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "RandomRules" ls
-let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "RandomRules" ls
-
+let mk_log level = mk_logger "Derived.RandomRules" level "RandomRules.ml"
+let log_t  = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+let log_i  = mk_log Bolt.Level.INFO
 
 (* ** Derived rule for random sampling
  * ------------------------------------------------------------------- *)
@@ -67,7 +67,8 @@ let useful_subexprs se rv mgen e =
         let e' = exp_of_poly g in
         guard (not (equal_expr re e')) >>= fun _ ->
         guard (Se.mem re (e_vars e')) >>= fun _ ->
-        log_t (lazy (fsprintf "transform expr=%a -> %a@\n%!" pp_expr e pp_expr e'));
+        log_t (lazy (fsprintf "@[<hov 2>transform expr=@[<hov 2>%a@]@ -> @[<hov 2>%a@]@\n%!@]"
+                       pp_expr e pp_expr e'));
         ret e'
       with
         Not_found -> mempty
@@ -107,7 +108,7 @@ let contexts se rv mgen =
   iter_gdef_exp add_subterms se.se_gdef;
   add_subterms se.se_ev;
   mconcat (L.rev !es) >>= fun e ->
-  log_t (lazy (fsprintf "possible expr=%a@\n%!" pp_expr e));
+  log_t (lazy (fsprintf "@[<hov 2>possible expr=@ @[<hov 2>%a@]@]@\n%!" pp_expr e));
 
   (* find useful subexpressions of e (in the right order) *)
   useful_subexprs se rv mgen e
@@ -147,16 +148,24 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     let (v1,e1) = parse v1_ty (sv1,se1) in
     ret ((v1,e1), deduc e1 v1)
   | None, None ->
-    let e2s =
+    let ctxts =
       run (-1) (contexts se rv mgen)
       |> L.map NormUtils.norm_expr_nice
-      |> L.sort_uniq compare_expr
+      |> L.unique ~eq:equal_expr
+      |> L.filter (fun e -> Vsym.S.for_all (fun v -> v.Vsym.qual = Unqual) (vars_expr e))
+      (* FIXME: for bycrush, we exclude contexts rv -> - rv *)
+      |> L.filter (fun e -> (not (equal_expr (mk_FOpp (mk_V rv)) e)))
+    in
+    log_i (lazy (fsprintf "context_num: %i v=%a %a" (L.length ctxts) pp_expr (mk_V rv) (pp_list "," pp_expr) ctxts));
+    let e2s =
+      ctxts
+      |> L.sort (fun e1 e2 -> compare_pair compare compare_expr (e_size e1,e1) (e_size e2,e2))
     in
     mconcat (L.map (fun e2 -> (rv,e2)) e2s) >>= fun (v2,e2) ->
     ret (deduc e2 v2, (v2,e2))
-    (* FIXME: for CS bycrush, we excluded contexts rv -> - rv *)
   ) >>= fun ((v1,e1),(v2,e2)) ->
-  log_t (lazy (fsprintf "t_rnd_pos: trying %a -> %a with inverse %a -> %a"
+  log_t (lazy (fsprintf (  "@[<hov 2>t_rnd_pos: trying@ @[<hov 2>%a@] -> @[<hov 2>%a@]@ "
+                         ^^"with inverse@ @[<hov 2>%a@] -> @[<hov 2>%a@]")
                  Vsym.pp v1 pp_expr e1 Vsym.pp v2 pp_expr e2));
   try
     ignore (CR.r_rnd i (v1,e1) (v2,e2) ju);
@@ -164,12 +173,13 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
    with
    (* try different strategies to prevent failures by applying other
       tactics beforehand *)
-   | Invalid_rule s -> 
+   | Invalid_rule s ->
      mfail (lazy s)
    | Wf.Wf_var_undef(vs,e,def_vars) ->
      let ls =
        lazy
-         (fsprintf "t_rnd_pos: variable %a undefined in %a, not in %a"
+         (fsprintf (  "@[<hov 2>t_rnd_pos: variable %a@ undefined"
+                    ^^" in @[<hov 2>%a@],@ not in @[<hov 2>%a@]")
             Vsym.pp vs pp_expr e
             (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
      log_i ls;

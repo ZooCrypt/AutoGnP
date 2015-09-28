@@ -23,7 +23,7 @@ let charpos_to_linepos s cp =
   let lines = BatString.nsplit s ~by:"\n" in
   let cur_line = ref 1 in
   let cur_cp = ref cp in
-  try 
+  try
     List.iter
       (fun ls ->
             let len = String.length ls in
@@ -49,7 +49,7 @@ let wrap_error f s =
     let (line_pos,lstart_pos,line) = charpos_to_linepos s start_pos in
     `ParseError
       { pe_char_start      =  start_pos
-      ; pe_char_end        = end_pos 
+      ; pe_char_end        = end_pos
       ; pe_line_start      = line_pos
       ; pe_line_char_start = lstart_pos
       ; pe_line_char_end   = lstart_pos+len
@@ -62,12 +62,12 @@ let wrap_error f s =
     let (line_pos,lstart_pos,line) = charpos_to_linepos s start_pos in
     `ParseError
       { pe_char_start      =  start_pos
-      ; pe_char_end        = end_pos 
+      ; pe_char_end        = end_pos
       ; pe_line_start      = line_pos
       ; pe_line_char_start = lstart_pos
       ; pe_line_char_end   = lstart_pos+len
       ; pe_line            = line
-      ; pe_msg             = "parse error" } 
+      ; pe_msg             = "parse error" }
   | e ->
     failwith
       (F.sprintf "Unexpected error while lexing/parsing: %s,\n%s"

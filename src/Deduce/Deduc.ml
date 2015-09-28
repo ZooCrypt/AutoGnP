@@ -7,9 +7,8 @@ open Util
 open Expr
 open ExprUtils
 
-(* let log_i ls = mk_logger "Norm" Bolt.Level.INFO "Deduc" ls *)
-let log_i _ = ()
-
+let mk_log level = mk_logger "Deduce.Deduc" level "Deduc.ml"
+let log_i = mk_log Bolt.Level.INFO
 
 (* ** Deducibility function
  * ----------------------------------------------------------------------- *)
@@ -30,7 +29,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     let e = if is_Ifte e then Norm.norm_expr_strong e else e in
     if equal_expr e to_ then raise (Found inv);
     if not (He.mem known e) && not (is_Cnst e) then (
-      log_i (lazy (fsprintf "add_known: %a" pp_expr e));
+      log_i (lazy (fsprintf "@[add_known:@ @[<hov 2>%a@]@]" pp_expr e));
       He.add known e inv;
       progress := true;
       add_subterms e inv
@@ -38,10 +37,10 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   and add_subterms e inv =
     match e.e_node with
     | V _  | Proj _ | Cnst _ -> ()
-    | Tuple es -> 
+    | Tuple es ->
       List.iteri (fun i e -> add_known e (mk_Proj i inv)) es
     | App(op, es) ->
-      begin match op, es with 
+      begin match op, es with
       | GLog g, [e]         -> add_known e (mk_GExp (mk_GGen g) inv)
       | FOpp, _             -> add_known e (mk_FOpp inv)
       | FInv, [e]           -> add_known e (mk_FInv inv)
@@ -63,7 +62,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let sub_constr = ref Se.empty in
   let add_sub_constr e =
     if not (Se.mem e !sub_constr) then
-      log_i (lazy (fsprintf "add_sub_constr: %a" pp_expr e));
+      log_i (lazy (fsprintf "@[<hov>add_sub_constr:@ @[<hov 2>%a@]@]" pp_expr e));
       sub_constr := Se.add e !sub_constr
   in
   let rm_sub_constr e = sub_constr := Se.remove e !sub_constr in
@@ -74,18 +73,19 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
      solvers, e.g., for Xor or Fq. *)
   let sub_solver = Hty.create 7 in
   let add_sub_solver e =
-    log_i (lazy (fsprintf "add_sub_solver[maybe]: %a" pp_expr e));
+    log_i (lazy (fsprintf "@[<hov>add_sub_solver[maybe]:@ @[<hov 2>%a@]" pp_expr e));
     match e.e_ty.ty_node with
     | BS _ | Fq | G _ | Bool ->
       if is_G e.e_ty && not ppt then () else
       begin try
         let s = Hty.find sub_solver e.e_ty in
         if not (Se.mem e s) then
-          log_i (lazy (fsprintf "add_sub_solver: %a" pp_expr e));
+          log_i (lazy (fsprintf "@[<hov>add_sub_solver:@ @[<hov 2>%a@]@]" pp_expr e));
           Hty.replace sub_solver e.e_ty (Se.add e s)
       with
         Not_found ->
-          log_i (lazy (fsprintf "add_sub_solver[create]: %a" pp_expr e));
+          log_i (lazy (fsprintf "@[add_sub_solver[create]:@ @[<hov 2>%a@]@]"
+                         pp_expr e));
           Hty.add sub_solver e.e_ty (Se.singleton e)
       end
     | Int | Prod _ -> ()
@@ -94,17 +94,17 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let add_sub e = add_sub_solver e; add_sub_constr e in
   (* for everything except field expressions, there is no nesting in the
      normal form, we therefore require only an in_field flag *)
-  let rec register_subexprs in_field e = 
+  let rec register_subexprs in_field e =
     match e.e_node with
     | Tuple es    -> add_sub_constr e; List.iter (register_subexprs false) es
     | Quant(_,_,e1) -> add_sub e; register_subexprs true e1
     | Proj(_,e1)  -> add_sub e; (register_subexprs false) e1
-    | App(op, es) -> 
+    | App(op, es) ->
       begin match op with
       | (ProjKeyElem _) -> fixme "no support for this"
       | (FunCall _ | RoCall _ | RoLookup _) ->
         add_sub e; List.iter (register_subexprs false) es
-      | FOpp | FMinus | FInv | FDiv -> 
+      | FOpp | FMinus | FInv | FDiv ->
         if not in_field then add_sub_solver e;
         List.iter (register_subexprs true) es
       | GExp _ | EMap _ ->
@@ -121,7 +121,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
               let e2 = mk_GExp a v in
               add_sub_solver e1; add_sub_solver e2;
               add_sub_constr (mk_Ifte c e1 e2);
-            ) 
+            )
           )
         ) else (
           add_sub_constr e; List.iter (register_subexprs false) es
@@ -199,7 +199,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       construct2 e e1 e2 mk_GExp
     | _, _ -> assert false
   in
-  let construct e = 
+  let construct e =
     match e.e_node with
     | Proj(i, e1) -> construct1 e e1 (mk_Proj i)
     (*
@@ -217,30 +217,32 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | V _
     | Cnst _ -> reg_constr e e
   in
- 
+
   (* Try do deduce interesting subterms for the given type using solvers *)
   let solve ty subexprs =
-    log_i (lazy (fsprintf "solve: started for type %a" pp_ty ty));
+    log_i (lazy (fsprintf "@[<hov>solve: started for type %a@]" pp_ty ty));
     if is_G ty && not ppt then () else
     let solver, ty_rel =
       match ty.ty_node with
       | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
       | Fq           -> DeducField.solve_fq, equal_ty ty
-      | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t 
+      | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
       | Prod _ | Int | KeyPair _ | KeyElem _ -> assert false
     in
     let k,u = Se.partition is_in subexprs in
     if Se.is_empty u then (
-      log_i (lazy (fsprintf "solve: done for type %a" pp_ty ty));
+      log_i (lazy (fsprintf "@[<hov>solve: done for type %a@]" pp_ty ty));
       Hty.remove sub_solver ty
     ) else (
       let k' = Se.filter (fun e -> ty_rel e.e_ty) (he_keys known) in
       let k = Se.elements (Se.union k k') in
       let k = ref (List.map (fun e -> (e, I (get e))) k) in
-      log_i (lazy (fsprintf "known: %a" (pp_list "," pp_expr) (List.map fst !k)));
-      log_i (lazy (fsprintf "unknown: %a" (pp_list "," pp_expr) (Se.elements u)));
+      log_i (lazy (fsprintf "@[<hov>known:@ @[<hov 2>%a@]@]"
+                     (pp_list "," pp_expr) (List.map fst !k)));
+      log_i (lazy (fsprintf "@[<hov>unknown:@ @[<hov 2>%a@]@]"
+                     (pp_list "," pp_expr) (Se.elements u)));
       Se.iter (fun u ->
-        try 
+        try
           let inv = solver !k u in
           add_known u (expr_of_inverter inv);
           k := (u,inv) :: !k
@@ -253,7 +255,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     (* initialize for all known expressions *)
     let init_known (e,I i) =
       let e = Norm.norm_expr_strong e in
-      log_i (lazy (fsprintf "init_known: %a" pp_expr e));
+      log_i (lazy (fsprintf "@[<hov>init_known:@ @[<hov 2>%a@]@]" pp_expr e));
       register_subexprs false e;
       add_known e i
     in
@@ -276,12 +278,12 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   | e ->
     let err = Printexc.to_string e in
     let bt = Printexc.get_backtrace () in
-    log_i (lazy (fsprintf "invert: %s\n %s" err bt)); raise e
+    log_i (lazy (fsprintf "@[invert:@ %s@ %s@]" err bt)); raise e
 
 
 (* ** Wrapper function
  * ----------------------------------------------------------------------- *)
-   
+
 let invert ?ppt_inverter:(ppt=false) ts known_es to_ =
   let open TheoryTypes in
   let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in

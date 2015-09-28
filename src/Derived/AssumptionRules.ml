@@ -20,9 +20,10 @@ module CR = CoreRules
 module T = Tactic
 module PU = ParserUtil
 
-let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "AssumptionRules" ls
-let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "AssumptionRules" ls
-let log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "AssumptionRules" ls
+let mk_log level = mk_logger "Derive.AssumptionRules" level "AssumptionRules.ml"
+let log_i = mk_log Bolt.Level.INFO
+let log_t = mk_log Bolt.Level.TRACE
+let log_d = mk_log Bolt.Level.DEBUG
 
 (* ** Decisional assumptions
  * ----------------------------------------------------------------------- *)
@@ -45,7 +46,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
     | None when L.length vneeded <> 0 -> tacerror "exact required vnames"
     | None                            -> []
   in
-  if L.length vneeded <> L.length vnames then 
+  if L.length vneeded <> L.length vnames then
     tacerror "%s: wrong number of variables" rn;
   if L.length acalls <> L.length rngs then tacerror "%s: Wrong number of ranges" rn;
   (* initial renaming with mappings from needed variables to given variables *)
@@ -134,10 +135,10 @@ let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
   let arg_e = Game.subst_v_expr (fun vs -> Vsym.M.find vs ren) arg_e in
   let arg_v = Vsym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
   let pref_len = L.length assm_samps in
-  if is_Quant ju.ju_se.se_ev then 
+  if is_Quant ju.ju_se.se_ev then
     tacerror "t_assm_dec: no quantifier allowed";
   let ev = ju.ju_se.se_ev in
-  let ev_v = 
+  let ev_v =
     Vsym.mk (CR.mk_name ~name:"re" ju.ju_se) ev.e_ty in
   let max = L.length ju.ju_se.se_gdef in
   try
@@ -181,7 +182,7 @@ let match_samps symvars assm_samps_typed gdef_samps_typed =
       let old_new_pos =
         L.map (fun (sg,ss) -> (fst sg, fst ss)) (L.combine match_samps asamps)
       in
-      go (acc@old_new_pos) asts gsts 
+      go (acc@old_new_pos) asts gsts
     | _ ->
       assert false
   in
@@ -192,7 +193,7 @@ let match_samps symvars assm_samps_typed gdef_samps_typed =
     L.partition (fun old_new_pos -> L.for_all (fun (op,np) -> op = np) old_new_pos) matches
   in
   Nondet.mconcat (m1 @ m2)
-  
+
 
 (** Fuzzy matching with given assumption, compute sequence of swap
     applications that make assumption applicable. Compute let abstraction
@@ -262,7 +263,7 @@ let t_assm_dec_non_exact
   let generated_vnames =
     L.map (fun _ -> CR.mk_name se) (list_from_to 0 required)
   in
-  let ren = 
+  let ren =
     L.fold_left2
       (fun sigma v x -> Vsym.M.add v (Vsym.mk x v.Vsym.ty) sigma)
       Vsym.M.empty
@@ -405,28 +406,40 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   in
   (* let get_bind bindings = match bindings with [(vs,_)] -> vs | _ -> tacerror "fail" in *)
   let argv = Vsym.mk "arg" aarg.e_ty in
-  let assm_tac = 
+  let assm_tac_only =
+       t_print log_i ("%%% step 1")
+   @> (fun ju ->
+          let last = Some (L.length ju.ju_se.se_gdef - 1) in
+          t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
+    @> t_print log_i ("%%% step 2")
+    @> (fun ju ->
+          let ev = ju.ju_se.se_ev in
+          if is_Exists ev then (
+            let ((vs,_os),ev) = destr_Exists ev in
+            let asym = Asym.mk "CC" argv.Vsym.ty (mk_Prod (L.map (fun v -> v.Vsym.ty) vs))  in
+            let v = Vsym.mk "f_arg" aarg.e_ty in
+            T.core_tactic (CR.ct_find ([v],e_replace aarg (mk_V v) ev) aarg asym vs) ju
+          ) else (
+            T.t_id ju
+          )
+        )
+    @> t_print log_i ("%%% step 3")
+    @> (t_seq_fold
+          (L.map
+             (fun (v,e) ju -> t_let_abstract (L.length ju.ju_se.se_gdef) v e None false ju)
+                ev_mapping'))
+    @> t_print log_i ("%%% step 4")
+    @> (fun ju ->
+          let argv = Vsym.mk "arg__" aarg.e_ty in
+          let last = Some (L.length ju.ju_se.se_gdef - 1) in
+          t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
+    @> t_print log_i ("%%% step 5")
+    @> (fun ju -> T.t_assm_comp assm [assm_len,L.length ju.ju_se.se_gdef - 1] subst ju)
+  in
+  let assm_tac =
     (    T.core_tactic (CR.ct_case_ev ~flip:true nineq)
      @>> [ before_t_assm
-           @> (fun ju ->
-               let last = Some (L.length ju.ju_se.se_gdef - 1) in
-               t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
-           @> (fun ju ->
-               let ev = ju.ju_se.se_ev in
-               let vs = [] (* FIXME: get_bind Event.binding ev *) in
-               let asym = Asym.mk "CC" argv.Vsym.ty (mk_Prod (L.map (fun v -> v.Vsym.ty) vs))  in
-               let v = Vsym.mk "f_arg" aarg.e_ty in
-               T.core_tactic (CR.ct_find ([v],e_replace aarg (mk_V v) ev) aarg asym vs) ju)
-           @> (t_seq_fold
-                (L.map
-                   (fun (v,e) ju -> t_let_abstract (L.length ju.ju_se.se_gdef) v e None false ju)
-                   ev_mapping'))
-           @> t_print log_i ("before_comp_assm")
-           @> (fun ju ->
-               let argv = Vsym.mk "arg__" aarg.e_ty in
-               let last = Some (L.length ju.ju_se.se_gdef - 1) in
-               t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
-           @> (fun ju -> T.t_assm_comp assm [assm_len,L.length ju.ju_se.se_gdef - 1] subst ju)
+           @> assm_tac_only
          ; T.t_id])
   in
   let sconjs = destr_Land sassm_ev in
@@ -435,8 +448,15 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   if is_Land ju.ju_se.se_ev &&
      L.exists (fun e ->
        equal_expr (NormUtils.abbrev_ggen e) snineq) (destr_Land ju.ju_se.se_ev)
-  then T.t_assm_comp assm [] subst ju >>= fun ps -> ret (None,ps)
-  else T.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
+  then (
+    log_i (lazy "return None");
+    log_i (lazy (fsprintf "%a" pp_ju ju));
+    log_i (lazy (fsprintf "%a" (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
+    assm_tac_only ju >>= fun ps -> ret (None,ps)
+  ) else (
+    log_i (lazy "return Some");
+    T.t_id ju >>= fun ps -> ret (Some assm_tac,ps)
+  )
 
 let t_assm_comp_aux ?icases:(icases=Se.empty) ts before_t_assm assm mev_e ju =
   let se = ju.ju_se in
@@ -486,7 +506,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
      the assumption and the considered game *)
   let ordered eq_class = ordered_eqclass samp_assm match_samps eq_class in
   guard (L.for_all ordered assm.ac_symvars) >>= fun _ ->
-  
+
   let old_new_pos = L.mapi (fun i x -> (fst x,i)) match_samps in
   let swaps =
        parallel_swaps old_new_pos
@@ -503,7 +523,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
   (* FIXME: use case_ev and rfalse to handle case with missing events *)
   assert (not (is_Quant assm.ac_event));
   (*
-  if (se.se_ev.ev_binding <> []) then 
+  if (se.se_ev.ev_binding <> []) then
     tacerror " t_assm_comp_auto: quantifier not allowed";
   *)
   let aev = assm.ac_event in
@@ -553,7 +573,7 @@ let t_assm_comp_exact ts maname mrngs ju =
       tacerror "assumption_computational: assumption name required for exact"
   in
   let rngs =
-    match mrngs with 
+    match mrngs with
     | Some rngs -> rngs
     | None ->
       tacerror "assumption_computational: adversary call ranges required for exact"
@@ -569,11 +589,11 @@ let t_assm_comp_exact ts maname mrngs ju =
   let ren =
     L.fold_left2 (fun s i1 i2 ->
       match i1, i2 with
-      | GSamp(x1,_), GSamp(x2,_) 
+      | GSamp(x1,_), GSamp(x2,_)
         when Type.equal_ty x1.Vsym.ty x2.Vsym.ty ->
         Vsym.M.add x1 x2 s
       | _ ->
-        tacerror "assumption_computational : can not infer substitution")
+        tacerror "assumption_computational: cannot infer substitution")
       Vsym.M.empty c jc
   in
 

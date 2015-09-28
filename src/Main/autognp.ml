@@ -29,8 +29,10 @@ let register_buffer_logger () =
   let buffer (_ : string) (_ : Output.rotation) (_ : Bolt.Layout.t lazy_t) =
     object
       method write msg =
-        Buffer.add_string log_buf msg;
-        Buffer.add_string log_buf "\n"
+        if !enable_debug then (
+          Buffer.add_string log_buf msg;
+          Buffer.add_string log_buf "\n"
+      )
       method close = ()
     end
   in
@@ -39,21 +41,16 @@ let register_buffer_logger () =
 let initialize_logging () =
   let open Bolt in
   register_buffer_logger ();
+  let mode = Mode.direct () in
   if !log_file<>"" then (
-    let mode = Mode.direct () in
-    Logger.register "" Level.TRACE "all" "simple" mode "file" (!log_file,no_rotation)
-  )
+    Logger.register "" Level.TRACE "all" "default" mode "file"
+      (!log_file,no_rotation)
+  );
+  let logger = "Derived.RandomRules" in
+  Logger.register logger Level.TRACE "all" "simple" mode "buffer" ("",no_rotation)
 
-let start_buffer_logging () =
-  let open Bolt in
-  let mode = Mode.direct () in
-  Logger.register "" Level.TRACE "all" "simple" mode "buffer" ("",no_rotation)
-
-let stop_buffer_logging () =
-  let open Bolt in
-  let mode = Mode.direct () in
+let get_buffer_log () =
   let res = Buffer.contents log_buf in
-  Logger.register "" Level.TRACE "all" "simple" mode "void" ("",no_rotation);
   Buffer.clear log_buf;
   res
 
@@ -93,17 +90,17 @@ let eval_emacs () =
         end
       ) else if cmd = "enable_debug." then (
          let ts = L.hd !theory_states in
+         theory_states := ts::!theory_states;
          enable_debug := true;
          (ts,"enabled debugging output")
       ) else if cmd = "disable_debug." then (
          let ts = L.hd !theory_states in
          enable_debug := false;
+         theory_states := ts::!theory_states;
          (ts,"disabled debugging output")
       ) else (
         let is = Parse.instruction cmd in
         let ts = L.hd !theory_states in
-        if !enable_debug then
-          start_buffer_logging ();
         let (ts,msg) =
           L.fold_left
             (fun (ts, msg) i ->
@@ -115,7 +112,7 @@ let eval_emacs () =
         theory_states := ts::!theory_states;
         let debug =
           if !enable_debug then
-            "\nDEBUG:\n"^stop_buffer_logging ()
+            "\nDEBUG:\n"^get_buffer_log ()
           else ""
         in
         (ts,msg^debug)

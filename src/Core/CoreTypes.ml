@@ -41,14 +41,14 @@ let equal_judgment ju1 ju2 =
 
 let pp_ju fmt ju =
   match ju.ju_pr with
-  | Pr_Succ -> 
-    F.fprintf fmt "Pr[ G : E ] negligible where@\nG : E := @\n@[<hv 2>  %a@\n  : %a@]"
+  | Pr_Succ ->
+    F.fprintf fmt "Pr[ G : E ] negligible where@\nG : E :=@\n@[<hv 2>  %a@\n  : %a@]"
       (pp_gdef ~nonum:false) ju.ju_se.se_gdef pp_expr ju.ju_se.se_ev
-  | Pr_Adv -> 
+  | Pr_Adv ->
     F.fprintf fmt
-      "Pr[ G : E ] - 1/2 negligible where@\nG : E := @\n@[<hv 2>  %a@\n  : %a@]"
+      "Pr[ G : E ] - 1/2 negligible where@\nG : E :=@\n@[<hv 2>  %a@\n  : %a@]"
       (pp_gdef ~nonum:false) ju.ju_se.se_gdef pp_expr ju.ju_se.se_ev
-  | Pr_Dist se -> 
+  | Pr_Dist se ->
     F.fprintf fmt
       ("| Pr[ G : E ] - Pr[ G' : E' ] | negligible where@\n"^^
        "G : E := @\n@[<hv 2>  %a@\n  : %a@]@\n"^^
@@ -70,7 +70,7 @@ type rule_name =
 
   (* [Rswap(p,i)]: swap statement at [p] forward by [i]. *)
   | Rswap   of gcmd_pos * int
-  
+
   (* [Rnd(p,c_1,c_2,v)]: Perform optimistic sampling with
      bijection [c_1=c_2^{-1}] for [v] at position [p]. *)
   | Rrnd    of gcmd_pos * vs  * ctxt * ctxt
@@ -84,7 +84,7 @@ type rule_name =
   (* [Rrw_orcl(p,dir)]: rewrite oracle with equality test at [p] in [dir]. *)
   | Rrw_orcl   of ocmd_pos * direction
 
-  (* [Rswap_orcl(op,i)]: swap statement at [p] forward by [i]. *)  
+  (* [Rswap_orcl(op,i)]: swap statement at [p] forward by [i]. *)
   | Rswap_orcl of ocmd_pos * int
 
   (* [Rnd_orcl(p,c_1,c_2,v)]: rnd with [c_1=c_2^{-1}] for [v] at [p]. *)
@@ -154,7 +154,7 @@ type rule_name =
 
   | Rdist_eq
 
-  | Rtrans  
+  | Rtrans
 
   | Rhybrid (* FIXME: add arguments *)
 

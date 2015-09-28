@@ -1,6 +1,5 @@
 (* * Wrapper functions for parser with error handling. *)
 
-(* ** Imports and abbreviations *)
 module S = String
 module PT = ParserTools
 

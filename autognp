@@ -3,4 +3,5 @@
 export LD_LIBRARY_PATH=_build/c_src
 
 cd /home/beschmi/git/AutoGnP/ 
-/home/beschmi/git/AutoGnP/autognp.native $@
+test -f autognp.log && rm autognp.log
+/home/beschmi/git/AutoGnP/autognp.native -log_file autognp.log $@

@@ -22,9 +22,9 @@ module Olist : sig
   val dom : t -> ty
 
   val hash : t -> int
-  
+
   val equal : t -> t -> bool
-  
+
   val pp : Format.formatter -> t -> unit
 end
 
@@ -91,7 +91,7 @@ val perm_type_hash : perm_type -> int
 val cnst_hash : cnst -> int
 val op_hash : op -> int
 val nop_hash : nop -> int
- 
+
 val equal_expr : expr -> expr -> bool
 val hash_expr : expr -> int
 val compare_expr : expr -> expr -> int
@@ -178,7 +178,7 @@ val e_sub_iter : (expr -> unit) -> expr -> unit
 
 (** [e_iter f e] executes [f] for all sub-expressions of [e] (including e)
     for [f] s side-effects. *)
-val e_iter : (expr -> 'b) -> expr -> unit
+val e_iter : (expr -> unit) -> expr -> unit
 
 (** [e_exists p e] returns [true] if there is a subterms of [e] (including
     [e] itself) that satisfies [p]. *)

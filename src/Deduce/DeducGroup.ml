@@ -33,7 +33,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
     if is_GOne e1 then e2
     else if is_GOne e2 then e1
     else mk_GMult [e1; e2]
-  in  
+  in
   (* returns polynomial and inverter polynomial *)
   let subtract_known f k_Fq =
     let covered_terms, remaining_terms =
@@ -151,7 +151,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   let (f,i_trans) = group_to_poly_simp false e gt known_Fq in
   log_i (lazy (fsprintf "searching for exponent: %a @\n  with %a"
                  EP.pp f pp_inverter (i_trans (I (mk_V (Vsym.mk "[_]" e.e_ty))))));
-  
+
   (* search for inverter by performing division with remainder in different orders *)
   let open Nondet in
   let search () =
@@ -181,7 +181,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
 
         let d, i_poly_d = subtract_known d known_Fq in
         let r, i_poly_r = subtract_known r known_Fq in
-      
+
         log_i (lazy (fsprintf "d simpl: %a @\n  with %a" EP.pp d pp_expr i_poly_d));
         log_i (lazy (fsprintf "r simpl: %a @\n  with %a" EP.pp r pp_expr i_poly_r));
         if (EP.equal EP.zero d) then (

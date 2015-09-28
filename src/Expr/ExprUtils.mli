@@ -52,7 +52,7 @@ val is_some_Nary   : expr -> bool
 val is_Nary        : nop -> expr -> bool
 val is_FPlus       : expr -> bool
 val is_FMult       : expr -> bool
-val is_Xor         : expr -> bool  
+val is_Xor         : expr -> bool
 val is_Eq          : expr -> bool
 val is_InEq        : expr -> bool
 val is_Not         : expr -> bool
@@ -69,6 +69,7 @@ exception Destr_failure of string
 val destr_V            : expr -> Vsym.t
 val destr_Quant        : expr -> quant * (Vsym.t list * Olist.t) * expr
 val destr_All          : expr -> (Vsym.t list * Olist.t) * expr
+val destr_Exists       : expr -> (Vsym.t list * Olist.t) * expr
 val destr_Tuple        : expr -> expr list
 val destr_Proj         : expr -> int * expr
 val destr_Cnst         : expr -> cnst
@@ -118,7 +119,7 @@ val e_iter_ty_maximal : ty -> (expr -> unit) -> expr -> unit
 
 (** [e_vars e] returns the set of all variables in [e]. *)
 val e_vars : expr -> Se.t
- 
+
 val has_log : expr -> bool
 
 val is_ppt : expr -> bool
@@ -158,3 +159,5 @@ type inverter = I of expr
 val expr_of_inverter : inverter -> expr
 
 val pp_inverter : F.formatter -> inverter -> unit
+
+val e_size : expr -> int

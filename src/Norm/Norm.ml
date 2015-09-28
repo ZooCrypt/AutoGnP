@@ -8,7 +8,8 @@ open ExprUtils
 open Syms
 open Util
 
-let _log_i ls = mk_logger "Norm" Bolt.Level.INFO "Norm" ls
+let mk_log level = mk_logger "Norm.Norm" level "Norm.ml"
+let _log_i = mk_log Bolt.Level.INFO
 
 (* ** Helper functions for norm
  * ----------------------------------------------------------------------- *)
@@ -37,7 +38,7 @@ let common_diff xs1 xs2 =
     | x::xs when x = y -> Some (L.rev_append acc xs)
     | x::xs            -> rm (x::acc) y xs
     | []               -> None
-  in  
+  in
   let rec go common nc1 xs1 xs2 =
     match xs1 with
     | []  -> (common,nc1,xs2)
@@ -62,17 +63,17 @@ let rec norm_expr ~strong e =
   | Cnst GGen ->  mk_GExp_Gen (destr_G_exn e.e_ty) mk_FOne
 
   | Cnst _ -> e
-  
+
   | Tuple l -> mk_Tuple (List.map (norm_expr ~strong) l)
 
-  | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)     
+  | Proj(i,e) -> mk_proj_simpl i (norm_expr ~strong e)
 
   | Nary(nop, _) when is_field_nop nop -> mk_simpl_field_expr ~strong e
 
   | App(op, _)   when is_field_op op   -> mk_simpl_field_expr ~strong e
 
   | Nary(nop, l) -> mk_simpl_nop ~strong nop (List.map (norm_expr ~strong) l)
- 
+
   | App(op, l) -> mk_simpl_op ~strong op (List.map (norm_expr ~strong) l)
 
 and mk_simpl_op ~strong op l =
@@ -178,7 +179,7 @@ and mk_simpl_nop ~strong op l =
 
   | FPlus  | FMult -> (* handled by mk_simpl_field_expr *)
     assert false
-  
+
   | GMult ->
     let gv = match l with e::_ -> destr_G_exn e.e_ty | _ -> assert false in
     let l = List.map (destr_GExp_Gen gv) l in
@@ -218,7 +219,7 @@ and mk_simpl_nop ~strong op l =
     let l = List.filter (fun e -> not (is_Zero e)) l in
     if l = [] then mk_Zero e.e_ty
     else mk_Xor (aux l)
- 
+
   | Land ->
     let l = List.flatten (List.map destr_Land_nofail l) in
     let s = se_of_list l in
@@ -226,7 +227,7 @@ and mk_simpl_nop ~strong op l =
       mk_False
     else if strong then
       mk_Land_nofail (Se.elements (Se.filter (fun e -> not (is_True e)) s))
-    else 
+    else
       mk_Land_nofail (L.unique (L.filter (fun e -> not (is_True e)) l))
 
 

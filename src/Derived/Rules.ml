@@ -1,6 +1,6 @@
-(*s Infrastructure for defining derived rules. *)
+(* * Infrastructure for defining derived rules. *)
 
-(*i*)
+(* ** Imports and abbreviations *)
 open Nondet
 open Abbrevs
 open Util
@@ -15,10 +15,9 @@ open CoreRules
 open Tactic
 
 module Ht = Hashtbl
-(*i*)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Operators for tacticals} *)
+(* ** Operators for tacticals
+ * ----------------------------------------------------------------------- *)
 
 let ( @> ) = t_seq
 
@@ -67,10 +66,9 @@ let t_dist_eq ju =
   | _ ->
     tacerror "dist_eq: Dist judgment expected"
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Extracting samplings, lets, and guards from game} *)
+(* ** Extracting samplings, lets, and guards from game
+ * ----------------------------------------------------------------------- *)
 
-(*i*)
 let pp_samp fmt (i,(vs,d)) =
   F.fprintf fmt "%i: %a from %a" i Vsym.pp vs (pp_distr ~qual:Unqual) d
 
@@ -79,7 +77,6 @@ let pp_osamp fmt ((i,j,k,otype),(vs,d)) =
 
 let pp_let fmt (i,(vs,e)) =
   F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_expr e
-(*i*)
 
 let samplings gd =
   let samp i = function
@@ -147,8 +144,8 @@ let lets gd =
   in
   cat_Some (L.mapi get_let gd)
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Swap maximum amount forward and backward} *)
+(* ** Swap maximum amount forward and backward
+ * ----------------------------------------------------------------------- *)
 
 let rec parallel_swaps old_new_pos =
   let upd_pos op np p =
@@ -201,7 +198,7 @@ let t_swap_others_max dir i ju =
       samps
   in
   let samp_others =
-    (* when pushing forwards, we start with the last sampling to keep indices valid *)
+    (* when pushing forward, we start with the last sampling to keep indices valid *)
     if dir=ToEnd then L.sort (fun a b -> - (compare (fst a) (fst b))) samp_others
     else samp_others
   in
@@ -224,10 +221,9 @@ let t_swap_others_max dir i ju =
   in
   aux i samp_others ju
 
-(*i ----------------------------------------------------------------------- i*)
-(* \hd{Simplification and pretty printing} *)
+(* ** Simplification and pretty printing
+ * ----------------------------------------------------------------------- *)
 
-(*i*)
 let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   let open Game in
   match ru with
@@ -293,9 +289,9 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "false_ev"
   | Rrnd_indep(b,i) ->
     F.fprintf fmt "rnd_indep %b %i" b i
-  | Rguard ((i,j,k,otype),Some e) -> 
+  | Rguard ((i,j,k,otype),Some e) ->
     F.fprintf fmt "guard (%i,%i,%i,%a) (%a)" i j k pp_expr e pp_otype otype
-  | Rguard ((i,j,k,otype),None) -> 
+  | Rguard ((i,j,k,otype),None) ->
     F.fprintf fmt "guard (%i,%i,%i) (%a)" i j k pp_otype otype
   | Rguess _ ->
     F.fprintf fmt "guess"
@@ -364,7 +360,7 @@ let simplify_proof_tree pt =
         let pss = t_conv true pt11.pt_ju.ju_se pt.pt_ju in
         let ps = Nondet.first pss in
         ps.validation [pt11]
-      | _ -> 
+      | _ ->
         pt
       end
     | _ -> pt
@@ -394,4 +390,3 @@ let rec diff_proof_tree (pt1,pt2) =
     [ pt2 ]
   | _ ->
     conc_map diff_proof_tree (L.combine pt1.pt_children pt2.pt_children)
-

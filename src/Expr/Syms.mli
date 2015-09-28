@@ -83,13 +83,13 @@ end
 
 (* ** Bilinear map symbols
  * ----------------------------------------------------------------------- *)
-            
+
 module Esym : sig
   type t = private {
     id      : id;
     source1 : Groupvar.id;
     source2 : Groupvar.id;
-    target  : Groupvar.id; 
+    target  : Groupvar.id;
   }
 
   val hash : t -> int
@@ -108,7 +108,7 @@ end
  * ----------------------------------------------------------------------- *)
 
 module Psym : sig
-  type t = private { 
+  type t = private {
     id  : Permvar.id;
     dom : ty;
   }
@@ -124,13 +124,13 @@ module Psym : sig
   module S : Set.S with type elt = t
   module H : Hashtbl.S with type key = t
 end
-	    
+
 (* ** Uninterpreted function symbols
  * ----------------------------------------------------------------------- *)
 
 module Fsym : sig
-  type t = private { 
-    id    : id; 
+  type t = private {
+    id    : id;
     dom   : ty;
     codom : ty;
   }
@@ -151,8 +151,8 @@ end
  * ----------------------------------------------------------------------- *)
 
 module ROsym : sig
-  type t = private { 
-    id    : id; 
+  type t = private {
+    id    : id;
     dom   : ty;
     codom : ty;
   }

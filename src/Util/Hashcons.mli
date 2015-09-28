@@ -19,7 +19,7 @@ module type HashedType = sig
 
   (** Function to assign tags to values. Usually, t is a record with an [int] field.
       The tag is unrelated to the hash and usually depends on the content of the hash
-      table. *)  
+      table. *)
   val tag : int -> t -> t
 end
 

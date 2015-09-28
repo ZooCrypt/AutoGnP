@@ -7,7 +7,8 @@ open Foreign
 open Poly
 open Abbrevs
 
-let _log_i ls = mk_logger "CAS" Bolt.Level.INFO "Factory" ls
+let mk_log level = mk_logger "CAS.Factory" level "Factory.ml"
+let _log_i = mk_log Bolt.Level.INFO
 
 module US = Unsigned.Size_t
 module UL = Unsigned.ULong

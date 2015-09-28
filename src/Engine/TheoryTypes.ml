@@ -1,26 +1,24 @@
-(*i*)
+(* * Theory types *)
+
 open Util
 open Nondet
 open Syms
 open Type
 open Assumption
 open CoreRules
-(*i*)
 
 (** There are three possible positions in a theory:
-   \begin{itemize}
-   \item Before the proof: There is no proof state.
-   \item Inside the proof:
-    A state
-    [ActiveProof(cps,lpss,rpss,ops)]
-    contains the current proof state [cps], alternative proof states
-    [lpss] to the left and [rpss] right, and the previous proof state [ops]
-    (if it exists).
-    The alternative proof states are used for backtracking if rules
-    return more than one alternative and the previous proof state is used to
-    compute (and print) the changes performed by proof steps.
-   \item After the proof: The theory is closed and there is a proof tree.
-   \end{itemize} *)
+    - Before the proof: There is no proof state.
+    - Inside the proof:
+      A state
+      [ActiveProof(cps,lpss,rpss,ops)]
+      contains the current proof state [cps], alternative proof states
+      [lpss] to the left and [rpss] right, and the previous proof state [ops]
+      (if it exists).
+      The alternative proof states are used for backtracking if rules
+      return more than one alternative and the previous proof state is used to
+      compute (and print) the changes performed by proof steps.
+    - After the proof: The theory is closed and there is a proof tree. *)
 type theory_proof_state =
   | BeforeProof
   | ActiveProof of proof_state * proof_state list * proof_state nondet * proof_state option

@@ -10,7 +10,6 @@ open Syms
 module Ht = Hashtbl
 module L = List
 
-
 (* ** Solving function
  * ----------------------------------------------------------------------- *)
 

@@ -17,7 +17,7 @@ module Permvar : (module type of Id) = Id
 module KeyElem = struct
   type t = SKey | PKey
     with compare
-  
+
   let hash = Hashtbl.hash
 
   let equal ke1 ke2 =
@@ -40,7 +40,7 @@ and ty_node =
   | G of Groupvar.id
   | Fq
   | Prod of ty list
-  | Int 
+  | Int
   | KeyPair of Permvar.id
   | KeyElem of KeyElem.t * Permvar.id
 
@@ -108,9 +108,9 @@ let mk_Bool = mk_ty Bool
 
 let mk_Int = mk_ty Int
 
-let mk_Prod tys = 
+let mk_Prod tys =
   match tys with
-  | [t] -> t 
+  | [t] -> t
   | _   -> mk_ty (Prod tys)
 
 (* ** Indicator and destructor functions *)
@@ -132,17 +132,17 @@ let destr_G_exn ty =
   | G gv -> gv
   | _    -> raise Not_found
 
-let destr_BS_exn ty = 
+let destr_BS_exn ty =
   match ty.ty_node with
   | BS lv -> lv
   | _     -> raise Not_found
 
-let destr_KeyPair_exn ty = 
+let destr_KeyPair_exn ty =
   match ty.ty_node with
   | KeyPair lv -> lv
   | _          -> raise Not_found
 
-let destr_KeyElem_exn ty = 
+let destr_KeyElem_exn ty =
   match ty.ty_node with
   | KeyElem(ke,lv) -> (ke,lv)
   | _              -> raise Not_found
@@ -177,5 +177,5 @@ let rec pp_ty fmt ty =
   | KeyElem(PKey,pid) -> F.fprintf fmt "SKey_%s" (Permvar.name pid)
   | G gv ->
     if Groupvar.name gv = ""
-    then F.fprintf fmt "G" 
+    then F.fprintf fmt "G"
     else F.fprintf fmt "G_%s" (Groupvar.name gv)

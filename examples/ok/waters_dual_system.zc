@@ -148,8 +148,12 @@ hybrid (19,1)
 
   (* -------------------------------------------------- *)
   (* introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
-  assert beta (KeyGen1`i<>ci). bycrush.
-  dist_sym. assert beta (KeyGen1`i<>ci). bycrush. dist_sym.
+  assert beta (KeyGen1`i<>ci).
+    bycrush.
+  dist_sym.
+  assert beta (KeyGen1`i<>ci).
+    bycrush.
+  dist_sym.
   LR: rename tagc A; rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _; swap A (1); ///=.
   LR: rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _; //; //=; swap_main (12,1,5) B; swap B (2).
 
@@ -263,6 +267,7 @@ rnd_oracle (18,1,7) (gamma -> gamma + c1) _. norm.
 rename x x'. rnd x' (x' -> x' - c3) _. norm.
 swap c1 (1). swap c2 (2). swap c3 (3).
 assumption_decisional! dbdh -> tt. norm.
-except a1 [0]. except b [0]. rnd! tt _ _; //. swap 13 beta'. indep!.
+except a1 [0]. except b [0]. rnd! tt _ (tt -> log(beta?m0:m1) + a1*b*tt); //.
+indep!.
 qed.
 (* extract "extraction/waters_dual_system.ec".*)

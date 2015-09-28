@@ -8,9 +8,10 @@ open ExprUtils
 open Poly
 open Factory
 
-let _log_t ls = mk_logger "Norm" Bolt.Level.TRACE "NormField" ls
-let _log_d ls = mk_logger "Norm" Bolt.Level.DEBUG "NormField" ls
-let log_i ls = mk_logger "Norm" Bolt.Level.INFO "NormField" ls
+let mk_log level = mk_logger "Norm.NormField" level "NormField.ml"
+let _log_t = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+let log_i  = mk_log Bolt.Level.INFO
 
 (** We use expressions as variables here. *)
 module EP = MakePoly(
@@ -33,7 +34,7 @@ module Ht = Hashtbl
 (* ** Convert expr into polynomials over expr
  * ----------------------------------------------------------------------- *)
 
-(** Takes a term in normal form and returns the corresponding polynomial 
+(** Takes a term in normal form and returns the corresponding polynomial
     fails if given term is not in normal-form. *)
 let polys_of_field_expr e =
   let to_bi = Big_int.big_int_of_int in
@@ -74,7 +75,7 @@ let ep_to_ip eps =
   let c = ref 1 in
   let he = He.create 17 in
   let lookup e =
-    try He.find he e 
+    try He.find he e
     with Not_found ->
       let n = !c in
       incr c;
@@ -82,19 +83,19 @@ let ep_to_ip eps =
       n
   in
   let conv_monom (e,i) = (lookup e,i) in
-  let conv_poly p = 
+  let conv_poly p =
     L.map (fun (m,c) -> (L.map conv_monom m, c)) (EP.to_terms p)
   in
   let ps = L.map conv_poly eps in
   let hr = Ht.create 17 in
   He.iter (fun e i -> Ht.add hr i e) he;
-  (L.map IP.from_terms ps, hr)  
+  (L.map IP.from_terms ps, hr)
 
 (* ** Factoring out polynomials
  * ----------------------------------------------------------------------- *)
 
 let factor_out a (p : EP.t) =
-  let xs, zs = 
+  let xs, zs =
     lefts_rights
       (L.map
         (fun (es,c) ->
@@ -121,7 +122,7 @@ type fexp =
   | SMult of fexp * fexp
 
 let norm_fe fe =
-  let is_neg c = 
+  let is_neg c =
     Big_int.lt_big_int c Big_int.zero_big_int
   in
   let norm_gcd (n,d) =
@@ -156,9 +157,9 @@ let norm_fe fe =
   norm_sign (go fe)
 
 let exps_of_monom (m : (expr * int) list) =
-  let go acc (x,k) = replicate_r acc k x in 
+  let go acc (x,k) = replicate_r acc k x in
   let l = L.fold_left go [] m in
-  L.sort compare_expr l 
+  L.sort compare_expr l
 
 let exp_of_polyl p =
   let to_i = Big_int.int_of_big_int in
@@ -168,10 +169,10 @@ let exp_of_polyl p =
     | _,[]   -> if i < 0 then mk_FOpp (mk_FNat (-i)) else mk_FNat i
     | 1,mes  -> mk_FMult mes
     | -1,mes -> mk_FOpp (mk_FMult mes)
-    | _,mes  -> 
+    | _,mes  ->
       assert (i <> 0 && i <> 1 && i <> -1);
       if i > 0 then mk_FMult (mk_FNat i    :: mes)
-      else mk_FOpp (mk_FMult (mk_FNat (-i) :: mes))        
+      else mk_FOpp (mk_FMult (mk_FNat (-i) :: mes))
   in
   let s = L.map summand p in
   let e = if s = [] then mk_FZ else mk_FPlus (L.sort compare_expr s) in
@@ -184,7 +185,7 @@ let import_ipoly_aux (caller : string) poly (hv : (int, expr) Ht.t) =
     with Not_found ->
       failwith ("invalid variable "^(string_of_int i)^" returned by "^caller)
   in
-  let conv_term (m,c) = 
+  let conv_term (m,c) =
     (L.map (fun (v,e) -> (inst v,e)) m, c)
   in
   L.map conv_term ts
@@ -215,7 +216,7 @@ let _string_of_fexp e =
   aux e; Buffer.contents buf
 
 (** Abstraction of [Expr.expr] to [sfexp]. *)
-let rec rename hr = function 
+let rec rename hr = function
   | SV i -> SV (Ht.find hr i)
   | (SNat _) as e -> e
   | SOpp e -> SOpp (rename hr e)
@@ -231,14 +232,14 @@ let abstract_non_field_multiple before es =
   let c = ref 1 in
   let he = He.create 17 in
   let lookup e =
-    try He.find he e 
+    try He.find he e
     with Not_found ->
       let n = !c in
       incr c;
       He.add he e n;
       n
   in
-  let rec go e = 
+  let rec go e =
     let e = before e in
     match e.e_node with
     | Cnst (FNat n)       -> SNat n
@@ -246,9 +247,9 @@ let abstract_non_field_multiple before es =
     | App (FInv,[a])      -> SInv(go a)
     | App (FMinus,[a;b])  -> SPlus(go a, SOpp (go b))
     | App (FDiv,[a;b])    -> SMult(go a, SInv (go b))
-    | Nary (FPlus, a::es) -> 
+    | Nary (FPlus, a::es) ->
       List.fold_left (fun acc e -> SPlus(acc, go e)) (go a) es
-    | Nary (FMult, a::es) -> 
+    | Nary (FMult, a::es) ->
       List.fold_left (fun acc e -> SMult(acc, go e)) (go a) es
     | _ -> SV (lookup e)
   in

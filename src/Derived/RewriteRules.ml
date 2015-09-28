@@ -1,6 +1,6 @@
 (* * Derived tactics for rewriting. *)
 
-(* * Imports and abbreviations *)
+(* ** Imports and abbreviations *)
 open Abbrevs
 open Util
 open Type
@@ -17,10 +17,11 @@ open TheoryTypes
 
 module Ht = Hashtbl
 
-let log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "RewriteRules" ls
-let log_i ls = mk_logger "Logic.Derived" Bolt.Level.INFO "RewriteRules" ls
+let mk_log level = mk_logger "Derive.RewriteRules" level "RewriteRules.ml"
+let log_t = mk_log Bolt.Level.TRACE
+let log_i = mk_log Bolt.Level.INFO
 
-(* * Derived rewriting tactics
+(* ** Derived rewriting tactics
  * ----------------------------------------------------------------------- *)
 
 (** Unfold all lets and norm. *)
@@ -32,20 +33,20 @@ let t_norm ?fail_eq:(fe=false) ju =
   else t_conv true new_se ju
 
 (** Unfold all lets and norm, also remove tuple projection. *)
-let t_norm_tuple_proj ju = 
+let t_norm_tuple_proj ju =
   let se = ju.ju_se in
   let norm e = NormUtils.(remove_tuple_proj (norm_expr_nice e)) in
   let new_se = norm_se ~norm se in
   t_conv true new_se ju
 
 (** Norm without unfolding. *)
-let t_norm_nounfold ju = 
+let t_norm_nounfold ju =
   let se = ju.ju_se in
   let new_se = map_se_exp NormUtils.norm_expr_nice se in
   t_conv true new_se ju
 
 (** Unfold without norm. *)
-let t_unfold_only ju = 
+let t_unfold_only ju =
   let se = ju.ju_se in
   let new_se = norm_se ~norm:id se in
   t_conv false new_se ju
@@ -161,7 +162,7 @@ let rewrite_exps ts unknown e0 =
             | [ (b,ie,moe)]  ->
               expio b ie moe
             | _ -> assert false
-          in 
+          in
           mk_GMult (List.map combine_group iess)
       in
       begin match ce with
@@ -180,7 +181,7 @@ let t_norm_unknown ts unknown ju =
   let se = ju.ju_se in
   let norm e =
     rewrite_exps ts (se_of_list unknown) (norm_expr_weak e)
-    |> abbrev_ggen |> remove_tuple_proj 
+    |> abbrev_ggen |> remove_tuple_proj
   in
   let new_se = map_se_exp norm se in
   t_conv true new_se ju
@@ -251,7 +252,7 @@ let t_let_abstract p vs e0 mupto do_norm_expr ju =
   in
   t_conv true new_se ju
 
-         
+
 let t_let_abstract_oracle opos vs e0 len do_norm_expr ju =
   let se = ju.ju_se in
   let v = mk_V vs in
@@ -284,7 +285,7 @@ let t_let_abstract_oracle opos vs e0 len do_norm_expr ju =
   let new_se = set_se_octxt new_cmds new_octxt in
   t_conv true new_se ju
 
-         
+
 let t_rename v1 v2 ju =
   let se = ju.ju_se in
   let new_se = subst_v_se (fun v -> if Vsym.equal v v1 then v2 else v) se in
@@ -294,7 +295,7 @@ let t_subst p e1 e2 mupto ju =
   let se = ju.ju_se in
   let subst a = e_replace e1 e2 a in
   let l,r = cut_n p se.se_gdef in
-  let new_se = 
+  let new_se =
     match mupto with
     | Some j ->
       if (j < p) then tacerror "t_let_abstract: invalid upto %i" j;
@@ -325,6 +326,7 @@ let t_let_unfold p ju =
   | _ -> tacerror "rlet_unfold: no let at given position"
 
 let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
+  let sep = "====================================" in
   let se = ju.ju_se in
   let ve = mk_V v in
   let frame = [(Norm.norm_expr_strong e,I ve)] in
@@ -335,18 +337,18 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
       (pp_opt pp_int) (O.map ((+) 1) mupto) (gpos + 1) (maxlen + 1);
   let abstract_len = O.map_default (fun upto -> upto - gpos + 1) (maxlen - gpos) mupto in
   let a_cmds, sec = get_se_ctxt_len se ~pos:gpos ~len:abstract_len in
-  log_i (lazy (fsprintf "====================================@\nAbstracting in@\n  %a@\n"
-                 (pp_gdef ~nonum:true) a_cmds));
+  log_i (lazy (fsprintf "@[%s@\nAbstracting in@\n%a@]"
+                 sep (pp_gdef ~nonum:true) a_cmds));
   let secret_vars =
     L.map (function GSamp(vs,_) -> Some (mk_V vs) | _ -> None) sec.sec_left
     |> cat_Some |> se_of_list
   in
   let deduce_non_tuple e =
-    log_i (lazy (fsprintf "====================================@\nSearching for@\n  %a@\n" pp_expr e));
+    log_i (lazy (fsprintf "@[<hov>@\nSearching for@ @[<hov 2>%a@]@]" pp_expr e));
     try
       let recipe = He.find cache e in
-      log_i (lazy (fsprintf "====================================@\nFound %a for@\n  %a in cache@\n"
-                     pp_expr recipe pp_expr e));
+      log_i (lazy (fsprintf "@[<hov>%s@\nFound @[<hov 2>%a@] for@ @[<hov 2>%a@] in cache@]"
+                     sep pp_expr recipe pp_expr e));
       recipe
     with
       Not_found ->
@@ -354,9 +356,9 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
           L.map (fun v -> (v, I v)) (Se.elements (Se.diff (e_vars e) secret_vars))
         in
         let recipe = Deduc.invert ~ppt_inverter:true ts (frame@k_vars) e in
-        He.add cache e recipe; 
-        log_i (lazy (fsprintf "====================================@\nFound %a for@\n  %a@\n"
-                       pp_expr recipe pp_expr e));
+        He.add cache e recipe;
+        log_i (lazy (fsprintf "@[<hov>%s@\nFound @[<hov 2>%a@] for@ @[<hov 2>%a@]@]"
+                       sep pp_expr recipe pp_expr e));
         recipe
   in
   let rec deduce e =
@@ -378,6 +380,3 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
   in
   let sec = {sec with sec_ev = se_ev} in
   t_conv true (set_se_ctxt (GLet(v,e)::a_cmds) sec) ju
-
-  
-  

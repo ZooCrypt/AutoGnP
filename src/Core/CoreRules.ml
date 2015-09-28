@@ -12,9 +12,10 @@ open Wf
 open Assumption
 open CoreTypes
 
-let _log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "CoreRules" ls
-let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "CoreRules" ls
-let _log_i ls = mk_logger "Logic.Core" Bolt.Level.INFO "CoreRules" ls
+let mk_log level = mk_logger "Core.CoreRules" level "CoreRules.ml"
+let _log_t = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+let _log_i = mk_log Bolt.Level.INFO
 
 (* ** Types for proofs and tactics
  * ----------------------------------------------------------------------- *)
@@ -68,7 +69,7 @@ let mk_name ?(name="r__") se =
       if Sstring.mem name  names then go (n+1) else name
     in
     go 1
-  else name 
+  else name
 
 (** Get proof from proof state with no open goals. *)
 let get_proof ps =
@@ -91,7 +92,7 @@ let prove_by ru g =
             pt_info     = ();
           }
       }
-  with  
+  with
   | Invalid_rule s ->
     Bad (lazy s)
   | Wf.Wf_div_zero es ->
@@ -119,7 +120,7 @@ let merge_proof_states pss validation =
  * ----------------------------------------------------------------------- *)
 
 let ensure_gdef_eq rn a b =
-  if not (equal_gdef a b) then 
+  if not (equal_gdef a b) then
     tacerror "%s: games not equal, @\n@[<hov 2>  %a@] vs @[<hov 2>  %a@]"
       rn (pp_gdef ~nonum:false) a (pp_gdef ~nonum:false) b
 
@@ -294,8 +295,8 @@ let r_rnd p c1 c2 ju =
     wf_expr CheckDivZero (ensure_varname_fresh wfs (fst c2)) (snd c2);
     wf_expr CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     let rv = mk_V rvs in
-    let nrvs = 
-      if equal_ty rvs.Vsym.ty new_ty then rvs 
+    let nrvs =
+      if equal_ty rvs.Vsym.ty new_ty then rvs
       else Vsym.mk (mk_name ~name:(Id.name (fst c1).Vsym.id) se) new_ty in
     let nrv = mk_V nrvs in
     let vslet = Vsym.mk (mk_name ~name:"u__" se) rv.e_ty in
@@ -329,8 +330,8 @@ let r_rnd_oracle p c1 c2 ju =
     wf_expr CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     let rv = mk_V rvs in
     let qual = Qual seoc.seoc_osym in
-    let nrvs = 
-      if equal_ty rvs.Vsym.ty new_ty then rvs 
+    let nrvs =
+      if equal_ty rvs.Vsym.ty new_ty then rvs
       else Vsym.mk_qual (mk_name ~name:(Id.name (fst c1).Vsym.id) se) qual new_ty
     in
     let nrv = mk_V nrvs in
@@ -529,7 +530,7 @@ let r_except p es ju =
     tacerror "except: invalid position, %i not between 1 and %i" (p+1) len;
   match get_se_ctxt se p with
   | GSamp(_,(_,es')), _ when equal_list equal_expr es' es ->
-    tacerror "except: identical exceptions already present"    
+    tacerror "except: identical exceptions already present"
   | GSamp(vs,(t,_)), sec ->
     let se = set_se_ctxt [ GSamp(vs,(t,es)) ] sec in
     wf_se NoCheckDivZero se;
@@ -546,7 +547,7 @@ let r_except_oracle p es ju =
   let se = ju.ju_se in
   match get_se_octxt se p with
   | LSamp(_,(_,es')), _ when equal_list equal_expr es' es ->
-    tacerror "except_oracle: identical exceptions already present"    
+    tacerror "except_oracle: identical exceptions already present"
   | LSamp(vs,(t,_)), seoc ->
     let se = set_se_octxt [LSamp(vs,(t,es))] seoc in
     Rexc_orcl(p,es), [ { ju with ju_se = se } ]
@@ -577,7 +578,7 @@ let r_case_ev ?flip:(flip=false) ?allow_existing:(ae=false) e ju =
       let (q,bind,ev) = destr_Quant ev in
       mk_Quant q bind (add_conj ev e)
     ) else (
-      mk_Land [ e; ev ] 
+      mk_Land [ e; ev ]
     )
   in
   let ju1 =
@@ -633,7 +634,7 @@ let r_injective_ctxt_ev j c1 c2 ju =
         if is_InEq b then
           mk_InEq,destr_Eq (destr_Not b) else
           tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_expr b in
-    
+
     ensure_bijection ~partial:true se c2 c1 (fst c1);
     op (inst_ctxt c1 e1) (inst_ctxt c1 e2) in
   let ev = mk_Land (L.rev_append l (b::r)) in
@@ -641,9 +642,9 @@ let r_injective_ctxt_ev j c1 c2 ju =
   wf_expr NoCheckDivZero wfs ev;
   let new_ju = { se with se_ev = ev } in
   Rinjective_ctxt_ev(j,c1,c2), [ { ju with ju_se = new_ju } ]
-  
-let ct_injective_ctxt_ev j c1 c2 = prove_by (r_injective_ctxt_ev j c1 c2) 
-  
+
+let ct_injective_ctxt_ev j c1 c2 = prove_by (r_injective_ctxt_ev j c1 c2)
+
 (* *** Remove conjunct from event
  * ----------------------------------------------------------------------- *)
 
@@ -726,7 +727,7 @@ let ct_false_ev = prove_by r_false_ev
  * ----------------------------------------------------------------------- *)
 
 let check_event r ev =
-  if is_Quant ev 
+  if is_Quant ev
      then tacerror "indep: the event can not be quantified";
   let r = mk_V r in
   let rec aux i evs =
@@ -859,9 +860,9 @@ let ct_assm_comp assm ev_e subst = prove_by (r_assm_comp assm ev_e subst)
 
 (* *** Apply decisional assumption
  * ----------------------------------------------------------------------- *)
- 
+
 let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
-  let swap_dir = if dir = LeftToRight then id else Util.swap in  
+  let swap_dir = if dir = LeftToRight then id else Util.swap in
   let (pref,_) = swap_dir (assm.ad_prefix1,assm.ad_prefix2) in
   let pref_len = L.length pref in
   let priv_vars = private_vars_dec assm in
@@ -882,7 +883,7 @@ let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
       ensure_ppt rn (c_body@c_res);
       if not assm.ad_inf then ensure_ppt rn (c_body@c_res);
       ensure_res_lets rn vres c_res;
-      let v_arg = 
+      let v_arg =
         match c_arg with
         | GLet (v_arg, e_arg) when (equal_expr e_arg e_old) -> v_arg
         | GLet (_, e_arg) ->
@@ -894,7 +895,7 @@ let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
     | _, _ -> tacerror "%s: ranges and adversary calls do not match up" rn
   in
   go rngs assm.ad_acalls []
-  
+
 let r_assm_dec dir ren rngs assm0 ju =
   let rn = "assumption_decisional" in
   let se = ju.ju_se in
@@ -908,7 +909,7 @@ let r_assm_dec dir ren rngs assm0 ju =
   ensure_ren_inj rn ren;
   ensure_gdef_eq rn pref_ju pref_old;
   (* check that event is equal to last returned variable *)
-  let ev_is_last_returned = 
+  let ev_is_last_returned =
     match L.last acalls_ju with
     | GLet(vs,_) when equal_expr se.se_ev (mk_V vs) -> true
     | _                                             -> false
@@ -1000,7 +1001,7 @@ let r_hybrid gpos oidx new_lcmds new_eret ju =
   (* replace oracle definition in second judgment *)
   let ju2  =
     { ju with
-      ju_se = 
+      ju_se =
         set_se_octxt []
           { seoc with
             seoc_return = new_eret;
@@ -1021,7 +1022,7 @@ let r_hybrid gpos oidx new_lcmds new_eret ju =
           | _ -> [e]
         ) else (
           [e]
-        ) 
+        )
       )
       conj
   in
@@ -1055,11 +1056,11 @@ let ct_hybrid gpos oidx lcmds eret =
 
 let r_guard opos tnew ju =
   let se = ju.ju_se in
-  let seoc,t = 
+  let seoc,t =
     match tnew with
     | None ->
       begin match get_se_octxt se opos with
-      | (LGuard(t), seoc) -> seoc, t 
+      | (LGuard(t), seoc) -> seoc, t
       | _ -> tacerror "guard: given position is not a test"
       end
    | Some t ->
@@ -1072,10 +1073,10 @@ let r_guard opos tnew ju =
     | _ -> tacerror "add_test: new test cannot be inserted after %a, %s"
       (pp_lcmd ~qual:Unqual) lcmd "preceeding commands must be tests"
   in
-  let vs = 
+  let vs =
     List.map (fun v -> Vsym.mk (Vsym.to_string v) v.Vsym.ty) seoc.seoc_oargs
   in
-    
+
   let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in
   let subst =
     L.fold_left2
@@ -1084,10 +1085,10 @@ let r_guard opos tnew ju =
   in
 
   (* bad event *)
-  let seoc_bad = 
-    { seoc with 
+  let seoc_bad =
+    { seoc with
       seoc_sec =
-        { seoc.seoc_sec with 
+        { seoc.seoc_sec with
           sec_right = [];
           sec_ev = mk_Quant
                      Exists
@@ -1107,11 +1108,11 @@ let ct_guard p tnew = prove_by (r_guard p tnew)
 
 (* ** Core rules: Deal with existential quantifiers
  * ----------------------------------------------------------------------- *)
- 
+
 (* *** Guess rule.
  * ----------------------------------------------------------------------- *)
 
-let r_guess asym fvs ju = 
+let r_guess asym fvs ju =
   let ev = ju.ju_se.se_ev in
   let (q,b,ev_expr) = destr_Quant ev in
   match q, b, ju.ju_pr with
@@ -1130,7 +1131,7 @@ let r_guess asym fvs ju =
     in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
     Rguess asym, [ ju1 ]
-    
+
   | _ ->
     tacerror "guess: not a valid event"
 
@@ -1147,8 +1148,8 @@ let r_find (bd,body) arg asym fvs ju =
     assert (equal_ty (ty_prod_vs fvs) (ty_prod_vs vs));
     (* check that body{bd <- arg} = (Event.expr ev) *)
     assert (equal_ty (ty_prod_vs bd) arg.e_ty);
-    let subst_bd = 
-      L.fold_left2 (fun s v e -> Me.add (mk_V v) e s) Me.empty bd 
+    let subst_bd =
+      L.fold_left2 (fun s v e -> Me.add (mk_V v) e s) Me.empty bd
         (if L.length bd > 1 then destr_Tuple_nofail arg else [arg])
     in
     let fv = e_vars body in
@@ -1161,7 +1162,7 @@ let r_find (bd,body) arg asym fvs ju =
     if not (equal_expr e1 ev_expr) then
       tacerror "find: invalid event in function : %a \nvs %a" pp_expr e1 pp_expr ev_expr;
     (* check that the function is PPT *)
-    if not (is_ppt body) then 
+    if not (is_ppt body) then
       tacerror "find: the function is not ppt";
     (* build the game *)
     let subst =
@@ -1176,7 +1177,7 @@ let r_find (bd,body) arg asym fvs ju =
     in
     Wf.wf_se NoCheckDivZero ju1.ju_se;
     Rfind (asym, (bd,body)), [ ju1 ]
-    
+
   | _ ->
     tacerror "find: not a valid event"
 
@@ -1205,7 +1206,7 @@ let rbad which_bad p gen_vsx ju =
       tacerror "Error, the function '%a' is not a random oracle" Fsym.pp h;
     if (Fsym.is_lkup h) then
       tacerror "Error, 'bad' rule cannot be applied to the oracle lookup '%a'" Fsym.pp h;
-     
+
     let cmds = [ GSamp(vs, (e'.e_ty,[]) )] in
     (* ju1 is ju with a random sampling instead of the hash call *)
     let ju1 = {ju with ju_se = (set_se_ctxt cmds se_ctxt) } in
@@ -1237,7 +1238,7 @@ let rbad which_bad p gen_vsx ju =
      let bad_ev_expr = mk_Eq (mk_V vsx) e in
      let bad_ev_binding = ([vsx],Oracle.mk_RO(h)) in
      let bad_n,ju2 = match which_bad with
-     (* ju2 is ju1 where event = bad_event + main_event when UpToBad, 
+     (* ju2 is ju1 where event = bad_event + main_event when UpToBad,
                               or bad_event only when CaseDist *)
        | CaseDist ->
           let conj_ev = Event.insert
@@ -1259,11 +1260,11 @@ let rbad which_bad p gen_vsx ju =
       ("cannot apply 'bad' rule at pos %i\n<< 'let var = H(expr)\' required:"
        ^^">>\n(note that the 'abstract' rule can be used to fold a hash call into a variable).")
       (p+1)
-     
+
 let ct_bad which_bad p gen_vsx =
   prove_by (rbad which_bad p gen_vsx)
 
-(** Replace hash call by map lookup (still needs some work) *)  
+(** Replace hash call by map lookup (still needs some work) *)
 let rcheck_hash_args opos gen_o_lkup ju =
   let se = ju.ju_se in
   let bad_position ?s () =
@@ -1292,7 +1293,7 @@ let rcheck_hash_args opos gen_o_lkup ju =
        with
          ExprUtils.Destr_failure _ ->
            tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Fsym.pp o
-     in                    
+     in
      if not (List.exists (fun v -> e_equal ve (mk_V v)) vs) then
        tacerror "Error, expected 'v = expr' expression, with v bound in L_%a" Fsym.pp o;
      let seoc_cright = se_octxt.seoc_cright in
@@ -1308,7 +1309,7 @@ let rcheck_hash_args opos gen_o_lkup ju =
 let ct_check_hash_args opos gen_o_lkup =
   prove_by (rcheck_hash_args opos gen_o_lkup)
 
-           
+
 let runwrap_quant_ev j ju =
   let ev = ju.ju_se.se_ev in
   let q_expr =
@@ -1329,7 +1330,7 @@ let runwrap_quant_ev j ju =
   Runwrap_quant_ev j,[new_ju]
 
 let ct_unwrap_quant_ev j = prove_by (runwrap_quant_ev j)
-                                 
+
 let rswap_quant_ev j ju =
   let ev = ju.ju_se.se_ev in
   let (q,b,e) =

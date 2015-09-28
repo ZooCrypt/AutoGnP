@@ -28,7 +28,7 @@ module Olist = struct
   let hash = function
     | ROlist ros -> hcomb 1 (ROsym.hash ros)
     | Olist  os  -> hcomb 2 (Osym.hash  os)
-  
+
   let equal ol1 ol2 = compare ol1 ol2 = 0
 
   let pp fmt = function
@@ -136,7 +136,7 @@ let quant_hash= function
   | All    -> 1
   | Exists -> 2
 
-let equal_expr : expr -> expr -> bool = (==) 
+let equal_expr : expr -> expr -> bool = (==)
 let hash_expr e = e.e_tag
 let compare_expr e1 e2 = e1.e_tag - e2.e_tag
 
@@ -195,7 +195,7 @@ module He = E.H
  * ----------------------------------------------------------------------- *)
 
 (* *** Type checking *)
- 
+
 exception TypeError of (ty * ty * expr * expr option * string)
 
 let ensure_ty_equal ty1 ty2 e1 e2 s =
@@ -205,7 +205,7 @@ let ensure_ty_KeyPair ty s =
   match ty.ty_node with
   | KeyPair pid -> pid
   | _ -> failwith (fsprintf "%s: expected KeyPair, got %a" s pp_ty ty)
-              
+
 let ensure_ty_KeyElem ke ty s =
   match ty.ty_node with
   | KeyElem(ke',pid) when ke = ke' -> pid
@@ -217,7 +217,7 @@ let ensure_ty_G ty s =
   | _    -> failwith (fsprintf "%s: expected group type, got %a" s pp_ty ty)
 
 (* *** Constant mk functions *)
- 
+
 let mk_Cnst c ty = mk_e (Cnst c) ty
 
 let mk_GGen gv = mk_Cnst GGen (mk_G gv)
@@ -244,7 +244,7 @@ let mk_GExp a b =
   let gv = ensure_ty_G a.e_ty "mk_GExp" in
   ensure_ty_equal b.e_ty mk_Fq b None "mk_GExp";
   mk_App (GExp gv) [a;b] a.e_ty
-                 
+
 let mk_GOne gn =
   mk_GExp (mk_GGen gn) mk_FZ
 
@@ -318,7 +318,7 @@ let mk_RoCall h e =
 
 let mk_RoLookup h e =
   mk_App (RoLookup(h)) [e] h.ROsym.codom
- 
+
 (* *** Nary mk functions *)
 
 let rec flatten nop es =
@@ -339,7 +339,7 @@ let mk_nary s sort o es ty =
     L.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
     mk_e (Nary(o,es)) ty
 
-let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq 
+let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
@@ -351,7 +351,7 @@ let valid_Xor_type ty =
     | _           -> false
   in
   valid ty
-                    
+
 let mk_Xor = function
   | e::_ as es ->
     if (valid_Xor_type e.e_ty) then
@@ -388,7 +388,7 @@ let mk_F h e =
   ensure_ty_equal h.Fsym.dom e.e_ty e None (fsprintf "mk_F for %a" Fsym.pp h);
   mk_e (F(h,e)) h.Fsym.codom
  *)
-  
+
 let mk_Quant q b e =
   mk_e (Quant(q,b,e)) mk_Bool
 
@@ -401,9 +401,9 @@ let mk_Tuple es =
   | [e] -> e
   | _   -> mk_e (Tuple es) (mk_Prod (L.map (fun e -> e.e_ty) es))
 
-let mk_Proj i e = 
+let mk_Proj i e =
   match e.e_ty.ty_node with
-  | Prod(tys) when i >= 0 && L.length tys > i -> 
+  | Prod(tys) when i >= 0 && L.length tys > i ->
     mk_e (Proj(i,e)) (L.nth tys i)
   | _ ->
     let s = F.sprintf "mk_Proj: expected product type with >= %i components" (i+1) in
@@ -411,11 +411,11 @@ let mk_Proj i e =
 
 let mk_InEq a b =
   mk_Not (mk_Eq a b)
- 
+
 (* ** Generic functions on expressions
  * ----------------------------------------------------------------------- *)
 
-let sub_map g e = 
+let sub_map g e =
   match e.e_node with
   | V _ | Cnst _ -> e
   | Tuple(es) ->
@@ -440,7 +440,7 @@ let sub_map g e =
     else mk_Quant q b e'
 
 let check_fun g e =
-  let e' = g e in 
+  let e' = g e in
   ensure_ty_equal e'.e_ty e.e_ty e (Some e') "check_fun";
   e'
 
@@ -452,7 +452,7 @@ let e_sub_fold g acc e =
   | Proj(_, e) | Quant(_,_,e) -> g acc e
   | Tuple(es) | App(_, es) | Nary(_, es)-> L.fold_left g acc es
 
-let e_sub_iter g e = 
+let e_sub_iter g e =
   match e.e_node with
   | V _ | Cnst _ -> ()
   | Proj(_, e) | Quant(_,_,e) -> g e
@@ -470,12 +470,12 @@ let rec e_exists f e =
 let e_sub_forall f =
   e_sub_fold (fun acc e -> acc && f e) true
 
-let rec e_forall f e = 
+let rec e_forall f e =
   f e && e_sub_forall (e_forall f) e
 
-let e_find f (e : expr) = 
+let e_find f (e : expr) =
   let module E = struct exception Found of expr end in
-  let rec aux e = 
+  let rec aux e =
     if f e then raise (E.Found e)
     else e_sub_iter aux e in
   try aux e; raise Not_found with E.Found e -> e
@@ -488,8 +488,8 @@ let e_find_all f e =
 
 let e_map f =
   let tbl = He.create 103 in
-  let rec aux e = 
-    try He.find tbl e 
+  let rec aux e =
+    try He.find tbl e
     with _ ->
       let e' = f (sub_map aux e) in
       ensure_ty_equal e'.e_ty e.e_ty e (Some e') "e_rec_map";
@@ -511,31 +511,31 @@ let e_map_ty_maximal ty g e0 =
       trans (mk_Tuple es)
     | Quant (q,b,e) ->
       let e = go ie e in
-      trans (mk_Quant q b e)      
+      trans (mk_Quant q b e)
     | Proj(i,e) ->
       let e = go ie e in
       trans (mk_Proj i e)
     | App(o,es) ->
       let es = L.map (go ie) es in
-      trans (mk_App o es e.e_ty) 
-    | Nary(o,es) -> 
+      trans (mk_App o es e.e_ty)
+    | Nary(o,es) ->
       let es = L.map (go ie) es in
-      trans (mk_Nary o es) 
+      trans (mk_Nary o es)
   in
   go false e0
 
-let e_map_top f = 
+let e_map_top f =
   let tbl = He.create 103 in
   let rec aux e =
-    try He.find tbl e 
+    try He.find tbl e
     with Not_found ->
       let e' = try check_fun f e with Not_found -> sub_map aux e in
       He.add tbl e e';
       e'
   in
-  aux 
+  aux
 
-let e_replace e1 e2 = 
+let e_replace e1 e2 =
   e_map_top (fun e -> if equal_expr e e1 then e2 else raise Not_found)
 
 let e_subst s =

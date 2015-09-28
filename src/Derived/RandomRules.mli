@@ -1,9 +1,7 @@
-(*s Derived rules for dealing with random samplings. *)
+(* * Derived rules for dealing with random samplings. *)
 
-(*i*)
 open TheoryTypes
 open ParserTypes
-(*i*)
 
 val t_rnd_maybe :
   ?i_rvars:Syms.Vsym.S.t

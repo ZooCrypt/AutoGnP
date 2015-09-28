@@ -72,7 +72,7 @@ module MakePoly (V : Var) (C : Ring) = struct
 
   let pp_vpow fmt (v,e) =
     if e = 1 then V.pp fmt v
-    else F.fprintf fmt "%a^%i" V.pp v e 
+    else F.fprintf fmt "%a^%i" V.pp v e
 
   let pp_monom fmt m =
     match m with
@@ -119,7 +119,7 @@ module MakePoly (V : Var) (C : Ring) = struct
 
   (** The [norm] function ensures that:
       \begin{itemize}
-      \item Vexp entries 
+      \item Vexp entries
       \item Each monomial is sorted.
       \item Each monomial with non-zero coefficient has exactly one entry.
       \item The list is sorted by the monomials (keys).
@@ -142,25 +142,25 @@ module MakePoly (V : Var) (C : Ring) = struct
   let add f g = norm (f @ g)
 
   (** No [norm] required since the keys (monomials) are unchanged. *)
-  let opp f = L.map (fun (m,c) -> (m,C.opp c)) f 
+  let opp f = L.map (fun (m,c) -> (m,C.opp c)) f
 
   let mult f g =
     if equal f one then g else if equal g one then f
     else f |> conc_map (fun t -> mult_term_poly_int t g) |> norm
-  
+
   let minus f g = add f (opp g)
-  
+
   let zero : t = []
 
   let var_exp v n = [([(v,n)],C.one)]
 
   let rec ring_exp f n =
-    if n > 0 then mult f (ring_exp f (n-1)) 
+    if n > 0 then mult f (ring_exp f (n-1))
     else if n = 0 then one
     else failwith "Negative exponent in polynomial"
-  
+
   let var v = [([(v,1)],C.one)]
-  
+
   let const c = if (C.equal c C.zero) then [] else [([],c)]
 
   let from_int i = const (C.from_int i)

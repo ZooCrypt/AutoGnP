@@ -7,7 +7,7 @@ open ExprUtils
 open Norm
 open Type
 
-(* ** remove 
+(* ** Remove tuple projections
  * ----------------------------------------------------------------------- *)
 
 let rm_tuple_proj e es =
@@ -34,7 +34,7 @@ let rec remove_tuple_proj e =
   | Tuple es -> rm_tuple_proj e es
   | _ -> e
 
-(* ** ???
+(* ** Abbreviate g^1 = g and g^log(A) = A
  * ----------------------------------------------------------------------- *)
 
 let rec abbrev_ggen e =
@@ -65,18 +65,3 @@ let destr_Neq_norm e =
   match e.e_node with
   | App(Not,[e1]) -> destr_Eq_norm e1
   | _             -> None
-
-
-(* ** Old
- * ----------------------------------------------------------------------- *)
-
-(*
-let norm_expr_weak e = norm_expr ~strong:false e
-
-let norm_expr_strong e = remove_tuple_proj (norm_expr ~strong:true e)
-
-let norm_expr_abbrev_weak e = abbrev_ggen (norm_expr_weak e)
-
-let norm_expr_abbrev_strong e = abbrev_ggen (norm_expr_strong e)
- *)
-

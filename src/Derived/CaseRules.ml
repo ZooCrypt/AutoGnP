@@ -20,8 +20,9 @@ module Ht = Hashtbl
 module CR = CoreRules
 module T = Tactic
 
-let _log_t ls = mk_logger "Logic.Derived" Bolt.Level.TRACE "CaseRules" ls
-let _log_d ls = mk_logger "Logic.Derived" Bolt.Level.DEBUG "CaseRules" ls
+let mk_log level = mk_logger "Derive.CaseRules" level "CaseRules.ml"
+let _log_t = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
 
 (* ** Types for useful cases
  * ----------------------------------------------------------------------- *)

@@ -144,11 +144,11 @@ rule lex = parse
   | "G" { TG("") }
   | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
   | "get_pk" {GETPK}
-  | "get_sk" {GETSK}	 
+  | "get_sk" {GETSK}
   | "KeyPair_"((['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}	 
+		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}
   | "PKey_"((['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PKEY s}	 
+		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PKEY s}
   | "SKey_"((['a'-'z' 'A'-'Z' ]
 		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {SKEY s}
   | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }

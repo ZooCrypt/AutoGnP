@@ -8,9 +8,10 @@ open Abbrevs
 open Util
 open CoreTypes
 
-let log_t ls = mk_logger "Logic.Core" Bolt.Level.TRACE "CoreRules" ls
-let _log_d ls = mk_logger "Logic.Core" Bolt.Level.DEBUG "CoreRules" ls
-let _log_i ls = mk_logger "Logic.Core" Bolt.Level.INFO "CoreRules" ls
+let mk_log level = mk_logger "Derive.Tactic" level "Tactic.ml"
+let log_t  = mk_log Bolt.Level.TRACE
+let _log_d = mk_log Bolt.Level.DEBUG
+let _log_i = mk_log Bolt.Level.INFO
 
 (* ** Types
  * ----------------------------------------------------------------------- *)
@@ -143,6 +144,9 @@ let rapply_all rt ps =
     ret (y,merge_proof_states [ps2] ps.validation)
   | _ ->
     mfail (lazy "t_bind: expected exactly one goal")
+
+(* ** Lifting core tactics
+ * ----------------------------------------------------------------------- *)
 
 (* Convert core tactic to regular tactic *)
 let core_tactic ct g =
