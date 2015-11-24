@@ -11,7 +11,7 @@ cd src
 make
 sudo make install
 (on OS X, you have to install glibtool (e.g., using homebrew) and use
- ./configure NTL_GMP_LIP=on SHARED=on LIBTOOL="glibtool --tag" )
+ ./configure NTL_GMP_LIP=on SHARED=on LIBTOOL="glibtool --tag=CC" )
 ```
 
 2) download and install libfactory from
@@ -19,6 +19,7 @@ http://www.mathematik.uni-kl.de/ftp/pub/Math/Factory/factory-4.0.1.tar.gz
 
 ```
 ./configure --disable-streamio --without-Singular --disable-static
+make
 sudo make install
 ```
 
@@ -31,6 +32,22 @@ using the opam manager for OCaml (see http://opam.ocamlpro.com/).
 opam pin add autognp AUTOGNP_DIR
 opam install autognp --deps-only
 ```
+
+# On OS X
+
+You can use homebrew to install opam and the required dependencies
+for NTL, Factory, and the Ocaml libraries. The required commands are:
+
+```
+brew install opam
+brew install libtool
+brew install gmp
+brew install libffi
+brew link --force libffi
+brew install pkg-config
+
+```
+
 
 # Compile AutoGnP
 
