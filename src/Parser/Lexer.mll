@@ -10,177 +10,197 @@
   let keyword_table = Hashtbl.create 53
   let _ =
     List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
-      [ "split_ineq", RSPLIT_INEQ
-      ; "help", HELP
-      ; "permutation", PERMUTATION
-      ; "case_ev", RCASE_EV
-      ; "adversary", ADVERSARY
-      ; "admit", ADMIT
-      ; "last", LAST
-      ; "qed", QED
-      ; "restart", RESTART
-      ; "back", BACK
-      ; "oracle",ORACLE
-      ; "operator", OPERATOR
-      ; "assumption", ASSUMPTION
-      ; "assumption_decisional", ASSUMPTION_DECISIONAL
-      ; "assumption_computational", ASSUMPTION_COMPUTATIONAL
-      ; "random", RANDOM
-      ; "bilinear", BILINEAR
-      ; "map", MAP
-      ; "succ", SUCC
-      ; "adv", ADV
-      ; "bound_dist", BOUNDDIST
-      ; "bound_succ", BOUNDSUCC
-      ; "bound_adv", BOUNDADV
-      ; "print_goals", PRINTGOALS
-      ; "print_goal", PRINTGOAL
-      ; "print_proof", PRINTPROOF
-      ; "print_debug", PRINTDEBUG
-      ; "print_games", PRINTGAMES
-      ; "print_game", PRINTGAME
-      ; "norm_unknown", RNORM_UNKNOWN
-      ; "norm_solve", RNORM_SOLVE
-      ; "norm", RNORM
-      ; "add_test", RADD_TEST
-      ; "guard", RGUARD
-      ; "guess", RGUESS
-      ; "find", RFIND
-      ; "hybrid", RHYBRID
-      ; "remove_ev", RREMOVE_EV
-      ; "dist_sym", RDIST_SYM
-      ; "dist_eq", RDIST_EQ
-      ; "norm_nounfold", RNORM_NOUNFOLD
-      ; "abstract" , RLET_ABSTRACT
-      ; "unfold" , RLET_UNFOLD
-      ; "subst", RSUBST
-      ; "inf", INFTHEO
-      ; "ppt", PPT
-      ; "rename", RRENAME
-      ; "assert", ASSERT
-      ; "rewrite_oracle" , RREWRITE_ORACLE
-      ; "rewrite_ev", RREWRITE_EV
-      ; "crush", RCRUSH
-      ; "deduce", DEDUCE
-      ; "field_exprs", LISTFE
-      ; "bycrush", BYCRUSH
-      ; "simp", RSIMP
-      ; "bysimp", BYSIMP
-      ; "split_ev", RSPLIT_EV
-      ; "false_ev", RFALSE_EV
-      ; "with" , WITH
-      ; "except", REXCEPT
-      ; "except_oracle", REXCEPT_ORACLE
-      ; "rnd", RRND
-      ; "rnd_exp", RRND_EXP
-      ; "swap", RSWAP
-      ; "swap_main", RSWAP_MAIN
-      ; "conv", RCONV
-      ; "insert", RINSERT
-      ; "trans", RTRANS
-      ; "indep", RINDEP
-      ; "rnd_oracle", RRND_ORACLE
-      ; "bad1", RBAD1
-      ; "bad2", RBAD2
-      ; "check_hash_args", RCHECK_HASH_ARGS
-      ; "undo_back", UNDOBACK
-      ; "ctxt_ev", RCTXT_EV
-      ; "injective_ctxt_ev", RINJECTIVE_CTXT_EV
-      ; "unwrap_quant_ev", RUNWRAP_QUANT_EV
-      ; "swap_quant_ev", RSWAP_QUANT_EV
-      ; "extract", EXTRACT
-      ; "return", RETURN
-      ; "forall", FORALL
-      ; "exists", EXISTS
-      ; "in",     IN
+      [ (* declarations *)
+        "random_oracle",            RANDOM_ORCL               (* kw: decl        *)
+      ; "oracle",                   ORACLE                    (* kw: decl        *)
+      ; "bilinear_map",             BILINEAR_MAP              (* kw: decl        *)
+      ; "succ",                     SUCC                      (* kw: decl        *)
+      ; "adv",                      ADV                       (* kw: decl        *)
+      ; "bound_dist",               BOUNDDIST                 (* kw: decl        *)
+      ; "bound_succ",               BOUNDSUCC                 (* kw: decl        *)  
+      ; "bound_adv",                BOUNDADV                  (* kw: decl        *)
+      ; "inf",                      INFTHEO                   (* kw: decl        *)
+      ; "ppt",                      PPT                       (* kw: decl        *)
+      ; "permutation",              PERMUTATION               (* kw: decl        *)
+      ; "adversary",                ADVERSARY                 (* kw: decl        *)
+      ; "operator",                 OPERATOR                  (* kw: decl        *)
+      ; "assumption",               ASSUMPTION                (* kw: decl        *)
+
+      (* commands *)
+      ; "extract",                  EXTRACT                   (* kw: cmd         *)
+      ; "print_goals",              PRINTGOALS                (* kw: cmd         *)
+      ; "print_goal",               PRINTGOAL                 (* kw: cmd         *)
+      ; "print_proof",              PRINTPROOF                (* kw: cmd         *)
+      ; "print_debug",              PRINTDEBUG                (* kw: cmd         *)
+      ; "print_games",              PRINTGAMES                (* kw: cmd         *)
+      ; "print_game",               PRINTGAME                 (* kw: cmd         *)
+      ; "admit",                    ADMIT                     (* kw: cmd         *)
+      ; "last",                     LAST                      (* kw: cmd         *)
+      ; "qed",                      QED                       (* kw: cmd         *)
+      ; "restart",                  RESTART                   (* kw: cmd         *)
+      ; "back",                     BACK                      (* kw: cmd         *)
+      ; "undo_back",                UNDOBACK                  (* kw: cmd         *)
+
+      (* tactics *)
+      ; "norm",                     RNORM                     (* kw: tactic      *)
+      ; "norm_nounfold",            RNORM_NOUNFOLD            (* kw: tactic      *)
+      ; "norm_unknown",             RNORM_UNKNOWN             (* kw: tactic      *)
+      ; "norm_solve",               RNORM_SOLVE               (* kw: tactic      *)
+
+      ; "conv",                     RCONV                     (* kw: tactic      *)
+      ; "trans",                    RTRANS                    (* kw: tactic      *)
+      ; "subst",                    RSUBST                    (* kw: tactic      *)
+      ; "rename",                   RRENAME                   (* kw: tactic      *)
+      ; "insert",                   RINSERT                   (* kw: tactic      *)
+      ; "unfold" ,                  RLET_UNFOLD               (* kw: tactic      *)
+      ; "abstract",                 RLET_ABS                  (* kw: tactic      *)
+
+      ; "move",                     RMOVE                     (* kw: tactic      *)
+      ; "move_main",                RMOVE_MAIN                (* kw: tactic      *)
+
+      ; "rnd",                      RRND                      (* kw: tactic      *)
+      ; "rnd_exp",                  RRND_EXP                  (* kw: tactic      *)
+
+      ; "except",                   REXC                      (* kw: tactic      *)
+      ; "except_oracle",            REXC_ORCL                 (* kw: tactic      *)
+
+
+      ; "assumption_decisional",    ASSUMPTION_DECISIONAL     (* kw: tactic      *)
+      ; "assumption_computational", ASSUMPTION_COMPUTATIONAL  (* kw: tactic      *)
+
+      ; "dist_sym",                 RDIST_SYM                 (* kw: tactic      *)
+      ; "dist_eq",                  RDIST_EQ                  (* kw: tactic      *)
+
+      ; "simp",                     RSIMP                     (* kw: tactic      *)
+      ; "bysimp",                   BYSIMP                    (* kw: tactic      *)
+      ; "crush",                    RCRUSH                    (* kw: tactic      *)
+      ; "bycrush",                  BYCRUSH                   (* kw: tactic      *)
+
+      ; "rnd_oracle",               RRND_ORCL                 (* kw: tactic      *)
+      ; "rewrite_oracle" ,          RREWRITE_ORCL             (* kw: tactic      *)
+      ; "bad1",                     RBAD1                     (* kw: tactic      *)
+      ; "bad2",                     RBAD2                     (* kw: tactic      *)
+      ; "check_hash_args",          RCHECK_HASH_ARGS          (* kw: tactic      *)
+      ; "guess",                    RGUESS                    (* kw: tactic      *)
+      ; "find",                     RFIND                     (* kw: tactic      *)
+      ; "hybrid",                   RHYBRID                   (* kw: tactic      *)
+      ; "add_test",                 RADD_TEST                 (* kw: tactic      *)
+
+      ; "remove_ev",                RREMOVE_EV                (* kw: tactic      *)
+      ; "split_ev",                 RSPLIT_EV                 (* kw: tactic      *)
+      ; "split_ineq",               RSPLIT_INEQ_EV            (* kw: tactic      *)
+      ; "case_ev",                  RCASE_EV                  (* kw: tactic      *)
+      ; "rewrite_ev",               RREWRITE_EV               (* kw: tactic      *)
+      ; "ctxt_ev",                  RCTXT_EV                  (* kw: tactic      *)
+      ; "ctxt_ev_inj",              RCTXT_EV_INJ              (* kw: tactic      *)
+      ; "unwrap_quant_ev",          RUNWRAP_QUANT_EV          (* kw: tactic      *)
+      ; "move_quant_ev",            RMOVE_QUANT_EV            (* kw: tactic      *)
+
+      ; "indep",                    RINDEP                    (* kw: tactic      *)
+      ; "false_ev",                 RFALSE_EV                 (* kw: tactic      *)
+
+      ; "deduce",                   DEDUCE                    (* kw: tactic      *)
+      ; "field_exprs",              LISTFE                    (* kw: tactiv      *)
+
+      (* programs *)
+      ; "return",                   RETURN                    (* kw: prog        *)
+      ; "assert",                   ASSERT                    (* kw: proc/tactic *)
+      ; "guard",                    GUARD                     (* kw: prog/tactic *)
+      ; "let",                      LET                       (* kw: prog        *)
+      ; "with" ,                    WITH                      (* kw: prog        *)
+
+      (* types *)
+      ; "Fq",                       TFQ                       (* kw: type        *)
+      ; "Bool",                     TBOOL                     (* kw: type        *)
+
+      (* operators *)
+      ; "forall",                   FORALL                    (* kw: op          *)
+      ; "exists",                   EXISTS                    (* kw: op          *)
+      ; "in",                       IN                        (* kw: op          *)
+      ; "not",                      NOT                       (* kw: op          *)
+      ; "log",                      LOG                       (* kw: op          *)
+      ; "true",                     TRUE                      (* kw: op          *)
+      ; "false",                    FALSE                     (* kw: op          *)
+      ; "get_pk",                   GETPK                     (* kw: op          *) 
+      ; "get_sk",                   GETSK                     (* kw: op          *)
       ]
 }
 
 let blank = [' ' '\t' '\r' '\n']
 let newline = '\n'
+let simple_id = ['a'-'z']['a'-'z' '0'-'9']*
+let number_id = ['a'-'z' '0'-'9']*
+let ident = ['a'-'z' 'A'-'Z' ] ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
 
 rule lex = parse
-  | blank+  { lex lexbuf }
-  | "(*"    { comment lexbuf; lex lexbuf }
-  | "(**"    { comment lexbuf; lex lexbuf }
-  | "\"" { STRING (Buffer.contents (string (Buffer.create 0) lexbuf)) }
+  | blank+      { lex lexbuf }
+  | "(*"        { comment lexbuf; lex lexbuf }
+  | "(**"       { comment lexbuf; lex lexbuf }
+  | "\""        { STRING (Buffer.contents (string (Buffer.create 0) lexbuf)) }
   | [' ' '\t']
-  | newline { Lexing.new_line lexbuf; lex lexbuf }
-  | eof     { EOF }
-  | "("     { LPAREN }
-  | ")"     { RPAREN }
-  | "{"     { LCBRACE }
-  | "}"     { RCBRACE }
-  | "+"     { PLUS }
-  | "++"    { XOR }
-  | "-"     { MINUS }
-  | "*"     { STAR }
-  | "!"     { EXCL }
-  | "Fq"    { TFQ }
-  | "not"   { NOT }
-  | "log"   { LOG }
-  | "true"  { TRUE }
-  | "false" { FALSE }
-  | "trans*" { RTRANSSTAR }
-(*  | "in"    { IN }
-    | "Log"   { QUERIES } *)
-  | "let"   { LET }
-  | "R:" { INRIGHT }
-  | "LR:"  { INBOTH }
-  | "abstract*"  { RLET_ABSTRACT_DEDUCE }
-  | "L_"
-    (['A'-'Z']
-     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
-    { LIST (s) }
-  | "m_"
-    (['A'-'Z']
-     ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s)
-    { LOOKUP (s) }
-  | "BS_"(['a'-'z']['a'-'z' '0'-'9']* as s) { TBS(s) }
-  | "0_"(['a'-'z']['0'-'9']* as s) { ZBS(s) }
-  | "Bool" { TBOOL }
-  | "g" { GEN("") }
-  | "g_"(['a'-'z''0'-'9']* as s) { GEN(s) }
-  | "G" { TG("") }
-  | "G_"(['a'-'z''0'-'9']* as s) { TG(s) }
-  | "get_pk" {GETPK}
-  | "get_sk" {GETSK}
-  | "KeyPair_"((['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {KEYPAIR s}
-  | "PKey_"((['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {PKEY s}
-  | "SKey_"((['a'-'z' 'A'-'Z' ]
-		 ['a'-'z' 'A'-'Z' '\'' '0'-'9']* ) as s) {SKEY s}
-  | ['0'-'9']['0'-'9']* as s { NAT(int_of_string(s)) }
-  | ['a'-'z' 'A'-'Z' ]
-    ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']* as s
-    { try Hashtbl.find keyword_table s
-      with Not_found -> ID s }
-  | ":"     { COLON }
-  | ";"     { SEMICOLON }
-  | "?"     { QUESTION }
-  | ","     { COMMA }
-  | "^"     { CARET }
-  | "/"     { SLASH }
-  | "//"    { SLASH2 }
-  | "/="    { SLASHEQ }
-  | "//="   { SLASH2EQ }
-  | "///="  { SLASH3EQ }
-  | "/\\"   { LAND }
-  | "<-"    { LEFTARROW }
-  | "<>"    { NEQ }
-  | "<-$"   { SAMP }
-  | "\\"    { BACKSLASH }
-  | "#"     { SHARP }
-  | "`"     { BACKTICK }
-  | "["     { LBRACK }
-  | "]"     { RBRACK }
-  | "="     { EQUAL }
-  | "->"    { TO }
-  | "<"     { LESS }
-  | ">"     { GREATER }
-  | "."     { DOT }
-  | "_"     { UNDERSCORE }
+  | newline     { Lexing.new_line lexbuf; lex lexbuf }
+  | eof         { EOF }
+  | "("         { LPAR }
+  | ")"         { RPAR }
+  | "{"         { LCBRACE }
+  | "}"         { RCBRACE }
+  | "!"         { EXCL }
+  | ":"         { COLON }
+  | ";"         { SEMICOLON }
+  | "?"         { QUESTION }
+  | ","         { COMMA }
+  | "/"         { SLASH }                                     (* kw: tactic *)
+  | "//"        { SLASH2 }                                    (* kw: tactic *)
+  | "/="        { SLASHEQ }                                   (* kw: tactic *)
+  | "//="       { SLASH2EQ }                                  (* kw: tactic *)
+  | "///="      { SLASH3EQ }                                  (* kw: tactic *)
+  | "<-"        { LEFTARROW }                                 (* kw: prog   *)
+  | "<-$"       { SAMP }                                      (* kw: prog   *)
+  | "\\"        { BACKSLASH }                                 (* kw: prog   *)
+  | "/\\"       { LAND }                                      (* kw: op     *)
+  | "<>"        { NEQ }                                       (* kw: op     *)
+  | "+"         { PLUS }                                      (* kw: op     *)
+  | "++"        { XOR }                                       (* kw: op     *)
+  | "-"         { MINUS }                                     (* kw: op     *)
+  | "*"         { STAR }                                      (* kw: op     *)
+  | "^"         { CARET }                                     (* kw: op     *)
+  | "#"         { SHARP }                                     (* kw: op     *)
+  | "`"         { BACKTICK }
+  | "["         { LBRACK }
+  | "]"         { RBRACK }
+  | "="         { EQUAL }
+  | "->"        { TO }
+  | "<"         { LESS }
+  | ">"         { GREATER }
+  | "."         { DOT }
+  | "_"         { UNDERSCORE }
+
+  (* Keywords with special characters *)
+  | "R:"        { INRIGHT }
+  | "LR:"       { INBOTH }
+  | "abstract*" { RLET_ABS_DED }                              (* kw: tactic *)
+  | "trans*"    { RTRANSSTAR }                                (* kw: tactic *)
+
+  (* Indexed types *)
+  | "BS_"(simple_id as s)       { TBS(s) }                    (* kw: type   *)
+  | "G"                         { TG("") }                    (* kw: type   *)
+  | "G_"(number_id as s)        { TG(s) }                     (* kw: type   *)
+  | "KeyPair_"(simple_id as s)  { KEYPAIR(s) }                (* kw: type   *)
+  | "PKey_"(simple_id as s)     { PKEY(s) }                   (* kw: type   *)
+  | "SKey_"(simple_id as s)     { SKEY(s) }                   (* kw: type   *)
+
+  (* Indexed constants *)
+  | "L_"(ident as s)            { LIST(s) }                   (* kw: op     *)
+  | "0_"(number_id as s)        { ZBS(s) }                    (* kw: op     *)
+  | "g"                         { GEN("") }                   (* kw: op     *)
+  | "g_"(number_id as s)        { GEN(s) }                    (* kw: op     *)
+(*| "m_"(simple_id as s)        { LOOKUP(s) }                               *)
+
+  (* Nats and identifiers/keywords *)
+  | ['0'-'9']['0'-'9']* as s    { NAT(int_of_string(s)) }
+  | ident as s
+                                { try Hashtbl.find keyword_table s
+                                  with Not_found -> ID s }
 
 
 and comment = parse
@@ -197,5 +217,4 @@ and string buf = parse
   | "\\" (_ as c) { Buffer.add_char buf c   ; string buf lexbuf }
   | newline       { Buffer.add_string buf (Lexing.lexeme lexbuf); string buf lexbuf }
   | _ as c        { Buffer.add_char buf c   ; string buf lexbuf }
-
   | eof           { unterminated_string () }

@@ -1,5 +1,5 @@
 adversary A1 : () -> (Fq * G_t).
-bilinear map e : G_1 * G_2 -> G_t.
+bilinear_map e : G_1 * G_2 -> G_t.
 
 bound_succ
   [ (* master secret/public key *)

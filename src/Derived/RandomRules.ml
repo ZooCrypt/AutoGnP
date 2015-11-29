@@ -247,12 +247,12 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctx1 mctx2 mgen ju =
   log_t (lazy (fsprintf "t_rnd_maybe %i\n%!" i));
   log_t (lazy (fsprintf "sampling: %i, %a@\n%!" i Vsym.pp rv));
 
-  (* swap (if requested) and continue with fixed position *)
+  (* move (if requested) and continue with fixed position *)
   let rnd i = t_rnd_pos ts mctx1 mctx2 rv mgen i in
   if exact then rnd i ju
   else
-    (t_swap_max ToEnd i vs @>= fun i ->
-     t_swap_others_max ToFront i @>= fun i ->
+    (t_move_max ToEnd i vs @>= fun i ->
+     t_move_others_max ToFront i @>= fun i ->
      rnd i)
     ju
 

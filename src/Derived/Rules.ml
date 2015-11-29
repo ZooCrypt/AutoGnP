@@ -144,10 +144,10 @@ let lets gd =
   in
   cat_Some (L.mapi get_let gd)
 
-(* ** Swap maximum amount forward and backward
+(* ** Move maximum amount forward and backward
  * ----------------------------------------------------------------------- *)
 
-let rec parallel_swaps old_new_pos =
+let rec parallel_moves old_new_pos =
   let upd_pos op np p =
     (* op .. p .. np, if p = np before then p moves one to the right *)
     if op < np && op < p && p <= np then p - 1
@@ -158,13 +158,13 @@ let rec parallel_swaps old_new_pos =
   match old_new_pos with
   | [] -> []
   | (op,np)::old_new_pos ->
-    (op,np - op)::parallel_swaps (L.map (fun (op',np') -> (upd_pos op np op',np')) old_new_pos)
+    (op,np - op)::parallel_moves (L.map (fun (op',np') -> (upd_pos op np op',np')) old_new_pos)
 
 type dir = ToFront | ToEnd
 
 let vars_dexc rv es = e_vars (mk_Tuple ((mk_V rv)::es))
 
-let swap_max dir i se vs =
+let move_max dir i se vs =
   let step = if dir=ToEnd then 1 else -1 in
   let rec aux j =
     if i+j < L.length se.se_gdef && 0 <= i+j then (
@@ -177,17 +177,17 @@ let swap_max dir i se vs =
   in
   aux step
 
-let t_swap_max dir i vs ju =
+let t_move_max dir i vs ju =
   let se = ju.ju_se in
-  let offset = swap_max dir i se vs in
-  let swap_samp =
+  let offset = move_max dir i se vs in
+  let move_samp =
     if offset = 0
     then t_id
-    else core_tactic (ct_swap i offset)
+    else core_tactic (ct_move i offset)
   in
-  swap_samp ju >>= fun ps -> ret (i+offset,ps)
+  move_samp ju >>= fun ps -> ret (i+offset,ps)
 
-let t_swap_others_max dir i ju =
+let t_move_others_max dir i ju =
   let se = ju.ju_se in
   let samps = samplings se.se_gdef in
   let samp_others =
@@ -210,7 +210,7 @@ let t_swap_others_max dir i ju =
         ret (i,ps))
     | (j,(_rv,vs))::samp_others ->
       (fun ju ->
-        t_swap_max dir j vs ju >>= fun (j',ps) ->
+        t_move_max dir j vs ju >>= fun (j',ps) ->
         let i' =
           if (j > i && j' <= i) then i + 1
           else if (j < i && j' >= i) then i - 1
@@ -239,18 +239,18 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "dist_sym"
   | Rhybrid ->
     F.fprintf fmt "hybrid"
-  | Rswap_main _ ->
-    F.fprintf fmt "swap_main"
-  | Rswap(pos,delta) ->
-    F.fprintf fmt "swap %i %i" pos delta
+  | Rmove_main _ ->
+    F.fprintf fmt "move_main"
+  | Rmove(pos,delta) ->
+    F.fprintf fmt "move %i %i" pos delta
   | Rexc(pos,es) ->
     F.fprintf fmt "except %i %a" pos (pp_list "," pp_expr) es
   | Rrnd(pos,vs,_,(v2,c2)) ->
     F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_expr c2
   | Rrw_orcl((i,j,k,otype),_dir) ->
     F.fprintf fmt "rw_orcl (%i,%i,%i,%a)" i j k pp_otype otype
-  | Rswap_orcl((i,j,k,otype),_i) ->
-    F.fprintf fmt "swap_orcl (%i,%i,%i,%a)" i j k pp_otype otype
+  | Rmove_orcl((i,j,k,otype),_i) ->
+    F.fprintf fmt "move_orcl (%i,%i,%i,%a)" i j k pp_otype otype
   | Rrnd_orcl((i,j,k,otype),_c1,_c2)      ->
     F.fprintf fmt "rnd_orcl (%i,%i,%i,%a)" i j k pp_otype otype
   | Rexc_orcl((i,j,k,otype),_es)          ->
@@ -269,8 +269,8 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
     F.fprintf fmt "injective_ctxt_ev %i" (_i+1)
   | Runwrap_quant_ev(_i) ->
     F.fprintf fmt "unwrap_quant_ev %i" (_i+1)
-  | Rswap_quant_ev(_i) ->
-    F.fprintf fmt "swap_quant_ev %i" (_i+1)
+  | Rmove_quant_ev(_i) ->
+    F.fprintf fmt "move_quant_ev %i" (_i+1)
   | Rremove_ev(is) ->
     F.fprintf fmt "remove [%a]" (pp_list "," pp_int) is
   | Rmerge_ev(_i,_j) ->

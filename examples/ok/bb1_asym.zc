@@ -1,4 +1,4 @@
-bilinear map e : G_1 * G_2 -> G_t.
+bilinear_map e : G_1 * G_2 -> G_t.
 
 adversary A1 : () -> Fq.
 adversary A2 : (G_1 * G_2 * G_2) -> (G_t * G_t).
@@ -21,7 +21,7 @@ bound_adv
     let pk3 = g_2^h;
     (m0,m1) <- A2(pk1,pk2,pk3)  with
       Kg1(i) = {
-        i <> i';
+        guard (i <> i');
         r <-$ Fq;
         return (g_1^(c*d + r*(d*i + h)), g_1^r)
       };
@@ -30,7 +30,7 @@ bound_adv
     e' <-$ Fq;
     b' <- A3(mb * e(pk1,pk2)^e', g_1^e', (pk2^i'*pk3)^e') with
       Kg2(i) = {
-        i<>i';
+        guard (i<>i');
         r <-$ Fq;
         return (g_1^(c*d + r*(d*i + h)), g_1^r)
       };

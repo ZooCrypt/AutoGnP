@@ -33,9 +33,9 @@ bound_dist
   assert a (O`i<>j). (* add assert to enable rnd rule *)
     bycrush.
   rnd a (a -> O`t1 + a*(j - O`i)) _; //.
-  swap a -2.
+  move a -2.
   rnd_oracle (2,1,1,=) (t1 -> t1 + a*i) _; //.
-  swap_main (2,1,1) b.
+  move_main (2,1,1) b.
   assert 4. (* remove assert again *)
     bycrush.
   dist_eq.

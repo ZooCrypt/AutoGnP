@@ -1,6 +1,6 @@
-bilinear map et : G_1 * G_2 -> G_t.
+bilinear_map et : G_1 * G_2 -> G_t.
 
-bilinear map ett : G * G -> G_tt.
+bilinear_map ett : G * G -> G_tt.
 
 operator h : Fq -> Fq.
 

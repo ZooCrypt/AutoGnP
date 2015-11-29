@@ -16,10 +16,10 @@ bound_adv [
         z1 <-$ G;
         z2 <-$ G;
         let w = y;
-        w = y;
-        y = x3;
+        guard (w = y);
+        guard (y = x3);
         z3 <-$ G;
-        z1 = z2;
+        guard (z1 = z2);
         return w;
       },
       O1_3(y) = {
@@ -29,7 +29,7 @@ bound_adv [
    x4 <- A2(x2) with
         O2(y) = {return y;};
   ]: x1 = x2.
-swap (3,2,2) 4.
+move (3,2,2) +4.
 admit.
 qed.
 extract "extraction/t_swap_orcl4.ec".

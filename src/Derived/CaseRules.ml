@@ -293,5 +293,5 @@ let t_guard_maybe ju =
   guard (not (Se.subset (e_vars t) wvars)) >>= fun _ ->
   let test = simp_eq_group t in
   (T.t_guard opos (Some (NormUtils.norm_expr_nice test))
-   @> T.t_swap_oracle opos (-k)
+   @> T.t_move_oracle opos (-k)
    @> T.t_rewrite_oracle opos LeftToRight) ju

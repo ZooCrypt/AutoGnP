@@ -56,7 +56,7 @@ val t_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> tactic
 
 val t_assm_comp : assm_comp -> (int * int) list  -> renaming -> tactic
 
-val t_swap : gcmd_pos -> int -> tactic
+val t_move : gcmd_pos -> int -> tactic
 
 val t_except : gcmd_pos -> expr list -> tactic
 
@@ -66,7 +66,7 @@ val t_case_ev : ?flip:bool -> ?allow_existing:bool -> expr -> tactic
 
 val t_guard : ocmd_pos -> expr option -> tactic
 
-val t_swap_oracle : ocmd_pos -> int -> tactic
+val t_move_oracle : ocmd_pos -> int -> tactic
 
 val t_rewrite_oracle : ocmd_pos -> direction -> tactic
 
@@ -100,7 +100,7 @@ val t_dist_eq : tactic
 
 val t_assert : gcmd_pos -> expr -> tactic
 
-val t_swap_main : ocmd_pos_eq -> string -> tactic
+val t_move_main : ocmd_pos_eq -> string -> tactic
 
 val t_hybrid : gcmd_pos -> int -> lcmd list -> expr -> tactic
 

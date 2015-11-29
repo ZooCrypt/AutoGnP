@@ -141,7 +141,7 @@ let t_random_indep_no_exact emaps ju =
     | Game.GSamp(v,_) :: rc ->
       if Se.mem (mk_V v) ev_vars then (
         log_t (lazy (fsprintf "trying variable %a" Vsym.pp v));
-        (T.t_swap (L.length rc) i @> (T.t_random_indep @|| t_last_random_indep emaps)) @||
+        (T.t_move (L.length rc) i @> (T.t_random_indep @|| t_last_random_indep emaps)) @||
         (aux (i+1) rc)
       ) else (
         aux (i+1) rc

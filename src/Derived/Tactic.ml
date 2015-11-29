@@ -161,7 +161,7 @@ let t_assm_comp assm ev_e subst = core_tactic (ct_assm_comp assm ev_e subst)
 
 let t_assm_dec dir ren rngs assm = core_tactic (ct_assm_dec dir ren rngs assm)
 
-let t_swap i delta = core_tactic (ct_swap i delta)
+let t_move i delta = core_tactic (ct_move i delta)
 
 let t_except p es = core_tactic (ct_except p es)
 
@@ -174,7 +174,7 @@ let t_rewrite_oracle op dir = core_tactic (ct_rewrite_oracle op dir)
 
 let t_guard p tnew = core_tactic (ct_guard p tnew)
 
-let t_swap_oracle i delta = core_tactic (ct_swap_oracle i delta)
+let t_move_oracle i delta = core_tactic (ct_move_oracle i delta)
 
 let t_guess asym fvs = core_tactic (ct_guess asym fvs)
 
@@ -206,7 +206,7 @@ let t_dist_eq = core_tactic ct_dist_eq
 
 let t_assert gpos e = core_tactic (ct_assert gpos e)
 
-let t_swap_main ope s = core_tactic (ct_swap_main ope s)
+let t_move_main ope s = core_tactic (ct_move_main ope s)
 
 let t_hybrid gpos i lcmds e = core_tactic (ct_hybrid gpos i lcmds e)
 

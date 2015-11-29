@@ -52,11 +52,11 @@ val ct_conv : bool -> sec_exp -> core_tactic
     [new_se] are indistinguishable *)
 val ct_trans : sec_exp -> core_tactic
 
-(** [rswap p i ju] returns the judgment resulting from moving the
+(** [ct_move p i ju] returns the judgment resulting from moving the
     command at position [p] [i] positions forward. *)
-val ct_swap : gcmd_pos -> int -> core_tactic
+val ct_move : gcmd_pos -> int -> core_tactic
 
-(** [rrandom p ctx1 ctx2 ju] returns the judgment resulting
+(** [r_rnd p ctx1 ctx2 ju] returns the judgment resulting
     from replacing the sampling [r <- d] at position [p]
     with [r <- d; let r = ctx1]. The rule checks that [ctx2]
     is the inverse of [ctx1]. *)
@@ -65,7 +65,7 @@ val ct_rnd : gcmd_pos -> ctxt -> ctxt -> core_tactic
 
 val ct_assert : gcmd_pos -> expr -> core_tactic
 
-(** [rctxt_ev ctx i ju] returns the judgment resulting from
+(** [ct_ctxt_ev i ctx ju] returns the judgment resulting from
     replacing the [i]-th conjunct in the event of [ju]
     with (a) [ctx(a) = ctx(b)] if it is equal to [a = b]
     and (b) [ ctx(a) in \[ ctx(b) | x in l \] ] if it
@@ -127,11 +127,11 @@ val ct_hybrid : gcmd_pos -> int -> lcmd list -> expr -> core_tactic
     in direction [d]. *)
 val ct_rewrite_oracle : ocmd_pos -> direction -> core_tactic
 
-(** [rswap p i ju] returns the judgment resulting from swapping
+(** [ct_move p i ju] returns the judgment resulting from swapping
     the command at oracle positions [p] [i] positons forward. *)
-val ct_swap_oracle : ocmd_pos -> int -> core_tactic
+val ct_move_oracle : ocmd_pos -> int -> core_tactic
 
-val ct_swap_main : ocmd_pos_eq -> string -> core_tactic
+val ct_move_main : ocmd_pos_eq -> string -> core_tactic
 
 (** [rrandom_indep ju] completes the proof of judgments of the
      form [(G; r <- d) : E] where [E = /\_i ci] and

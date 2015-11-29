@@ -42,18 +42,18 @@ val oguards : gcmd list -> (ocmd_pos * expr) list
 
 val lets :  gcmd list -> (int * (vs * expr)) list
 
-(* ** Swap maximum amount forward and backward
+(* ** Move maximum amount forward and backward
  * ----------------------------------------------------------------------- *)
 
 type dir = ToFront | ToEnd
 
 val vars_dexc : Vsym.t -> Expr.expr list -> Expr.Se.t
 
-val parallel_swaps : (int * int) list -> (int * int) list
+val parallel_moves : (int * int) list -> (int * int) list
 
-val t_swap_max : dir -> gcmd_pos -> Se.t -> int rtactic
+val t_move_max : dir -> gcmd_pos -> Se.t -> int rtactic
 
-val t_swap_others_max : dir -> gcmd_pos -> int rtactic
+val t_move_others_max : dir -> gcmd_pos -> int rtactic
 
 (* ** Simplification and pretty printing
  * ----------------------------------------------------------------------- *)

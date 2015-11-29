@@ -1,4 +1,4 @@
-bilinear map e : G * G -> G_t.
+bilinear_map e : G * G -> G_t.
 
 adversary A1 : () -> Fq.
 adversary A2 : (G * G * G * G_t * G * G) -> Bool.
@@ -33,7 +33,7 @@ bound_adv
 
     b' <- A2(pk1,pk2,pk3,Kb,C1,C2)  with
       Kg(i) = {
-        i<>i';
+        guard (i<>i');
         r <-$ Fq;
         return (g^(c*d + r*(d*i + h)), g^r)
       };
@@ -51,7 +51,7 @@ bound_adv
 
   rnd! h _ (h -> h + d*i'); //.                        (* 3. redefine mpk such that coeff of r is (h  *)
   rnd_oracle (8,1,2) _ (r -> r * (i - i') + c); //.
-  swap c (1); swap d (2); swap e' (3).
+  move c 1; move d 2; move e' 3.
   assumption_decisional! dbdh -> tt; //.
   
   (* BEGIN: if tt <-$ Fq; K1 <-$ G_t; return (b?g^tt:K1) equivalent to K1 <-$ G_t; return K1 *)

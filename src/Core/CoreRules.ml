@@ -190,7 +190,7 @@ let r_conv do_norm_terms new_se0 ju =
 
 let ct_conv do_norm_terms new_se = prove_by (r_conv do_norm_terms new_se)
 
-(* *** Instruction swapping.
+(* *** Instruction movement.
  * ----------------------------------------------------------------------- *)
 
 let ensure_disjoint rn read write i c =
@@ -200,9 +200,9 @@ let ensure_disjoint rn read write i c =
   let cr = read c in
   let cw = write c in
   if not (se_disjoint iw cw && se_disjoint ir cw && se_disjoint cr iw) then
-    tacerror "%s: can not swap" rn
+    tacerror "%s: can not move" rn
 
-let swap i delta ju =
+let move i delta ju =
   if delta = 0 then ju
   else (
     let se = ju.ju_se in
@@ -215,8 +215,8 @@ let swap i delta ju =
         let htl, ttl = cut_n delta tl in
         hd, L.rev htl, ttl
     in
-    ensure_disjoint "swap" read_gcmds write_gcmds instr c2;
-    if is_call instr && has_call c2 then tacerror "swap : can not swap";
+    ensure_disjoint "move" read_gcmds write_gcmds instr c2;
+    if is_call instr && has_call c2 then tacerror "move : can not move";
     let c2,c3 =
       if delta > 0 then c2,instr::c3 else instr::c2,c3
     in
@@ -224,14 +224,14 @@ let swap i delta ju =
     { ju with ju_se = set_se_ctxt c2 seoc }
   )
 
-let r_swap i delta ju = Rswap(i, delta), [swap i delta ju]
+let r_move i delta ju = Rmove(i, delta), [move i delta ju]
 
-let ct_swap i delta = prove_by (r_swap i delta)
+let ct_move i delta = prove_by (r_move i delta)
 
-(* *** Instruction swapping for Oracle.
+(* *** Instruction moving for Oracle.
  * ----------------------------------------------------------------------- *)
 
-let swap_oracle i delta ju =
+let move_oracle i delta ju =
   if delta = 0 then ju
   else (
     let se = ju.ju_se in
@@ -244,7 +244,7 @@ let swap_oracle i delta ju =
         let htl, ttl = cut_n delta seoc.seoc_cright in
         seoc.seoc_cleft, L.rev htl, ttl
     in
-    ensure_disjoint "swap_oracle" read_lcmds write_lcmds i c2;
+    ensure_disjoint "move_oracle" read_lcmds write_lcmds i c2;
     let c2, c3 =
       if delta > 0 then c2, i::c3 else i::c2, c3
     in
@@ -252,10 +252,10 @@ let swap_oracle i delta ju =
     { ju with ju_se = set_se_octxt c2 seoc }
   )
 
-let r_swap_oracle i delta ju =
-  Rswap_orcl(i,delta), [swap_oracle i delta ju]
+let r_move_oracle i delta ju =
+  Rmove_orcl(i,delta), [move_oracle i delta ju]
 
-let ct_swap_oracle i delta = prove_by (r_swap_oracle i delta)
+let ct_move_oracle i delta = prove_by (r_move_oracle i delta)
 
 (* *** Random sampling.
  * ----------------------------------------------------------------------- *)
@@ -485,10 +485,10 @@ let r_rw_ev i d ju =
 
 let ct_rw_ev i d = prove_by (r_rw_ev i d)
 
-(* *** Swap sampling from once-oracle to main.
+(* *** Move sampling from once-oracle to main.
  * ----------------------------------------------------------------------- *)
 
-let r_swap_main ((i,j,k) as opos_eq) vname ju =
+let r_move_main ((i,j,k) as opos_eq) vname ju =
   let se = ju.ju_se in
   match get_se_octxt se (i,j,k,Oishyb OHeq) with
   | LSamp(vs,d),seoc ->
@@ -510,12 +510,12 @@ let r_swap_main ((i,j,k) as opos_eq) vname ju =
     in
     let se = set_se_octxt [] seoc in
     wf_se NoCheckDivZero se;
-    Rswap_main opos_eq, [ { ju with ju_se = se } ]
+    Rmove_main opos_eq, [ { ju with ju_se = se } ]
   | _ ->
     assert false
 
-let ct_swap_main opos vname =
-  prove_by (r_swap_main opos vname)
+let ct_move_main opos vname =
+  prove_by (r_move_main opos vname)
 
 (* ** Core rules: Bridging rules with small loss
  * ----------------------------------------------------------------------- *)

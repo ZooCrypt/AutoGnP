@@ -230,12 +230,12 @@ let t_assm_dec_auto ts assm dir subst ju vnames =
 
   log_t (lazy (fsprintf "@[match samps:@\n[%a]@]"
                  (pp_list ", " (pp_pair pp_int pp_int)) old_new_pos));
-  let swaps =
-       parallel_swaps old_new_pos
+  let moves =
+       parallel_moves old_new_pos
     |> L.filter_map (fun (old_pos,delta) ->
-                       if delta = 0 then None else Some (T.core_tactic (CR.ct_swap old_pos delta)))
+                       if delta = 0 then None else Some (T.core_tactic (CR.ct_move old_pos delta)))
   in
-  (t_seq_fold swaps @> t_assm_dec_aux ts assm dir subst assm_samps vnames) ju
+  (t_seq_fold moves @> t_assm_dec_aux ts assm dir subst assm_samps vnames) ju
 
 (** Supports placeholders for which all possible values are tried *)
 let t_assm_dec_non_exact
@@ -508,11 +508,11 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
   guard (L.for_all ordered assm.ac_symvars) >>= fun _ ->
 
   let old_new_pos = L.mapi (fun i x -> (fst x,i)) match_samps in
-  let swaps =
-       parallel_swaps old_new_pos
+  let moves =
+       parallel_moves old_new_pos
     |> L.filter_map
         (fun (old_p,delta) ->
-          if delta = 0 then None else Some (T.t_swap old_p delta))
+          if delta = 0 then None else Some (T.t_move old_p delta))
   in
   (* let priv_exprs = L.map (fun (_,(v,_)) -> mk_V v) match_samps in *)
   let excepts =
@@ -542,7 +542,7 @@ let t_assm_comp_auto ?icases:(icases=Se.empty) ts assm _mrngs ju =
     T.t_remove_ev remove_events
     (* @> t_norm_unknown ts priv_exprs *)
     @> t_seq_fold excepts
-    @> t_seq_fold swaps
+    @> t_seq_fold moves
   in
   guard (not (is_Land aev && not (is_Land ev))) >>= fun _ ->
   before_t_assm ju >>= fun ps ->

@@ -68,12 +68,12 @@ type rule_name =
   (* Rename, unfold let, and normalize. *)
   | Rconv
 
-  (* [Rswap(p,i)]: swap statement at [p] forward by [i]. *)
-  | Rswap   of gcmd_pos * int
+  (* [Rmove(p,i)]: move statement at [p] forward by [i]. *)
+  | Rmove of gcmd_pos * int
 
   (* [Rnd(p,c_1,c_2,v)]: Perform optimistic sampling with
      bijection [c_1=c_2^{-1}] for [v] at position [p]. *)
-  | Rrnd    of gcmd_pos * vs  * ctxt * ctxt
+  | Rrnd of gcmd_pos * vs  * ctxt * ctxt
 
   (* [Rexc(p,es)]: change sampling at $p$ to exclude expressions [es]. *)
   | Rexc of gcmd_pos * expr list
@@ -84,8 +84,8 @@ type rule_name =
   (* [Rrw_orcl(p,dir)]: rewrite oracle with equality test at [p] in [dir]. *)
   | Rrw_orcl   of ocmd_pos * direction
 
-  (* [Rswap_orcl(op,i)]: swap statement at [p] forward by [i]. *)
-  | Rswap_orcl of ocmd_pos * int
+  (* [Rmove_orcl(op,i)]: swap statement at [p] forward by [i]. *)
+  | Rmove_orcl of ocmd_pos * int
 
   (* [Rnd_orcl(p,c_1,c_2,v)]: rnd with [c_1=c_2^{-1}] for [v] at [p]. *)
   | Rrnd_orcl  of ocmd_pos * ctxt * ctxt
@@ -116,7 +116,7 @@ type rule_name =
   | Rinjective_ctxt_ev of int * ctxt * ctxt
 
   | Runwrap_quant_ev of int
-  | Rswap_quant_ev   of int
+  | Rmove_quant_ev   of int
 
   (* [Rremove_ev(is)]: Remove given conjuncts. *)
   | Rremove_ev of int list
@@ -158,7 +158,7 @@ type rule_name =
 
   | Rhybrid (* FIXME: add arguments *)
 
-  | Rswap_main of ocmd_pos_eq
+  | Rmove_main of ocmd_pos_eq
 
 (* *** Rules for add test *)
 

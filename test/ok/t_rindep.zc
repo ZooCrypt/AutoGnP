@@ -7,7 +7,7 @@ bound_succ
     x2 <- A();
   ] : (x1 * x2 = 0) /\ not (x2 = 0).
   norm.
-  swap x1 x2.
+  move x1 x2.
   ctxt_ev 1 (r -> r / x2). norm.
   indep.
 qed.
@@ -20,4 +20,3 @@ bound_succ
   ] : (x1 * x2 = 0) /\ not (x2 = 0).
   bycrush.
 qed.
-

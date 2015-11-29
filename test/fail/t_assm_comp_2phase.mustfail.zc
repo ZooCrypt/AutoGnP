@@ -20,7 +20,7 @@ bound_succ
     (m_,t_) <-  A2(MAC(k_,mc_));
   ] : (m_ <> mc_) /\ (MAC(k_,m_) = t_).
   norm.
-  swap 2 -1.
+  move 2 -1.
   abstract 2 arg1 ().
   abstract 5 res1 mc_.
   abstract 6 arg2 MAC(k_,res1).

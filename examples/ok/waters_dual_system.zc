@@ -1,4 +1,4 @@
-bilinear map e : G * G -> G_t.
+bilinear_map e : G * G -> G_t.
 
 (* DBDH assumption *)
 adversary A_dbdh : (G * G * G * G_t) -> Bool.
@@ -72,7 +72,7 @@ bound_adv
   
   beta' <- A2(tagc,C0,C1,C2,C3,C4,C5,C6,C7,E1,E2) with
     KeyGen2(i) = {
-      i <> ci;
+      guard (i <> ci);
       r1, r2, z1, z2, tagk <-$ Fq;
       let r  = r1 + r2;
       let D1 = g^(alpha*a1)*V^r;
@@ -109,16 +109,16 @@ trans*
   LR: rnd_exp V V1 V2 W U H; ///=.
   
   (* b1, b2, c1, and c2 correspond to variables in DLIN *)
-  LR: rename a1 b1; rename a2 b2; swap b1 (1); swap b2 (2).
+  LR: rename a1 b1; rename a2 b2; move b1 1; move b2 2.
   abstract _ res _.
   LR: assumption_decisional! dkill <- c2; ///=.
   LR: assumption_decisional! dkill <- c1; ///=.
-  LR: swap [c1 c2] (4).
+  LR: move [c1 c2] 4.
 
   (* Perform the right opt. samplings to "mix in" c1 and c2. *)
   LR: rnd s2 (s2 -> s2 + c1 + c2) _; rnd s1 (s1 -> s1 - c2)  _; ///=.
   assumption_decisional! dlin -> x; //.
-  swap x tagc.
+  move x tagc.
   (* substitute some variable by polynomial to obtain additional terms missing in right game *)
   R: except b2 [0]; rnd! x _ (x -> b2*(x + c1 + c2)); except b2 []; //.
   dist_eq.
@@ -154,14 +154,14 @@ hybrid (19,1)
   assert beta (KeyGen1`i<>ci).
     bycrush.
   dist_sym.
-  LR: rename tagc A; rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _; swap A (1); ///=.
-  LR: rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _; //; //=; swap_main (12,1,5) B; swap B (2).
+  LR: rename tagc A; rnd A (A -> A*(ci - KeyGen1`i) + KeyGen1`tagk) _; move A 1; ///=.
+  LR: rnd_oracle (12,1,5,=) (tagk -> tagk + A*i) _; //; //=; move_main (12,1,5) B; move B 2.
 
   (* b1, b2, c1, and c2 correspond to variables in DLIN. *)
   LR: rename b b1; rename v b2.
   LR: assumption_decisional! dkill <- c2; ///=.
   LR: assumption_decisional! dkill <- c1; ///=.
-  LR: swap b1 (1); swap b2 (2).
+  LR: move b1 1; move b2 2.
   
   (* public parameters *)
   LR: except a1 [0]; except a2 [0]; rnd! b2 (b2 -> -b2*a1*a2) _; //.
@@ -181,18 +181,18 @@ hybrid (19,1)
   LR: rnd! t (t -> t + a1*a2*x*b2) _; //.
 
   (* apply assumption *)
-  LR: swap b1 (1); swap b2 (2); swap c1 (3); swap c2 (4).
+  LR: move b1 1; move b2 2; move c1 3; move c2 4.
   assumption_decisional! dlin -> tt. //.
   
   (* match up variables in both games *)
-  swap tt (18). swap_main tt (19,1,1) gamma. swap (18,1,1,=) 4.
+  move tt 18. move_main tt (19,1,1) gamma. move (18,1,1,=) +4.
   rnd_oracle (18,1,5,=) (gamma -> gamma + b2*c1 + b2*c2) _; //.
   dist_eq.
 
 (* ================================================== *)
 (* make second oracle semi-functional by applying DLIN *)
 hybrid (41,1)
-  { i <> ci;
+  { guard (i <> ci);
     r1, r2, z1, z2, tagk, gamma <-$ Fq;
     let r = r2 + r1;
     let D1' = g^(a1*alpha) * V^r;
@@ -217,14 +217,14 @@ hybrid (41,1)
      introduce pairwise independent function A*i + B for tagc and tagk in =-oracle. *)
   LR: rename tagc B.
   LR: rnd_oracle (18,1,6,=) (tagk -> tagk*(KeyGen2`i - ci) + B) _. LR: //.
-  LR: swap_main (18,1,6) A; swap A (1); swap B (2).
+  LR: move_main (18,1,6) A; move A 1; move B 2.
   LR: rnd! B (B -> B + A*ci) _; //.
 
   (* b1, b2, c1, and c2 correspond to variables in DLIN. *)
   LR: rename b b1; rename v b2.
   LR: assumption_decisional! dkill <- c2; //.
   LR: assumption_decisional! dkill <- c1; //.
-  LR: swap b1 (1); swap b2 (2).
+  LR: move b1 1; move b2 2.
 
   (* public parameters *)
   LR: except a1 [0]; except a2 [0]; rnd! b2 (b2 -> -b2*a1*a2) _; //.
@@ -244,11 +244,11 @@ hybrid (41,1)
   LR: rnd! t (t -> t + a1*a2*x*b2) _; //.
 
   (* apply assumption *)
-  LR: swap b1 (1); swap b2 (2); swap c1 (3); swap c2 (4).
+  LR: move b1 1; move b2 2; move c1 3; move c2 4.
   assumption_decisional! dlin -> tt; //.
 
   (* match up variables in both games *)
-  swap tt (21). swap_main tt (22,1,1) gamma. swap (21,1,1,=) 5.
+  move tt 21. move_main tt (22,1,1) gamma. move (21,1,1,=) +5.
   rnd_oracle (21,1,6,=) (gamma -> gamma + b2*c1 + b2*c2) _; //.
   dist_eq.
 
@@ -265,7 +265,7 @@ except c2 [0]. rnd c1 (c1 -> c1 * c2) _. except c2 []. unfold u__.
 rnd_oracle (11,1,6) (gamma -> gamma + c1) _. norm.
 rnd_oracle (18,1,7) (gamma -> gamma + c1) _. norm.
 rename x x'. rnd x' (x' -> x' - c3) _. norm.
-swap c1 (1). swap c2 (2). swap c3 (3).
+move c1 1. move c2 2. move c3 3.
 assumption_decisional! dbdh -> tt. norm.
 except a1 [0]. except b [0]. rnd! tt _ (tt -> log(beta?m0:m1) + a1*b*tt); //.
 indep!.

@@ -90,9 +90,9 @@ let interval ju (i1,i2) =
   in
   i1, i2
 
-let t_swap inter delta ju =
+let t_move inter delta ju =
   let (i1,i2) = interval ju inter in
-  if i2 < i1 then tacerror "swap: empty interval [%i .. %i]" i1 i2;
+  if i2 < i1 then tacerror "move: empty interval [%i .. %i]" i1 i2;
   let delta =
     match delta with
     | PT.Pos i -> i
@@ -100,14 +100,14 @@ let t_swap inter delta ju =
       let p = find_gvar ju s in
       if p <= i1 then p - i1
       else if p >= i2 then p - i2
-      else tacerror "swap: invalid position %s" s
+      else tacerror "move: invalid position %s" s
     | PT.AbsPos p ->
       if p <= i1 then p - i1
       else if p >= i2 then p - i2
-      else tacerror "swap: invalid position %i" p
+      else tacerror "move: invalid position %i" p
   in
   let li = list_from_to i1 (i2+1) in
-  let lt = L.map (fun i -> T.t_swap i delta) li in
+  let lt = L.map (fun i -> T.t_move i delta) li in
   if delta < 0 then Rules.t_seq_fold lt ju
   else Rules.t_seq_fold (L.rev lt) ju
 
@@ -165,7 +165,7 @@ let handle_tactic ts tac =
       let lt = L.map (fun i ju -> t_let_unfold (gpos_of_apos ju i) ju) l in
       Rules.t_seq_fold lt ju
 
-    | PT.Rswap(i,j)            -> t_swap i j ju
+    | PT.Rmove(i,j)            -> t_move i j ju
     | PT.Rdist_eq              -> Rules.t_dist_eq ju
     | PT.Rdist_sym             -> T.t_dist_sym ju
     | PT.Rremove_ev(is)        -> T.t_remove_ev is ju
@@ -200,7 +200,7 @@ let handle_tactic ts tac =
     | PT.Rexcept(i,ses) ->
       t_rexcept_maybe (O.map get_pos i) ses ju
 
-    | PT.Rswap_oracle(op,j)    -> T.t_swap_oracle op j ju
+    | PT.Rmove_oracle(op,j)    -> T.t_move_oracle op j ju
     | PT.Rrewrite_orcl(op,dir) -> T.t_rewrite_oracle op dir ju
 
     | PT.Rfalse_ev             -> T.t_false_ev ju
@@ -210,16 +210,16 @@ let handle_tactic ts tac =
       let vs = L.map (fun s -> mk_V (Ht.find vmap_g (Unqual,s))) is in
       t_norm_unknown ts vs ju
 
-    | PT.Rlet_abstract(Some(i),sv,Some(se),mupto,no_norm) ->
+    | PT.Rlet_abs(Some(i),sv,Some(se),mupto,no_norm) ->
       let e = parse_e se in
       let v = mk_new_var sv e.e_ty in
       t_let_abstract (get_pos i) v e (O.map get_pos mupto) (not no_norm) ju
 
-    | PT.Rlet_abstract(None,_sv,Some(_se),_mupto,_no_norm) ->
+    | PT.Rlet_abs(None,_sv,Some(_se),_mupto,_no_norm) ->
        fixme "give hints"
        (*raise (Handle_this_tactic_instead(PT.Rlet_abstract(Some (PT.Pos(-1)),sv,Some se, mupto, no_norm))) *)
 
-    | PT.Rlet_abstract_oracle(opos,sv,se,len,no_norm) ->
+    | PT.Rlet_abs_orcl(opos,sv,se,len,no_norm) ->
        let qual = Qual (PU.get_oname_from_opos ju.ju_se opos) in
        let vmap_o = GameUtils.vmap_in_orcl ju.ju_se opos in
        let e = PU.expr_of_parse_expr vmap_o ts qual se in
@@ -227,7 +227,7 @@ let handle_tactic ts tac =
        (*let v = mk_new_var sv e.e_ty in*)
        t_let_abstract_oracle opos v e len (not no_norm) ju
 
-    | PT.Rlet_abstract_deduce(keep_going,i,sv,se,mupto) ->
+    | PT.Rlet_abs_ded(keep_going,i,sv,se,mupto) ->
       let e = parse_e se in
       let v = mk_new_var sv e.e_ty in
       t_abstract_deduce ~keep_going ts (get_pos i) v e (O.map get_pos mupto) ju
@@ -251,15 +251,15 @@ let handle_tactic ts tac =
       in
       t_remove_assert ju
 
-    | PT.Rswap_to_main(i_j_k,vs)  -> T.core_tactic (CR.ct_swap_main i_j_k vs) ju
+    | PT.Rmove_to_main(i_j_k,vs)  -> T.core_tactic (CR.ct_move_main i_j_k vs) ju
 
-    | PT.Rswap_to_orcl(p,(i,j,k),sv) ->
+    | PT.Rmove_to_orcl(p,(i,j,k),sv) ->
       let ci = get_pos p in
       if (ci + 1<>i) then
-        tacerror "swap_to_main: variable in main must directly precede oracle";
+        tacerror "move_to_main: variable in main must directly precede oracle";
       if (k<>0) then
-        tacerror "swap_to_main: can only swap variable to start of oracle";
-      let t_swap_to_orcl ju =
+        tacerror "move_to_main: can only move variable to start of oracle";
+      let t_move_to_orcl ju =
         log_i (lazy (fsprintf "i=%i j=%i k=%i" i j k));
         let se = ju.ju_se in
         assert (ci < i);
@@ -284,18 +284,18 @@ let handle_tactic ts tac =
           let lcright = L.map (map_lcmd_exp subst) seoc.seoc_cright in
           let se = set_se_octxt [LSamp(vso,d)] { seoc with seoc_cright = lcright } in
           (T.t_trans se @>> [ T.t_dist_sym
-                               @> T.t_swap_main (i-1,j,k) "rr" @> t_dist_eq
+                               @> T.t_move_main (i-1,j,k) "rr" @> t_dist_eq
                              ; T.t_id]) ju
-        | _ -> tacerror "cannot swap sampling to oracle, given position not a sampling"
+        | _ -> tacerror "cannot move instruction to oracle, given position not a sampling"
       in
-      t_swap_to_orcl ju
+      t_move_to_orcl ju
 
-    | PT.Rlet_abstract(None,sv,None,mupto,no_norm) ->
+    | PT.Rlet_abs(None,sv,None,mupto,no_norm) ->
       let v = mk_new_var sv ju.ju_se.se_ev.e_ty in
       let max = L.length ju.ju_se.se_gdef in
       t_let_abstract max v ju.ju_se.se_ev (O.map get_pos mupto) (not no_norm) ju
 
-    | PT.Rlet_abstract(_,_,_,_,_) ->
+    | PT.Rlet_abs(_,_,_,_,_) ->
       tacerror "No placeholders or placeholders for both position and event"
 
     | PT.Rconv(Some sgd,sev) ->
@@ -391,11 +391,11 @@ let handle_tactic ts tac =
       let c = v1, e1 in
       T.t_ctxt_ev j c ju
 
-    | PT.Rswap_quant_ev _j -> fixme "undefined"
-       (* CR.t_swap_quant_ev j ju *)
-    | PT.Runwrap_quant_ev _j -> fixme "undefined"
+    | PT.Rmove_quant_ev _j -> fixme "undefined"
+       (* CR.t_move_quant_ev j ju *)
+    | PT.Ropen_quant_ev _j -> fixme "undefined"
        (* CR.t_unwrap_quant_ev j ju *)
-    | PT.Rinjective_ctxt_ev (_j,Some (_svx,None,_ey),Some (_svy,None,_ex)) ->
+    | PT.Rctxt_ev_inj(_j,Some (_svx,None,_ey),Some (_svy,None,_ex)) ->
        fixme "undefined"
        (*
        let b = try Event.nth j ju.ju_se.se_ev
@@ -419,7 +419,7 @@ let handle_tactic ts tac =
        CR.t_injective_ctxt_ev j c1 c2 ju
        *)
 
-    | PT.Rinjective_ctxt_ev _ -> fixme "undefined"
+    | PT.Rctxt_ev_inj _ -> fixme "undefined"
 
     | PT.Rctxt_ev (mj,None) ->
       SimpRules.t_ctx_ev_maybe mj ju
@@ -621,52 +621,6 @@ let handle_tactic ts tac =
 
 let handle_instr verbose ts instr =
   match instr with
-
-  | PT.Help(PT.Rinjective_ctxt_ev _) ->
-    let msg =
-      "Rule that allows replacing the i-th event expression (of type 'e1 = e2' or 'e1 <> e2')"^
-      "by f(e1) and f(e2) provided f is injective (f_i verifying 'f_i(f(x)) = x' is required to prove it)"^
-      "Usage : \n> injective_ctxt_ev [index] (x -> f(x)) (y -> f_i(y))."
-    in
-    (ts, msg)
-
-  | PT.Help(PT.Rbad(i,_,_)) ->
-    let msg =
-      fsprintf
-        ("Rule that allows to \"replace\" a random oracle call by a random sampling,\n"^^
-         "provided you can bound the probability the expression queried to the RO is not queried elsewhere.\n\n"^^
-         "Usage : \n> bad%i assgn_pos var_name.\n"^^
-         "(where assgn_pos is a line_number, the name of a let-bound variable, or a placeholder (last line))\n\n"^^
-         "The (game) command located at line_number must be a let binding of a random oracle call.")
-        i
-    in
-    (ts, msg)
-
-  | PT.Help(PT.Rfind _) ->
-    let msg =
-      "Rule to 'get' existential variable(s) 'vars' from the event into the main game \n"^
-      "thanks to an adversary 'A_name' who is given 'args'. \n\n"^
-      "Usage :\n> find (xs* -> f(xs,vars)) args A_name vars* ."
-    in
-    (ts, msg)
-
-  | PT.Help (PT.Runwrap_quant_ev _) ->
-    let msg =
-      "Rule to unwrap the quantification from the j-th event to the main event quantification.\n"^
-      "If j is not provided, it is assumed to be 0.\n\n"^
-      "Usage :\n> unwrap_quant_ev [j]."
-    in
-    (ts, msg)
-
-  | PT.Help (PT.Rcheck_hash_args _) ->
-    let msg =
-      "Rule to deduce from a guarded expression of the form\n'Exists h in L_H : h = e',\n"^
-      "that any future hash call querying e is actually a lookup, i.e.,\n'H(e)' becomes 'm_H(e)'.\n\n"^
-      "Usage :\n> check_hash_args (i,j,k)."
-    in
-    (ts, msg)
-
-  | PT.Help _ -> assert false
 
   | PT.PermDecl(_s,_t) -> fixme "undefined" (*
     let s_inv = s ^ "_inv" in

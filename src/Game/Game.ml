@@ -905,7 +905,7 @@ let pp_lcmd ~qual fmt = function
     F.fprintf fmt "@[<hov 2>%a <-$@ %a@]"
       (pp_binder ~qual) [v]
       (pp_distr ~qual) d
-  | LGuard(e)   -> pp_expr_qual ~qual fmt e
+  | LGuard(e) -> F.fprintf fmt "guard (%a)" (pp_expr_qual ~qual) e
 
 let pp_ilcmd ~nonum ~qual fmt (i,lc) =
   if nonum

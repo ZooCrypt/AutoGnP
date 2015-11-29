@@ -1,5 +1,5 @@
 adversary A1 : (G_1 * G_1) -> (G_2 * G_2).
-bilinear map e : G_1 * G_2 -> G_t.
+bilinear_map e : G_1 * G_2 -> G_t.
 
 adversary A_ddh : (G_1 * G_1 * G_1) -> Bool.
 

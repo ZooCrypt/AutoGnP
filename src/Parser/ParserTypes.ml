@@ -10,51 +10,51 @@ open Util
  * ----------------------------------------------------------------------- *)
 
 type parse_ty =
-  | KeyPair of string
-  | PKey of string
-  | SKey of string
-  | BS of string
   | Bool
-  | G of string
   | Fq
-  | Prod of parse_ty list
+  | KeyPair of string
+  | PKey    of string
+  | SKey    of string
+  | BS      of string
+  | G       of string
+  | Prod    of parse_ty list
 
 let mk_Prod = function [t] -> t | ts -> Prod ts
 
 type parse_expr =
-  | V of string qual * string
-  | SApp of string * parse_expr list
-  | SLookUp of string * parse_expr list
-  | Tuple of parse_expr list
+  | V           of string qual * string
+  | SApp        of string * parse_expr list
+  | SLookUp     of string * parse_expr list
+  | Tuple       of parse_expr list
   | ProjPermKey of Type.KeyElem.t * parse_expr
-  | Proj of int * parse_expr
-  | CB of bool
-  | CZ of string
-  | CGen of string
-  | CFNat of int
-  | Mult of parse_expr * parse_expr
-  | Plus of parse_expr * parse_expr
-  | Exp of parse_expr * parse_expr
-  | Log of parse_expr
-  | Opp of parse_expr
-  | Minus of parse_expr * parse_expr
-  | Inv of parse_expr
-  | Div of parse_expr * parse_expr
-  | Eq of parse_expr * parse_expr
-  | Not of parse_expr
-  | Ifte of parse_expr * parse_expr * parse_expr
-  | Land of parse_expr * parse_expr
-  | Xor of parse_expr * parse_expr
-  | Quant of Expr.quant * (string list * string) list *  parse_expr
+  | Proj        of int * parse_expr
+  | CB          of bool
+  | CZ          of string
+  | CGen        of string
+  | CFNat       of int
+  | Mult        of parse_expr * parse_expr
+  | Plus        of parse_expr * parse_expr
+  | Exp         of parse_expr * parse_expr
+  | Log         of parse_expr
+  | Opp         of parse_expr
+  | Minus       of parse_expr * parse_expr
+  | Inv         of parse_expr
+  | Div         of parse_expr * parse_expr
+  | Eq          of parse_expr * parse_expr
+  | Not         of parse_expr
+  | Ifte        of parse_expr * parse_expr * parse_expr
+  | Land        of parse_expr * parse_expr
+  | Xor         of parse_expr * parse_expr
+  | Quant       of Expr.quant * (string list * string) list *  parse_expr
 
 let mk_Tuple = function [t] -> t | ts -> Tuple ts
 
 type parse_ctx = string * parse_ty option * parse_expr
 
 type lcmd =
-  | LLet of string * parse_expr
-  | LBind of string list * string
-  | LSamp of string * parse_ty * parse_expr list
+  | LLet   of string * parse_expr
+  | LBind  of string list * string
+  | LSamp  of string * parse_ty * parse_expr list
   | LGuard of parse_expr
 
 type lcomp = lcmd list * parse_expr
@@ -94,24 +94,24 @@ type ranges = range_pos list
 type parse_ev = parse_expr
 
 type tactic =
-  | Rseq           of tactic list
   | Rnorm
   | Rdist_eq
   | Rdist_sym
   | Rfalse_ev
   | Rnorm_nounfold
+  | Rseq           of tactic list
   | Rrename        of string * string
   | Rsimp          of bool
   | Rnorm_unknown  of string list
   | Rnorm_solve    of parse_expr
-  | Rswap          of range_pos * assgn_pos
-  | Rswap_oracle   of ocmd_pos * int
-  | Rswap_to_main  of ocmd_pos_eq * string
-  | Rswap_to_orcl  of assgn_pos * ocmd_pos_eq * string
+  | Rmove          of range_pos * assgn_pos
+  | Rmove_oracle   of ocmd_pos * int
+  | Rmove_to_main  of ocmd_pos_eq * string
+  | Rmove_to_orcl  of assgn_pos * ocmd_pos_eq * string
   | Rctxt_ev       of int option * parse_ctx option
-  | Rinjective_ctxt_ev  of int * parse_ctx option * parse_ctx option
-  | Runwrap_quant_ev    of int
-  | Rswap_quant_ev      of int
+  | Rctxt_ev_inj   of int * parse_ctx option * parse_ctx option
+  | Ropen_quant_ev of int
+  | Rmove_quant_ev of int
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
   | Rrnd_exp       of bool * (string * string option) list
@@ -122,15 +122,12 @@ type tactic =
   | Rassm_dec      of bool * string option * direction option * ranges *
                       (string list) option
   | Rassm_comp     of bool * string option * ranges
-  | Rlet_abstract  of assgn_pos option * string * parse_expr option *
+  | Rlet_abs       of assgn_pos option * string * parse_expr option *
                       assgn_pos option * bool
-  | Rlet_abstract_oracle  of ocmd_pos * string * parse_expr *
-                      int option * bool
-  | Rlet_abstract_deduce
-    of bool * assgn_pos * string * parse_expr * assgn_pos option
+  | Rlet_abs_orcl  of ocmd_pos * string * parse_expr * int option * bool
+  | Rlet_abs_ded   of bool * assgn_pos * string * parse_expr * assgn_pos option
   | Rassert        of assgn_pos * parse_expr option
-  | Rsubst         of assgn_pos option * parse_expr * parse_expr *
-                      assgn_pos option
+  | Rsubst         of assgn_pos option * parse_expr * parse_expr * assgn_pos option
   | Rlet_unfold    of assgn_pos list
   | Rindep         of bool
   | Rcrush         of bool * int option
@@ -169,16 +166,15 @@ type instr =
   | PrintGoals of string
   | PrintProof of bool * string option
   | Apply      of tactic
-  | Admit
-  | Last
-  | Back
   | UndoBack   of bool
-  | Qed
-  | Restart
   | Extract    of string
   | Debug      of string
   | PrintGame  of string
   | PrintGames of string * string
-  | Help       of tactic
+  | Admit
+  | Last
+  | Back
+  | Qed
+  | Restart
 
 type theory = instr list

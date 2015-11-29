@@ -23,6 +23,7 @@ bound_adv
     let k = g^(a*x);
     b' <- A2(g^x,mb*k);
   ] : b = b'.
+  unfold. move 4 2.
   bycrush.
 qed.
 print_proof.

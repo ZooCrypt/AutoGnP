@@ -1,4 +1,4 @@
-bilinear map e : G * G -> G_t.
+bilinear_map e : G * G -> G_t.
 
 adversary A1 : (G*G*G*G*G*G*G*G*G*G*G*G*G_t) -> (Fq * G_t * G_t).
 adversary A2 : (Fq*G_t*G*G*G*G*G*G*G*G*G) -> Bool.

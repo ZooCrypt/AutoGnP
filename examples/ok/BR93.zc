@@ -17,7 +17,7 @@ assumption OW_comp_assm succ
     
     
   (* Hash function modelled as an ideal RO *)
-random oracle H : BS_k1 -> BS_k2. 
+random_oracle H : BS_k1 -> BS_k2. 
 
 
              (* CPA-IND Game *)
@@ -52,15 +52,15 @@ abstract 4 r' H(r).
 bad1 4 rr.
     
     (* OTP perfect secrecy for goal -1- *)    
-    norm. swap r' 1.
+    norm. move r' +1.
     rnd! r' (r' -> (b?M1:M0) ++ r') (r' -> (b?M1:M0) ++ r').
-    norm. swap b (6).
+    norm. move b 6.
     indep.
 
     (* Finding (hash argument) r would mean breaking the 
        computational assumption of f -> goal -2- *)    
     norm.
-    swap KPair (1). swap r (2).
+    move KPair 1. move r 2.
     ctxt_ev 1 (x -> f(get_pk(KPair),x)).
     find (pk f_r -> (f(pk,rr) = f_r)) 
          (get_pk(KPair), f(get_pk(KPair),r)) 

@@ -1,4 +1,4 @@
-bilinear map e : G * G -> G_t.
+bilinear_map e : G * G -> G_t.
 
 adversary A : () -> (G * G).
 
