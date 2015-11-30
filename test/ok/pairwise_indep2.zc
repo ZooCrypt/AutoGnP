@@ -40,7 +40,7 @@ bound_dist
   (* since we want to make A2's input depend on a and b, we have to adapt
      the oracle first (already taking the rnd rule later used for b into
      account *)
-  rnd_oracle (3,1,2,=) (t -> t*(i - j) + b) _; //.
+  rnd (3,1,2,=) (t -> t*(i - j) + b) _; //.
   move_main (3,1,2) a.
   move b a.
   rnd b (b -> b + a*j) _; //.

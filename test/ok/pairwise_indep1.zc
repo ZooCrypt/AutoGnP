@@ -34,7 +34,7 @@ bound_dist
     bycrush.
   rnd a (a -> O`t1 + a*(j - O`i)) _; //.
   move a -2.
-  rnd_oracle (2,1,1,=) (t1 -> t1 + a*i) _; //.
+  rnd (2,1,1,=) (t1 -> t1 + a*i) _; //.
   move_main (2,1,1) b.
   assert 4. (* remove assert again *)
     bycrush.

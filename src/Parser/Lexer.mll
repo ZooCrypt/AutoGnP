@@ -76,7 +76,6 @@
       ; "crush",                    RCRUSH                    (* kw: tactic      *)
       ; "bycrush",                  BYCRUSH                   (* kw: tactic      *)
 
-      ; "rnd_oracle",               RRND_ORCL                 (* kw: tactic      *)
       ; "rewrite_oracle" ,          RREWRITE_ORCL             (* kw: tactic      *)
       ; "bad1",                     RBAD1                     (* kw: tactic      *)
       ; "bad2",                     RBAD2                     (* kw: tactic      *)

@@ -50,7 +50,7 @@ bound_adv
               *)
 
   rnd! h _ (h -> h + d*i'); //.                        (* 3. redefine mpk such that coeff of r is (h  *)
-  rnd_oracle (8,1,2) _ (r -> r * (i - i') + c); //.
+  rnd (8,1,2) _ (r -> r * (i - i') + c); //.
   move c 1; move d 2; move e' 3.
   assumption_decisional! dbdh -> tt; //.
   

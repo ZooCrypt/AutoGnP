@@ -832,15 +832,16 @@ let handle_instr verbose ts instr =
         (L.take 1 ps.CR.subgoals)
       in
       (ts, msg)
-    | BeforeProof  -> (ts, "No proof started yet.")
+    | BeforeProof -> (ts, "No proof started yet.")
     | ClosedTheory _ -> (ts, "Proof finished.")
     end
 
   | PT.Restart ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_uback,_back,_) ->
-      let _prf = CR.get_proof (prove_by_admit "" ps) in
-      ({ts with ts_ps = ClosedTheory (ps.CR.validation [])}, "Restarted proof.")
+      let prf = CR.get_proof (prove_by_admit "" ps) in
+      let ps = first (T.t_id prf.CR.pt_ju) in
+      ({ts with ts_ps = ActiveProof(ps,[],mempty,None) }, "Restarted proof.")
     | BeforeProof    -> (ts, "No proof started yet.")
     | ClosedTheory _ -> (ts, "Proof finished.")
     end

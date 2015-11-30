@@ -95,7 +95,7 @@
 
 %token SLASH2 SLASHEQ SLASH2EQ SLASH3EQ
 %token RNORM RNORM_UNKNOWN RNORM_SOLVE RNORM_NOUNFOLD
-%token RRND RRND_EXP RRND_ORCL REXC
+%token RRND RRND_EXP REXC
 %token RMOVE RMOVE_MAIN
 %token RTRANS RTRANSSTAR
 %token RDIST_SYM RDIST_EQ RINDEP
@@ -312,6 +312,12 @@ opos:
 opos_partial:
 | LPAR i=NAT COMMA j=NAT COMMA k=NAT RPAR { (i-1, j-1, k-1) }
 
+uopos:
+| op = opos                                              { Some(op) }
+| LPAR UNDERSCORE COMMA UNDERSCORE COMMA UNDERSCORE RPAR { None }
+
+
+
 ty_anno :
 | COLON  t=typ { t }
 
@@ -475,7 +481,7 @@ tactic :
 | BYCRUSH mi=uopt(NAT) { Rcrush(true,mi) }
 
 /* oracles */
-| RRND_ORCL op=uopt(opos) c1=uopt(ctx) c2=uopt(ctx) { Rrnd_orcl(op,c1,c2) }
+| RRND op=uopos c1=uopt(ctx) c2=uopt(ctx)           { Rrnd_orcl(op,c1,c2) }
 | RREWRITE_ORCL op=opos d=dir                       { Rrewrite_orcl(op,d) }
 | RBAD1 i=uopt(assgn_pos) s=ID                      { Rbad (1,i,s)        }
 | RBAD2 i=uopt(assgn_pos) s=ID                      { Rbad (2,i,s)        }
