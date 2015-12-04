@@ -28,8 +28,8 @@
 (defvar autognp-operator-char-1234
   (concat "\\(" autognp-operator-char-1
           "\\|" autognp-operator-char-2
-		  "\\|" autognp-operator-char-3
-		  "\\|" autognp-operator-char-4
+          "\\|" autognp-operator-char-3
+          "\\|" autognp-operator-char-4
           "\\)"))
 
 (defconst autognp-proof-save-regexp
@@ -157,6 +157,8 @@
   (modify-syntax-entry ?\/ ".")
   (modify-syntax-entry ?\\ ".")
   (modify-syntax-entry ?+  ".")
+  (modify-syntax-entry ?\; ".")
+  (modify-syntax-entry ?^  ".")
   (modify-syntax-entry ?-  ".")
   (modify-syntax-entry ?=  ".")
   (modify-syntax-entry ?%  ".")
