@@ -4,8 +4,10 @@
 adversary A_ddh : (G * G * G) -> Bool.
 
 assumption ddh ([x,y])
-  [ x, y    <-$ Fq; b <- A_ddh(g^x,g^y,g^(x*y)); ]
-  [ x, y, t <-$ Fq; b <- A_ddh(g^x,g^y,g^t); ].
+  [ x,y    <-$ Fq; b <- A_ddh(g^x,g^y,g^(x*y)); ]
+  [ x,y, z <-$ Fq; b <- A_ddh(g^x,g^y,g^z);     ].
+
+random_oracle H : G -> BS_l.
 
 adversary A1 : (G) -> (G * G).
 adversary A2 : (G * G) -> Bool.
