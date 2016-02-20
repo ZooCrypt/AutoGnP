@@ -58,7 +58,7 @@ endif
 local:
 	rm -rf _local && mkdir _local
 	cd _local; \
-             cp $(HOME)/Downloads/ProofGeneral-$(PGVER).tgz . \
+             curl $(PGURL) -o ProofGeneral-$(PGVER).tgz \
 	  && tar -xof ProofGeneral-$(PGVER).tgz \
 	  && if [ -e $(CURDIR)/pg-$(PGVER).patch ]; then \
            (    cd $(CURDIR)/_local/ProofGeneral-$(PGVER) \
