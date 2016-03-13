@@ -173,6 +173,10 @@ let handle_tactic ts tac =
     | PT.Rsplit_ineq(i)        -> SimpRules.t_split_ineq (e_pos i) ju
     | PT.Rrewrite_ev(i,d)      -> T.t_rw_ev (e_pos i) d ju
     | PT.Rcrush(finish,mi)     -> t_crush finish mi ts ps ju
+    | PT.Rensure(oi,is_in,pe)   ->
+      let e = parse_e pe in
+      let oi = BatOption.map get_pos oi in
+      Rules.t_occurs is_in e oi ju
 
       (* FIXME: all tactics interpreted wrt. the same theory state,
                 OK for tactics that do not change the theory state. *)

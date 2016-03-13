@@ -66,6 +66,25 @@ let t_dist_eq ju =
   | _ ->
     tacerror "dist_eq: Dist judgment expected"
 
+let t_occurs is_in e oi ju =
+  let ne = Norm.norm_expr_strong e in
+  let occurs_expr e' =
+    e_exists (equal_expr e) e'
+    || e_exists (equal_expr ne) (Norm.norm_expr_strong e')
+  in
+  let occurs_cmd ju =
+    let occ = ref false in
+    let se = ju.ju_se in
+    (match oi with
+     | Some i ->
+       let cmd,_ = get_se_ctxt se i in
+       iter_gcmd_exp (fun e -> occ := !occ || occurs_expr e) cmd
+     | None ->
+       iter_se_exp (fun e -> occ := !occ || occurs_expr e) se);
+    if is_in then !occ else not !occ
+  in
+  t_guard occurs_cmd ju
+
 (* ** Extracting samplings, lets, and guards from game
  * ----------------------------------------------------------------------- *)
 

@@ -156,7 +156,8 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
       (* FIXME: for bycrush, we exclude contexts rv -> - rv *)
       |> L.filter (fun e -> (not (equal_expr (mk_FOpp (mk_V rv)) e)))
     in
-    log_i (lazy (fsprintf "context_num: %i v=%a %a" (L.length ctxts) pp_expr (mk_V rv) (pp_list "," pp_expr) ctxts));
+    log_i (lazy (fsprintf "context_num: %i v=%a %a" (L.length ctxts)
+                   pp_expr (mk_V rv) (pp_list "," pp_expr) ctxts));
     let e2s =
       ctxts
       |> L.sort (fun e1 e2 -> compare_pair compare compare_expr (e_size e1,e1) (e_size e2,e2))
@@ -170,65 +171,65 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
   try
     ignore (CR.r_rnd i (v1,e1) (v2,e2) ju);
     T.t_rnd i (v1,e1) (v2,e2) ju
-   with
-   (* try different strategies to prevent failures by applying other
-      tactics beforehand *)
-   | Invalid_rule s ->
-     mfail (lazy s)
-   | Wf.Wf_var_undef(vs,e,def_vars) ->
-     let ls =
-       lazy
-         (fsprintf (  "@[<hov 2>t_rnd_pos: variable %a@ undefined"
-                    ^^" in @[<hov 2>%a@],@ not in @[<hov 2>%a@]")
-            Vsym.pp vs pp_expr e
-            (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
-     log_i ls;
-     mfail ls
-   | Wf.Wf_div_zero (ze::_ as es) ->
-     let ls =
-       lazy
-         (fsprintf "t_rnd_pos: non-zero required for %a"
-            (pp_list ",@," pp_expr) es)
-     in
-     log_i ls;
-     let nz_in_ev () =
-       let wfs = Wf.wf_gdef Wf.NoCheckDivZero se.se_gdef in
-       try
-         let test_ev =
-           mk_Land [se.se_ev; mk_Eq (mk_FDiv mk_FOne ze) mk_FOne]
-         in
-         Wf.wf_expr Wf.CheckDivZero wfs test_ev;
-         true
-       with
-         Wf.Wf_div_zero _ -> false
-     in
-     if not (Se.mem (mk_V rv) (read_gcmds se.se_gdef)) && nz_in_ev () then (
-       (* try to apply (d=0)?1:d trick here:
-          We assume c2 is of the form r*ze + a *)
-       let gze = mk_Ifte (mk_Eq ze mk_FZ) mk_FOne ze in
-       let re  = mk_V rv in
-       let e2' =
-         NormUtils.norm_expr_nice
-           (e_replace re (mk_FMult [mk_FDiv re ze; gze]) e2)
-       in
-       let e1' = DeducField.solve_fq_vars_known e2' v2 in
-       let simp_guard ju =
-         let ev_idx = L.length (destr_Land_nofail ju.ju_se.se_ev) -1 in
-         (RewriteRules.t_let_unfold (L.length ju.ju_se.se_gdef - 1) @>
-          T.t_rw_ev ev_idx LeftToRight @>
-          RewriteRules.t_subst 0 (mk_Ifte mk_False mk_FOne ze) ze None @>
-          RewriteRules.t_norm_nounfold @>
-          T.t_remove_ev [ev_idx]) ju
-       in
-       let discharge ju =
-         SimpRules.t_simp true 20 ju
-       in
-       (T.t_rnd i (v2,e1') (v2,e2') @>
-        T.t_case_ev ~allow_existing:true (mk_Eq ze mk_FZ) @>>
-        [ discharge; simp_guard ]) ju
-     ) else (
-       mfail ls
-     )
+  with
+  (* try different strategies to prevent failures by applying other
+     tactics beforehand *)
+  | Invalid_rule s ->
+    mfail (lazy s)
+  | Wf.Wf_var_undef(vs,e,def_vars) ->
+    let ls =
+      lazy
+        (fsprintf (  "@[<hov 2>t_rnd_pos: variable %a@ undefined"
+                   ^^" in @[<hov 2>%a@],@ not in @[<hov 2>%a@]")
+           Vsym.pp vs pp_expr e
+           (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
+    log_i ls;
+    mfail ls
+  | Wf.Wf_div_zero (ze::_ as es) ->
+    let ls =
+      lazy
+        (fsprintf "t_rnd_pos: non-zero required for %a"
+           (pp_list ",@," pp_expr) es)
+    in
+    log_i ls;
+    let nz_in_ev () =
+      let wfs = Wf.wf_gdef Wf.NoCheckDivZero se.se_gdef in
+      try
+        let test_ev =
+          mk_Land [se.se_ev; mk_Eq (mk_FDiv mk_FOne ze) mk_FOne]
+        in
+        Wf.wf_expr Wf.CheckDivZero wfs test_ev;
+        true
+      with
+        Wf.Wf_div_zero _ -> false
+    in
+    if not (Se.mem (mk_V rv) (read_gcmds se.se_gdef)) && nz_in_ev () then (
+      (* try to apply (d=0)?1:d trick here:
+         We assume c2 is of the form r*ze + a *)
+      let gze = mk_Ifte (mk_Eq ze mk_FZ) mk_FOne ze in
+      let re  = mk_V rv in
+      let e2' =
+        NormUtils.norm_expr_nice
+          (e_replace re (mk_FMult [mk_FDiv re ze; gze]) e2)
+      in
+      let e1' = DeducField.solve_fq_vars_known e2' v2 in
+      let simp_guard ju =
+        let ev_idx = 0 in
+        (RewriteRules.t_let_unfold (L.length ju.ju_se.se_gdef - 1) @>
+         T.t_rw_ev ev_idx LeftToRight @>
+         RewriteRules.t_subst 0 (mk_Ifte mk_False mk_FOne ze) ze None @>
+         RewriteRules.t_norm_nounfold @>
+         T.t_remove_ev [ev_idx]) ju
+      in
+      let discharge ju =
+        SimpRules.t_simp true 20 ju
+      in
+      (T.t_rnd i (v2,e1') (v2,e2') @>
+       T.t_case_ev ~allow_existing:true (mk_Eq ze mk_FZ) @>>
+       [ discharge; simp_guard ]) ju
+    ) else (
+      mfail ls
+    )
 
 (** rnd tactic that tries all positions and contexts if none are given *)
 let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctx1 mctx2 mgen ju =

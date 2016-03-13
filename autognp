@@ -7,4 +7,4 @@ export LD_LIBRARY_PATH="$DIR/_build/c_src"
 export DYLD_LIBRARY_PATH="$DIR/_build/c_src"
 
 test -f $DIR/autognp.log && rm $DIR/autognp.log
-$DIR/autognp.native -log_file autognp.log $@
+$DIR/autognp.native -log_file $DIR/autognp.log $@

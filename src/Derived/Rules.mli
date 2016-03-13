@@ -31,6 +31,8 @@ val t_guard : (goal -> bool) -> tactic
 
 val t_dist_eq : tactic
 
+val t_occurs : bool -> expr -> gcmd_pos option -> tactic
+
 (* ** Extracting samplings, lets, and guards from game
  * ----------------------------------------------------------------------- *)
 

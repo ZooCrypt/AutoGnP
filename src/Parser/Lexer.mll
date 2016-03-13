@@ -47,6 +47,7 @@
       ; "norm_unknown",             RNORM_UNKNOWN             (* kw: tactic      *)
       ; "norm_solve",               RNORM_SOLVE               (* kw: tactic      *)
 
+      ; "ensure",                   RENSURE                   (* kw: tactic      *)
       ; "conv",                     RCONV                     (* kw: tactic      *)
       ; "trans",                    RTRANS                    (* kw: tactic      *)
       ; "subst",                    RSUBST                    (* kw: tactic      *)
@@ -116,6 +117,7 @@
       ; "forall",                   FORALL                    (* kw: op          *)
       ; "exists",                   EXISTS                    (* kw: op          *)
       ; "in",                       IN                        (* kw: op          *)
+      ; "notin",                    NOTIN                     (* kw: op          *)
       ; "not",                      NOT                       (* kw: op          *)
       ; "log",                      LOG                       (* kw: op          *)
       ; "true",                     TRUE                      (* kw: op          *)

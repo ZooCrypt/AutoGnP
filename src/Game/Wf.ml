@@ -11,9 +11,9 @@ open Syms
 open Norm
 
 let mk_log level = mk_logger "Game.Wf" level "Wf.ml"
-let log_t  = mk_log Bolt.Level.TRACE
+let log_t = mk_log Bolt.Level.TRACE
 let _log_d = mk_log Bolt.Level.DEBUG
-let _log_i = mk_log Bolt.Level.INFO
+let log_i = mk_log Bolt.Level.INFO
 
 
 (* ** Exceptions, state, helper functions
@@ -28,10 +28,9 @@ let assert_exc c rf = if not c then rf ()
 type wf_check_type = CheckDivZero | NoCheckDivZero
 
 type wf_state = {
-  wf_names : Sstring.t;  (* used names for variables, adversaries, and oracles *)
-  wf_bvars : Vsym.S.t;   (* bound variables.
-                              roughly: never two vsyms with the same name. *)
-  wf_nzero : expr option (* product of all nonzero-assumptions for field-expressions *)
+  wf_names : Sstring.t;  (* used names for variables, adversaries, and oracles   *)
+  wf_bvars : Vsym.S.t;   (* bound variables: never two vsyms with the same name. *)
+  wf_nzero : expr option (* product of nonzero-assumptions for field-exprs       *)
 }
 
 let mk_wfs () = {
@@ -101,11 +100,11 @@ let rec add_ineq ctype wfs e1 e2 =
 and check_nonzero ctype wfs e =
   if ctype = NoCheckDivZero then true
   else (
-    (* log_t (lazy (fsprintf "check nonzero %a" pp_exp e)); *)
+    log_t (lazy (fsprintf "check nonzero %a" pp_expr e));
     let check e =
       match wfs.wf_nzero with
       | Some nz ->
-        (* log_i (lazy (fsprintf "nonzero assumption: %a" pp_exp nz)); *)
+        log_i (lazy (fsprintf "nonzero assumption: %a" pp_expr nz));
         CAS.check_nz ~is_nz:nz e
       | None    -> false
     in
@@ -116,7 +115,9 @@ and check_nonzero ctype wfs e =
       | Nary(FMult,es) -> L.for_all check_simp es
       | App(Ifte, [c; _a; b]) when is_False c -> check b
       | App(Ifte, [c; a; b]) when
-          is_FOne a && is_Eq c && (let (u,v) = destr_Eq c in equal_expr u b && is_Zero v) ->
+          is_FOne a
+          && is_Eq c
+          && (let (u,v) = destr_Eq c in equal_expr u b && is_Zero v) ->
         true
       | App(FDiv, [a;_b]) -> check a (* division-safe => b<>0 *)
       | _                 -> check e (* e is polynomial *)
@@ -151,11 +152,11 @@ and wf_expr ctype wfs e0 =
           (fun ie -> try go wfs ie; true with _ -> false)
           ineqs
       in
-      (* log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_exp) ineqs)); *)
+      log_t (lazy (fsprintf "add ineqs %a" (pp_list ",@ " pp_expr) ineqs));
       let wfs =
         List.fold_left
           (fun wfs e ->
-            (* log_t (lazy (fsprintf "check & add ineq %a" pp_exp e)); *)
+            log_t (lazy (fsprintf "check & add ineq %a" pp_expr e));
             go wfs e;
             let e1,e2 = destr_InEq e in
             add_ineq ctype wfs e1 e2)
@@ -283,8 +284,8 @@ let wf_gdef ctype gdef0 =
       in
       let exported_vsyms = ref Vsym.S.empty in
       List.iter (wf_odef ctype wfs (Some exported_vsyms)) os;
-      (* log_i (lazy (fsprintf "exported %a" (pp_list "," Vsym.pp)
-                        (Vsym.S.elements !exported_vsyms))); *)
+      log_i (lazy (fsprintf "exported %a" (pp_list "," Vsym.pp)
+        (Vsym.S.elements !exported_vsyms)));
       let wfs = { wfs with wf_bvars = Vsym.S.union wfs.wf_bvars !exported_vsyms } in
       go wfs gcmds
   in

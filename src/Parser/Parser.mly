@@ -58,7 +58,7 @@
 %token TRUE FALSE
 %token FORALL EXISTS
 
-%token IN
+%token IN NOTIN
 
 %token COMMA
 
@@ -110,7 +110,7 @@
 %token RHYBRID RADD_TEST
 %token RGUESS RFIND
 %token REXC_ORCL RREWRITE_ORCL
-%token DEDUCE LISTFE
+%token DEDUCE LISTFE RENSURE
 
 /*======================================================================
 (* * Production types *) */
@@ -316,7 +316,9 @@ uopos:
 | op = opos                                              { Some(op) }
 | LPAR UNDERSCORE COMMA UNDERSCORE COMMA UNDERSCORE RPAR { None }
 
-
+n_in :
+| IN    { true }
+| NOTIN { false }
 
 ty_anno :
 | COLON  t=typ { t }
@@ -455,6 +457,7 @@ tactic :
 
 /* moving lines */
 | RMOVE i=move_pos j=assgn_pos                 { Rmove(i,j) }
+| RENSURE e = expr nin=n_in io=uopt(assgn_pos) { Rensure(io,nin,e) }
 | RMOVE op=opos j=offset                       { Rmove_oracle(op,j) }
 | RMOVE_MAIN op=opos_partial v=ID              { Rmove_to_main(op,v) }
 | RMOVE_MAIN i=assgn_pos op=opos_partial v=ID  { Rmove_to_orcl(i,op,v) }

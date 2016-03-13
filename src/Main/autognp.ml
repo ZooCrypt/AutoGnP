@@ -45,9 +45,7 @@ let initialize_logging () =
   if !log_file<>"" then (
     Logger.register "" Level.TRACE "all" "default" mode "file"
       (!log_file,no_rotation)
-  );
-  let logger = "Derived.RandomRules" in
-  Logger.register logger Level.TRACE "all" "simple" mode "buffer" ("",no_rotation)
+  )
 
 let get_buffer_log () =
   let res = Buffer.contents log_buf in

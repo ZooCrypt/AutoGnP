@@ -230,7 +230,6 @@ and mk_simpl_nop ~strong op l =
     else
       mk_Land_nofail (L.unique (L.filter (fun e -> not (is_True e)) l))
 
-
 and mk_simpl_field_expr ~strong e =
   let norm_subexpr e =
     match e.e_node with

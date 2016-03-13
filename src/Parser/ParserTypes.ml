@@ -104,6 +104,7 @@ type tactic =
   | Rsimp          of bool
   | Rnorm_unknown  of string list
   | Rnorm_solve    of parse_expr
+  | Rensure        of assgn_pos option * bool * parse_expr
   | Rmove          of range_pos * assgn_pos
   | Rmove_oracle   of ocmd_pos * int
   | Rmove_to_main  of ocmd_pos_eq * string

@@ -11,7 +11,7 @@ assumption ddh
   [ gen1, gen2 <-$ G; y, z <-$ Fq; b <- A_ddh(gen1,gen2,gen1^y,gen2^z); ].
 
 (* ----------------------------------------------------------------- *)
-(* Hash funcion (secure wrt. TCR) *)
+(* Hash function (secure wrt. TCR) *)
 
 (* The first component is the index of the hash function, i.e.,
    "sample i and use H(i,-)" corresponds to "sample random H in HH". *)
@@ -25,12 +25,14 @@ assumption tcr succ
 
 (* It seems like the following definition is actually required to
    make the original proof go through, i.e., the adversary knows the
-   discrete logarithms of the chosen inputs. *)
+   discrete logarithms of the chosen inputs.
+
 adversary A_tcr_dlog : (BS_i * Fq * Fq) ->  (G * G).
 
 assumption tcr_dlog succ
   [ i <-$ BS_i; a, b <-$ Fq; (gu,gv) <- A_tcr_dlog(i,a,b); ]
   : (H(i,gu,gv) = H(i,g^a,g^b)) /\ ((gu,gv) <> (g^a,g^b)).
+ *)
 
 (* ----------------------------------------------------------------- *)
 (* Key derivation function *)
@@ -146,23 +148,24 @@ bound_adv
   except e1 [0].
   rnd! w _ (w -> w/e1); //.
 
-  rnd! x1 _ _ e1; //.
-  rnd! y1 _ _ e1; //.
+  rnd! x1 _ _ e1; //; ensure (g^(e1*x1)) in 10.
+  rnd! y1 _ _ e1; //; ensure (g^(e1*x1)) in 10.
 
   (* add test to first oracle *)
   guard (10,1,2) (u1^w = u2).
     guess CC tu1 tu2 te tt.
     move (10,1,1) +1.
     simp. unfold. norm_solve x2.
-    rnd! x2 _ _. norm_unknown.
+    rnd! x2 _ _; //; ensure (Kdf(g^x2)) in _.
     (* apply decisional Kdf assumption *)
-    move x2 1. admit. (* assumption_decisional! kdf -> km ks; //.
+    move x2 1. assumption_decisional! kdf -> km ks; //.
     (* apply CMA0 assumption *)
-    abstract*! 2 arg ().
+    (* assumption_computational! cma0. *)
+    abstract 2 arg ().
     abstract 14 res2 tt.
     abstract res2 res1 te.
     remove_ev 1.
-    assumption_computational cma0 [2]. *)
+    assumption_computational cma0 [2].
   move (10,1,1) +1. simp. //.
   (* add test to second oracle *)
   guard (12,1,3) (u1^w = u2).
@@ -171,18 +174,19 @@ bound_adv
     last. move (12,1,3) -2. simp.
     (* make Kdf input random (FIXME add exceptions automatically) *)
     except w [0]. except r2 [r1].
-    rnd! x2 _ _; //.
+    rnd! x2 _ _; //; ensure (Kdf(g^x2)) in _.
     (* apply Kdf assumption *)
     move x2 1. //.
     assumption_decisional! kdf -> km ks; //.
     (* apply computational CPA1 assumption *)
     move ks 1. move b 2. norm_unknown.
+    (* assumption_computational! cpa1. *)
     abstract 3 arg1 ().
     abstract 14 res1_1 m0.
     abstract 15 res1_2 m1.
     abstract 16 arg2 Enc(ks,b?res1_1:res1_2).
     abstract 18 res2 b'.
-    admit. (* assumption_computational cpa1 [3 15] [16 18]. *)
+    assumption_computational cpa1 [3 15] [16 18].
 
   (* equality on u1,u2, but not on ciphertext and Mac implies Mac forgery *)
   case_ev (u1,u2) = (g ^ (r1*e1),g ^ (e1*r2*w)).
@@ -191,35 +195,33 @@ bound_adv
     simp; //.
     (* Make Kdf input random (FIXME add exceptions automatically) *)
     except w [0]. except r2 [r1].
-    rnd! x2 _ _; //.
-    case_ev (te = Enc(Kdf(g ^ x2)#1,b?m0:m1)).
-      admit.
+    rnd! x2 _ _; //; ensure (Kdf(g^x2)) in _.
+    case_ev (te = Enc(Kdf(g^x2)#1,b?m0:m1)).
+      bycrush.
     (* apply Kdf security *)
     move x2 1. norm_unknown.
     assumption_decisional! kdf -> km ks.
     (* reduce to CMA1 *)
     unfold. norm_unknown.
-    remove_ev 1 2 3 5.
+    remove_ev 1 2 3 4.
     abstract 2 arg1 ().
     abstract 14 res1 Enc(ks,b?m0:m1).
     abstract 15 arg2 Mac(km,res1).
     abstract 18 res1_1 te.
     abstract 19 res1_2 tt.
-    admit. (*
-    assumption_computational! cma1 [2 14] [15 19]. *)
+    assumption_computational cma1 [2 14] [15 19].
   simp; //.
   (* Reduce hash collision case to TCR *)
   case_ev (H(i,u1,u2) = H(i,g^(e1*r1),g^(e1*r2*w))).
-    norm. remove_ev 1 2 3. ///=.
-    (*
+    norm. remove_ev 3 4 5. ///=.
     find (ai gr1 gr2 ->
-           (((u1,u2) <> (gr1,gr2)) /\
-           (H(ai,u1,u2) = H(ai,gr1,gr2))))
+           ((H(ai,u1,u2) = H(ai,gr1,gr2)) /\
+            ((u1,u2) <> (gr1,gr2))))
          (i,g^(r1*e1),g^(r2*e1*w))
          C1 u1 u2 e t. //.
-    rnd! r1 _ _. norm.
+    rnd! r1 _ _; //; ensure (g^r1) in _.
     except w [0].
-    rnd! r2 _ _; //.
+    rnd! r2 _ _ e1; //; ensure (g^r2) in _.
     (* apply TCR *)
     norm_unknown r1 r2.
     move i 1. move r1 2. move r2 3.
@@ -227,17 +229,16 @@ bound_adv
     abstract 15 res1 u1.
     abstract 16 res2 u2.
     assumption_computational tcr [4 16].
-    *) admit.
 
   guess C1 tu1 tu2 te tt.
   (* finish proof exploiting that hashes are not equal *)
   norm.
   (* Make Kdf input random (FIXME add exceptions automatically) *)
   except w [0]. except r2 [r1].
-  rnd! x2 _ _. norm.
-  rnd! y2 _ _. norm.
+  rnd! x2 _ _; //; ensure (Kdf(g^x2)) in _.
+  rnd! y2 _ _; //; ensure (Kdf(g^y2)) in _.
   (* apply Kdf decisional assumption *)
-  move y2 1. remove_ev 1 2 4 5 6.
+  move y2 1. remove_ev 1 2 3 4.
   abstract _ result _.
   abstract* 2 arg (Kdf(g^y2)).
   assumption_decisional kdf -> [arg] km ks; //.
@@ -246,7 +247,6 @@ bound_adv
   abstract 2 arg ().
   abstract 16 res1 te.
   abstract 17 res2 tt.
-  admit.
-  (* assumption_computational cma0 [2]. *)
+  assumption_computational cma0 [2].
 qed.
 extract "extraction/kurosawa-desmedt.ec".

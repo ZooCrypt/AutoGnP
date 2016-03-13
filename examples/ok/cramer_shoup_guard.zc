@@ -56,9 +56,9 @@ bound_adv
 
   (* rnd rule for x1, y1, z1 *)
   except v [u*w].
-  rnd! x1 _ _.  (* x1 -> x1 + w*x2. *)
-  rnd! y1 _ _.  (* y1 -> y1 + w*y2. *)
-  rnd! z1 _ _.  (* z1 -> z1 + w*z2. *)
+  rnd! x1 _ _; //; ensure (g^x1) in 10.
+  rnd! y1 _ _; //; ensure (g^y1) in 10.
+  rnd! z1 _ _; //; ensure (g^z1) in 10.
   norm.
 
   (* add test to Dec1 *)
@@ -70,8 +70,8 @@ bound_adv
   (* rnd to x2 and y2 *)
   move (10,1,2) -1.
   rewrite_oracle (10,1,1) <-. simp. norm. 
-  rnd! x2 _ _. //. 
-  rnd! z2 _ _. //.
+  rnd! x2 _ _; //; ensure (g^x2) in _.
+  rnd! z2 _ _. //; ensure (g^z2) in _.
   
   (* add test to Dec2 *)
   guard (12,1,3) (a^w = a').
