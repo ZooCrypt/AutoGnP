@@ -52,8 +52,8 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   (* initial renaming with mappings from needed variables to given variables *)
   let ren =
     List.fold_left2
-      (fun s v x -> let v' = Vsym.mk x v.Vsym.ty in Vsym.M.add v v' s)
-      Vsym.M.empty vneeded vnames
+      (fun s v x -> let v' = VarSym.mk x v.VarSym.ty in VarSym.M.add v v' s)
+      VarSym.M.empty vneeded vnames
   in
   let get_dir c1 c2 = if dir = LeftToRight then c1 else c2 in
   let pref = get_dir assm.ad_prefix1 assm.ad_prefix2 in
@@ -65,8 +65,8 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
     List.fold_left2
       (fun ren i1 i2 ->
         match i1, i2 with
-        | GSamp(x1,_), GSamp(x2,_) when Type.equal_ty x1.Vsym.ty x2.Vsym.ty ->
-          Vsym.M.add x1 x2 ren
+        | GSamp(x1,_), GSamp(x2,_) when Type.equal_ty x1.VarSym.ty x2.VarSym.ty ->
+          VarSym.M.add x1 x2 ren
         | _ -> tacerror "%s: can not infer renaming" rn)
       ren pref pref_ju
   in
@@ -82,7 +82,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
         if L.length vres <> L.length vres_ju then
           tacerror "%s: return type does not match" rn;
         L.fold_left2
-          (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn)
+          (fun rn vs vs_ju -> VarSym.M.add vs vs_ju rn)
           ren vres vres_ju)
       ren rngs assm.ad_acalls
   in
@@ -125,21 +125,21 @@ let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
            assm_samps gdef_samps) >>= fun _ ->
   let ren =
     L.fold_left2
-      (fun s (_,(vs1,_)) (_,(vs2,_)) -> Vsym.M.add vs1 vs2 s)
+      (fun s (_,(vs1,_)) (_,(vs2,_)) -> VarSym.M.add vs1 vs2 s)
       subst
       assm_samps
       gdef_samps
   in
   log_i (lazy (fsprintf "ren %a" pp_ren ren));
 
-  let arg_e = Game.subst_v_expr (fun vs -> Vsym.M.find vs ren) arg_e in
-  let arg_v = Vsym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
+  let arg_e = Game.subst_v_expr (fun vs -> VarSym.M.find vs ren) arg_e in
+  let arg_v = VarSym.mk (CR.mk_name ~name:"arg" ju.ju_se) arg_e.e_ty in
   let pref_len = L.length assm_samps in
   if is_Quant ju.ju_se.se_ev then
     tacerror "t_assm_dec: no quantifier allowed";
   let ev = ju.ju_se.se_ev in
   let ev_v =
-    Vsym.mk (CR.mk_name ~name:"re" ju.ju_se) ev.e_ty in
+    VarSym.mk (CR.mk_name ~name:"re" ju.ju_se) ev.e_ty in
   let max = L.length ju.ju_se.se_gdef in
   try
     ((*  t_print "after swapping, before unknown" *)
@@ -265,8 +265,8 @@ let t_assm_dec_non_exact
   in
   let ren =
     L.fold_left2
-      (fun sigma v x -> Vsym.M.add v (Vsym.mk x v.Vsym.ty) sigma)
-      Vsym.M.empty
+      (fun sigma v x -> VarSym.M.add v (VarSym.mk x v.VarSym.ty) sigma)
+      VarSym.M.empty
       needed
       (given_vnames@generated_vnames)
   in
@@ -294,18 +294,18 @@ let e_eqs e =
     comm_eq e
   )
 
-let match_expr (vars : Vsym.t list) pat e =
-  let vars_set = Vsym.S.of_list vars in
-  let sigma = Vsym.H.create 17 in
+let match_expr (vars : VarSym.t list) pat e =
+  let vars_set = VarSym.S.of_list vars in
+  let sigma = VarSym.H.create 17 in
   let ensure c =
     if not c then raise Not_found
   in
   let inst v (e : expr) =
     try
-      let e' = Vsym.H.find sigma v in
+      let e' = VarSym.H.find sigma v in
       ensure (equal_expr e e')
     with
-      Not_found -> Vsym.H.add sigma v e
+      Not_found -> VarSym.H.add sigma v e
   in
   let rec pmatchl es1 es2 =
     ensure (L.length es1 = L.length es2);
@@ -313,8 +313,8 @@ let match_expr (vars : Vsym.t list) pat e =
   and pmatch p e =
     match p.e_node, e.e_node with
     | V(vs1),_
-      when Vsym.S.mem vs1 vars_set  -> inst vs1 e
-    | V(vs1),        V(vs2)         -> ensure (Vsym.equal vs1 vs2)
+      when VarSym.S.mem vs1 vars_set  -> inst vs1 e
+    | V(vs1),        V(vs2)         -> ensure (VarSym.equal vs1 vs2)
     (* | H(hs1,e1),     H(hs2,e2)      -> ensure (Fsym.equal hs1 hs2); pmatch e1 e2 *)
     | Tuple(es1),    Tuple(es2)     -> pmatchl es1 es2
     | Proj(i1,e1),   Proj(i2,e2)    -> ensure (i1 = i2); pmatch e1 e2
@@ -325,9 +325,9 @@ let match_expr (vars : Vsym.t list) pat e =
   in
   try
     pmatch pat e;
-    let bvars = Vsym.H.fold (fun k _ acc -> Vsym.S.add k acc) sigma Vsym.S.empty in
-    if Vsym.S.equal vars_set bvars then
-      ret (L.map (fun v -> (v,Vsym.H.find sigma v)) vars)
+    let bvars = VarSym.H.fold (fun k _ acc -> VarSym.S.add k acc) sigma VarSym.S.empty in
+    if VarSym.S.equal vars_set bvars then
+      ret (L.map (fun v -> (v,VarSym.H.find sigma v)) vars)
     else
       mempty
   with
@@ -379,7 +379,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
     match_expr avars pat e
   ) >>= fun ev_mapping ->
   let sassm = Assumption.inst_comp subst assm in
-  log_t (lazy (fsprintf "matching %a" (pp_list "," (pp_pair Vsym.pp pp_expr)) ev_mapping));
+  log_t (lazy (fsprintf "matching %a" (pp_list "," (pp_pair VarSym.pp pp_expr)) ev_mapping));
   let ev_me = me_of_list (L.map (fun (v,e) -> (mk_V v,e)) ev_mapping) in
   let sassm_ev = e_subst ev_me sassm.ac_event in
   let assm_se =
@@ -394,18 +394,18 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   let assm_len = L.length assm.ac_prefix in
   let ev_mapping' =
     L.map
-      (fun (v,e) -> (Vsym.mk ((Id.name v.Vsym.id)^"__") v.Vsym.ty, e))
+      (fun (v,e) -> (VarSym.mk ((Id.name v.VarSym.id)^"__") v.VarSym.ty, e))
       ev_mapping
   in
   let subst =
     L.fold_left2
-      (fun s (vs1,_) (vs2,_) -> Vsym.M.add vs1 vs2 s)
+      (fun s (vs1,_) (vs2,_) -> VarSym.M.add vs1 vs2 s)
       subst
       ev_mapping
       ev_mapping'
   in
   (* let get_bind bindings = match bindings with [(vs,_)] -> vs | _ -> tacerror "fail" in *)
-  let argv = Vsym.mk "arg" aarg.e_ty in
+  let argv = VarSym.mk "arg" aarg.e_ty in
   let assm_tac_only =
        t_print log_i ("%%% step 1")
    @> (fun ju ->
@@ -416,8 +416,8 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
           let ev = ju.ju_se.se_ev in
           if is_Exists ev then (
             let ((vs,_os),ev) = destr_Exists ev in
-            let asym = Asym.mk "CC" argv.Vsym.ty (mk_Prod (L.map (fun v -> v.Vsym.ty) vs))  in
-            let v = Vsym.mk "f_arg" aarg.e_ty in
+            let asym = AdvSym.mk "CC" argv.VarSym.ty (mk_Prod (L.map (fun v -> v.VarSym.ty) vs))  in
+            let v = VarSym.mk "f_arg" aarg.e_ty in
             T.core_tactic (CR.ct_find ([v],e_replace aarg (mk_V v) ev) aarg asym vs) ju
           ) else (
             T.t_id ju
@@ -430,7 +430,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
                 ev_mapping'))
     @> t_print log_i ("%%% step 4")
     @> (fun ju ->
-          let argv = Vsym.mk "arg__" aarg.e_ty in
+          let argv = VarSym.mk "arg__" aarg.e_ty in
           let last = Some (L.length ju.ju_se.se_gdef - 1) in
           t_abstract_deduce ~keep_going:false ts assm_len argv aarg last ju)
     @> t_print log_i ("%%% step 5")
@@ -451,7 +451,7 @@ let t_assm_comp_match ?icases:(icases=Se.empty) ts before_t_assm assm subst mev_
   then (
     log_i (lazy "return None");
     log_i (lazy (fsprintf "%a" pp_ju ju));
-    log_i (lazy (fsprintf "%a" (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
+    log_i (lazy (fsprintf "%a" (pp_list "," (pp_pair VarSym.pp VarSym.pp)) (VarSym.M.bindings subst)));
     assm_tac_only ju >>= fun ps -> ret (None,ps)
   ) else (
     log_i (lazy "return Some");
@@ -469,13 +469,13 @@ let t_assm_comp_aux ?icases:(icases=Se.empty) ts before_t_assm assm mev_e ju =
   >>= fun _ ->
   let subst =
     L.fold_left2
-      (fun s (_,(vs1,_)) (_,(vs2,_)) -> Vsym.M.add vs1 vs2 s)
-      Vsym.M.empty
+      (fun s (_,(vs1,_)) (_,(vs2,_)) -> VarSym.M.add vs1 vs2 s)
+      VarSym.M.empty
       samp_assm
       samp_gdef
   in
   log_t (lazy (fsprintf "subst %a"
-    (pp_list "," (pp_pair Vsym.pp Vsym.pp)) (Vsym.M.bindings subst)));
+    (pp_list "," (pp_pair VarSym.pp VarSym.pp)) (VarSym.M.bindings subst)));
   incr tries;
   try
     T.t_id ju >>= fun ps ->
@@ -590,11 +590,11 @@ let t_assm_comp_exact ts maname mrngs ju =
     L.fold_left2 (fun s i1 i2 ->
       match i1, i2 with
       | GSamp(x1,_), GSamp(x2,_)
-        when Type.equal_ty x1.Vsym.ty x2.Vsym.ty ->
-        Vsym.M.add x1 x2 s
+        when Type.equal_ty x1.VarSym.ty x2.VarSym.ty ->
+        VarSym.M.add x1 x2 s
       | _ ->
         tacerror "assumption_computational: cannot infer substitution")
-      Vsym.M.empty c jc
+      VarSym.M.empty c jc
   in
 
   (* extend renaming with mappings for variables binding return values *)
@@ -606,7 +606,7 @@ let t_assm_comp_exact ts maname mrngs ju =
           L.take nvres (L.drop (j + 1 - nvres) se.se_gdef)
           |> L.map (function GLet (x,_) -> x | _ -> assert false)
         in
-        L.fold_left2 (fun rn vs vs_ju -> Vsym.M.add vs vs_ju rn) rn vres vres_ju)
+        L.fold_left2 (fun rn vs vs_ju -> VarSym.M.add vs vs_ju rn) rn vres vres_ju)
       ren rngs assm.ac_acalls
   in
 

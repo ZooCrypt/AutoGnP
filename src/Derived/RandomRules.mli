@@ -4,7 +4,7 @@ open TheoryTypes
 open ParserTypes
 
 val t_rnd_maybe :
-  ?i_rvars:Syms.Vsym.S.t
+  ?i_rvars:Syms.VarSym.S.t
   -> theory_state
   -> bool
   -> Game.gcmd_pos option
@@ -14,7 +14,7 @@ val t_rnd_maybe :
   -> Tactic.tactic
 
 val t_rnd_oracle_maybe :
-  ?i_rvars:Syms.Vsym.S.t
+  ?i_rvars:Syms.VarSym.S.t
   -> theory_state
   -> Game.ocmd_pos option
   -> parse_ctx option

@@ -50,7 +50,7 @@ let solve_fq_var (ecs : (expr * inverter) list) e =
   if not (is_V e) then raise Not_found;
   let v = destr_V e in
   let ecs_v,ecs_poly =
-    L.partition (fun (e,_w) -> is_V e || is_RoCall e || is_RoLookup e || is_FunCall e) ecs
+    L.partition (fun (e,_w) -> is_V e || is_RoCall e || is_MapLookup e || is_FunCall e) ecs
   in
   match L.filter (fun (f,_) -> Se.mem e (e_vars f)) ecs_poly with
   | [(f,w_f)] ->
@@ -97,7 +97,7 @@ let solve_fq (ecs : (expr * inverter) list) e =
  * ----------------------------------------------------------------------- *)
 
 let solve_mixed_type k s =
-  let ty_k, ty_s = k.e_ty, s.Vsym.ty in
+  let ty_k, ty_s = k.e_ty, s.VarSym.ty in
   match ty_k.ty_node, ty_s.ty_node with
   | Fq, Fq ->
     (s,solve_fq_vars_known k s)
@@ -107,7 +107,7 @@ let solve_mixed_type k s =
      2. abstract log(ga) by v: v*b |-> v ==> get v/b.
      3. translate as ga -> g^(log(ga)/b)  *)
   | G n1, G n2 when Groupvar.equal n1 n2 ->
-    let v_fq = Vsym.mk ("v_fq_"^(Id.name s.Vsym.id)) mk_Fq in
+    let v_fq = VarSym.mk ("v_fq_"^(Id.name s.VarSym.id)) mk_Fq in
     let to_gn1 e = mk_GExp (mk_GGen n1) e in
     let k_fq =
       norm_expr_strong (mk_GLog k)
@@ -123,7 +123,7 @@ let solve_mixed_type k s =
   | G _, Fq ->
     let _,k_fq = destr_GExp (norm_expr_strong k) in
     let ce = solve_fq_vars_known k_fq s in
-    let v_g = Vsym.mk ("v_g_"^(Id.name s.Vsym.id)) ty_k in
+    let v_g = VarSym.mk ("v_g_"^(Id.name s.VarSym.id)) ty_k in
     (v_g, e_replace (mk_V s) (mk_GLog (mk_V v_g)) ce)
 
   (* example: ga -> log(ga)*b
@@ -131,7 +131,7 @@ let solve_mixed_type k s =
      2. abstract log(ga) by v: v*b |-> v ==> get v/b.
      3. translate as v -> g^(v/b) *)
   | Fq, G n1 ->
-    let v_fq = Vsym.mk ("v_fq_"^(Id.name s.Vsym.id)) mk_Fq in
+    let v_fq = VarSym.mk ("v_fq_"^(Id.name s.VarSym.id)) mk_Fq in
     let to_gn1 e = mk_GExp (mk_GGen n1) e in
     let k_fq =
       e_replace (mk_V s) (to_gn1 (mk_V v_fq)) k

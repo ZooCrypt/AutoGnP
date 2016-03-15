@@ -17,23 +17,23 @@ let neg_quant = function All -> Exists | Exists -> All
 
 module Olist = struct
   type t =
-    | ROlist of ROsym.t (* list of adversary queries to random oracle *)
-    | Olist  of Osym.t  (* list of adversary queries to ordinary oracle *)
+    | ROlist of RoSym.t   (* list of adversary queries to random oracle *)
+    | Olist  of OrclSym.t (* list of adversary queries to ordinary oracle *)
     with compare
 
   let dom = function
-    | ROlist ros -> ros.ROsym.dom
-    | Olist  os  -> os.Osym.dom
+    | ROlist ros -> ros.RoSym.dom
+    | Olist  os  -> os.OrclSym.dom
 
   let hash = function
-    | ROlist ros -> hcomb 1 (ROsym.hash ros)
-    | Olist  os  -> hcomb 2 (Osym.hash  os)
+    | ROlist ros -> hcomb 1 (RoSym.hash ros)
+    | Olist  os  -> hcomb 2 (OrclSym.hash  os)
 
   let equal ol1 ol2 = compare ol1 ol2 = 0
 
   let pp fmt = function
-    | ROlist ros -> ROsym.pp fmt ros
-    | Olist  os  -> Osym.pp fmt  os
+    | ROlist ros -> RoSym.pp fmt ros
+    | Olist  os  -> OrclSym.pp fmt  os
 
 end
 
@@ -51,26 +51,27 @@ type cnst =
 
 type op =
   (* bilinear groups *)
-  | GExp of Groupvar.id        (* exponentiation in $\group_i$ *)
-  | GLog of Groupvar.id        (* discrete logarithm in $\group_i$ *)
-  | GInv                       (* inverse in group *)
-  | EMap of Esym.t             (* bilinear map *)
+  | GExp of Groupvar.id          (* exponentiation in $\group_i$ *)
+  | GLog of Groupvar.id          (* discrete logarithm in $\group_i$ *)
+  | GInv                         (* inverse in group *)
+  | EMap of EmapSym.t            (* bilinear map *)
   (* prime field *)
-  | FOpp                       (* additive inverse in $\field$ *)
-  | FMinus                     (* subtraction in $\field$ *)
-  | FInv                       (* mult. inverse in $\field$ *)
-  | FDiv                       (* division in $\field$ *)
+  | FOpp                         (* additive inverse in $\field$ *)
+  | FMinus                       (* subtraction in $\field$ *)
+  | FInv                         (* mult. inverse in $\field$ *)
+  | FDiv                         (* division in $\field$ *)
   (* logical operators *)
-  | Eq                         (* equality *)
-  | Not                        (* negation *)
-  | Ifte                       (* if then else *)
+  | Eq                            (* equality *)
+  | Not                           (* negation *)
+  | Ifte                          (* if then else *)
   (* permutations *)
-  | ProjKeyElem of KeyElem.t   (* project out secret/public key *)
-  | Perm of perm_type * Psym.t (* permutation or inverse permutation *)
-  (* uninterpreted functions and random oracles *)
-  | FunCall  of Fsym.t         (* function call (uninterpreted) *)
-  | RoCall   of ROsym.t        (* random oracle call *)
-  | RoLookup of ROsym.t        (* random oracle lookup *)
+  | ProjKeyElem of KeyElem.t      (* project out secret/public key *)
+  | Perm of perm_type * PermSym.t (* permutation or inverse permutation *)
+  (* uninterpreted functions, random oracles, and maps *)
+  | FunCall   of FunSym.t         (* function call (uninterpreted) *)
+  | RoCall    of RoSym.t          (* random oracle call *)
+  | MapLookup of MapSym.t         (* map lookup *)
+  | MapIndom  of MapSym.t         (* map defined for given value *)
 
 type nop =
   | GMult  (* multiplication in G (type defines group) *)
@@ -79,7 +80,7 @@ type nop =
   | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
 
-type binding = Vsym.t list * Olist.t
+type binding = VarSym.t list * Olist.t
 
 type expr = {
   e_node : expr_node;
@@ -87,7 +88,7 @@ type expr = {
   e_tag  : int
 }
 and expr_node =
-  | V     of Vsym.t                 (* variables (program/logic/...) *)
+  | V     of VarSym.t               (* variables (program/logic/...) *)
   | Tuple of expr list              (* tuples *)
   | Proj  of int * expr             (* projection *)
   | Cnst  of cnst                   (* constants *)
@@ -118,12 +119,13 @@ let op_hash = function
   | Eq             -> 8
   | Not            -> 9
   | Ifte           -> 10
-  | EMap es        -> hcomb 11 (Esym.hash es)
-  | Perm(pt,f)     -> hcomb 12 (hcomb (perm_type_hash pt) (Psym.hash f))
+  | EMap es        -> hcomb 11 (EmapSym.hash es)
+  | Perm(pt,f)     -> hcomb 12 (hcomb (perm_type_hash pt) (PermSym.hash f))
   | ProjKeyElem(k) -> hcomb 13 (KeyElem.hash k)
-  | FunCall fs     -> hcomb 14 (Fsym.hash fs)
-  | RoCall ros     -> hcomb 15 (ROsym.hash ros)
-  | RoLookup ros   -> hcomb 16 (ROsym.hash ros)
+  | FunCall fs     -> hcomb 14 (FunSym.hash fs)
+  | RoCall ros     -> hcomb 15 (RoSym.hash ros)
+  | MapLookup ms   -> hcomb 16 (MapSym.hash ms)
+  | MapIndom ms    -> hcomb 17 (MapSym.hash ms)
 
 let nop_hash = function
   | FPlus  -> 1
@@ -146,7 +148,7 @@ module Hse = Hashcons.Make (struct
   let equal e1 e2 =
     equal_ty e1.e_ty e2.e_ty &&
     match e1.e_node, e2.e_node with
-    | V v1, V v2                       -> Vsym.equal v1 v2
+    | V v1, V v2                       -> VarSym.equal v1 v2
     | Tuple es1, Tuple es2             -> list_eq_for_all2 equal_expr es1 es2
     | Proj(i1,e1), Proj(i2,e2)         -> i1 = i2 && equal_expr e1 e2
     | Cnst c1, Cnst c2                 -> c1 = c2
@@ -154,12 +156,12 @@ module Hse = Hashcons.Make (struct
     | Nary(o1,es1), Nary(o2,es2)       -> o1 = o2 && list_eq_for_all2 equal_expr es1 es2
     | Quant(q1,b1,e1), Quant(q2,b2,e2) ->
       q1 = q2 &&
-        (equal_pair (equal_list Vsym.equal) Olist.equal) b1 b2 &&
+        (equal_pair (equal_list VarSym.equal) Olist.equal) b1 b2 &&
         equal_expr e1 e2
     | _, _ -> false
 
   let hash_node = function
-    | V(v)              -> Vsym.hash v
+    | V(v)              -> VarSym.hash v
     | Tuple(es)         -> hcomb_l hash_expr 3 es
     | Proj(i,e)         -> hcomb i (hash_expr e)
     | Cnst(c)           -> cnst_hash c
@@ -168,7 +170,7 @@ module Hse = Hashcons.Make (struct
     | Quant(q,(vs,o),e) ->
       hcomb_h
         [ quant_hash q
-        ; hcomb_h (List.map Vsym.hash vs)
+        ; hcomb_h (List.map VarSym.hash vs)
         ; Olist.hash o
         ; hash_expr e ]
 
@@ -257,9 +259,9 @@ let mk_GInv a =
   mk_App GInv  [a] a.e_ty
 
 let mk_EMap es a b =
-  ensure_ty_equal a.e_ty (mk_G es.Esym.source1) a None "mk_EMap";
-  ensure_ty_equal b.e_ty (mk_G es.Esym.source2) b None "mk_EMap";
-  mk_App (EMap es) [a;b] (mk_G es.Esym.target)
+  ensure_ty_equal a.e_ty (mk_G es.EmapSym.source1) a None "mk_EMap";
+  ensure_ty_equal b.e_ty (mk_G es.EmapSym.source2) b None "mk_EMap";
+  mk_App (EMap es) [a;b] (mk_G es.EmapSym.target)
 
 let mk_FOpp a =
   ensure_ty_equal a.e_ty mk_Fq a None "mk_FOpp";
@@ -303,21 +305,29 @@ let key_elem_of_perm_type = function
 let mk_Perm f ptype k e =
   let ke = key_elem_of_perm_type ptype in
   let k_pid = ensure_ty_KeyElem ke k.e_ty "mk_Perm - key" in
-  if (not (Type.Permvar.equal f.Psym.id k_pid)) then
-    failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." Psym.pp f);
-  ensure_ty_equal e.e_ty f.Psym.dom
+  if (not (Type.Permvar.equal f.PermSym.id k_pid)) then
+    failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." PermSym.pp f);
+  ensure_ty_equal e.e_ty f.PermSym.dom
     e (Some k)
-    (fsprintf "mk_Perm for %a : expected arg of type %a" Psym.pp f pp_ty e.e_ty);
+    (fsprintf "mk_Perm for %a : expected arg of type %a" PermSym.pp f pp_ty e.e_ty);
   mk_App (Perm(ptype,f)) [k; e] e.e_ty
 
+(* FIXME: check types? *)
 let mk_FunCall f e =
-  mk_App (FunCall(f)) [e] f.Fsym.codom
+  ensure_ty_equal e.e_ty f.FunSym.dom e None "mk_FunCall";
+  mk_App (FunCall(f)) [e] f.FunSym.codom
 
 let mk_RoCall h e =
-  mk_App (RoCall(h)) [e] h.ROsym.codom
+  ensure_ty_equal e.e_ty h.RoSym.dom e None "mk_RoCall";
+  mk_App (RoCall(h)) [e] h.RoSym.codom
 
-let mk_RoLookup h e =
-  mk_App (RoLookup(h)) [e] h.ROsym.codom
+let mk_MapLookup h e =
+  ensure_ty_equal e.e_ty h.MapSym.dom e None "mk_MapLookup";
+  mk_App (MapLookup(h)) [e] h.MapSym.codom
+
+let mk_MapIndom h e =
+  ensure_ty_equal e.e_ty h.MapSym.dom e None "mk_MapIndom";
+  mk_App (MapIndom(h)) [e] mk_Bool
 
 (* *** Nary mk functions *)
 
@@ -381,7 +391,7 @@ let mk_Nary op es =
 
 (* *** Remaining mk functions *)
 
-let mk_V v = mk_e (V v) v.Vsym.ty
+let mk_V v = mk_e (V v) v.VarSym.ty
 
 (*
 let mk_F h e =

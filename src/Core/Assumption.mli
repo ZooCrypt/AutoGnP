@@ -16,7 +16,7 @@ type assm_dec = private {
   ad_inf        : bool;         (*r information-theoretic assumption *)
   ad_prefix1    : gdef;         (*r prefix for left *)
   ad_prefix2    : gdef;         (*r prefix for right *)
-  ad_acalls     : (Asym.t * Vsym.t list * (expr * expr)) list;
+  ad_acalls     : (AdvSym.t * VarSym.t list * (expr * expr)) list;
                                 (*r adversary calls (same asym) and
                                     arguments/returned variables on left and right *)
   ad_symvars    : vs list list; (*r symmetric in given variables *)
@@ -24,13 +24,13 @@ type assm_dec = private {
 
 val pp_assm_dec :  F.formatter -> assm_dec -> unit
 
-val mk_assm_dec : string -> bool -> gdef -> gdef -> (Vsym.t list) list -> assm_dec
+val mk_assm_dec : string -> bool -> gdef -> gdef -> (VarSym.t list) list -> assm_dec
 
-val needed_vars_dec : direction  -> assm_dec -> Vsym.t list
+val needed_vars_dec : direction  -> assm_dec -> VarSym.t list
 
 val private_vars_dec : assm_dec -> Se.t
 
-val inst_dec : Vsym.t Vsym.M.t -> assm_dec -> assm_dec
+val inst_dec : VarSym.t VarSym.M.t -> assm_dec -> assm_dec
 
 (* ** Computational assumptions
  * ----------------------------------------------------------------------- *)
@@ -45,7 +45,7 @@ type assm_comp = private {
   ac_type       : assm_type;    (* type of assumption *)
   ac_prefix     : gdef;         (*r prefix of assumption *)
   ac_event      : expr;         (*r event expression *)
-  ac_acalls     : (Asym.t * Vsym.t list * expr) list;
+  ac_acalls     : (AdvSym.t * VarSym.t list * expr) list;
    (*r adversary calls (same asym) and arguments/returned variables *)
   ac_symvars    : vs list list; (*r symmetric in given variables *)
 }
@@ -56,4 +56,4 @@ val mk_assm_comp : string -> bool -> assm_type -> gdef -> expr -> vs list list -
 
 val private_vars_comp : assm_comp -> Se.t
 
-val inst_comp : Vsym.t Vsym.M.t -> assm_comp -> assm_comp
+val inst_comp : VarSym.t VarSym.M.t -> assm_comp -> assm_comp

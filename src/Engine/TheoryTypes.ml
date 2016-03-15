@@ -34,12 +34,14 @@ type theory_state = {
   ts_gvars      : (string,Groupvar.id) Hashtbl.t;
 
   (* explicitly defined *)
-  ts_permdecls  : Psym.t    Mstring.t;
-  ts_rodecls    : ROsym.t   Mstring.t;
-  ts_fundecls   : Fsym.t    Mstring.t;
-  ts_odecls     : Osym.t    Mstring.t;
-  ts_adecls     : Asym.t    Mstring.t;
-  ts_emdecls    : Esym.t    Mstring.t;
+  ts_permdecls  : PermSym.t Mstring.t;
+  ts_rodecls    : RoSym.t   Mstring.t;
+  ts_constdecls : FunSym.t  Mstring.t;
+  ts_tydecls    : Tysym.id  Mstring.t; 
+  ts_odecls     : OrclSym.t Mstring.t;
+  ts_adecls     : AdvSym.t  Mstring.t;
+  ts_emdecls    : EmapSym.t Mstring.t;
+  ts_fmapdecls  : MapSym.t Mstring.t;
   ts_assms_dec  : assm_dec  Mstring.t;
   ts_assms_comp : assm_comp Mstring.t;
 

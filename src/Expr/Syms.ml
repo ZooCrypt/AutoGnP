@@ -9,7 +9,7 @@ open Type
 (* ** Oracle symbols
  * ----------------------------------------------------------------------- *)
 
-module Osym = struct
+module OrclSym = struct
   type t = {
     id    : Id.id;
     dom   : ty;
@@ -56,11 +56,11 @@ let map_qual f = function
 (* ** Variable symbols
  * ----------------------------------------------------------------------- *)
 
-module Vsym = struct
+module VarSym = struct
 
   type t = {
     id   : id;
-    qual : Osym.t qual; (* we allow qualified variables for eq-Hybrid-oracles *)
+    qual : OrclSym.t qual; (* we allow qualified variables for eq-Hybrid-oracles *)
     ty   : ty;
   }
 
@@ -91,7 +91,7 @@ module Vsym = struct
     let qual_eq o =
       match qual with
       | Unqual  -> false
-      | Qual o' -> Osym.equal o o'
+      | Qual o' -> OrclSym.equal o o'
     in
     match vs.qual with
     | Unqual ->
@@ -99,7 +99,7 @@ module Vsym = struct
     | Qual o when qual_eq o ->
       F.fprintf fmt "%s%a" (name vs.id) pp_tag (tag vs.id)
     | Qual q ->
-      F.fprintf fmt "%s`%s%a" (name q.Osym.id) (name vs.id) pp_tag (tag vs.id)
+      F.fprintf fmt "%s`%s%a" (name q.OrclSym.id) (name vs.id) pp_tag (tag vs.id)
 
   let pp fmt = pp_qual ~qual:Unqual fmt
 
@@ -115,7 +115,7 @@ end
 (* ** Adversary procedure symbols
  * ----------------------------------------------------------------------- *)
 
-module Asym = struct
+module AdvSym = struct
   type t = {
     id    : Id.id;
     dom   : ty;    (* arguments type *)
@@ -149,7 +149,7 @@ end
 (* ** Bilinear map symbols
  * ----------------------------------------------------------------------- *)
 
-module Esym = struct
+module EmapSym = struct
   type t = {
     id      : Id.id;
     source1 : Groupvar.id;
@@ -186,7 +186,7 @@ end
 (* ** Permutation symbols
  * ----------------------------------------------------------------------- *)
 
-module Psym = struct
+module PermSym = struct
   (* We ensure that same id implies same dom. *)
   type t = {
     id  : Permvar.id;
@@ -216,7 +216,7 @@ end
 (* ** Uninterpreted function symbols
  * ----------------------------------------------------------------------- *)
 
-module Fsym = struct
+module FunSym = struct
   type t = {
     id    : Id.id;
     dom   : ty;
@@ -247,7 +247,40 @@ end
 (* ** Random oracle symbols
  * ----------------------------------------------------------------------- *)
 
-module ROsym = struct
+module RoSym = struct
+ 
+  type t = {
+    id    : Id.id;
+    dom   : ty;
+    codom : ty;
+  }
+
+  let hash hs = Id.hash hs.id
+  let equal hs1 hs2 = Id.equal hs1.id hs2.id
+  let compare x y = Id.tag x.id - Id.tag y.id
+
+  type tt = t
+  module Hs = StructMake (struct
+    type t = tt
+    let tag = hash
+  end)
+
+  module M = Hs.M
+  module S = Hs.S
+  module H = Hs.H
+
+  let mk name dom codom = { id = Id.mk name; dom   = dom; codom = codom; }
+
+  let to_string hs = Id.name hs.id
+
+  let pp fmt hs = pp_string fmt (Id.name hs.id)
+end
+
+(* ** Map symbols
+ * ----------------------------------------------------------------------- *)
+
+module MapSym = struct
+ 
   type t = {
     id    : Id.id;
     dom   : ty;

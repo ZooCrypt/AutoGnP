@@ -31,7 +31,7 @@ let log_i  = mk_log Bolt.Level.INFO
 (** Parse given context: bound name overshadows name in game *)
 let parse_ctxt ts sec ty (sv,se) =
   let vmap = vmap_of_globals sec.se_gdef in
-  let v = Vsym.mk sv ty in
+  let v = VarSym.mk sv ty in
   Hashtbl.add vmap (Unqual,sv) v;
   (v,expr_of_parse_expr vmap ts Unqual se)
 
@@ -126,7 +126,7 @@ let check_tannot ts ty mty =
 (** rnd tactic that tries out useful contexts for given random variable *)
 let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
   let se = ju.ju_se in
-  let rv_ty = rv.Vsym.ty in
+  let rv_ty = rv.VarSym.ty in
   let deduc = DeducField.solve_mixed_type in
   let parse v_ty (sv,se') = parse_ctxt ts se v_ty (sv,se') in
   (match mctxt1, mctxt2 with
@@ -152,7 +152,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
       run (-1) (contexts se rv mgen)
       |> L.map NormUtils.norm_expr_nice
       |> L.unique ~eq:equal_expr
-      |> L.filter (fun e -> Vsym.S.for_all (fun v -> v.Vsym.qual = Unqual) (vars_expr e))
+      |> L.filter (fun e -> VarSym.S.for_all (fun v -> v.VarSym.qual = Unqual) (vars_expr e))
       (* FIXME: for bycrush, we exclude contexts rv -> - rv *)
       |> L.filter (fun e -> (not (equal_expr (mk_FOpp (mk_V rv)) e)))
     in
@@ -167,7 +167,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
   ) >>= fun ((v1,e1),(v2,e2)) ->
   log_t (lazy (fsprintf (  "@[<hov 2>t_rnd_pos: trying@ @[<hov 2>%a@] -> @[<hov 2>%a@]@ "
                          ^^"with inverse@ @[<hov 2>%a@] -> @[<hov 2>%a@]")
-                 Vsym.pp v1 pp_expr e1 Vsym.pp v2 pp_expr e2));
+                 VarSym.pp v1 pp_expr e1 VarSym.pp v2 pp_expr e2));
   try
     ignore (CR.r_rnd i (v1,e1) (v2,e2) ju);
     T.t_rnd i (v1,e1) (v2,e2) ju
@@ -181,8 +181,8 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
       lazy
         (fsprintf (  "@[<hov 2>t_rnd_pos: variable %a@ undefined"
                    ^^" in @[<hov 2>%a@],@ not in @[<hov 2>%a@]")
-           Vsym.pp vs pp_expr e
-           (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)) in
+           VarSym.pp vs pp_expr e
+           (pp_list "," VarSym.pp) (VarSym.S.elements def_vars)) in
     log_i ls;
     mfail ls
   | Wf.Wf_div_zero (ze::_ as es) ->
@@ -232,7 +232,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     )
 
 (** rnd tactic that tries all positions and contexts if none are given *)
-let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctx1 mctx2 mgen ju =
+let t_rnd_maybe ?i_rvars:(irvs=VarSym.S.empty) ts exact mi mctx1 mctx2 mgen ju =
   let se = ju.ju_se in
 
   (* try all sampling positions if none is given *)
@@ -243,10 +243,10 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctx1 mctx2 mgen ju =
   ) >>= fun i ->
   let (rv,(_,es)) = L.assoc i samps in
   let vs = vars_dexc rv es in
-  guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
+  guard (not (VarSym.S.mem rv irvs)) >>= fun _ ->
   log_t (lazy "###############################");
   log_t (lazy (fsprintf "t_rnd_maybe %i\n%!" i));
-  log_t (lazy (fsprintf "sampling: %i, %a@\n%!" i Vsym.pp rv));
+  log_t (lazy (fsprintf "sampling: %i, %a@\n%!" i VarSym.pp rv));
 
   (* move (if requested) and continue with fixed position *)
   let rnd i = t_rnd_pos ts mctx1 mctx2 rv mgen i in
@@ -264,15 +264,15 @@ let t_rnd_maybe ?i_rvars:(irvs=Vsym.S.empty) ts exact mi mctx1 mctx2 mgen ju =
 let parse_ctxt_oracle ts opos sec ty (sv,se) =
   let vmap = vmap_in_orcl sec opos in
   let _, seoc = get_se_octxt sec opos in
-  let oname = Id.name seoc.seoc_osym.Osym.id in
+  let oname = Id.name seoc.seoc_osym.OrclSym.id in
   (* bound name overshadows names in game *)
-  let v = Vsym.mk sv ty in
+  let v = VarSym.mk sv ty in
   Hashtbl.add vmap (Unqual,sv) v;
   (v,expr_of_parse_expr vmap ts (Qual oname) se)
 
 
 (** [t_rnd_oracle_maybe] tries all useful contexts if none are given *)
-let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctx1 mctx2 ju =
+let t_rnd_oracle_maybe ?i_rvars:(irvs=VarSym.S.empty) ts mopos mctx1 mctx2 ju =
   let se = ju.ju_se in
   let osamps = osamplings se.se_gdef in
   let deduc = DeducField.solve_mixed_type in
@@ -282,7 +282,7 @@ let t_rnd_oracle_maybe ?i_rvars:(irvs=Vsym.S.empty) ts mopos mctx1 mctx2 ju =
   ) >>= fun ((i,j,k,ootype) as op) ->
   let (rv,(rv_ty,_)) = L.assoc op osamps in
   let parse v_ty (sv,se') = parse_ctxt_oracle ts op se v_ty (sv,se') in
-  guard (not (Vsym.S.mem rv irvs)) >>= fun _ ->
+  guard (not (VarSym.S.mem rv irvs)) >>= fun _ ->
   log_t (lazy (fsprintf "###############################\n%!"));
   log_t (lazy (fsprintf "t_rnd_oracle_maybe (%i,%i,%i)\n%!" i j k));
   (match mctx1, mctx2 with

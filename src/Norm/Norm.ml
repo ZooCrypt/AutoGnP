@@ -18,7 +18,7 @@ let _log_i = mk_log Bolt.Level.INFO
     applied to variables *)
 let rec norm_type e =
   match e.e_ty.ty_node with
-  | Fq | Bool | Int | BS _ | KeyPair _ | KeyElem _ -> e
+  | TySym _ | Fq | Bool | Int | BS _ | KeyPair _ | KeyElem _ -> e
 
   | G gv    -> mk_GExp_Gen gv (mk_GLog e)   (* g ^ (log x) *)
 
@@ -56,7 +56,7 @@ let common_diff xs1 xs2 =
 let rec norm_expr ~strong e =
   match e.e_node with
 
-  | V _ -> norm_type e
+  | V _ | App(MapLookup(_),_) -> norm_type e
 
   | Quant(q,b,e) -> mk_Quant q b (norm_expr ~strong e)
 
@@ -85,8 +85,10 @@ and mk_simpl_op ~strong op l =
   | FunCall f,      [e] -> mk_FunCall f e
   | ProjKeyElem kt, [e] -> mk_ProjKeyElem kt e
   | RoCall h,       [e] -> mk_RoCall h e
-  | RoLookup h,     [e] -> mk_RoLookup h e
-  | (FunCall _ | ProjKeyElem _ | RoCall _ | RoLookup _), ([] | _::_::_) -> assert false
+  | MapLookup h,    [e] -> mk_MapLookup h e
+  | MapIndom h,     [e] -> mk_MapIndom h e
+  | (FunCall _ | ProjKeyElem _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_) ->
+    assert false
 
   | Perm(ptype1, f1),[k1; e1] -> (* f(pk, finv(sk, e)) = e and vice-versa *)
     let k1 = norm_expr ~strong k1 in
@@ -95,7 +97,7 @@ and mk_simpl_op ~strong op l =
     | App(Perm(ptype2,f2),[k2; e2])
         when    is_ProjKeyElem (key_elem_of_perm_type ptype1) f1 k1
              && is_ProjKeyElem (key_elem_of_perm_type ptype2) f2 k2
-             && Psym.equal f1 f2
+             && PermSym.equal f1 f2
              && ptype1 <> ptype2 ->
       e2
     | _ -> mk_Perm f1 ptype1 k1 e1
@@ -116,10 +118,10 @@ and mk_simpl_op ~strong op l =
   | GLog gv, [g1] -> destr_GExp_Gen gv g1
 
   | EMap es, [g1;g2] -> (* e(g^a,g^b) -> e(g,g)^ab *)
-    let p1 = destr_GExp_Gen es.Esym.source1 g1 in
-    let p2 = destr_GExp_Gen es.Esym.source2 g2 in
+    let p1 = destr_GExp_Gen es.EmapSym.source1 g1 in
+    let p2 = destr_GExp_Gen es.EmapSym.source2 g2 in
     let p = mk_simpl_field_expr ~strong (mk_FMult [p1; p2]) in
-    mk_GExp_Gen es.Esym.target p
+    mk_GExp_Gen es.EmapSym.target p
 
   | Eq, [e1;e2] when is_False e1            -> norm_expr ~strong (mk_Not e2)
   | Eq, [e1;e2] when is_False e2            -> norm_expr ~strong (mk_Not e1)

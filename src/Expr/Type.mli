@@ -8,6 +8,9 @@ open Abbrevs
 (** length variables for bitstrings *)
 module Lenvar : (module type of Id)
 
+(** identifier for types *)
+module Tysym : (module type of Id)
+
 (** identifier for different permutations *)
 module Permvar : (module type of Id)
 
@@ -32,6 +35,7 @@ and ty_node =
   | BS of Lenvar.id
   | Bool
   | G of Groupvar.id
+  | TySym of Tysym.id
   | Fq
   | Prod of ty list
   | Int (* used during extraction *)
@@ -54,6 +58,7 @@ val mk_ty : ty_node -> Hsty.t
 
 val mk_BS      : Lenvar.id -> ty
 val mk_G       : Groupvar.id -> ty
+val mk_TySym   : Tysym.id -> ty
 val mk_KeyPair : Permvar.id -> ty
 val mk_KeyElem : KeyElem.t -> Permvar.id -> ty
 val mk_Fq      : ty

@@ -71,12 +71,12 @@ let split_exponent ts e gv unknown =
         | ([],_) -> (* find log(a) and log(b) s.t. e(a,b) in group gv *)
           let emaps =
             L.filter
-              (fun esym -> Groupvar.equal esym.Esym.target gv)
+              (fun esym -> Groupvar.equal esym.EmapSym.target gv)
               (L.map snd (Mstring.bindings ts.ts_emdecls))
           in
           begin match emaps with
           | esym::_ ->
-            let (gv1,gv2) = (esym.Esym.source1,esym.Esym.source2) in
+            let (gv1,gv2) = (esym.EmapSym.source1,esym.EmapSym.source2) in
             if Groupvar.equal gv1 gv2 then (
               let es_gv1,others = List.partition (is_GLog_gv gv1) es in
               begin match es_gv1 with
@@ -288,7 +288,7 @@ let t_let_abstract_oracle opos vs e0 len do_norm_expr ju =
 
 let t_rename v1 v2 ju =
   let se = ju.ju_se in
-  let new_se = subst_v_se (fun v -> if Vsym.equal v v1 then v2 else v) se in
+  let new_se = subst_v_se (fun v -> if VarSym.equal v v1 then v2 else v) se in
   t_conv true new_se ju
 
 let t_subst p e1 e2 mupto ju =
@@ -355,7 +355,7 @@ let t_abstract_deduce ~keep_going ts gpos v e mupto ju =
         let k_vars =
           L.map (fun v -> (v, I v)) (Se.elements (Se.diff (e_vars e) secret_vars))
         in
-        let recipe = Deduc.invert ~ppt_inverter:true ts (frame@k_vars) e in
+        let (I recipe) = Deduc.invert ~ppt_inverter:true ts (frame@k_vars) e in
         He.add cache e recipe;
         log_i (lazy (fsprintf "@[<hov>%s@\nFound @[<hov 2>%a@] for@ @[<hov 2>%a@]@]"
                        sep pp_expr recipe pp_expr e));

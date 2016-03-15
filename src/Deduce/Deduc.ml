@@ -88,7 +88,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
                          pp_expr e));
           Hty.add sub_solver e.e_ty (Se.singleton e)
       end
-    | Int | Prod _ -> ()
+    | TySym _ | Int | Prod _ -> ()
     | KeyPair _ | KeyElem _ -> assert false
   in
   let add_sub e = add_sub_solver e; add_sub_constr e in
@@ -102,7 +102,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | App(op, es) ->
       begin match op with
       | (ProjKeyElem _) -> fixme "no support for this"
-      | (FunCall _ | RoCall _ | RoLookup _) ->
+      | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _) ->
         add_sub e; List.iter (register_subexprs false) es
       | FOpp | FMinus | FInv | FDiv ->
         if not in_field then add_sub_solver e;
@@ -227,7 +227,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
       | Fq           -> DeducField.solve_fq, equal_ty ty
       | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
-      | Prod _ | Int | KeyPair _ | KeyElem _ -> assert false
+      | TySym _ | Prod _ | Int | KeyPair _ | KeyElem _ -> assert false
     in
     let k,u = Se.partition is_in subexprs in
     if Se.is_empty u then (
@@ -273,7 +273,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     done;
     raise Not_found
   with
-  | Found inv -> inv
+  | Found inv -> I inv
   | Not_found -> raise Not_found
   | e ->
     let err = Printexc.to_string e in

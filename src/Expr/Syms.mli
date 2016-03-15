@@ -8,7 +8,7 @@ open Id
 (* ** Oracle symbols
  * ----------------------------------------------------------------------- *)
 
-module Osym : sig
+module OrclSym : sig
   type t = private {
     id    : id;
     dom   : ty;
@@ -36,10 +36,10 @@ val map_qual : ('a -> 'b) -> 'a qual -> 'b qual
 (* ** Variable symbols
  * ----------------------------------------------------------------------- *)
 
-module Vsym : sig
+module VarSym : sig
   type t = private {
     id   : id;
-    qual : Osym.t qual;
+    qual : OrclSym.t qual;
     ty : ty;
   }
 
@@ -47,8 +47,8 @@ module Vsym : sig
   val equal : t -> t -> bool
   val compare : t -> t -> int
   val mk : string -> ty -> t
-  val mk_qual : string -> Osym.t qual -> ty -> t
-  val pp_qual : ?qual:Osym.t qual -> F.formatter -> t -> unit
+  val mk_qual : string -> OrclSym.t qual -> ty -> t
+  val pp_qual : ?qual:OrclSym.t qual -> F.formatter -> t -> unit
   val pp : F.formatter -> t -> unit
   val to_string : t -> string
 
@@ -62,7 +62,7 @@ end
 (* ** Adversary procedure symbols
  * ----------------------------------------------------------------------- *)
 
-module Asym : sig
+module AdvSym : sig
   type t = private {
     id  : id;
     dom : ty;
@@ -84,7 +84,7 @@ end
 (* ** Bilinear map symbols
  * ----------------------------------------------------------------------- *)
 
-module Esym : sig
+module EmapSym : sig
   type t = private {
     id      : id;
     source1 : Groupvar.id;
@@ -107,7 +107,7 @@ end
 (* ** Permutation symbols
  * ----------------------------------------------------------------------- *)
 
-module Psym : sig
+module PermSym : sig
   type t = private {
     id  : Permvar.id;
     dom : ty;
@@ -128,7 +128,7 @@ end
 (* ** Uninterpreted function symbols
  * ----------------------------------------------------------------------- *)
 
-module Fsym : sig
+module FunSym : sig
   type t = private {
     id    : id;
     dom   : ty;
@@ -150,7 +150,30 @@ end
 (* ** Random Oracle Symbols
  * ----------------------------------------------------------------------- *)
 
-module ROsym : sig
+module RoSym : sig
+  type t = private {
+    id    : id;
+    dom   : ty;
+    codom : ty;
+  }
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val compare : t -> t -> int
+  val mk : string -> ty -> ty -> t
+  val to_string : t -> string
+  val pp : F.formatter -> t -> unit
+
+  module M : Map.S with type key = t
+  module S : Set.S with type elt = t
+  module H : Hashtbl.S with type key = t
+end
+
+
+(* ** Map Symbols
+ * ----------------------------------------------------------------------- *)
+
+module MapSym : sig
   type t = private {
     id    : id;
     dom   : ty;

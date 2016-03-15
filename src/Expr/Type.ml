@@ -8,6 +8,8 @@ open Util
 
 module Lenvar : (module type of Id) = Id
 
+module Tysym : (module type of Id) = Id
+
 module Groupvar : (module type of Id) = Id
 
 module Permvar : (module type of Id) = Id
@@ -38,6 +40,7 @@ and ty_node =
   | BS of Lenvar.id
   | Bool
   | G of Groupvar.id
+  | TySym of Tysym.id
   | Fq
   | Prod of ty list
   | Int
@@ -58,6 +61,7 @@ module Hsty = Hashcons.Make (struct
     | BS lv1, BS lv2                 -> Lenvar.equal lv1 lv2
     | Bool, Bool                     -> true
     | G gv1, G gv2                   -> Groupvar.equal gv1 gv2
+    | TySym ts1, TySym ts2           -> Tysym.equal ts1 ts2
     | Fq, Fq                         -> true
     | Prod ts1, Prod ts2             -> list_eq_for_all2 equal_ty ts1 ts2
     | KeyPair p1, KeyPair p2         -> Permvar.equal p1 p2
@@ -69,11 +73,12 @@ module Hsty = Hashcons.Make (struct
     | BS lv         -> hcomb 1 (Lenvar.hash lv)
     | Bool          -> 2
     | G gv          -> hcomb 3 (Groupvar.hash gv)
-    | Fq            -> 4
-    | Prod ts       -> hcomb_l hash_ty 3 ts
-    | Int           -> 6
-    | KeyPair p     -> hcomb 7 (Permvar.hash p)
-    | KeyElem(ke,p) -> hcomb 8 (hcomb (KeyElem.hash ke) (Permvar.hash p))
+    | TySym gv      -> hcomb 4 (Tysym.hash gv)
+    | Fq            -> 5
+    | Prod ts       -> hcomb_l hash_ty 6 ts
+    | Int           -> 7
+    | KeyPair p     -> hcomb 8 (Permvar.hash p)
+    | KeyElem(ke,p) -> hcomb 9 (hcomb (KeyElem.hash ke) (Permvar.hash p))
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -97,6 +102,8 @@ let mk_ty n = Hsty.hashcons {
 let mk_BS lv = mk_ty (BS lv)
 
 let mk_G gv = mk_ty (G gv)
+
+let mk_TySym ts = mk_ty (TySym ts)
 
 let mk_KeyPair pid = mk_ty (KeyPair pid)
 
@@ -170,6 +177,7 @@ let rec pp_ty fmt ty =
   | BS lv             -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
   | Bool              -> F.fprintf fmt "Bool"
   | Fq                -> F.fprintf fmt "Fq"
+  | TySym ts          -> F.fprintf fmt "%s" (Tysym.name ts)
   | Prod ts           -> F.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts
   | Int               -> F.fprintf fmt "Int"
   | KeyPair pid       -> F.fprintf fmt "KeyPair_%s" (Permvar.name pid)

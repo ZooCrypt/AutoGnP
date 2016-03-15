@@ -72,7 +72,7 @@ let init_inverters test =
       try
         let bd,e1me2,inv,z = init_inverter t in
         bds := bd @ !bds;
-        (i,e1me2,inv, z, mk_V (Vsym.mk "x" e1me2.e_ty)) :: aux (i+1) ts
+        (i,e1me2,inv, z, mk_V (VarSym.mk "x" e1me2.e_ty)) :: aux (i+1) ts
       with Not_found -> aux (i+1) ts
   in
   let l = aux 0 ts in
@@ -95,7 +95,7 @@ let t_last_random_indep ts ju =
                    (L.map (fun (a,b) -> (a,expr_of_inverter b)) known)));
     begin match exc_to_opt (fun () -> Deduc.invert ts known er) with
     | None -> T.t_fail "cannot find inverter" ju
-    | Some inv ->
+    | Some (I inv) ->
       let used = e_vars inv in
       let tomerge = List.filter (fun (_,_,_,_,x) -> Se.mem x used) ms in
       let tomergei = List.map (fun (i,_,_,_,_) -> i) tomerge in
@@ -106,7 +106,7 @@ let t_last_random_indep ts ju =
           fst c, inst_ctxt (x,inv) (snd c)
         else
           let e = Expr.mk_Tuple (List.map (fun (_,e,_,_,_) -> e) tomerge) in
-          let vx = Vsym.mk "x" e.e_ty in
+          let vx = VarSym.mk "x" e.e_ty in
           let x = mk_V vx in
           let projs = L.mapi (fun i _ -> mk_Proj i x) tomerge in
           let app_proj inv (_,_,c,_,y) p =
@@ -140,7 +140,7 @@ let t_random_indep_no_exact emaps ju =
     match rc with
     | Game.GSamp(v,_) :: rc ->
       if Se.mem (mk_V v) ev_vars then (
-        log_t (lazy (fsprintf "trying variable %a" Vsym.pp v));
+        log_t (lazy (fsprintf "trying variable %a" VarSym.pp v));
         (T.t_move (L.length rc) i @> (T.t_random_indep @|| t_last_random_indep emaps)) @||
         (aux (i+1) rc)
       ) else (

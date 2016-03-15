@@ -9,7 +9,7 @@ open Abbrevs
 open Util
 
 let ty_prod_vs vs =
-  match List.map (fun vs -> vs.Vsym.ty) vs with
+  match List.map (fun vs -> vs.VarSym.ty) vs with
   | [a] -> a
   | ts  -> mk_Prod ts
 
@@ -66,14 +66,14 @@ let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
 
 let is_Perm e =  match e.e_node with App(Perm _,_) -> true | _ -> false
 
-let is_RoLookup e = match e.e_node with App(RoLookup _,_) -> true | _ -> false
+let is_MapLookup e = match e.e_node with App(MapLookup _,_) -> true | _ -> false
 
 let is_FunCall e = match e.e_node with App(FunCall _,_) -> true | _ -> false
 
 let is_ProjKeyElem ptype perm e = match e.e_node with
   | App(ProjKeyElem(ptype'), [e2]) when KeyElem.equal ptype ptype' ->
     begin match e2.e_ty.ty_node with
-    | KeyPair(perm') -> Permvar.equal perm.Psym.id perm'
+    | KeyPair(perm') -> Permvar.equal perm.PermSym.id perm'
     | _              -> false
     end
   | _ -> false
@@ -103,7 +103,7 @@ let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 let is_RoCall e = match e.e_node with App(RoCall _, _) -> true | _ -> false
 
 let is_RoCall_ros e ros =
-  match e.e_node with App(RoCall ros', _) -> ROsym.equal ros ros' | _ -> false
+  match e.e_node with App(RoCall ros', _) -> RoSym.equal ros ros' | _ -> false
 
 let is_GLog_gv gv e =
   match e.e_node with App(GLog gv', _) -> Groupvar.equal gv gv' | _ -> false
@@ -116,8 +116,9 @@ let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
   | GExp _ | GLog _ | GInv
   | EMap _ | Perm _
-  | RoCall _ | RoLookup _
-  | Eq | Ifte | Not
+  | RoCall _ | MapLookup _
+  | MapIndom _ | Eq
+  | Ifte | Not
   | ProjKeyElem _ | FunCall _   -> false
 
 let is_field_nop = function
@@ -189,7 +190,7 @@ let pp_binder fmt (vs,o) =
     | _   -> "(",")"
   in
   F.fprintf fmt "%s%a%s in L_%a"
-    l_paren (pp_list "," Vsym.pp) vs r_paren Olist.pp o
+    l_paren (pp_list "," VarSym.pp) vs r_paren Olist.pp o
 
 (** Pretty-prints expression assuming that
     the expression above is of given type. *)
@@ -197,7 +198,7 @@ let rec pp_exp_p ~qual above fmt e =
   match e.e_node with
   | V(v)       ->
     (* F.fprintf fmt "%a.%i" Vsym.pp v (Vsym.hash v) *)
-    F.fprintf fmt "%a" (Vsym.pp_qual ~qual) v
+    F.fprintf fmt "%a" (VarSym.pp_qual ~qual) v
   | Tuple(es) ->
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -276,7 +277,7 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "e(%a,%a)" ppe a ppe b
   | Perm(ptype,f), [proj_ke;arg] ->
     F.fprintf fmt
-      "%a%s(%a,%a)" Psym.pp f (if ptype = IsInv then "_inv" else "")
+      "%a%s(%a,%a)" PermSym.pp f (if ptype = IsInv then "_inv" else "")
       (pp_exp_p ~qual above) proj_ke (pp_exp_p ~qual above) arg
   | Ifte, [a;b;d] ->
     let ppe i = pp_exp_p ~qual (Infix(Ifte,i)) in
@@ -289,12 +290,14 @@ and pp_op_p ~qual above fmt (op, es) =
   | ProjKeyElem kt, [e] ->
     F.fprintf fmt "%a(%a)" Type.KeyElem.pp kt (pp_exp_p ~qual PrefixApp) e
   | FunCall f, [e] ->
-    F.fprintf fmt "%a(%a)" Fsym.pp f (pp_exp_p ~qual PrefixApp) e
+    F.fprintf fmt "%a(%a)" FunSym.pp f (pp_exp_p ~qual PrefixApp) e
   | RoCall h, [e] ->
-    F.fprintf fmt "%a(%a)" ROsym.pp h (pp_exp_p ~qual PrefixApp) e
-  | RoLookup h, [e] ->
-    F.fprintf fmt "%a[%a]" ROsym.pp h (pp_exp_p ~qual PrefixApp) e
-  | (ProjKeyElem _ | FunCall _ | RoCall _ | RoLookup _), ([] | _::_::_)
+    F.fprintf fmt "%a(%a)" RoSym.pp h (pp_exp_p ~qual PrefixApp) e
+  | MapLookup h, [e] ->
+    F.fprintf fmt "%a[%a]" MapSym.pp h (pp_exp_p ~qual PrefixApp) e
+  | MapIndom h, [e] ->
+    F.fprintf fmt "in_dom(%a,%a)" (pp_exp_p ~qual PrefixApp) e MapSym.pp h
+  | (ProjKeyElem _ | FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
   | (FOpp | FInv | Not | GInv | GLog _), ([] | _::_::_)
   | (Perm _ | FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)
   | Ifte, ([] | [_] | [_;_] | _::_::_::_::_) ->
@@ -328,7 +331,7 @@ let pp_nop fmt x = pp_nop_p ~qual:Unqual Top fmt x
 let pp_expr_tnp fmt e = pp_exp_p ~qual:Unqual PrefixApp fmt e
 
 let pp_ctxt fmt (v,e) =
-  F.fprintf fmt "@[<hov>(%a ->@ %a)@]" Vsym.pp v pp_expr e
+  F.fprintf fmt "@[<hov>(%a ->@ %a)@]" VarSym.pp v pp_expr e
 
 (* ** Destructor functions
  * ----------------------------------------------------------------------- *)
@@ -511,9 +514,9 @@ let me_of_list es = L.fold_left (fun s (k,v) -> Me.add k v s) Me.empty es
 
 let he_to_list he = He.fold (fun k v l -> (k,v)::l) he []
 
-type ctxt = Vsym.t * expr
+type ctxt = VarSym.t * expr
 
-let ctxt_ty (v,e) = v.Vsym.ty, e.e_ty
+let ctxt_ty (v,e) = v.VarSym.ty, e.e_ty
 
 let inst_ctxt (v, e') e = e_replace (mk_V v) e e'
 
@@ -531,10 +534,10 @@ let sub t =
         L.split
           (L.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
       mk_Tuple es, mk_Tuple zs
-    | Int | KeyElem _ | KeyPair _ -> assert false
+    | Int | KeyElem _ | KeyPair _ | TySym _ -> assert false
   in
-  let x1 = Vsym.mk "x" t in
-  let x2 = Vsym.mk "x" t in
+  let x1 = VarSym.mk "x" t in
+  let x2 = VarSym.mk "x" t in
   let e, z = aux (mk_V x1) (mk_V x2) in
   (x1,(x2,e)), z
 

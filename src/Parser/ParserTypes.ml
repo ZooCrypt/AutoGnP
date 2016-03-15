@@ -17,6 +17,7 @@ type parse_ty =
   | SKey    of string
   | BS      of string
   | G       of string
+  | TySym   of string
   | Prod    of parse_ty list
 
 let mk_Prod = function [t] -> t | ts -> Prod ts
@@ -25,6 +26,7 @@ type parse_expr =
   | V           of string qual * string
   | SApp        of string * parse_expr list
   | SLookUp     of string * parse_expr list
+  | SIndom      of string * parse_expr
   | Tuple       of parse_expr list
   | ProjPermKey of Type.KeyElem.t * parse_expr
   | Proj        of int * parse_expr
@@ -53,6 +55,7 @@ type parse_ctx = string * parse_ty option * parse_expr
 
 type lcmd =
   | LLet   of string * parse_expr
+  | LMSet  of string * parse_expr list * parse_expr
   | LBind  of string list * string
   | LSamp  of string * parse_ty * parse_expr list
   | LGuard of parse_expr
@@ -61,10 +64,11 @@ type lcomp = lcmd list * parse_expr
 
 type odec = Odef of lcomp | Ohybrid of (lcomp * lcomp * lcomp)
 
-type odef = string * string list * odec
+type odef = string * string list * odec * ([ `Counter of string | `Once ] option)
 
 type gcmd =
   | GLet    of string * parse_expr
+  | GMSet   of string * parse_expr list * parse_expr
   | GAssert of parse_expr
   | GSamp   of string * parse_ty * parse_expr list
   | GCall   of string list * string * parse_expr * odef list
@@ -152,8 +156,13 @@ type tactic =
   | Rfind          of (string list * parse_expr) * parse_expr * string * string list
 
 type instr =
+  | Include    of string
   | PermDecl   of string * parse_ty
+  | BoundDecl  of string * string
+  | TyDecl     of string
   | RODecl     of string * parse_ty * parse_ty
+  | RFDecl     of string * parse_ty * parse_ty
+  | FMDecl     of string * parse_ty * parse_ty
   | FunDecl    of string * parse_ty * parse_ty
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty
@@ -163,6 +172,7 @@ type instr =
   | JudgSucc   of gdef * parse_ev
   | JudgAdv    of gdef * parse_ev
   | JudgDist   of gdef * parse_ev * gdef * parse_ev
+  | GameDef    of string * gdef
   | PrintGoal  of string
   | PrintGoals of string
   | PrintProof of bool * string option

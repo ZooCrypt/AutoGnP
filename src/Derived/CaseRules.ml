@@ -52,7 +52,7 @@ let pp_useful_cases fmt uc =
 
 let is_Useless e =
   is_FNat e || (is_FOpp e && is_FNat (destr_FOpp e))
-  || is_RoCall e || is_FunCall e || is_RoLookup e
+  || is_RoCall e || is_FunCall e || is_MapLookup e
 
 (* ** Compute and collect useful cases
  * ----------------------------------------------------------------------- *)
@@ -154,7 +154,7 @@ let get_cases fbuf ju =
   let se = ju.ju_se in
   let maybe_hidden = maybe_hidden_rvars se.se_gdef in
   let cases = ref [] in
-  F.fprintf fbuf "@[maybe hidden: %a@\n@\n@]" (pp_list ", " Vsym.pp) maybe_hidden;
+  F.fprintf fbuf "@[maybe hidden: %a@\n@\n@]" (pp_list ", " VarSym.pp) maybe_hidden;
   (*i write function that computes non-hidden variables (given out in exponent)
       and potentially hidden variables i*)
   (*i write function that traverses all maximal expression of type F_p together
@@ -229,7 +229,7 @@ let t_case_ev_maybe ju =
 let simp_eq_group e =
   let both_args e1 e2 =
        (is_FunCall e1 && is_FunCall e2)
-    || (is_RoLookup e1 && is_RoLookup e2)
+    || (is_MapLookup e1 && is_MapLookup e2)
     || (is_RoCall e1 && is_RoCall e2) 
   in
   let to_g =
@@ -271,16 +271,16 @@ let t_guard_maybe ju =
   let cases = get_cases fbuf ju in
   let except =
     L.map
-      (function AppAddTest(opos,e,aty,oty) -> Some(opos,e,aty,oty) | _ -> None)
+      (function AppAddTest(opos,e,aty,oty) -> Some(opos,e,aty,oty,NoCounter) | _ -> None)
       cases
     |> cat_Some
   in
-  mconcat except >>= fun (opos,t,_aty,_oty) ->
+  mconcat except >>= fun (opos,t,_aty,_oty,_c) ->
   let (i,j,k,l) = opos in
   let rec get_k k =
     try
       match get_se_lcmd ju.ju_se (i,j,k,l) with
-      | _,_,(_,LGuard _,_),_ -> get_k (k+1)
+      | _,_,(_,LGuard _,_),_,_ -> get_k (k+1)
       | _ -> k
     with
       _ -> k

@@ -11,19 +11,28 @@
   let _ =
     List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
       [ (* declarations *)
-        "random_oracle",            RANDOM_ORCL               (* kw: decl        *)
+        "random_function",          RANDOM_FUN                (* kw: decl        *)
+      ; "random_oracle",            RANDOM_ORCL               (* kw: decl        *)
+      ; "finite_map",               FINMAP                    (* kw: decl        *)
       ; "oracle",                   ORACLE                    (* kw: decl        *)
+      ; "include",                  INCLUDE                   (* kw: decl        *)
       ; "bilinear_map",             BILINEAR_MAP              (* kw: decl        *)
       ; "succ",                     SUCC                      (* kw: decl        *)
       ; "adv",                      ADV                       (* kw: decl        *)
+      ; "counter",                  COUNTER                   (* kw: decl        *)
+      ; "once",                     ONCE                      (* kw: decl        *)
       ; "bound_dist",               BOUNDDIST                 (* kw: decl        *)
       ; "bound_succ",               BOUNDSUCC                 (* kw: decl        *)  
       ; "bound_adv",                BOUNDADV                  (* kw: decl        *)
+      ; "game",                     GAME                      (* kw: decl        *)  
       ; "inf",                      INFTHEO                   (* kw: decl        *)
       ; "ppt",                      PPT                       (* kw: decl        *)
       ; "permutation",              PERMUTATION               (* kw: decl        *)
       ; "adversary",                ADVERSARY                 (* kw: decl        *)
       ; "operator",                 OPERATOR                  (* kw: decl        *)
+      ; "type",                     TYPE                      (* kw: decl        *)
+      ; "bound",                    BOUND                     (* kw: decl        *)
+      ; "for",                      FOR                       (* kw: decl        *)
       ; "assumption",               ASSUMPTION                (* kw: decl        *)
 
       (* commands *)
@@ -119,6 +128,7 @@
       ; "in",                       IN                        (* kw: op          *)
       ; "notin",                    NOTIN                     (* kw: op          *)
       ; "not",                      NOT                       (* kw: op          *)
+      ; "in_dom",                   IN_DOM                    (* kw: dom         *)
       ; "log",                      LOG                       (* kw: op          *)
       ; "true",                     TRUE                      (* kw: op          *)
       ; "false",                    FALSE                     (* kw: op          *)
@@ -147,6 +157,7 @@ rule lex = parse
   | "}"         { RCBRACE }
   | "!"         { EXCL }
   | ":"         { COLON }
+  | ":="        { COLONEQ }
   | ";"         { SEMICOLON }
   | "?"         { QUESTION }
   | ","         { COMMA }
@@ -195,10 +206,10 @@ rule lex = parse
   | "0_"(number_id as s)        { ZBS(s) }                    (* kw: op     *)
   | "g"                         { GEN("") }                   (* kw: op     *)
   | "g_"(number_id as s)        { GEN(s) }                    (* kw: op     *)
-(*| "m_"(simple_id as s)        { LOOKUP(s) }                               *)
 
   (* Nats and identifiers/keywords *)
   | ['0'-'9']['0'-'9']* as s    { NAT(int_of_string(s)) }
+  | (ident as s)"["             { MGET_ID(s) } (* FIXME: hack *)
   | ident as s
                                 { try Hashtbl.find keyword_table s
                                   with Not_found -> ID s }

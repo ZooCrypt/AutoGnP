@@ -15,11 +15,13 @@ let mk_ts () = {
   ts_lvars      = Hashtbl.create 20;
   ts_gvars      = Hashtbl.create 20;
   ts_rodecls    = Mstring.empty;
-  ts_fundecls   = Mstring.empty;
+  ts_constdecls = Mstring.empty;
+  ts_tydecls    = Mstring.empty;
   ts_permdecls  = Mstring.empty;
   ts_odecls     = Mstring.empty;
   ts_adecls     = Mstring.empty;
   ts_emdecls    = Mstring.empty;
+  ts_fmapdecls  = Mstring.empty;
   ts_assms_dec  = Mstring.empty;
   ts_assms_comp = Mstring.empty;
   ts_ps         = BeforeProof
@@ -43,11 +45,11 @@ let get_proof_tree ts =
   | BeforeProof     -> tacerror "cannot obtain proof, no proof started yet"
   | ClosedTheory pt -> pt
 
-let create_lenvar ps s =
-  try Ht.find ps.ts_lvars s
+let create_lenvar ts s =
+  try Ht.find ts.ts_lvars s
   with Not_found ->
     let lv = T.Lenvar.mk s in
-    Ht.add ps.ts_lvars s lv;
+    Ht.add ts.ts_lvars s lv;
     lv
 
 let create_groupvar ps s =

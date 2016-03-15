@@ -33,15 +33,15 @@ let log_i  = mk_log Bolt.Level.INFO
 
 type proof_search_info = {
   psi_assms  : Sstring.t;
-  psi_rvars  : Vsym.S.t;
-  psi_orvars : Vsym.S.t;
+  psi_rvars  : VarSym.S.t;
+  psi_orvars : VarSym.S.t;
   psi_cases  : Se.t
 }
 
 let psi_empty = {
   psi_assms = Sstring.empty;
-  psi_rvars = Vsym.S.empty;
-  psi_orvars = Vsym.S.empty;
+  psi_rvars = VarSym.S.empty;
+  psi_orvars = VarSym.S.empty;
   psi_cases  = Se.empty
 }
 
@@ -66,14 +66,14 @@ let psis_of_pt pt =
       let rands = samplings gd in
       let (rv,_) = L.assoc pos rands in
       let psi =
-        { psi with psi_rvars = Vsym.S.add rv psi.psi_rvars }
+        { psi with psi_rvars = VarSym.S.add rv psi.psi_rvars }
       in
       L.iter (aux psi) children
     | CT.Rrnd_orcl(opos,_,_) ->
       let orands = osamplings gd in
       let (orv,_) = L.assoc opos orands in
       let psi =
-        { psi with psi_orvars = Vsym.S.add orv psi.psi_orvars }
+        { psi with psi_orvars = VarSym.S.add orv psi.psi_orvars }
       in
       L.iter (aux psi) children
     | CT.Radmit "current" ->

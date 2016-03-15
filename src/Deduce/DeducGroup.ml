@@ -19,7 +19,7 @@ let log_i _ = ()
    exponent. It might be possible to generalize the current algorithm
    by performing something similar to the cross-multiplication used to
    reduce equality of field-expressions to equality of ring-expressions. *)
-let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
+let solve_group (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
   log_i (lazy (fsprintf "solve_group %a |- %a"
                  (pp_list "," (pp_pair pp_expr pp_inverter)) ecs pp_expr e));
 
@@ -113,16 +113,16 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
 
   (* register expressions that can be computed by pairing expressions from source groups *)
   let em =
-    try Some (L.find (fun es -> Groupvar.equal gt es.Esym.target) emaps)
+    try Some (L.find (fun es -> Groupvar.equal gt es.EmapSym.target) emaps)
     with Not_found -> None
   in
   begin match em with
   | None -> ()
   | Some em ->
     begin
-      log_i (lazy (fsprintf "relevant map: %a" Esym.pp em));
-      L.iter (register_known known_Gs1 em.Esym.source1) ecs;
-      L.iter (register_known known_Gs2 em.Esym.source2) ecs;
+      log_i (lazy (fsprintf "relevant map: %a" EmapSym.pp em));
+      L.iter (register_known known_Gs1 em.EmapSym.source1) ecs;
+      L.iter (register_known known_Gs2 em.EmapSym.source2) ecs;
       (* apply pairing to known group elements in source groups *)
       Hep.iter (fun f1 i1 ->
         Hep.iter (fun f2 i2 ->
@@ -134,11 +134,11 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
       (* known in source groups => known in target group (pair with generator) *)
       Hep.iter (fun f1 i1 ->
         let ie1 = expr_of_inverter i1 in
-        Hep.add known_Gt f1 (I (mk_EMap em ie1 (mk_GGen em.Esym.source2))))
+        Hep.add known_Gt f1 (I (mk_EMap em ie1 (mk_GGen em.EmapSym.source2))))
         known_Gs1;
       Hep.iter (fun f2 i2 ->
         let ie2 = expr_of_inverter i2 in
-        Hep.add known_Gt f2 (I (mk_EMap em (mk_GGen em.Esym.source1) ie2)))
+        Hep.add known_Gt f2 (I (mk_EMap em (mk_GGen em.EmapSym.source1) ie2)))
         known_Gs2
     end
   end;
@@ -150,7 +150,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
   (* simplify secret by subtracting known (in Fq) terms *)
   let (f,i_trans) = group_to_poly_simp false e gt known_Fq in
   log_i (lazy (fsprintf "searching for exponent: %a @\n  with %a"
-                 EP.pp f pp_inverter (i_trans (I (mk_V (Vsym.mk "[_]" e.e_ty))))));
+                 EP.pp f pp_inverter (i_trans (I (mk_V (VarSym.mk "[_]" e.e_ty))))));
 
   (* search for inverter by performing division with remainder in different orders *)
   let open Nondet in
@@ -161,7 +161,7 @@ let solve_group (emaps : Esym.t list) (ecs : (expr * inverter) list) e =
     in
     let rec go f i_trans unused =
       log_i (lazy (fsprintf ">>> go\n  f = %a\n  i_trans = %a\n  unused = (%a)"
-                     EP.pp f pp_inverter (i_trans (I (mk_V (Vsym.mk "<_>" e.e_ty))))
+                     EP.pp f pp_inverter (i_trans (I (mk_V (VarSym.mk "<_>" e.e_ty))))
                      (pp_list "," EP.pp) unused));
 
       if EP.is_const f then (

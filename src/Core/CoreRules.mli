@@ -118,7 +118,7 @@ val ct_except_oracle : ocmd_pos -> expr list -> core_tactic
     and (2) [ G'_{1..i}; vs <- A() : t /\ not tnew]
     where [G'_{1..i}] is the prefix of [G'] including [i] and [t] is
     the original test in the oracle. *)
-val ct_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> core_tactic
+val ct_add_test : ocmd_pos -> expr -> AdvSym.t -> vs list -> core_tactic
 
 val ct_hybrid : gcmd_pos -> int -> lcmd list -> expr -> core_tactic
 
@@ -151,6 +151,6 @@ val ct_assm_comp : assm_comp -> (int * int) list  -> renaming -> core_tactic
     [guard pos (Some t)] add a test at postion  [pos]. *)
 val ct_guard : ocmd_pos -> expr option -> core_tactic
 
-val ct_guess : Asym.t -> vs list ->  core_tactic
+val ct_guess : AdvSym.t -> vs list ->  core_tactic
 
-val ct_find : vs list * expr -> expr -> Asym.t -> vs list ->  core_tactic
+val ct_find : vs list * expr -> expr -> AdvSym.t -> vs list ->  core_tactic

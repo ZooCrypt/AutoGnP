@@ -31,7 +31,7 @@ let create_var (vmap : GU.vmap) ts (qual : string qual) s ty =
     tacerror "create_var: variable %s already defined" s
   ) else (
     let q = map_qual (fun s -> Mstring.find s ts.ts_odecls) qual in
-    let v = Vsym.mk_qual s q ty in
+    let v = VarSym.mk_qual s q ty in
     Ht.add vmap (qual,s) v;
     v
   )
@@ -41,8 +41,8 @@ let get_oname_from_opos (se : G.sec_exp) (opos : G.ocmd_pos) : string =
   match G.get_se_ctxt se i with
   | G.GCall(_,_,_,os), _ ->
      let (_,od,_) = split_n j os in
-     let (os,_,_) = od in
-     Id.name os.Osym.id
+     let (os,_,_,_) = od in
+     Id.name os.OrclSym.id
   | _ -> tacerror "Error, no Oracle definition at line %i" (i+1)
 
 (* ** Conversion functions for parser-types
@@ -55,20 +55,26 @@ let ty_of_parse_ty ts pty =
     | Fq        -> T.mk_Fq
     | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
+    | TySym(s)  ->
+       (try
+          let ts = Mstring.find s ts.ts_tydecls in
+          T.mk_TySym(ts)
+        with Not_found -> tacerror "Undefined type %s" s)
+
     | KeyPair s ->
        (try
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyPair f.Psym.id
+           T.mk_KeyPair f.PermSym.id
          with Not_found -> tacerror "Undefined permutation %s" s)
     | PKey s ->
        (try
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyElem T.KeyElem.PKey f.Psym.id
+           T.mk_KeyElem T.KeyElem.PKey f.PermSym.id
          with Not_found -> tacerror "Undefined permutation %s" s)
     | SKey s ->
        (try
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyElem T.KeyElem.SKey f.Psym.id
+           T.mk_KeyElem T.KeyElem.SKey f.PermSym.id
          with Not_found -> tacerror "Undefined permutation %s" s)
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
@@ -87,7 +93,7 @@ let bind_of_parse_bind (vmap : GU.vmap) ts lH =
          with Not_found ->
            fail_parse (F.sprintf "undefined random oracle %s" h)
        in
-       let x = create_var vmap ts Unqual s h.ROsym.dom in
+       let x = create_var vmap ts Unqual s h.RoSym.dom in
        (x, h))
     lH
 
@@ -142,10 +148,15 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | ProjPermKey(ke,kp) -> E.mk_ProjKeyElem ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SLookUp(s,es) ->
-       let h = try Mstring.find s ts.ts_rodecls with
-                 Not_found -> fail_parse (F.sprintf "Undefined random oracle %s" s) in
+       let m = try Mstring.find s ts.ts_fmapdecls with
+                 Not_found -> fail_parse (F.sprintf "Undefined finite map %s" s) in
        let es = mk_Tuple (L.map go es) in
-       E.mk_RoLookup h es
+       E.mk_MapLookup m es
+    | SIndom(s,e) ->
+       let m = try Mstring.find s ts.ts_fmapdecls with
+                 Not_found -> fail_parse (F.sprintf "Undefined finite map %s" s) in
+       let e = go e in
+       E.mk_MapIndom m e
     | SApp(s,es) when Mstring.mem (s ^ "_inv") ts.ts_permdecls ->
        begin
          let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
@@ -168,8 +179,8 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       let es = mk_Tuple (L.map go es) in
       E.mk_RoCall h es
 
-    | SApp(s,es) when Mstring.mem s ts.ts_fundecls ->
-      let h = Mstring.find s ts.ts_fundecls in
+    | SApp(s,es) when Mstring.mem s ts.ts_constdecls ->
+      let h = Mstring.find s ts.ts_constdecls in
       let es = mk_Tuple (L.map go es) in
       E.mk_FunCall h es
 
@@ -180,22 +191,22 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       fail_parse (F.sprintf "bilinear map %s expects two arguments" s)
     | SApp(s,_) ->
       fail_parse (F.sprintf "undefined function symbol %s" s)
-    | CFNat(i)		-> E.mk_FNat i
-    | CB b		-> E.mk_B b
-    | Plus(e1,e2)	-> E.mk_FPlus [go e1; go e2]
-    | Minus(e1,e2)	-> E.mk_FMinus (go e1) (go e2)
-    | Land(e1,e2)	-> E.mk_Land [go e1; go e2]
-    | Xor(e1,e2)	-> E.mk_Xor [go e1; go e2]
-    | Eq(e1,e2)         -> E.mk_Eq (go e1) (go e2)
-    | Ifte(e1,e2,e3)	-> E.mk_Ifte (go e1) (go e2) (go e3)
-    | Opp(e)		-> E.mk_FOpp (go e)
-    | Inv(e)		-> E.mk_FInv (go e)
-    | Not(e)		-> E.mk_Not (go e)
-    | Log(e)		-> E.mk_GLog (go e)
-    | Exp(e1,e2)	-> E.mk_GExp (go e1) (go e2)
-    | CGen(s)		-> E.mk_GGen (create_groupvar ts s)
-    | CZ(s)		-> E.mk_Z (create_lenvar ts s)
-    | Quant(q,bd,pe)   ->
+    | CFNat(i)       -> E.mk_FNat i
+    | CB b           -> E.mk_B b
+    | Plus(e1,e2)    -> E.mk_FPlus [go e1; go e2]
+    | Minus(e1,e2)   -> E.mk_FMinus (go e1) (go e2)
+    | Land(e1,e2)    -> E.mk_Land [go e1; go e2]
+    | Xor(e1,e2)     -> E.mk_Xor [go e1; go e2]
+    | Eq(e1,e2)      -> E.mk_Eq (go e1) (go e2)
+    | Ifte(e1,e2,e3) -> E.mk_Ifte (go e1) (go e2) (go e3)
+    | Opp(e)         -> E.mk_FOpp (go e)
+    | Inv(e)         -> E.mk_FInv (go e)
+    | Not(e)         -> E.mk_Not (go e)
+    | Log(e)         -> E.mk_GLog (go e)
+    | Exp(e1,e2)     -> E.mk_GExp (go e1) (go e2)
+    | CGen(s)        -> E.mk_GGen (create_groupvar ts s)
+    | CZ(s)          -> E.mk_Z (create_lenvar ts s)
+    | Quant(q,bd,pe) ->
       let b =
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
       in
@@ -228,6 +239,14 @@ let lcmd_of_parse_lcmd (vmap : GU.vmap) ts ~oname lcmd =
     let e = expr_of_parse_expr vmap ts qual e in
     let v = create_var vmap ts qual s e.E.e_ty in
     G.LLet(v,e)
+  | LMSet(m,es,e) ->
+    let m =
+      try Mstring.find m ts.ts_fmapdecls
+      with Not_found -> fail_parse (F.sprintf "finite map %s" m)
+    in
+    let ek = mk_Tuple (L.map (expr_of_parse_expr vmap ts qual) es) in
+    let e  = expr_of_parse_expr vmap ts qual e  in
+    G.LMSet(m,ek,e)
   | LSamp(s,t,es) ->
     let t = ty_of_parse_ty ts t in
     let es = L.map (expr_of_parse_expr vmap ts qual) es in
@@ -255,13 +274,18 @@ let odec_of_parse_odec vmap_g ts ~oname od =
         G.oh_eq      = obody_of_parse_obody vmap_g ts ~oname ob2;
         G.oh_greater = obody_of_parse_obody vmap_l ts ~oname ob3; }
 
-let odef_of_parse_odef vmap_g ts (oname, vs, odec) =
+let odef_of_parse_odef vmap_g ts (oname, vs, odec, oc) =
+  let counter = match oc with
+    | None              -> G.NoCounter
+    | Some `Once        -> G.Once
+    | Some (`Counter i) -> G.CountVar i
+  in
   let vs,osym = match init_odef_params vmap_g ts oname vs with
     | vs, E.Olist.Olist os -> vs, os
     | _                    -> fail_parse "fixme"
   in
   let od = odec_of_parse_odec vmap_g ts ~oname odec in
-  osym, vs, od
+  osym, vs, od, counter
 
 let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
   match gc with
@@ -269,6 +293,14 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
     let e = expr_of_parse_expr vmap ts Unqual e in
     let v = create_var vmap ts Unqual s e.E.e_ty in
     G.GLet(v,e)
+  | GMSet(m,es,e) ->
+    let m =
+      try Mstring.find m ts.ts_fmapdecls
+      with Not_found -> fail_parse (F.sprintf "finite map %s" m)
+    in
+    let ek = mk_Tuple (L.map (expr_of_parse_expr vmap ts Unqual) es) in
+    let e  = expr_of_parse_expr vmap ts Unqual e in
+    G.GMSet(m,ek,e)
   | GAssert(e) ->
     let e = expr_of_parse_expr vmap ts Unqual e in
     G.GAssert(e)
@@ -283,15 +315,15 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       with Not_found -> fail_parse "adversary name not declared"
     in
     let e = expr_of_parse_expr vmap ts Unqual e in
-    if not (Type.equal_ty e.E.e_ty asym.Asym.dom) then
+    if not (Type.equal_ty e.E.e_ty asym.AdvSym.dom) then
       fail_parse "adversary argument has wrong type";
     let os = L.map (odef_of_parse_odef vmap ts) os in
-    let cty = asym.Asym.codom in
+    let cty = asym.AdvSym.codom in
     begin match cty.Type.ty_node, vs with
     | Type.Prod([]), [] ->
       G.GCall([], asym, e, os)
     | _, [v] ->
-      let v = create_var vmap ts Unqual v asym.Asym.codom in
+      let v = create_var vmap ts Unqual v asym.AdvSym.codom in
       G.GCall([v], asym, e, os)
     | Type.Prod(tys), vs ->
       if L.length tys <> L.length vs then
@@ -301,7 +333,7 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       let vts = L.combine vs tys in
       let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
-    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.KeyElem _|Type.KeyPair _)
+    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.KeyElem _|Type.KeyPair _|Type.TySym _)
       , ([] | _ :: _ :: _) ->
       tacerror
         "Parser: wrong argument for adversary return value, expected one variable (type %a), got %i"

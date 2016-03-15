@@ -67,7 +67,7 @@ type assm_dec = {
   ad_inf        : bool;         (* information-theoretic assumption *)
   ad_prefix1    : gdef;         (* prefix for left *)
   ad_prefix2    : gdef;         (* prefix for right *)
-  ad_acalls     : (Asym.t * Vsym.t list * (expr * expr)) list;
+  ad_acalls     : (AdvSym.t * VarSym.t list * (expr * expr)) list;
                                 (* adversary calls (same asym and
                                     returned variables and argument
                                     expression on left and right *)
@@ -76,14 +76,14 @@ type assm_dec = {
 
 let pp_acall_dec fmt (asym,vs1,(args1,args2)) =
   F.fprintf fmt "(%a) <- %a(%a | %a)@\n"
-    (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_expr args1 pp_expr args2
+    (pp_list "," VarSym.pp) vs1 AdvSym.pp asym pp_expr args1 pp_expr args2
 
 let pp_assm_dec fmt ad =
   F.fprintf fmt "assumption %s:@\n" ad.ad_name;
   F.fprintf fmt "prefix left:@\n%a@\n"  (pp_gdef ~nonum:false) ad.ad_prefix1;
   F.fprintf fmt "prefix right:@\n%a@\n" (pp_gdef ~nonum:false) ad.ad_prefix2;
   F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_dec) ad.ad_acalls;
-  F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ad.ad_symvars
+  F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," VarSym.pp)) ad.ad_symvars
 
 let mk_assm_dec name inf gd1 gd2 symvars =
   ignore (Wf.wf_gdef Wf.NoCheckDivZero gd1);
@@ -95,15 +95,15 @@ let mk_assm_dec name inf gd1 gd2 symvars =
     | [], [] ->
       L.rev acc
     | GCall(vres1,asym1,arg1,od1)::acalls1, GCall(vres2,asym2,arg2,od2)::acalls2 ->
-      if not (Asym.equal asym1 asym2) then
+      if not (AdvSym.equal asym1 asym2) then
         tacerror
           "adversary calls in decisional assumption must match up: %a vs %a"
-          Asym.pp asym1 Asym.pp asym2;
+          AdvSym.pp asym1 AdvSym.pp asym2;
       if not (od1 = [] && od2 = []) then
         tacerror "decisional assumption with oracles not supported";
-      if not (equal_list Vsym.equal vres1 vres2) then
+      if not (equal_list VarSym.equal vres1 vres2) then
         tacerror "decisional assumption return variables must match up: %a vs %a"
-          (pp_list "," Vsym.pp) vres1 (pp_list "," Vsym.pp) vres2;
+          (pp_list "," VarSym.pp) vres1 (pp_list "," VarSym.pp) vres2;
       go ((asym1,vres1,(arg1,arg2))::acc) acalls1 acalls2
     | _, _ ->
       tacerror "invalid decisional assumption"
@@ -120,12 +120,12 @@ let mk_assm_dec name inf gd1 gd2 symvars =
   
 let needed_vars_dec dir assm =
   let toSym se =
-    Se.fold (fun e s -> Vsym.S.add (destr_V e) s) se Vsym.S.empty
+    Se.fold (fun e s -> VarSym.S.add (destr_V e) s) se VarSym.S.empty
   in
   let w1 = toSym(write_gcmds assm.ad_prefix1) in
   let w2 = toSym(write_gcmds assm.ad_prefix2) in
-  let diff = if dir = LeftToRight then Vsym.S.diff w2 w1 else Vsym.S.diff w1 w2 in
-  Vsym.S.elements diff
+  let diff = if dir = LeftToRight then VarSym.S.diff w2 w1 else VarSym.S.diff w1 w2 in
+  VarSym.S.elements diff
 
 let private_vars_dec assm =
   L.fold_left
@@ -135,7 +135,7 @@ let private_vars_dec assm =
     (assm.ad_prefix1@assm.ad_prefix2)
     
 let inst_dec ren assm =
-  let ren_v vs = try Vsym.M.find vs ren with Not_found -> vs in
+  let ren_v vs = try VarSym.M.find vs ren with Not_found -> vs in
   let ren_acall (asym,vres,(e1,e2)) =
     (asym,L.map ren_v vres,(Game.subst_v_expr ren_v e1,Game.subst_v_expr ren_v e2))
   in
@@ -163,20 +163,20 @@ type assm_comp = {
   ac_type       : assm_type;
   ac_prefix     : gdef;         (* prefix of assumption *)
   ac_event      : ev;           (* event expression *)
-  ac_acalls     : (Asym.t * Vsym.t list * expr) list;
+  ac_acalls     : (AdvSym.t * VarSym.t list * expr) list;
    (* adversary calls: asym, returned variables, and argument *)
   ac_symvars    : vs list list; (* symmetric in given variables *)
 }
 
 let pp_acall_comp fmt (asym,vs1,args1) =
   F.fprintf fmt "(%a) <- %a(%a)@\n"
-    (pp_list "," Vsym.pp) vs1 Asym.pp asym pp_expr args1
+    (pp_list "," VarSym.pp) vs1 AdvSym.pp asym pp_expr args1
 
 let pp_assm_comp fmt ac =
   F.fprintf fmt "assumption %s (%a):@\n" ac.ac_name pp_atype ac.ac_type;
   F.fprintf fmt "prefix left:@\n%a@\n"  (pp_gdef ~nonum:false) ac.ac_prefix;
   F.fprintf fmt "adversary calls:@\n%a@\n" (pp_list "@\n" pp_acall_comp) ac.ac_acalls;
-  F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," Vsym.pp)) ac.ac_symvars
+  F.fprintf fmt "symvars: %a@\n" (pp_list "; " (pp_list "," VarSym.pp)) ac.ac_symvars
 
 let mk_assm_comp name inf atype gd ev sym_vars =
   ignore (Wf.wf_se Wf.NoCheckDivZero { se_gdef = gd; se_ev = ev});
@@ -213,7 +213,7 @@ let private_vars_comp assm =
     assm.ac_prefix
 
 let inst_comp ren assm =
-  let ren_v (x:Vsym.t) = try Vsym.M.find x ren with Not_found -> x in
+  let ren_v (x:VarSym.t) = try VarSym.M.find x ren with Not_found -> x in
   let ren_acall (asym,vres,e) = (asym, L.map ren_v vres, subst_v_expr ren_v e) in
   let subst_g = Game.subst_v_gdef ren_v in
   { assm with

@@ -51,12 +51,14 @@ let iter_ctx_obody_exp argtype gpos o_idx nz ?iexc:(iexc=false) f o ootype (ms,e
   let nonZero = ref nz in
   let isZero  = ref [] in
   let go _lcmd_idx lcmd =
-    let ctx = { (empty_iter_ctx (InOrcl((gpos,o_idx,!tests,ootype),argtype,o.Osym.dom)))
+    let ctx = { (empty_iter_ctx (InOrcl((gpos,o_idx,!tests,ootype),argtype,o.OrclSym.dom)))
                   with ic_nonZero = !nonZero; ic_isZero = !isZero }
     in
     match lcmd with
     | LLet(_,e) ->
       f ctx e
+    | LMSet(_,ek,e) ->
+      f ctx ek; f ctx e
     | LBind(_) ->
       ()
     | LSamp(v,(_,es)) ->
@@ -71,7 +73,7 @@ let iter_ctx_obody_exp argtype gpos o_idx nz ?iexc:(iexc=false) f o ootype (ms,e
       nonZero := (cat_Some (L.map destr_Eq_norm [e])) @ !nonZero
   in
   L.iteri go ms;
-  let ctx = { ic_pos = InOrclReturn((gpos,o_idx,!tests,ootype),argtype,o.Osym.dom);
+  let ctx = { ic_pos = InOrclReturn((gpos,o_idx,!tests,ootype),argtype,o.OrclSym.dom);
               ic_nonZero = !nonZero; ic_isZero = !isZero }
   in
   f ctx e
@@ -84,7 +86,7 @@ let iter_ctx_odecl_exp argtype gpos o_idx nz ?iexc:(iexc=false) f os od =
     iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Oishyb OHeq) oh.oh_eq;
     iter_ctx_obody_exp argtype gpos o_idx nz ~iexc f os (Oishyb OHgreater) oh.oh_greater
 
-let iter_ctx_oh_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (os,_vs,od) =
+let iter_ctx_oh_exp argtype gpos o_idx nz ?iexc:(iexc=false) f (os,_vs,od,_c) =
   iter_ctx_odecl_exp argtype gpos o_idx nz ~iexc f os od
 
 let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
@@ -94,6 +96,8 @@ let iter_ctx_gdef_exp ?iexc:(iexc=false) f gdef =
     match gcmd with
     | GLet(_,e) ->
       f ctx e
+    | GMSet(_,ek,e) ->
+      f ctx ek; f ctx e
     | GAssert(e) ->
       f ctx e
     | GCall(_,_,e,ods) ->
@@ -136,7 +140,7 @@ let iter_ctx_se_exp ?iexc:(iexc=false) f se =
 (* ** Mappings from strings to variables
  * ----------------------------------------------------------------------- *)
 
-type vmap = (string qual * string,Vsym.t) Hashtbl.t
+type vmap = (string qual * string,VarSym.t) Hashtbl.t
 
 (** Given two variable maps [vm_1] and [vm_2], return a new map [vm] and
     a variable renaming [sigma] such that:
@@ -144,22 +148,22 @@ type vmap = (string qual * string,Vsym.t) Hashtbl.t
     - for all [s in dom(vm_2) \ dom(vm_1)], [vm(s) = vm_2(s)]
     - for all [s in dom(vm_2) \cap dom(vm_1)], [vm(s) = sigma(vm_2(s))] *)
 let merge_vmap vm1 vm2 =
-  let sigma = Vsym.H.create 134 in
+  let sigma = VarSym.H.create 134 in
   let vm  = Hashtbl.copy vm1 in
   Hashtbl.iter
     (fun s vs ->
       if Hashtbl.mem vm1 s
-      then Vsym.H.add sigma vs (Hashtbl.find vm1 s)
+      then VarSym.H.add sigma vs (Hashtbl.find vm1 s)
       else Hashtbl.add vm s vs)
     vm2;
-  vm, (fun vs -> try Vsym.H.find sigma vs with Not_found -> vs)
+  vm, (fun vs -> try VarSym.H.find sigma vs with Not_found -> vs)
 
 let vmap_of_vss vss =
   let vm = Hashtbl.create 134 in
-  Vsym.S.iter
+  VarSym.S.iter
     (fun vs ->
        Hashtbl.add vm
-         (map_qual (fun os -> Id.name os.Osym.id) vs.Vsym.qual, Vsym.to_string vs)
+         (map_qual (fun os -> Id.name os.OrclSym.id) vs.VarSym.qual, VarSym.to_string vs)
          vs)
     vss;
   vm
@@ -170,7 +174,7 @@ let vmap_of_ves ves =
     (fun v ->
       let vs = destr_V v in
       Hashtbl.add vm
-        (map_qual (fun os -> Id.name os.Osym.id) vs.Vsym.qual, Vsym.to_string vs)
+        (map_qual (fun os -> Id.name os.OrclSym.id) vs.VarSym.qual, VarSym.to_string vs)
         vs)
     ves;
   vm
@@ -181,7 +185,7 @@ let vmap_of_se se =
   let rec vmap_aux s0 ev =
     if is_Quant ev then
       let (_,(vs,_),ev) = destr_Quant ev in
-      List.fold_left (fun s v -> Vsym.S.add v s) (vmap_aux s0 ev) vs
+      List.fold_left (fun s v -> VarSym.S.add v s) (vmap_aux s0 ev) vs
     else
       s0
   in
@@ -189,7 +193,7 @@ let vmap_of_se se =
 
 
 let ves_to_vss ves =
-  Se.fold (fun e vss -> Vsym.S.add (destr_V e) vss) ves Vsym.S.empty
+  Se.fold (fun e vss -> VarSym.S.add (destr_V e) vss) ves VarSym.S.empty
 
 let vmap_in_orcl se op =
   let (i,_,_,_) = op in
@@ -199,7 +203,7 @@ let vmap_in_orcl se op =
   in
   let _,seoc = get_se_octxt_len se op 0 in
   vmap_of_vss
-    (Vsym.S.union
-       (Vsym.S.union (vars_global_gdef gdef_before)
+    (VarSym.S.union
+       (VarSym.S.union (vars_global_gdef gdef_before)
           (ves_to_vss (write_lcmds seoc.seoc_cleft)))
        (set_of_list seoc.seoc_oargs))

@@ -49,7 +49,7 @@ val lets :  gcmd list -> (int * (vs * expr)) list
 
 type dir = ToFront | ToEnd
 
-val vars_dexc : Vsym.t -> Expr.expr list -> Expr.Se.t
+val vars_dexc : VarSym.t -> Expr.expr list -> Expr.Se.t
 
 val parallel_moves : (int * int) list -> (int * int) list
 

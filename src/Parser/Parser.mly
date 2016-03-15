@@ -20,7 +20,7 @@
 %token <string> STRING
 %token <int> NAT
 %token UNDERSCORE DOT EXCL SHARP BACKTICK BACKSLASH SLASH
-%token COLON QUESTION
+%token COLON QUESTION COLONEQ
 %token LPAR RPAR LBRACK RBRACK LCBRACE RCBRACE
 
 /*----------------------------------------------------------------------
@@ -60,7 +60,9 @@
 
 %token IN NOTIN
 
-%token COMMA
+%token COMMA 
+
+%token <string> MGET_ID
 
 %token <string> GEN
 %token <string> ZBS
@@ -70,18 +72,21 @@
 
 %token LEFTARROW LET RETURN SAMP SEMICOLON WITH ASSERT GUARD
 %token <string> LIST
+%token COUNTER ONCE
 (* %token <string> LOOKUP *)
 
 /*----------------------------------------------------------------------
 (* ** Tokens for theories *) */
 
-%token TO
-%token ADVERSARY ORACLE OPERATOR PERMUTATION
+%token TO IN_DOM INCLUDE
+%token ADVERSARY ORACLE OPERATOR PERMUTATION TYPE
 %token ASSUMPTION
-%token RANDOM_ORCL BILINEAR_MAP
+%token RANDOM_ORCL RANDOM_FUN FINMAP
+%token BILINEAR_MAP
 %token SUCC ADV
 %token BOUNDDIST BOUNDSUCC BOUNDADV
 %token PPT INFTHEO
+%token BOUND FOR GAME
 
 /*----------------------------------------------------------------------
 (* ** Tokens for commands *) */
@@ -161,6 +166,12 @@
 %public paren_list1(S,X):
 | l=delimited(LPAR,separated_nonempty_list(S,X),RPAR) {l}
 
+%public bracket_list0(S,X):
+| l=delimited(LBRACK,separated_list(S,X),RBRACK) {l}
+
+%public bracket_list1(S,X):
+| l=delimited(LBRACK,separated_nonempty_list(S,X),RBRACK) {l}
+
 /*======================================================================
 (* * Types *) */
 
@@ -173,6 +184,7 @@ typ :
 | i=TG                           { G(i) }
 | TFQ                            { Fq }
 | LPAR l=seplist0(STAR,typ) RPAR { mk_Prod l }
+| i=ID                           { TySym(i) }
 | t=typ CARET n=NAT              { Prod(Util.replicate n t) }
 
 /*======================================================================
@@ -185,6 +197,7 @@ expr :
 | EXISTS l=seplist1(COMMA,binding1) COLON e1=expr1 { Quant(Expr.Exists,l,e1) }
 | FORALL l=seplist1(COMMA,binding1) COLON e1=expr1 { Quant(Expr.All,l,e1) }
 | e=expr1                                          { e }
+
 (* | e1=expr1 IN QUERIES LPAR oname=ID RPAR    { InLog(e1,oname) }  *)
 
 expr1 :
@@ -209,6 +222,7 @@ expr5:
 | e1=expr6 CARET e2=expr6 { Exp(e1, e2) }
 | e=expr6                 { e }
 
+(* FIXME: check how unary/binary minus handled in Haskell/OCaml *)
 expr6 :
 | s=ID                               { V(Unqual,s) }
 | s1=ID BACKTICK s2=ID               { V(Qual s1, s2) }
@@ -217,16 +231,16 @@ expr6 :
 | i=ZBS                              { CZ(i) }
 | TRUE                               { CB(true) }
 | FALSE                              { CB(false) }
-| s=ID l=paren_list0(COMMA,expr)     { SApp(s,l) }
-| MINUS e1=expr6                     { Opp(e1) } (* FIXME: check how unary/binary minus handled in Haskell/OCaml *)
+| s=ID l=paren_list1(COMMA,expr)     { SApp(s,l) }
+| MINUS e1=expr6                     { Opp(e1) }
 | NOT e=expr6                        { Not(e) }
 | LOG LPAR e1=expr RPAR              { Log(e1) }
 | l=paren_list0(COMMA,expr)          { mk_Tuple l }
 | GETPK LPAR e=expr RPAR             { ProjPermKey(Type.KeyElem.PKey,e) }
 | GETSK LPAR e=expr RPAR             { ProjPermKey(Type.KeyElem.SKey,e) }
 | e1=expr6 SHARP i=NAT               { Proj(i,e1) }
-(* | s=LOOKUP l=paren_list0(COMMA,expr) { SLookUp(s,l) } *)
-
+| IN_DOM LPAR e=expr COMMA i=ID RPAR { SIndom(i,e) }
+| i=MGET_ID l=seplist1(COMMA,expr) RBRACK          { SLookUp(i,l) }
 
 /*======================================================================
 (* * Oracle definitions *) */
@@ -236,11 +250,13 @@ except_exprs :
 | BACKSLASH         es=seplist1(COMMA,expr)         { es }
 
 lcmd :
-| LET i=ID EQUAL e=expr                         { [ LLet(i, e) ] }
-| is=seplist0(COMMA,ID) LEFTARROW hsym=LIST     { [ LBind(is, hsym) ] }
+| LET i=ID EQUAL e=expr                             { [ LLet(i,e) ] }
+| is=seplist0(COMMA,ID) LEFTARROW hsym=LIST         { [ LBind(is,hsym) ] }
 | is=seplist1(COMMA,ID) SAMP t=typ
-    es=loption(except_exprs)                    { L.map (fun i -> LSamp(i, t, es)) is }
-| GUARD LPAR e=expr RPAR                        { [ LGuard(e) ] }
+    es=loption(except_exprs)                        { L.map (fun i -> LSamp(i,t,es)) is }
+| GUARD LPAR e=expr RPAR                            { [ LGuard(e) ] }
+| i=MGET_ID l=seplist1(COMMA,expr) RBRACK
+    LEFTARROW e=expr                                { [ LMSet(i,l,e) ] }
 
 obody :
 | LCBRACE cmds=termlist0(SEMICOLON,lcmd)
@@ -250,8 +266,12 @@ odecl :
 | lc=obody                                    { Odef lc}
 | LBRACK lc1=obody lc2=obody lc3=obody RBRACK { Ohybrid(lc1,lc2,lc3) }
 
+counter :
+| LBRACK COUNTER EQUAL i=ID RBRACK { `Counter i }
+| LBRACK ONCE RBRACK               { `Once }
+
 odef :
-| oname=ID args=paren_list0(COMMA,ID) EQUAL od=odecl { (oname, args, od) }
+| oname=ID args=paren_list0(COMMA,ID) c=counter? EQUAL od=odecl { (oname, args, od, c) }
 
 /*======================================================================
 (* * Games *) */
@@ -268,9 +288,10 @@ var_pat :
 
 gcmd :
 | LET i=ID EQUAL e=expr                                      { [ GLet(i,e) ] }
-| is=var_pat LEFTARROW asym=ID e=arglist0 ods=loption(odefs) { [ GCall(is, asym, e, ods) ] }
+| i=MGET_ID l=seplist1(COMMA,expr) RBRACK LEFTARROW e=expr   { [ GMSet(i,l,e) ] }
+| is=var_pat LEFTARROW asym=ID e=arglist0 ods=loption(odefs) { [ GCall(is,asym,e,ods) ] }
 | ASSERT LPAR e=expr RPAR                                    { [ GAssert(e) ] }
-| ids=seplist1(COMMA,ID) SAMP t=typ es=loption(except_exprs) { L.map (fun i -> GSamp(i, t, es)) ids }
+| ids=seplist1(COMMA,ID) SAMP t=typ es=loption(except_exprs) { L.map (fun i -> GSamp(i,t,es)) ids }
 
 gdef :
 | cs=termlist0(SEMICOLON,gcmd) { L.concat cs }
@@ -343,10 +364,14 @@ atype:
 | ADV  { A_Adv }
 
 decl :
-| ADVERSARY i=ID  COLON t1=typ TO t2=typ         { ADecl(i, t1, t2) }
-| ORACLE    i=ID  COLON t1=typ TO t2=typ         { ODecl(i, t1, t2) }
-| RANDOM_ORCL i=ID COLON t1=typ TO t2=typ        { RODecl(i, t1, t2) }
-| PERMUTATION i=ID COLON t=typ                   { PermDecl(i, t) }
+| ADVERSARY i=ID  COLON t1=typ TO t2=typ         { ADecl(i, t1, t2)   }
+| ORACLE    i=ID  COLON t1=typ TO t2=typ         { ODecl(i, t1, t2)   }
+| TYPE      i=ID                                 { TyDecl(i)          }
+| BOUND b=ID FOR i=ID                            { BoundDecl(b,i)     }
+| RANDOM_ORCL i=ID COLON t1=typ TO t2=typ        { RODecl(i, t1, t2)  }
+| RANDOM_FUN  i=ID COLON t1=typ TO t2=typ        { RFDecl(i, t1, t2)  }
+| FINMAP      i=ID COLON t1=typ TO t2=typ        { FMDecl(i, t1, t2)  }
+| PERMUTATION i=ID COLON t=typ                   { PermDecl(i, t)     }
 | OPERATOR i=ID COLON t1=typ TO t2=typ           { FunDecl(i, t1, t2) }
 | BILINEAR_MAP i=ID COLON
     g1=TG STAR g2=TG TO g3=TG                    { EMDecl(i, g1, g2, g3) }
@@ -363,6 +388,8 @@ decl :
 | BOUNDADV LBRACK g=gdef RBRACK e=bind_event     { JudgAdv(g, e) }
 | BOUNDDIST LBRACK g1=gdef RBRACK e1=bind_event
     LBRACK g2=gdef RBRACK e2=bind_event          { JudgDist(g1, e1, g2, e2) }
+| GAME i=ID COLONEQ LBRACK g = gdef RBRACK       { GameDef(i,g) }
+| INCLUDE i=ID                                   { Include(i) }
 
 /*----------------------------------------------------------------------
 (* ** proof commands *) */

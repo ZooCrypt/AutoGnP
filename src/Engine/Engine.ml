@@ -69,9 +69,9 @@ let epos_of_offset ju i =
 
 let find_gvar ju s =
   let test = function
-    | GLet(vs,_) | GSamp(vs,_) -> s = Id.name vs.Vsym.id
-    | GAssert _ -> false
-    | GCall(vss,_,_,_) -> L.exists (fun vs -> s = Id.name vs.Vsym.id) vss
+    | GLet(vs,_) | GSamp(vs,_) -> s = Id.name vs.VarSym.id
+    | GAssert _ | GMSet _ -> false
+    | GCall(vss,_,_,_) -> L.exists (fun vs -> s = Id.name vs.VarSym.id) vss
   in
   try find_at test ju.ju_se.se_gdef
   with Not_found -> tacerror "variable not found in game %s" s
@@ -141,8 +141,8 @@ let handle_tactic ts tac =
       tacerror "Wf: Cannot prove that %a nonzero" (pp_list "," pp_expr) es
     | Wf.Wf_var_undef(v,e,def_vars) ->
       tacerror "Wf: Var %a undefined in %a, not in %a"
-        Vsym.pp v pp_expr e
-        (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)
+        VarSym.pp v pp_expr e
+        (pp_list "," VarSym.pp) (VarSym.S.elements def_vars)
   in
   let rec interp_tac tac ju =
     let vmap_g = GameUtils.vmap_of_globals ju.ju_se.se_gdef in
@@ -155,7 +155,7 @@ let handle_tactic ts tac =
       let vmap_se = GameUtils.vmap_of_se ju.ju_se in
       PU.expr_of_parse_expr vmap_se ts Unqual se in
 
-    let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); Vsym.mk sv ty in
+    let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); VarSym.mk sv ty in
     match tac with
     | PT.Rnorm                 -> t_norm ~fail_eq:false ju
     | PT.Rnorm_nounfold        -> t_norm_nounfold ju
@@ -192,7 +192,7 @@ let handle_tactic ts tac =
 
     | PT.Rrename(v1,v2) ->
       let v1 = Ht.find vmap_g (Unqual,v1) in
-      let v2 = mk_new_var v2 v1.Vsym.ty in
+      let v2 = mk_new_var v2 v1.VarSym.ty in
       t_rename v1 v2 ju
 
     | PT.Rcase_ev(None) ->
@@ -269,13 +269,13 @@ let handle_tactic ts tac =
         assert (ci < i);
         let op = (i,j,k,Oishyb OHeq) in
         let _, seoc =  get_se_octxt_len se op 0 in
-        let oname = Id.name seoc.seoc_osym.Osym.id in
+        let oname = Id.name seoc.seoc_osym.OrclSym.id in
         match split_n ci (L.rev seoc.seoc_sec.sec_left) with
         | cleft, GSamp(vsm,d), cright ->
           log_i (lazy (fsprintf "cleft=%a cright=%a"
                          (pp_gdef ~nonum:false) cleft (pp_gdef ~nonum:false) cright));
           let vmap = Hashtbl.create 17 in
-          let vso = PU.create_var vmap ts (Qual oname) sv vsm.Vsym.ty in
+          let vso = PU.create_var vmap ts (Qual oname) sv vsm.VarSym.ty in
           let subst e = e_replace (mk_V vsm) (mk_V vso) e in
           let seoc =
             { seoc with
@@ -327,12 +327,12 @@ let handle_tactic ts tac =
         | [] -> ju.ju_se
         | PT.Drename(v1,v2,mupto)::dcmds ->
           let v1 = Ht.find vmap (Unqual,v1) in
-          let v2 = mk_new_var v2 v1.Vsym.ty in
+          let v2 = mk_new_var v2 v1.VarSym.ty in
           let maxlen = L.length se.se_gdef in
           let mupto = O.map (fun p -> succ (get_pos p)) mupto in
           let rn_len = O.default maxlen mupto in
           let a_cmds, sec = get_se_ctxt_len se ~pos:0 ~len:rn_len in
-          let sigma v = if Vsym.equal v v1 then v2 else v in
+          let sigma v = if VarSym.equal v v1 then v2 else v in
           let a_cmds = subst_v_gdef sigma a_cmds in
           let ev = if mupto=None then subst_v_expr sigma sec.sec_ev else sec.sec_ev in
           app_diff dcmds { ju with ju_se = (set_se_ctxt a_cmds { sec with sec_ev = ev }) }
@@ -413,7 +413,7 @@ let handle_tactic ts tac =
        let vmap = vmap_of_globals ju.ju_se.se_gdef in
        (* Adding quantified variables *)
        List.iter (fun (vs,o) -> List.iter
-                      (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.Vsym.id) (Oracle.get_dom o))) vs)
+                      (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.VarSym.id) (Oracle.get_dom o))) vs)
                  (Event.binding ju.ju_se.se_ev);
        let vx = PU.create_var vmap ts Unqual svx tyx in
        let ey = PU.expr_of_parse_expr vmap ts Unqual ey in
@@ -445,7 +445,7 @@ let handle_tactic ts tac =
           let li = String.lowercase i in
           O.default (if li<>i then li else "e_"^i) mi2
         in
-        let gname = destr_G_exn v.Vsym.ty in
+        let gname = destr_G_exn v.VarSym.ty in
         let e = PT.Exp(PT.CGen (Groupvar.name gname), PT.V(Unqual,ename)) in
         PT.Rrnd(exact,Some (PT.Var i), Some (ename,Some PT.Fq,e),None,None)
       in
@@ -459,7 +459,7 @@ let handle_tactic ts tac =
       let opos = (i,j,0,Onothyb) in
       let vmap = GameUtils.vmap_in_orcl se opos in
       let _, seoc = get_se_octxt se opos in
-      let oname = Id.name seoc.seoc_osym.Osym.id in
+      let oname = Id.name seoc.seoc_osym.OrclSym.id in
       let lcmds = L.map (PU.lcmd_of_parse_lcmd vmap ts ~oname) lcmds in
       let eret = PU.expr_of_parse_expr vmap ts (Qual oname) eret in
       T.t_hybrid i j lcmds eret ju
@@ -495,13 +495,13 @@ let handle_tactic ts tac =
         | (Exists,(vs,_o),_e) -> vs
         | _ ->  tacerror "rguess: invalid binding"
       in
-      let asym = Asym.mk aname (mk_Prod []) (ty_prod_vs vs) in
+      let asym = AdvSym.mk aname (mk_Prod []) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
         tacerror "Error, 'guess' rule requires %i variable(s), but got %i"
                  (L.length vs) (L.length fvs);
       let vmap = GameUtils.vmap_of_globals ju.ju_se.se_gdef in
       let fvs =
-        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty)
+        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.VarSym.ty)
           fvs vs
       in
       T.t_guess asym fvs ju
@@ -515,13 +515,13 @@ let handle_tactic ts tac =
         | _ ->  tacerror "rfind: invalid binding"
       in
       let arg = parse_e arg in
-      let asym = Asym.mk aname (arg.e_ty) (ty_prod_vs vs) in
+      let asym = AdvSym.mk aname (arg.e_ty) (ty_prod_vs vs) in
       if not (L.length fvs = L.length vs) then
         tacerror "Error, 'find' rule requires here %i variable(s), but got %i"
           (L.length vs) (L.length fvs);
       let vmap = GameUtils.vmap_of_globals ju.ju_se.se_gdef in
       let fvs =
-        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.Vsym.ty)
+        L.map2 (fun v v' -> PU.create_var vmap ts Unqual v v'.VarSym.ty)
           fvs vs in
       (* typing of f *)
       let f =
@@ -544,16 +544,16 @@ let handle_tactic ts tac =
     let _, seoc = get_se_octxt se opos in
     let vmap = GameUtils.vmap_in_orcl se opos in
     let oasym = seoc.seoc_asym in
-    let oname = Id.name seoc.seoc_osym.Osym.id in
+    let oname = Id.name seoc.seoc_osym.OrclSym.id in
     let t = PU.expr_of_parse_expr vmap ts (Qual oname) t in
-    let oty = seoc.seoc_osym.Osym.dom in
+    let oty = seoc.seoc_osym.OrclSym.dom in
     let destr_prod ty = match ty.ty_node with
       | Prod(tys) -> tys
       | _ -> [ty]
     in
     if (Mstring.mem aname ts.ts_adecls) then
       tacerror "radd_test: adversary with same name already declared";
-    let asym = Asym.mk aname oasym.Asym.dom oty in
+    let asym = AdvSym.mk aname oasym.AdvSym.dom oty in
     let adecls = Mstring.add aname asym ts.ts_adecls in
     let tys = destr_prod oty in
     (* create variables for returned values *)
@@ -579,15 +579,16 @@ let handle_tactic ts tac =
     (try
         let frame =
           L.mapi
-            (fun i e -> (e, I (mk_V (Vsym.mk ("x"^(string_of_int i)) e.e_ty))))
+            (fun i e -> (e, I (mk_V (VarSym.mk ("x"^(string_of_int i)) e.e_ty))))
             es
         in
         let recipe = Deduc.invert ~ppt_inverter:ppt ts frame e in
-        log_i (lazy (fsprintf "Found %a@\n" pp_expr recipe))
+        let msg = fsprintf "Found %a@\n" pp_inverter recipe in
+        log_i (lazy msg);
+        (ts,lazy msg)
       with
         Not_found ->
-        tacerror "Not found@\n");
-    (ts,lazy "")
+        tacerror "Not found@\n")
 
   | PT.FieldExprs(pes) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
@@ -613,7 +614,7 @@ let handle_tactic ts tac =
       else snd (get_se_octxt_len se opos 0)
     in
     let vmap = GameUtils.vmap_in_orcl se opos in
-    let oname = Id.name seoc.seoc_osym.Osym.id in
+    let oname = Id.name seoc.seoc_osym.OrclSym.id in
     let t = O.map (PU.expr_of_parse_expr vmap ts (Qual oname)) t in
     apply (T.t_guard opos t)
 
@@ -623,7 +624,7 @@ let handle_tactic ts tac =
 (*i ----------------------------------------------------------------------- i*)
 (* \hd{Instruction handling} *)
 
-let handle_instr verbose ts instr =
+let rec handle_instr verbose ts instr =
   match instr with
 
   | PT.PermDecl(_s,_t) -> fixme "undefined" (*
@@ -635,44 +636,64 @@ let handle_instr verbose ts instr =
     (ts, fsprintf "Declared permutation %s : " s)
     *)
 
+  (* FIXME: do not ignore *)
+  | PT.BoundDecl(_b,_i) -> (ts,fsprintf "not implemented yet")
+
   | PT.FunDecl(s,t1,t2) ->
-    if Mstring.mem s ts.ts_fundecls then
+    if Mstring.mem s ts.ts_constdecls then
       tacerror "operator with same name already declared.";
     let dom, codom = (PU.ty_of_parse_ty ts t1, PU.ty_of_parse_ty ts t2) in
-    let hs = Fsym.mk s dom codom in
-    let ts_fundecls = Mstring.add s hs ts.ts_fundecls in
-    let ts = { ts with ts_fundecls = ts_fundecls } in
+    let hs = FunSym.mk s dom codom in
+    let ts_fundecls = Mstring.add s hs ts.ts_constdecls in
+    let ts = { ts with ts_constdecls = ts_fundecls } in
     (ts, fsprintf "Declared operator %s" s)
 
-  | PT.RODecl(s,t1,t2) ->
+  | PT.FMDecl(s,t1,t2) ->
+    if Mstring.mem s ts.ts_fmapdecls then
+      tacerror "finite map with same name already declared.";
+    let dom, codom = (PU.ty_of_parse_ty ts t1, PU.ty_of_parse_ty ts t2) in
+    let hs = MapSym.mk s dom codom in
+    let ts_fmapdecls = Mstring.add s hs ts.ts_fmapdecls in
+    let ts = { ts with ts_fmapdecls = ts_fmapdecls } in
+    (ts, fsprintf "Declared random oracle %s" s)
+
+  | PT.RODecl(s,t1,t2) | PT.RFDecl(s,t1,t2) ->
     if Mstring.mem s ts.ts_rodecls then
       tacerror "random oracle with same name already declared.";
     let dom, codom = (PU.ty_of_parse_ty ts t1, PU.ty_of_parse_ty ts t2) in
-    let hs = ROsym.mk s dom codom in
+    let hs = RoSym.mk s dom codom in
     let ts_rodecls = Mstring.add s hs ts.ts_rodecls in
     let ts = { ts with ts_rodecls = ts_rodecls } in
     (ts, fsprintf "Declared random oracle %s" s)
 
+  | PT.TyDecl(s) ->
+    if Mstring.mem s ts.ts_tydecls then
+      tacerror "Type with the same name already declared.";
+    let tsym = Tysym.mk s in 
+    let ts = { ts with ts_tydecls = Mstring.add s tsym ts.ts_tydecls } in
+    (ts, fsprintf "Declared type %s" s)
+
+
   | PT.EMDecl(s,g1,g2,g3) ->
     if Mstring.mem s ts.ts_emdecls then
       tacerror "Bilinear map with same name already declared.";
-    let es = Esym.mk s (create_groupvar ts g1) (create_groupvar ts g2) (create_groupvar ts g3) in
+    let es = EmapSym.mk s (create_groupvar ts g1) (create_groupvar ts g2) (create_groupvar ts g3) in
     let ts = { ts with ts_emdecls = Mstring.add s es ts.ts_emdecls } in
     (ts, "Declared bilinear map.")
 
   | PT.ODecl(s,t1,t2) ->
     if Mstring.mem s ts.ts_odecls then
       tacerror "Oracle with same name already declared.";
-    let os = Osym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
+    let os = OrclSym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
     let ts = { ts with ts_odecls = Mstring.add s os ts.ts_odecls } in
-    (ts, Util.fsprintf "Declared oracle: %a" Osym.pp_long os)
+    (ts, Util.fsprintf "Declared oracle: %a" OrclSym.pp_long os)
 
   | PT.ADecl(s,t1,t2) ->
     if Mstring.mem s ts.ts_adecls then
       tacerror "adversary with same name already declared.";
-    let asym = Asym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
+    let asym = AdvSym.mk s (PU.ty_of_parse_ty ts t1) (PU.ty_of_parse_ty ts t2) in
     let ts = { ts with ts_adecls = Mstring.add s asym ts.ts_adecls } in
-    (ts, Util.fsprintf "Declared adversary: %a" Asym.pp_long asym)
+    (ts, Util.fsprintf "Declared adversary: %a" AdvSym.pp_long asym)
 
   | PT.AssmDec(s,inf,g0,g1,symvs) ->
     let vmap1 = Ht.create 137 in
@@ -710,6 +731,11 @@ let handle_instr verbose ts instr =
       tacerror "assumption with the same name already exists";
     let ts = { ts with ts_assms_comp = Mstring.add s assm ts.ts_assms_comp } in
     (ts, "Declared computational assumption.")
+
+  | PT.GameDef(i,gd) ->
+    let vmap = Ht.create 137 in
+    let gd = PU.gdef_of_parse_gdef vmap ts gd in
+    (ts, fsprintf "Defined game: %s := @\n%a" i (pp_gdef ~nonum:false) gd)
 
   | PT.JudgAdv(gd,e) | PT.JudgSucc(gd,e)->
     let vmap = Ht.create 137 in
@@ -909,7 +935,12 @@ let handle_instr verbose ts instr =
       tacerror "Unknown debug command."
     end
 
-let handle_instrs verbose ts instrs =
+  | PT.Include(fn) ->
+      let s = input_file (fn^".zc") in
+      let pt = Parse.theory s in
+      handle_instrs true ts pt
+
+and handle_instrs verbose ts instrs =
   L.fold_left (fun (ts,s) instr ->
     let (ts',s') = handle_instr verbose ts instr in
     (ts',s^"\n"^s'))
@@ -920,9 +951,9 @@ let eval_theory s =
   let pt = Parse.theory s in
   let empty_ts = mk_ts () in
   L.fold_left
-    (fun ps i ->
-      let (ps', s) = handle_instr false ps i in
+    (fun ts i ->
+      let (ts', s) = handle_instr false ts i in
       print_endline s;
-      ps')
+      ts')
     empty_ts
     pt

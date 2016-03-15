@@ -89,13 +89,13 @@ let t_occurs is_in e oi ju =
  * ----------------------------------------------------------------------- *)
 
 let pp_samp fmt (i,(vs,d)) =
-  F.fprintf fmt "%i: %a from %a" i Vsym.pp vs (pp_distr ~qual:Unqual) d
+  F.fprintf fmt "%i: %a from %a" i VarSym.pp vs (pp_distr ~qual:Unqual) d
 
 let pp_osamp fmt ((i,j,k,otype),(vs,d)) =
-  F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k Vsym.pp vs (pp_distr ~qual:Unqual) d pp_otype otype
+  F.fprintf fmt "(%i,%i,%i,%a): %a from %a" i j k VarSym.pp vs (pp_distr ~qual:Unqual) d pp_otype otype
 
 let pp_let fmt (i,(vs,e)) =
-  F.fprintf fmt "%i: %a = %a" i Vsym.pp vs pp_expr e
+  F.fprintf fmt "%i: %a = %a" i VarSym.pp vs pp_expr e
 
 let samplings gd =
   let samp i = function
@@ -125,7 +125,7 @@ let osamplings gd =
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
-      L.concat (L.mapi (fun opos (_,_,od) -> odecl_samplings i opos od) odefs)
+      L.concat (L.mapi (fun opos (_,_,od,_) -> odecl_samplings i opos od) odefs)
     | _ -> []
   in
   L.concat (L.mapi samp gd)
@@ -151,7 +151,7 @@ let oguards gd =
   in
   let samp i = function
     | GCall(_,_,_,odefs) ->
-      L.concat (L.mapi (fun opos (_,_,odecl) -> odecl_guards i opos odecl) odefs)
+      L.concat (L.mapi (fun opos (_,_,odecl,_) -> odecl_guards i opos odecl) odefs)
     | _ -> []
   in
   L.concat (L.mapi samp gd)
@@ -265,7 +265,7 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   | Rexc(pos,es) ->
     F.fprintf fmt "except %i %a" pos (pp_list "," pp_expr) es
   | Rrnd(pos,vs,_,(v2,c2)) ->
-    F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos Vsym.pp vs Vsym.pp v2 pp_expr c2
+    F.fprintf fmt "rnd %i %a@[<v>  %a -> %a@]" pos VarSym.pp vs VarSym.pp v2 pp_expr c2
   | Rrw_orcl((i,j,k,otype),_dir) ->
     F.fprintf fmt "rw_orcl (%i,%i,%i,%a)" i j k pp_otype otype
   | Rmove_orcl((i,j,k,otype),_i) ->

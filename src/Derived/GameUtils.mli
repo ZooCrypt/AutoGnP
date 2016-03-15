@@ -31,7 +31,7 @@ val empty_iter_ctx : iter_pos -> iter_ctx
 val iter_ctx_obody_exp :
   ty -> int -> int -> expr list ->
   ?iexc:bool -> (iter_ctx -> expr -> unit) ->
-  os -> otype -> lcmd list * expr -> unit
+  os -> Game.otype -> Game.lcmd list * Expr.expr -> unit
 val iter_ctx_odecl_exp :
   ty -> int -> int -> expr list ->
   ?iexc:bool -> (iter_ctx -> expr -> unit) ->
@@ -47,12 +47,12 @@ val iter_ctx_se_exp :
 (* ** Mappings from strings to variables
  * ----------------------------------------------------------------------- *)
 
-type vmap = (string qual * string,Vsym.t) Hashtbl.t
+type vmap = (string qual * string,VarSym.t) Hashtbl.t
 
 val merge_vmap      : vmap -> vmap -> vmap * (vs -> vs)
-val vmap_of_vss     : Vsym.S.t -> vmap
+val vmap_of_vss     : VarSym.S.t -> vmap
 val vmap_of_ves     : Se.t -> vmap
 val vmap_of_globals : gdef -> vmap
 val vmap_of_se      : sec_exp -> vmap
-val ves_to_vss      : Se.t -> Vsym.S.t
+val ves_to_vss      : Se.t -> VarSym.S.t
 val vmap_in_orcl    : sec_exp -> ocmd_pos -> vmap

@@ -7,10 +7,10 @@ open Expr
 open Syms
 
 (** Variable, adversary, oracle, function, and oracle list symbols. *)
-type vs  = Vsym.t
-type ads = Asym.t
-type os  = Osym.t
-type hs  = Fsym.t
+type vs  = VarSym.t
+type ads = AdvSym.t
+type os  = OrclSym.t
+type hs  = FunSym.t
 type ors = Olist.t
 
 (* ** Types for oracles, games, and security
@@ -22,10 +22,11 @@ type distr = ty * expr list  (* uniform distr. over type except for given values
 
 (** List monad command for oracle definition. *)
 type lcmd =
-  | LLet   of Vsym.t * expr        (* LLet(xs,e):   let (x_1,..,x_k) = e *)
-  | LBind  of Vsym.t list * Fsym.t (* LBind(xs, h): (x_1,..,x_k) <- L_h  *)
-  | LSamp  of Vsym.t * distr       (* LSamp(x,d):   x <$ d               *)
-  | LGuard of expr                 (* LGuard(t):    guard(t)             *)
+  | LLet   of VarSym.t * expr          (* LLet(xs,e):     let (x_1,..,x_k) = e *)
+  | LMSet  of MapSym.t * expr * expr   (* LMSet(m,ek,ev): m[ek] <- ev          *)
+  | LBind  of VarSym.t list * FunSym.t (* LBind(xs, h):   (x_1,..,x_k) <- L_h  *)
+  | LSamp  of VarSym.t * distr         (* LSamp(x,d):     x <$ d               *)
+  | LGuard of expr                     (* LGuard(t):      guard(t)             *)
   with compare
 
 (** Oracle body *)
@@ -45,17 +46,25 @@ type odecl =
   | Ohyb of ohybrid (* hybrid oracle *)
   with compare
 
+(** Oracle counter *)
+type counter =
+  | NoCounter
+  | Once
+  | CountVar of string
+  with compare
+
 (** Oracle definition. *)
-type odef = Osym.t * Vsym.t list * odecl
+type odef = OrclSym.t * VarSym.t list * odecl * counter
   (* (o,xs,ms,e): o(x_1,..,x_l) = [e | m_1, .., m_k] *)
   with compare
 
 (** Game command. *)
 type gcmd =
-  | GLet    of Vsym.t * expr        (* GLet(xs,e):     let (x_1,..,x_k) = e             *)
-  | GAssert of expr                 (* GAssert(e):     assert(e)                        *)
-  | GSamp   of Vsym.t * distr       (* GSamp(x,d):     x <$ d                           *)
-  | GCall   of Vsym.t list * Asym.t (* GCall(xs,e,os): (x1,..,xk) <@ A(e) with o1,..,ol *)
+  | GLet    of VarSym.t * expr          (* GLet(xs,e):     let (x_1,..,x_k) = e             *)
+  | GMSet   of MapSym.t * expr * expr   (* GMSet(m,ek,ev): m[ek] <- ev                      *)
+  | GAssert of expr                     (* GAssert(e):     assert(e)                        *)
+  | GSamp   of VarSym.t * distr         (* GSamp(x,d):     x <$ d                           *)
+  | GCall   of VarSym.t list * AdvSym.t (* GCall(xs,e,os): (x1,..,xk) <@ A(e) with o1,..,ol *)
                * expr * odef list
   with compare
 
@@ -162,6 +171,7 @@ type se_octxt = {
   seoc_obgreater : obody option;
   seoc_osym      : os;
   seoc_oargs     : vs list;
+  seoc_ocounter  : counter;
   seoc_return    : expr;
   seoc_cleft     : lcmd list;
   seoc_cright    : lcmd list;
@@ -180,7 +190,8 @@ val set_se_gcmd : sec_exp -> gcmd_pos -> gcmd list -> sec_exp
 
 val get_obody : odecl -> otype -> obody
 
-val get_se_lcmd : sec_exp -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr
+val get_se_lcmd :
+  sec_exp -> ocmd_pos -> os * vs list * (lcmd list * lcmd * lcmd list) * expr * counter
 
 val get_se_octxt_len : sec_exp -> ocmd_pos -> int -> lcmd list * se_octxt
 
@@ -208,8 +219,8 @@ val read_gcmds   : gcmd list -> Se.t
 val write_gcmd   : gcmd      -> Se.t
 val write_gcmds  : gcmd list -> Se.t
 val read_se      : sec_exp   -> Se.t
-val asym_gcmd    : gcmd      -> Asym.t option
-val asym_gcmds   : gcmd list -> Asym.t list
+val asym_gcmd    : gcmd      -> AdvSym.t option
+val asym_gcmds   : gcmd list -> AdvSym.t list
 
 (* ** Find expressions that satisfy predicate
  * ----------------------------------------------------------------------- *)
@@ -235,43 +246,43 @@ val find_global_gdef    : (expr -> bool) -> gdef -> Se.t
  * ----------------------------------------------------------------------- *)
 
 (* val ro_syms_of_es : string *)
-val ro_syms_expr        : expr -> ROsym.S.t
-val ro_syms_all_gcmd    : gcmd -> ROsym.S.t
-val ro_syms_all_gdef    : gdef -> ROsym.S.t
-val ro_syms_global_gdef : gdef -> ROsym.S.t
+val ro_syms_expr        : expr -> RoSym.S.t
+val ro_syms_all_gcmd    : gcmd -> RoSym.S.t
+val ro_syms_all_gdef    : gdef -> RoSym.S.t
+val ro_syms_global_gdef : gdef -> RoSym.S.t
 
 (* ** Random oracle arguments for given RO symbol
  * ----------------------------------------------------------------------- *)
 
 (* val harg_of_es : string *)
 
-val is_H_call : ROsym.t -> expr -> bool
+val is_H_call : RoSym.t -> expr -> bool
 
-val hash_args_expr        : ROsym.t -> expr -> Se.t
-val hash_args_all_gcmd    : ROsym.t -> gcmd -> Se.t
-val hash_args_all_gdef    : ROsym.t -> gdef -> Se.t
-val hash_args_global_gdef : ROsym.t -> gdef -> Se.t
+val hash_args_expr        : RoSym.t -> expr -> Se.t
+val hash_args_all_gcmd    : RoSym.t -> gcmd -> Se.t
+val hash_args_all_gdef    : RoSym.t -> gdef -> Se.t
+val hash_args_global_gdef : RoSym.t -> gdef -> Se.t
 
 (* ** Variable occurences
  * ----------------------------------------------------------------------- *)
 
 (* val fold_union_vs : string *)
-val set_of_list : vs list -> Vsym.S.t
+val set_of_list : vs list -> VarSym.S.t
 
-val vars_expr : expr -> Vsym.S.t
-val vars_exprs : expr list -> Vsym.S.t
-val vars_lcmd : lcmd -> Vsym.S.t
-val vars_lcmds : lcmd list -> Vsym.S.t
-val vars_obody : obody -> Vsym.S.t
-val vars_ohybrid : ohybrid -> Vsym.S.t
-val vars_odecl : odecl -> Vsym.S.t
+val vars_expr : expr -> VarSym.S.t
+val vars_exprs : expr list -> VarSym.S.t
+val vars_lcmd : lcmd -> VarSym.S.t
+val vars_lcmds : lcmd list -> VarSym.S.t
+val vars_obody : obody -> VarSym.S.t
+val vars_ohybrid : ohybrid -> VarSym.S.t
+val vars_odecl : odecl -> VarSym.S.t
 (* val vars_oh : string *)
-val vars_all_gcmd : gcmd -> Vsym.S.t
-val vars_all_gdef : gdef -> Vsym.S.t
-val vars_global_ohybrid : ohybrid -> Vsym.S.t
+val vars_all_gcmd : gcmd -> VarSym.S.t
+val vars_all_gdef : gdef -> VarSym.S.t
+val vars_global_ohybrid : ohybrid -> VarSym.S.t
 (* val vars_global_oh : string *)
-val vars_global_gcmd : gcmd -> Vsym.S.t
-val vars_global_gdef : gdef -> Vsym.S.t
+val vars_global_gcmd : gcmd -> VarSym.S.t
+val vars_global_gdef : gdef -> VarSym.S.t
 
 (* ** Variable renaming
  * ----------------------------------------------------------------------- *)
@@ -285,11 +296,11 @@ val subst_v_gcmd  : (vs -> vs) -> gcmd    -> gcmd
 val subst_v_gdef  : (vs -> vs) -> gdef    -> gdef
 val subst_v_se    : (vs -> vs) -> sec_exp -> sec_exp
 
-type renaming = vs Vsym.M.t
+type renaming = vs VarSym.M.t
 
 val id_renaming : renaming
 val ren_injective : renaming -> bool
-val pp_ren : F.formatter -> vs Vsym.M.t -> unit
+val pp_ren : F.formatter -> vs VarSym.M.t -> unit
 
 (* ** Unification
  * ----------------------------------------------------------------------- *)
@@ -297,16 +308,16 @@ val pp_ren : F.formatter -> vs Vsym.M.t -> unit
 (* val ensure_same_length : string *)
 (* val vht_to_map : string *)
 
-val unif_vs    : vs Vsym.H.t -> vs    -> vs    -> unit
-val unif_expr  : vs Vsym.H.t -> expr  -> expr  -> unit
-val unif_lcmd  : vs Vsym.H.t -> lcmd  -> lcmd  -> unit
-val unif_obody : vs Vsym.H.t -> obody -> obody -> unit
-val unif_odecl : vs Vsym.H.t -> odecl -> odecl -> unit
-val unif_odef  : vs Vsym.H.t -> odef  -> odef  -> unit
-val unif_gcmd  : vs Vsym.H.t -> gcmd  -> gcmd  -> unit
+val unif_vs    : vs VarSym.H.t -> vs    -> vs    -> unit
+val unif_expr  : vs VarSym.H.t -> expr  -> expr  -> unit
+val unif_lcmd  : vs VarSym.H.t -> lcmd  -> lcmd  -> unit
+val unif_obody : vs VarSym.H.t -> obody -> obody -> unit
+val unif_odecl : vs VarSym.H.t -> odecl -> odecl -> unit
+val unif_odef  : vs VarSym.H.t -> odef  -> odef  -> unit
+val unif_gcmd  : vs VarSym.H.t -> gcmd  -> gcmd  -> unit
 
-val unif_se    : sec_exp -> sec_exp -> vs Vsym.M.t
-val unif_gdef  : gdef    -> gdef    -> vs Vsym.M.t
+val unif_se    : sec_exp -> sec_exp -> vs VarSym.M.t
+val unif_gdef  : gdef    -> gdef    -> vs VarSym.M.t
 
 (* ** Probabilistic polynomial time
  * ----------------------------------------------------------------------- *)
@@ -344,7 +355,7 @@ val norm_se    : ?norm:(expr -> expr) -> sec_exp -> sec_exp
  * ----------------------------------------------------------------------- *)
 
 val pp_distr : qual:os qual -> F.formatter -> ty * expr list -> unit
-val pp_v : F.formatter -> Vsym.t -> unit
+val pp_v : F.formatter -> VarSym.t -> unit
 val pp_binder : qual:os qual -> F.formatter -> vs list -> unit
 val pp_lcmd : qual:os qual -> F.formatter -> lcmd -> unit
 val pp_ilcmd : nonum:bool -> qual:os qual -> F.formatter -> int * lcmd -> unit
@@ -355,7 +366,7 @@ val pp_otype : F.formatter -> otype -> unit
 val pp_obody :nonum:bool -> os -> ohtype option -> F.formatter -> lcmd list * expr -> unit
 val pp_ohybrid : nonum:bool -> os -> F.formatter -> ohybrid -> unit
 val pp_odecl : nonum:bool -> os -> F.formatter -> odecl -> unit
-val pp_odef : nonum:bool -> F.formatter -> os * vs list * odecl -> unit
+val pp_odef : nonum:bool -> F.formatter -> os * vs list * odecl * counter -> unit
 val pp_gcmd : nonum:bool -> F.formatter -> gcmd -> unit
 val pp_igcmd : F.formatter -> int * gcmd -> unit
 val pp_gdef : nonum:bool -> F.formatter -> gcmd list -> unit

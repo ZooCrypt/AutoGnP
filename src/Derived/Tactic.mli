@@ -70,7 +70,7 @@ val t_move_oracle : ocmd_pos -> int -> tactic
 
 val t_rewrite_oracle : ocmd_pos -> direction -> tactic
 
-val t_guess : Asym.t -> vs list ->  tactic
+val t_guess : AdvSym.t -> vs list ->  tactic
 
 val t_split_ev  : int -> tactic
 
@@ -104,6 +104,6 @@ val t_move_main : ocmd_pos_eq -> string -> tactic
 
 val t_hybrid : gcmd_pos -> int -> lcmd list -> expr -> tactic
 
-val t_find : vs list * expr -> expr -> Asym.t -> vs list -> tactic
+val t_find : vs list * expr -> expr -> AdvSym.t -> vs list -> tactic
 
-val t_add_test : ocmd_pos -> expr -> Asym.t -> vs list -> tactic
+val t_add_test : ocmd_pos -> expr -> AdvSym.t -> vs list -> tactic

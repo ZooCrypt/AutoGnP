@@ -60,8 +60,8 @@ let mk_name ?(name="r__") se =
   let vars = vars_all_gdef se.se_gdef in
   let name_of_int i = name^(string_of_int i) in
   let names =
-    Vsym.S.fold
-      (fun vs se -> Sstring.add (Id.name vs.Vsym.id) se) vars Sstring.empty
+    VarSym.S.fold
+      (fun vs se -> Sstring.add (Id.name vs.VarSym.id) se) vars Sstring.empty
   in
   if Sstring.mem name names then
     let rec go n =
@@ -99,7 +99,7 @@ let prove_by ru g =
     Bad (lazy (fsprintf "Failed divzero check: %a" (pp_list "," pp_expr) es))
   | Wf.Wf_var_undef(vs,e,def_vars) ->
     Bad (lazy (fsprintf "Variable undefined: %a in %a not in %a"
-                 Vsym.pp vs pp_expr e (pp_list "," Vsym.pp) (Vsym.S.elements def_vars)))
+                 VarSym.pp vs pp_expr e (pp_list "," VarSym.pp) (VarSym.S.elements def_vars)))
 
 (** Given a list of proof states and a validation, create a new proof state
     with the combined subgoals and a combined validation. *)
@@ -159,10 +159,10 @@ let ensure_pr_Succ_or_Adv rn ju =
 
 let rename_if_required rn se1 se2 =
   let ren = unif_se se1 se2 in
-  if Vsym.M.is_empty ren then se1
+  if VarSym.M.is_empty ren then se1
   else (
     ensure_ren_inj rn ren;
-    subst_v_se (fun vs -> try Vsym.M.find vs ren with Not_found -> vs) se1
+    subst_v_se (fun vs -> try VarSym.M.find vs ren with Not_found -> vs) se1
   )
 
 let r_conv do_norm_terms new_se0 ju =
@@ -266,7 +266,7 @@ let ensure_bijection ?partial:(partial=false) se c1 c2 rs = (* c1 = inverse, c2 
      c2 : t  -> t' *)
   let dty1,cty1 = ctxt_ty c1 in
   let dty2,cty2 = ctxt_ty c2 in
-  let t = rs.Vsym.ty in
+  let t = rs.VarSym.ty in
   let t' = dty1 in
   if not (equal_ty cty1 t) then
     tacerror "rnd: c1 has type %a -> %a while %a -> %a is expected"
@@ -276,7 +276,7 @@ let ensure_bijection ?partial:(partial=false) se c1 c2 rs = (* c1 = inverse, c2 
       pp_ty dty2 pp_ty cty2 pp_ty t pp_ty t';
 
   let v  = mk_V rs in
-  let v' = mk_V (Vsym.mk (mk_name ~name:"v__" se) t') in
+  let v' = mk_V (VarSym.mk (mk_name ~name:"v__" se) t') in
   if not (Norm.equalmod_expr (inst_ctxt c2 (inst_ctxt c1 v')) v' &&
             (partial || Norm.equalmod_expr (inst_ctxt c1 (inst_ctxt c2 v)) v)) then
     tacerror "contexts %a and %a are not bijective"
@@ -288,7 +288,7 @@ let r_rnd p c1 c2 ju =
   match get_se_ctxt se p with
   | GSamp(rvs,(_,exc)), sec ->
     if exc <> [] then tacerror "rnd: excepted distribution not allowed";
-    let new_ty = (fst c1).Vsym.ty in
+    let new_ty = (fst c1).VarSym.ty in
     ensure_bijection se c1 c2 rvs;
     (* check second context first such that divZero does not clobber undef *)
     let wfs = wf_gdef NoCheckDivZero (L.rev sec.sec_left) in
@@ -296,10 +296,10 @@ let r_rnd p c1 c2 ju =
     wf_expr CheckDivZero (ensure_varname_fresh wfs (fst c1)) (snd c1);
     let rv = mk_V rvs in
     let nrvs =
-      if equal_ty rvs.Vsym.ty new_ty then rvs
-      else Vsym.mk (mk_name ~name:(Id.name (fst c1).Vsym.id) se) new_ty in
+      if equal_ty rvs.VarSym.ty new_ty then rvs
+      else VarSym.mk (mk_name ~name:(Id.name (fst c1).VarSym.id) se) new_ty in
     let nrv = mk_V nrvs in
-    let vslet = Vsym.mk (mk_name ~name:"u__" se) rv.e_ty in
+    let vslet = VarSym.mk (mk_name ~name:"u__" se) rv.e_ty in
     let cmds = [ GSamp(nrvs,(new_ty, [])); GLet(vslet, inst_ctxt c1 nrv) ] in
     let subst e = e_replace rv (mk_V vslet) e in
     let sec = { sec with
@@ -320,7 +320,7 @@ let r_rnd_oracle p c1 c2 ju =
   match get_se_octxt se p with
   | LSamp(rvs,(_,exc)), seoc ->
     if exc <> [] then tacerror "rnd_oracle: excepted distribution not allowed";
-    let new_ty = (fst c1).Vsym.ty in
+    let new_ty = (fst c1).VarSym.ty in
     ensure_bijection se c1 c2 rvs;
     (* check second context first such that divZero does not clobber undef *)
     let wfs = wf_gdef CheckDivZero (L.rev seoc.seoc_sec.sec_left) in
@@ -331,11 +331,11 @@ let r_rnd_oracle p c1 c2 ju =
     let rv = mk_V rvs in
     let qual = Qual seoc.seoc_osym in
     let nrvs =
-      if equal_ty rvs.Vsym.ty new_ty then rvs
-      else Vsym.mk_qual (mk_name ~name:(Id.name (fst c1).Vsym.id) se) qual new_ty
+      if equal_ty rvs.VarSym.ty new_ty then rvs
+      else VarSym.mk_qual (mk_name ~name:(Id.name (fst c1).VarSym.id) se) qual new_ty
     in
     let nrv = mk_V nrvs in
-    let vslet = Vsym.mk_qual (mk_name ~name:"u__" se) qual rv.e_ty in
+    let vslet = VarSym.mk_qual (mk_name ~name:"u__" se) qual rv.e_ty in
     let cmds = [ LSamp(nrvs,(new_ty, [])); LLet(vslet, inst_ctxt c1 nrv) ] in
     let subst e = e_replace rv (mk_V vslet) e in
     let sec =
@@ -492,7 +492,7 @@ let r_move_main ((i,j,k) as opos_eq) vname ju =
   let se = ju.ju_se in
   match get_se_octxt se (i,j,k,Oishyb OHeq) with
   | LSamp(vs,d),seoc ->
-    let vs_new = Vsym.mk vname vs.Vsym.ty in
+    let vs_new = VarSym.mk vname vs.VarSym.ty in
     let subst e = e_replace (mk_V vs) (mk_V vs_new) e in
     let samp = GSamp(vs_new,d) in
     let sec =
@@ -762,7 +762,7 @@ let r_random_indep ju =
   let se = ju.ju_se in
   match L.rev se.se_gdef with
   | GSamp(r,_)::_ ->
-    if equal_ty r.Vsym.ty mk_Bool then ensure_pr_Adv "indep" ju;
+    if equal_ty r.VarSym.ty mk_Bool then ensure_pr_Adv "indep" ju;
     check_event r se.se_ev, []
   | _             -> tacerror "indep: the last instruction is not a random"
 
@@ -796,8 +796,8 @@ let ensure_res_lets rn vres cres =
   L.iter2
     (fun vs c ->
       match c with
-      | GLet(vs',_) when Vsym.equal vs' vs -> ()
-      | _ -> tacerror "%s: result binding not found for %a" rn Vsym.pp vs)
+      | GLet(vs',_) when VarSym.equal vs' vs -> ()
+      | _ -> tacerror "%s: result binding not found for %a" rn VarSym.pp vs)
     vres cres
 
 let assm_comp_valid_ranges rn assm acalls_ju rngs =
@@ -979,18 +979,19 @@ let ct_trans new_se =
  * ----------------------------------------------------------------------- *)
 
 let rename_odef lcmds ret =
-  let vmap = Vsym.H.create 134 in
+  let vmap = VarSym.H.create 134 in
   let add_mapping lcmd =
     match lcmd with
     | LLet(v,_) | LSamp(v,_) ->
-      let id = v.Vsym.id in
-      let new_v = Vsym.mk (Id.name id) v.Vsym.ty in
-      Vsym.H.add vmap v new_v
+      let id = v.VarSym.id in
+      let new_v = VarSym.mk (Id.name id) v.VarSym.ty in
+      VarSym.H.add vmap v new_v
+    | LMSet(_,_,_)
     | LGuard(_) -> ()
     | LBind(_) -> assert false
   in
   L.iter add_mapping lcmds;
-  let sigma v = try Vsym.H.find vmap v with Not_found -> v in
+  let sigma v = try VarSym.H.find vmap v with Not_found -> v in
   (L.map (subst_v_lcmd sigma) lcmds, subst_v_expr sigma ret)
 
 let r_hybrid gpos oidx new_lcmds new_eret ju =
@@ -1015,7 +1016,7 @@ let r_hybrid gpos oidx new_lcmds new_eret ju =
       (fun e ->
         if is_All e then (
           match destr_All e with
-          | (vs,Olist.Olist o),e1 when Osym.equal o seoc.seoc_osym ->
+          | (vs,Olist.Olist o),e1 when OrclSym.equal o seoc.seoc_osym ->
             [e; e_subst (L.fold_left2
                            (fun m e1 e2 -> Me.add (mk_V e1) (mk_V e2) m)
                            Me.empty vs seoc.seoc_oargs) e1]
@@ -1074,7 +1075,7 @@ let r_guard opos tnew ju =
       (pp_lcmd ~qual:Unqual) lcmd "preceeding commands must be tests"
   in
   let vs =
-    List.map (fun v -> Vsym.mk (Vsym.to_string v) v.Vsym.ty) seoc.seoc_oargs
+    List.map (fun v -> VarSym.mk (VarSym.to_string v) v.VarSym.ty) seoc.seoc_oargs
   in
 
   let tests = L.map destr_guard (L.rev seoc.seoc_cleft) in

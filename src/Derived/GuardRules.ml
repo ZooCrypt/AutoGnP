@@ -26,12 +26,12 @@ let t_guess_maybe masym mvars ju =
     match masym with
     | Some asym -> asym
     | None ->
-      Asym.mk "CC" (mk_Prod []) (mk_Prod (L.map  (fun v -> v.Vsym.ty) vs))
+      AdvSym.mk "CC" (mk_Prod []) (mk_Prod (L.map  (fun v -> v.VarSym.ty) vs))
   in
   let vars =
     match mvars with
     | Some vars -> vars
     | None ->
-      L.map (fun v -> Vsym.mk (Id.name v.Vsym.id) v.Vsym.ty) vs
+      L.map (fun v -> VarSym.mk (Id.name v.VarSym.id) v.VarSym.ty) vs
   in
   Tactic.t_guess asym vars ju
