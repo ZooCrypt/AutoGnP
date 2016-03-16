@@ -29,6 +29,10 @@ module T = Tactic
 let mk_log level = mk_logger "Engine.Engine" level "Engine.ml"
 let log_i = mk_log Bolt.Level.INFO
 
+(* ** Include state
+ * ----------------------------------------------------------------------- *)
+
+let included = ref []
 
 (* ** Utility functions
  * ----------------------------------------------------------------------- *)
@@ -936,9 +940,13 @@ let rec handle_instr verbose ts instr =
     end
 
   | PT.Include(fn) ->
+    if L.mem fn !included then (ts,"file already included earlier")
+    else (
       let s = input_file (fn^".zc") in
+      included := fn::!included;
       let pt = Parse.theory s in
       handle_instrs true ts pt
+    )
 
 and handle_instrs verbose ts instrs =
   L.fold_left (fun (ts,s) instr ->
