@@ -82,7 +82,7 @@ Compile and test AutoG&P:
 ```
 cd AutoGnP
 # tell the opam package manager to use the cloned repo
-opam pin add autognp AutoGnP -n
+opam pin add autognp . -n
 # install all Ocaml dependencies
 opam install autognp --deps-only
 # compile autognp
