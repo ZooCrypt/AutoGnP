@@ -1,5 +1,7 @@
 #! /bin/bash
 
+SOME_FAIL=""
+
 function ok_tests() {
   echo 
   echo "*******************************************************************"
@@ -30,6 +32,7 @@ function ok_tests() {
 
   printf "\nFailed: $FAILED"
   printf "\nOK: $OK"
+  SOME_FAIL="$SOME_FAIL$FAILED"
 }
 
 function fail_tests() {
@@ -53,7 +56,13 @@ function fail_tests() {
   done
   printf "\nFailed:$FAILED"
   printf "\nOK:$OK\n"
+  SOME_FAIL="$SOME_FAIL$FAILED"
 }
 
 ok_tests
 fail_tests
+if test -z $SOME_FAIL; then
+  echo "All tests executed successfully.";
+else
+  echo "Some tests failed: $SOME_FAIL"
+fi
