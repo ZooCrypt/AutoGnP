@@ -31,7 +31,7 @@ endif
 .PHONY : clean all doc test autognp.native wsautognp.native test autognp wsautognp \
   Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
 
-all: wsautognp.native autognp.native
+all: autognp.native
 
 autognp.native : stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
