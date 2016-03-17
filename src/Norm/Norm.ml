@@ -140,6 +140,7 @@ and mk_simpl_op ~strong op l =
   | Not, [e] ->
     begin match e.e_node with
     | App(Not,[e]) -> e
+    | Nary(Land,es) -> norm_expr ~strong (mk_Land (List.map mk_Not es))
     | Quant(q,b,e) -> mk_Quant (neg_quant q) b (norm_expr ~strong (mk_Not e))
     | _            -> mk_Not e
     end
@@ -231,6 +232,21 @@ and mk_simpl_nop ~strong op l =
       mk_Land_nofail (Se.elements (Se.filter (fun e -> not (is_True e)) s))
     else
       mk_Land_nofail (L.unique (L.filter (fun e -> not (is_True e)) l))
+
+  | Lor when strong ->
+    norm_expr ~strong (mk_Not (mk_Land_nofail (L.map mk_Not l)))
+
+  | Lor ->
+    let l = List.flatten (List.map destr_Lor_nofail l) in
+    let s = se_of_list l in
+    if Se.mem mk_True s then
+      mk_True
+    (* do we need weak, strong, unfold_or?
+    else if strong then
+      mk_Lor_nofail (Se.elements (Se.filter (fun e -> not (is_False e)) s))
+    *)
+    else
+      mk_Lor_nofail (L.unique (L.filter (fun e -> not (is_False e)) l))
 
 and mk_simpl_field_expr ~strong e =
   let norm_subexpr e =

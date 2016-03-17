@@ -19,6 +19,11 @@ let mk_Land_nofail = function
   | [] -> mk_True
   | l  -> mk_Land l
 
+
+let mk_Lor_nofail = function
+  | [] -> mk_False
+  | l  -> mk_Lor l
+
 (* ** Indicator functions
  * ----------------------------------------------------------------------- *)
 
@@ -98,6 +103,8 @@ let is_Xor e = is_Nary Xor e
 
 let is_Land e = is_Nary Land e
 
+let is_Lor e = is_Nary Lor e
+
 let is_GLog e = match e.e_node with App(GLog _, _) -> true | _ -> false
 
 let is_RoCall e = match e.e_node with App(RoCall _, _) -> true | _ -> false
@@ -123,7 +130,7 @@ let is_field_op = function
 
 let is_field_nop = function
   | FPlus | FMult -> true
-  | Xor | Land | GMult -> false
+  | Xor | Land | Lor | GMult -> false
 
 let is_field_exp e = match e.e_node with
   | Cnst(FNat _) -> true
@@ -182,7 +189,6 @@ let pp_paren hv = pp_enclose hv ~pre:"(" ~post:")"
 (** Enclose with parens depending on boolean argument. *)
 let pp_maybe_paren hv c = pp_if c (pp_paren hv) (pp_box hv)
 
-
 let pp_binder fmt (vs,o) =
   let l_paren,r_paren =
     match vs with
@@ -199,6 +205,8 @@ let rec pp_exp_p ~qual above fmt e =
   | V(v)       ->
     (* F.fprintf fmt "%a.%i" Vsym.pp v (Vsym.hash v) *)
     F.fprintf fmt "%a" (VarSym.pp_qual ~qual) v
+  | Tuple([]) ->
+    pp_string fmt "()"
   | Tuple(es) ->
     let pp_entry fmt (i,e) =
       F.fprintf fmt "%i := %a" i (pp_exp_p ~qual Tup) e
@@ -258,7 +266,7 @@ and pp_op_p ~qual above fmt (op, es) =
   | FMinus, [a;b] ->
     pp_bin (notsep above && above<>Infix(FMinus,0)) FMinus "@ - " a b
   | Eq,     [a;b] ->
-    pp_bin (notsep above && above<>NInfix(Land)) Eq "@ = " a b
+    pp_bin (notsep above && above<>NInfix(Land) && above<>NInfix(Lor)) Eq "@ = " a b
   | GLog _, [a]   ->
     F.fprintf fmt "@[<hov>log(%a)@]" (pp_exp_p ~qual PrefixApp) a
   | FOpp,   [a]   ->
@@ -268,7 +276,7 @@ and pp_op_p ~qual above fmt (op, es) =
   | Not,    [a]   ->
     begin match a.e_node with
     | App(Eq,[e1;e2]) ->
-      pp_bin (notsep above && above<>NInfix(Land)) Eq "@ <> " e1 e2
+      pp_bin (notsep above && above<>NInfix(Land) && above<>NInfix(Lor)) Eq "@ <> " e1 e2
     | _ ->
       pp_prefix Not   "not "  ""    a
     end
@@ -314,6 +322,7 @@ and pp_nop_p ~qual above fmt (op,es) =
   | FPlus  -> pp_nary true FPlus  "@ + "   (notsep above)
   | Xor    -> pp_nary true Xor    "@ ++ " (notsep above)
   | Land   -> pp_nary true Land   "@ /\\ " (notsep above)
+  | Lor    -> pp_nary true Lor    "@ \\/ " (notsep above)
   | FMult  ->
     let p =
       match above with
@@ -423,6 +432,7 @@ let destr_Eq   e = destr_App_bop "Eq"   Eq e
 let destr_Not  e = destr_App_uop "Not"  Not e
 let destr_Xor  e = destr_Nary    "Xor"  Xor e
 let destr_Land e = destr_Nary    "Land" Land e
+let destr_Lor  e = destr_Nary    "Lor"  Lor e
 
 let is_InEq e = is_Not e && is_Eq (destr_Not e)
 
@@ -443,6 +453,11 @@ let destr_Xor_nofail e =
 let destr_Land_nofail e =
   match e.e_node with
   | Nary(Land,es) -> es
+  | _ -> [e]
+
+let destr_Lor_nofail e =
+  match e.e_node with
+  | Nary(Lor,es) -> es
   | _ -> [e]
 
 let destr_Tuple_nofail e =

@@ -74,11 +74,12 @@ type op =
   | MapIndom  of MapSym.t         (* map defined for given value *)
 
 type nop =
-  | GMult  (* multiplication in G (type defines group) *)
-  | FPlus  (* plus in Fq *)
-  | FMult  (* multiplication in Fq *)
-  | Xor    (* Xor of bitstrings *)
-  | Land   (* logical and *)
+  | GMult      (* multiplication in G (type defines group) *)
+  | FPlus      (* plus in Fq *)
+  | FMult      (* multiplication in Fq *)
+  | Xor        (* Xor of bitstrings *)
+  | Land       (* logical and *)
+  | Lor        (* logical or *)
 
 type binding = VarSym.t list * Olist.t
 
@@ -132,6 +133,7 @@ let nop_hash = function
   | FMult  -> 2
   | Xor    -> 3
   | Land   -> 4
+  | Lor    -> 6
   | GMult  -> 5
 
 let quant_hash= function
@@ -372,6 +374,8 @@ let mk_Xor = function
 
 let mk_Land es = mk_nary "mk_Land" false Land es mk_Bool
 
+let mk_Lor es = mk_nary "mk_Lor" false Lor es mk_Bool
+
 let mk_GMult es =
   match es with
   | e::_ ->
@@ -387,6 +391,7 @@ let mk_Nary op es =
   | FMult -> mk_FMult es
   | Xor   -> mk_Xor   es
   | Land  -> mk_Land  es
+  | Lor   -> mk_Lor  es
   | GMult -> mk_GMult es
 
 (* *** Remaining mk functions *)

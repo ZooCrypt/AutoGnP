@@ -196,6 +196,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Plus(e1,e2)    -> E.mk_FPlus [go e1; go e2]
     | Minus(e1,e2)   -> E.mk_FMinus (go e1) (go e2)
     | Land(e1,e2)    -> E.mk_Land [go e1; go e2]
+    | Lor(e1,e2)     -> E.mk_Lor [go e1; go e2]
     | Xor(e1,e2)     -> E.mk_Xor [go e1; go e2]
     | Eq(e1,e2)      -> E.mk_Eq (go e1) (go e2)
     | Ifte(e1,e2,e3) -> E.mk_Ifte (go e1) (go e2) (go e3)

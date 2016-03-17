@@ -46,6 +46,7 @@ type parse_expr =
   | Not         of parse_expr
   | Ifte        of parse_expr * parse_expr * parse_expr
   | Land        of parse_expr * parse_expr
+  | Lor         of parse_expr * parse_expr
   | Xor         of parse_expr * parse_expr
   | Quant       of Expr.quant * (string list * string) list *  parse_expr
 
@@ -98,7 +99,7 @@ type ranges = range_pos list
 type parse_ev = parse_expr
 
 type tactic =
-  | Rnorm
+  | Rnorm of bool
   | Rdist_eq
   | Rdist_sym
   | Rfalse_ev

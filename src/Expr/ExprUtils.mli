@@ -17,6 +17,8 @@ val mk_GExp_Gen : Groupvar.id -> expr -> expr
 
 val mk_Land_nofail : expr list -> expr
 
+val mk_Lor_nofail : expr list -> expr
+
 (* ** Indicator functions
  * ----------------------------------------------------------------------- *)
 
@@ -60,6 +62,7 @@ val is_field_op    : op -> bool
 val is_field_nop   : nop -> bool
 val is_field_exp   : expr -> bool
 val is_Land        : expr -> bool
+val is_Lor         : expr -> bool
 
 (* ** Destructor functions
  * ----------------------------------------------------------------------- *)
@@ -92,9 +95,11 @@ val destr_FPlus        : expr -> expr list
 val destr_FMult        : expr -> expr list
 val destr_Xor          : expr -> expr list
 val destr_Land         : expr -> expr list
+val destr_Lor          : expr -> expr list
 val destr_Quant_nofail : expr -> expr
 val destr_Xor_nofail   : expr -> expr list
 val destr_Land_nofail  : expr -> expr list
+val destr_Lor_nofail   : expr -> expr list
 val destr_Tuple_nofail : expr -> expr list
 val destr_GExp_Gen     : Groupvar.id -> expr -> expr
 

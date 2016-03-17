@@ -69,6 +69,7 @@ type nop =
   | FMult  (* multiplication in Fq *)
   | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
+  | Lor    (* logical or *)
 
 type binding = VarSym.t list * Olist.t
 
@@ -157,6 +158,7 @@ val mk_FPlus       : expr list -> expr
 val mk_FMult       : expr list -> expr
 val mk_Xor         : expr list -> expr
 val mk_Land        : expr list -> expr
+val mk_Lor         : expr list -> expr
 val mk_InEq        : expr -> expr -> expr
 
 (* ** Generic functions on [expr]

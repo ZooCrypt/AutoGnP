@@ -6,7 +6,7 @@ open TheoryTypes
 open Syms
 open Game
 
-val t_norm : ?fail_eq:bool -> tactic
+val t_norm : ?fail_eq:bool -> ?strong:bool -> tactic
 
 val t_rename : VarSym.t -> VarSym.t -> tactic
 

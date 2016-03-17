@@ -49,6 +49,9 @@
 %token LAND
 %left  LAND
 
+%token LOR
+%left  LOR
+
 %token NOT
 
 %token EQUAL NEQ GREATER LESS
@@ -216,6 +219,7 @@ expr3:
 expr4 :
 | e1=expr4 STAR e2=expr4 { Mult(e1,e2) }
 | e1=expr4 LAND e2=expr4 { Land(e1,e2) }
+| e1=expr4 LOR  e2=expr4 { Lor(e1,e2) }
 | e=expr5 { e }
 
 expr5:
@@ -224,23 +228,23 @@ expr5:
 
 (* FIXME: check how unary/binary minus handled in Haskell/OCaml *)
 expr6 :
-| s=ID                               { V(Unqual,s) }
-| s1=ID BACKTICK s2=ID               { V(Qual s1, s2) }
-| i=NAT                              { CFNat(i) }
-| i=GEN                              { CGen(i) }
-| i=ZBS                              { CZ(i) }
-| TRUE                               { CB(true) }
-| FALSE                              { CB(false) }
-| s=ID l=paren_list1(COMMA,expr)     { SApp(s,l) }
-| MINUS e1=expr6                     { Opp(e1) }
-| NOT e=expr6                        { Not(e) }
-| LOG LPAR e1=expr RPAR              { Log(e1) }
-| l=paren_list0(COMMA,expr)          { mk_Tuple l }
-| GETPK LPAR e=expr RPAR             { ProjPermKey(Type.KeyElem.PKey,e) }
-| GETSK LPAR e=expr RPAR             { ProjPermKey(Type.KeyElem.SKey,e) }
-| e1=expr6 SHARP i=NAT               { Proj(i,e1) }
-| IN_DOM LPAR e=expr COMMA i=ID RPAR { SIndom(i,e) }
-| i=MGET_ID l=seplist1(COMMA,expr) RBRACK          { SLookUp(i,l) }
+| s=ID                                    { V(Unqual,s) }
+| s1=ID BACKTICK s2=ID                    { V(Qual s1, s2) }
+| i=NAT                                   { CFNat(i) }
+| i=GEN                                   { CGen(i) }
+| i=ZBS                                   { CZ(i) }
+| TRUE                                    { CB(true) }
+| FALSE                                   { CB(false) }
+| s=ID l=paren_list1(COMMA,expr)          { SApp(s,l) }
+| MINUS e1=expr6                          { Opp(e1) }
+| NOT e=expr6                             { Not(e) }
+| LOG LPAR e1=expr RPAR                   { Log(e1) }
+| l=paren_list0(COMMA,expr)               { mk_Tuple l }
+| GETPK LPAR e=expr RPAR                  { ProjPermKey(Type.KeyElem.PKey,e) }
+| GETSK LPAR e=expr RPAR                  { ProjPermKey(Type.KeyElem.SKey,e) }
+| e1=expr6 SHARP i=NAT                    { Proj(i,e1) }
+| IN_DOM LPAR e=expr COMMA i=ID RPAR      { SIndom(i,e) }
+| i=MGET_ID l=seplist1(COMMA,expr) RBRACK { SLookUp(i,l) }
 
 /*======================================================================
 (* * Oracle definitions *) */
@@ -454,13 +458,14 @@ maybe_len:
 tactic :
 
 /* norm variants */
-| RNORM                { Rnorm }
-| SLASH2               { Rnorm }
+| RNORM                { Rnorm(false) }
+| RNORM EXCL           { Rnorm(true) }
+| SLASH2               { Rnorm(false) }
 | RNORM_NOUNFOLD       { Rnorm_nounfold }
 | SLASHEQ              { Rnorm_nounfold }
 | RNORM_UNKNOWN is=ID* { Rnorm_unknown(is) }
 | SLASH2EQ is=ID*      { Rnorm_unknown(is) }
-| SLASH3EQ is=ID*      { Rseq [Rnorm; Rnorm_unknown(is)] }
+| SLASH3EQ is=ID*      { Rseq [Rnorm(false); Rnorm_unknown(is)] }
 | RNORM_SOLVE e=expr   { Rnorm_solve(e) }
 
 /* conversion */

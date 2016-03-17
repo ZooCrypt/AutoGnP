@@ -140,7 +140,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       end
     | Nary(op,es) ->
       begin match op with
-      | Land | GMult -> add_sub e; List.iter (register_subexprs false) es
+      | Lor | Land | GMult -> add_sub e; List.iter (register_subexprs false) es
       | FPlus | FMult ->
         if not in_field then add_sub_solver e; List.iter (register_subexprs true) es
       | Xor ->
@@ -210,7 +210,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Quant(q,b,e1) -> construct1 e e1 (mk_Quant q b)
     | Nary(op,es) ->
       begin match op with
-      | Land -> constructn e es mk_Land
+      | Land  -> constructn e es mk_Land
+      | Lor   -> constructn e es mk_Lor
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
       end

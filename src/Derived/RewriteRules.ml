@@ -25,9 +25,10 @@ let log_i = mk_log Bolt.Level.INFO
  * ----------------------------------------------------------------------- *)
 
 (** Unfold all lets and norm. *)
-let t_norm ?fail_eq:(fe=false) ju =
+let t_norm ?fail_eq:(fe=false) ?strong:(strong=false) ju =
   let se = ju.ju_se in
-  let new_se = norm_se ~norm:norm_expr_nice se in
+  let norm = if strong then norm_expr_strong else norm_expr_nice in
+  let new_se = norm_se ~norm se in
   if fe && equal_sec_exp se new_se
   then t_fail "t_norm: equal judgments" ju
   else t_conv true new_se ju

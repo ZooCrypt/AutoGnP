@@ -170,6 +170,7 @@ rule lex = parse
   | "<-$"       { SAMP }                                      (* kw: prog   *)
   | "\\"        { BACKSLASH }                                 (* kw: prog   *)
   | "/\\"       { LAND }                                      (* kw: op     *)
+  | "\\/"       { LOR }                                       (* kw: op     *)
   | "<>"        { NEQ }                                       (* kw: op     *)
   | "+"         { PLUS }                                      (* kw: op     *)
   | "++"        { XOR }                                       (* kw: op     *)

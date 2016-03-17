@@ -161,7 +161,7 @@ let handle_tactic ts tac =
 
     let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); VarSym.mk sv ty in
     match tac with
-    | PT.Rnorm                 -> t_norm ~fail_eq:false ju
+    | PT.Rnorm(do_strong)      -> t_norm ~fail_eq:false ~strong:do_strong ju
     | PT.Rnorm_nounfold        -> t_norm_nounfold ju
     | PT.Rlet_unfold([])       -> t_unfold_only ju
     | PT.Rlet_unfold(l)        ->
