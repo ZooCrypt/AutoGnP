@@ -110,7 +110,7 @@ by the directory containing the cloned repos.
 ```
 
 Now, you can test everything by opening `examples/ok/bb1.zc` in
-Emacs and executing regions of the file using `Ctrl-c enter`.
+Emacs and executing regions of the file using `Ctrl-c Ctrl-enter`.
 
 # Examples
 
