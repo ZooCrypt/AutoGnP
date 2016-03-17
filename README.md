@@ -42,8 +42,6 @@ cd src
 ./configure NTL_GMP_LIP=on SHARED=on
 make
 sudo make install
-(on OS X, you have to install glibtool (e.g., using homebrew) and use
- ./configure NTL_GMP_LIP=on SHARED=on LIBTOOL="glibtool --tag=CC" )
 ```
 
 **On OS X:**
