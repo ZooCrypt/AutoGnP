@@ -62,7 +62,7 @@ function fail_tests() {
 ok_tests
 fail_tests
 if test -z $SOME_FAIL; then
-  echo "All tests executed successfully.";
+  printf "\nAll tests executed successfully.\n";
 else
-  echo "Some tests failed: $SOME_FAIL"
+  printf "\nSome tests failed: $SOME_FAIL\n"
 fi
