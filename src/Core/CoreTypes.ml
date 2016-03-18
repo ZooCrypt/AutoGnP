@@ -6,6 +6,7 @@ open Util
 open Game
 open Assumption
 open Expr
+open Syms
 open ExprUtils
 
 (* ** Judgments
@@ -159,6 +160,10 @@ type rule_name =
   | Rhybrid (* FIXME: add arguments *)
 
   | Rmove_main of ocmd_pos_eq
+
+(* *** Rules for finite maps *)
+
+  | Rsep_dom of MapSym.t * MapSym.t
 
 (* *** Rules for add test *)
 

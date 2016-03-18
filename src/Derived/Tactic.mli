@@ -58,6 +58,8 @@ val t_assm_comp : assm_comp -> (int * int) list  -> renaming -> tactic
 
 val t_move : gcmd_pos -> int -> tactic
 
+val t_sep_dom : MapSym.t -> MapSym.t -> tactic
+
 val t_except : gcmd_pos -> expr list -> tactic
 
 val t_remove_ev : int list -> tactic

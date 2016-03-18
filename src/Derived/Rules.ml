@@ -57,12 +57,12 @@ let t_guard f ju =
 
 let t_dist_eq ju =
   match ju.ju_pr with
-  | Pr_Dist se' ->
-    let se = ju.ju_se in
-    if equal_sec_exp se se' then
+  | Pr_Dist _se' ->
+    (* let se = ju.ju_se in *)
+    (* if equal_sec_exp se se' then *)
       core_tactic CoreRules.ct_dist_eq ju
-    else
-      (Tactic.t_conv true se' @> core_tactic CoreRules.ct_dist_eq) ju
+    (* else
+      (Tactic.t_conv true se' @> core_tactic CoreRules.ct_dist_eq) ju *)
   | _ ->
     tacerror "dist_eq: Dist judgment expected"
 
@@ -248,6 +248,8 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   match ru with
   | Rconv ->
     F.fprintf fmt "rconv"
+  | Rsep_dom(_,_) ->
+    F.fprintf fmt "rsep_dom"
   | Rassert(p,e) ->
     F.fprintf fmt "rassert %i %a" p pp_expr e
   | Rtrans ->

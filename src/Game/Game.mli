@@ -351,6 +351,17 @@ val norm_distr : ?norm:(expr -> expr) -> expr Me.t -> distr   -> distr
 val norm_gdef  : ?norm:(expr -> expr) -> gdef    -> gdef * expr Me.t
 val norm_se    : ?norm:(expr -> expr) -> sec_exp -> sec_exp
 
+(* ** finite maps transformations
+ * ----------------------------------------------------------------------- *)
+
+val map_se_finmap :
+  f_lookup:(MapSym.t -> expr -> expr) ->
+  f_in_dom:(MapSym.t -> expr -> expr) ->
+  f_LMSet:(MapSym.t -> expr -> expr -> lcmd list) ->
+  f_GMSet:(MapSym.t -> expr -> expr -> gcmd list) ->
+  sec_exp -> sec_exp
+ 
+
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
 

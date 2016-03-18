@@ -58,6 +58,7 @@
 
       ; "ensure",                   RENSURE                   (* kw: tactic      *)
       ; "conv",                     RCONV                     (* kw: tactic      *)
+      ; "sep_dom",                  SEP_DOM                   (* kw: tactic      *)
       ; "trans",                    RTRANS                    (* kw: tactic      *)
       ; "subst",                    RSUBST                    (* kw: tactic      *)
       ; "rename",                   RRENAME                   (* kw: tactic      *)
@@ -129,6 +130,7 @@
       ; "notin",                    NOTIN                     (* kw: op          *)
       ; "not",                      NOT                       (* kw: op          *)
       ; "in_dom",                   IN_DOM                    (* kw: dom         *)
+      ; "is_set",                   IS_SET                    (* kw: dom         *)
       ; "log",                      LOG                       (* kw: op          *)
       ; "true",                     TRUE                      (* kw: op          *)
       ; "false",                    FALSE                     (* kw: op          *)
@@ -211,6 +213,7 @@ rule lex = parse
   (* Nats and identifiers/keywords *)
   | ['0'-'9']['0'-'9']* as s    { NAT(int_of_string(s)) }
   | (ident as s)"["             { MGET_ID(s) } (* FIXME: hack *)
+  | (ident as s)"[]"            { MVAR_ID(s) } (* FIXME: hack *)
   | ident as s
                                 { try Hashtbl.find keyword_table s
                                   with Not_found -> ID s }

@@ -52,6 +52,10 @@ val ct_conv : bool -> sec_exp -> core_tactic
     [new_se] are indistinguishable *)
 val ct_trans : sec_exp -> core_tactic
 
+(** [ct_sep_dom ms1 ms2 ju] returns the judgment resulting from
+    ... *)
+val ct_sep_dom : MapSym.t -> MapSym.t -> core_tactic
+
 (** [ct_move p i ju] returns the judgment resulting from moving the
     command at position [p] [i] positions forward. *)
 val ct_move : gcmd_pos -> int -> core_tactic

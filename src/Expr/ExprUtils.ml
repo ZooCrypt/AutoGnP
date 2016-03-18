@@ -42,6 +42,8 @@ let is_Exists = is_Quant_fixed Exists
 
 let is_Tuple e = match e.e_node with Tuple _ -> true | _ ->  false
 
+let is_Unit e = match e.e_node with Tuple [] -> true | _ ->  false
+
 let is_Proj e = match e.e_node with Proj _ -> true | _ ->  false
 
 let is_Cnst e = match e.e_node with Cnst _ -> true | _ -> false
@@ -201,9 +203,10 @@ let pp_binder fmt (vs,o) =
 (** Pretty-prints expression assuming that
     the expression above is of given type. *)
 let rec pp_exp_p ~qual above fmt e =
+  (* F.fprintf fmt "%i$" e.e_tag; *)
   match e.e_node with
   | V(v)       ->
-    (* F.fprintf fmt "%a.%i" Vsym.pp v (Vsym.hash v) *)
+    (* F.fprintf fmt "%a.%i" VarSym.pp v (VarSym.hash v) *)
     F.fprintf fmt "%a" (VarSym.pp_qual ~qual) v
   | Tuple([]) ->
     pp_string fmt "()"
@@ -303,6 +306,8 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "%a(%a)" RoSym.pp h (pp_exp_p ~qual PrefixApp) e
   | MapLookup h, [e] ->
     F.fprintf fmt "%a[%a]" MapSym.pp h (pp_exp_p ~qual PrefixApp) e
+  | MapIndom h, [e] when is_Unit e ->
+    F.fprintf fmt "is_set(%a)" MapSym.pp h
   | MapIndom h, [e] ->
     F.fprintf fmt "in_dom(%a,%a)" (pp_exp_p ~qual PrefixApp) e MapSym.pp h
   | (ProjKeyElem _ | FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
@@ -337,7 +342,9 @@ let pp_op  fmt x = pp_op_p ~qual:Unqual Top fmt x
 let pp_nop fmt x = pp_nop_p ~qual:Unqual Top fmt x
 
 (** Pretty-printing without parens around tuples. *)
-let pp_expr_tnp fmt e = pp_exp_p ~qual:Unqual PrefixApp fmt e
+let pp_expr_tnp fmt e =
+  if is_Unit e then pp_string fmt ""
+  else pp_exp_p ~qual:Unqual PrefixApp fmt e
 
 let pp_ctxt fmt (v,e) =
   F.fprintf fmt "@[<hov>(%a ->@ %a)@]" VarSym.pp v pp_expr e

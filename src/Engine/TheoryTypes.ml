@@ -45,6 +45,8 @@ type theory_state = {
   ts_assms_dec  : assm_dec  Mstring.t;
   ts_assms_comp : assm_comp Mstring.t;
 
+  ts_game_defs  : Game.gdef Mstring.t;
+
   ts_ps         : theory_proof_state;
 
   (* FIXME: Add some state to increase sharing during

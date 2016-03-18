@@ -74,7 +74,7 @@ type gcmd =
   | GSamp   of string * parse_ty * parse_expr list
   | GCall   of string list * string * parse_expr * odef list
 
-type gdef = gcmd list
+type gdef = CmdList of gcmd list | Gname of string
 
 (* ** Types for parsed proof scripts and tactics
  * ----------------------------------------------------------------------- *)
@@ -155,6 +155,7 @@ type tactic =
   | Rguard         of ocmd_pos * parse_expr option
   | Rguess         of string * string list
   | Rfind          of (string list * parse_expr) * parse_expr * string * string list
+  | Rsep_dom       of string * string
 
 type instr =
   | Include    of string
@@ -168,8 +169,8 @@ type instr =
   | EMDecl     of string * string * string * string
   | ODecl      of string * parse_ty * parse_ty
   | ADecl      of string * parse_ty * parse_ty
-  | AssmDec    of string * bool * gdef * gdef * (string list) list
-  | AssmComp   of string * bool * assm_type * gdef * parse_ev * string list list
+  | AssmDec    of string * bool * gcmd list * gcmd list * (string list) list
+  | AssmComp   of string * bool * assm_type * gcmd list * parse_ev * string list list
   | JudgSucc   of gdef * parse_ev
   | JudgAdv    of gdef * parse_ev
   | JudgDist   of gdef * parse_ev * gdef * parse_ev

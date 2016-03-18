@@ -24,6 +24,7 @@ let mk_ts () = {
   ts_fmapdecls  = Mstring.empty;
   ts_assms_dec  = Mstring.empty;
   ts_assms_comp = Mstring.empty;
+  ts_game_defs  = Mstring.empty;
   ts_ps         = BeforeProof
 }
 

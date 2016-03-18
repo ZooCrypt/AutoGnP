@@ -15,7 +15,7 @@ open CoreTypes
 let mk_log level = mk_logger "Core.CoreRules" level "CoreRules.ml"
 let _log_t = mk_log Bolt.Level.TRACE
 let _log_d = mk_log Bolt.Level.DEBUG
-let _log_i = mk_log Bolt.Level.INFO
+let log_i = mk_log Bolt.Level.INFO
 
 (* ** Types for proofs and tactics
  * ----------------------------------------------------------------------- *)
@@ -121,7 +121,7 @@ let merge_proof_states pss validation =
 
 let ensure_gdef_eq rn a b =
   if not (equal_gdef a b) then
-    tacerror "%s: games not equal, @\n@[<hov 2>  %a@] vs @[<hov 2>  %a@]"
+    tacerror "%s: games not equal, @\n@[<hov 2>  %a@]@\nvs@\n@[<hov 2>  %a@]"
       rn (pp_gdef ~nonum:false) a (pp_gdef ~nonum:false) b
 
 let ensure_event_eq rn e1 e2 =
@@ -158,20 +158,25 @@ let ensure_pr_Succ_or_Adv rn ju =
  * ----------------------------------------------------------------------- *)
 
 let rename_if_required rn se1 se2 =
-  let ren = unif_se se1 se2 in
-  if VarSym.M.is_empty ren then se1
-  else (
-    ensure_ren_inj rn ren;
-    subst_v_se (fun vs -> try VarSym.M.find vs ren with Not_found -> vs) se1
-  )
+  try
+    let ren = unif_se se1 se2 in
+    log_i (lazy "found unifier");
+    if VarSym.M.is_empty ren then se1
+    else (
+     ensure_ren_inj rn ren;
+     let se1 = subst_v_se (fun vs -> try VarSym.M.find vs ren with Not_found -> vs) se1 in
+     log_i (lazy "applied unifier");
+     se1
+    )
+  with
+    Not_found -> tacerror "no unifier found"
 
-let r_conv do_norm_terms new_se0 ju =
-  let rn = "conv" in
+let check_convertible rn do_norm_terms se1 se2 =
   (* check well-formedness without DivZero and then unfold *)
-  wf_se NoCheckDivZero ju.ju_se;
-  wf_se NoCheckDivZero new_se0;
-  let se     = norm_se ~norm:id ju.ju_se in
-  let new_se = norm_se ~norm:id new_se0  in
+  wf_se NoCheckDivZero se1;
+  wf_se NoCheckDivZero se2;
+  let se     = norm_se ~norm:id se1 in
+  let new_se = norm_se ~norm:id se2  in
   (* perform renaming if required *)
   let se = rename_if_required rn se new_se in
   (* check DivZero for unfolded+renamed and normalize (if requested) *)
@@ -185,7 +190,10 @@ let r_conv do_norm_terms new_se0 ju =
       let se, new_se = (norm_rw se, norm_rw new_se) in
       ensure_gdef_eq  rn se.se_gdef new_se.se_gdef;
       ensure_event_eq rn se.se_ev   new_se.se_ev
-  );
+  )
+
+let r_conv do_norm_terms new_se0 ju =
+  check_convertible "conv" do_norm_terms ju.ju_se new_se0;
   Rconv, [{ ju with ju_se = new_se0 }]
 
 let ct_conv do_norm_terms new_se = prove_by (r_conv do_norm_terms new_se)
@@ -353,6 +361,30 @@ let r_rnd_oracle p c1 c2 ju =
   | _ -> tacerror "rnd_oracle: position given is not a sampling"
 
 let ct_rnd_oracle p c1 c2 = prove_by (r_rnd_oracle p c1 c2)
+
+(* *** Use finite_map sX : T -> () for domain of another map 
+ * ----------------------------------------------------------------------- *)
+
+let r_sep_dom ms1 ms2 ju =
+  let se = ju.ju_se in
+  let neq_ms1 ms = not (MapSym.equal ms1 ms) in
+  let se =
+    map_se_finmap se
+      ~f_in_dom:(fun ms k ->
+                   if neq_ms1 ms then Expr.mk_MapIndom ms k
+                   else Expr.mk_MapIndom ms2 k)
+      ~f_lookup:(fun ms k -> Expr.mk_MapLookup ms k)
+      ~f_GMSet:(fun ms ek e ->
+                  if neq_ms1 ms then [GMSet(ms,ek,e)]
+                  else [GMSet(ms,ek,e); GMSet(ms2,ek,mk_Tuple [])])
+      ~f_LMSet:(fun ms ek e ->
+                  if neq_ms1 ms then [LMSet(ms,ek,e)]
+                  else [LMSet(ms,ek,e); LMSet(ms2,ek,mk_Tuple [])])
+  in
+  let ju = { ju with ju_se = se } in
+  Rsep_dom(ms1,ms2), [ ju ]
+
+let ct_sep_dom ms1 ms2 = prove_by (r_sep_dom ms1 ms2)
 
 (* *** Copy condition implied by event to assert.
  * ----------------------------------------------------------------------- *)
@@ -700,12 +732,9 @@ let ct_dist_sym = prove_by r_dist_sym
  * ----------------------------------------------------------------------- *)
 
 let r_dist_eq ju =
-  let rn = "rdist_eq" in
   match ju.ju_pr with
   | Pr_Dist se' ->
-    let se = ju.ju_se in
-    ensure_gdef_eq  rn se.se_gdef se'.se_gdef;
-    ensure_event_eq rn se.se_ev   se'.se_ev;
+    check_convertible "dist_eq" true ju.ju_se se';
     Rdist_eq, []
   | _ ->
     tacerror "dist_eq: Dist judgment expected"

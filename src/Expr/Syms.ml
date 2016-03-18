@@ -305,5 +305,6 @@ module MapSym = struct
 
   let to_string hs = Id.name hs.id
 
-  let pp fmt hs = pp_string fmt (Id.name hs.id)
+  (* let pp fmt hs = F.fprintf fmt "%s@%i" (Id.name hs.id) (Id.tag hs.id) *)
+  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
 end

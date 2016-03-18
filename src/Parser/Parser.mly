@@ -66,6 +66,7 @@
 %token COMMA 
 
 %token <string> MGET_ID
+%token <string> MVAR_ID
 
 %token <string> GEN
 %token <string> ZBS
@@ -81,7 +82,7 @@
 /*----------------------------------------------------------------------
 (* ** Tokens for theories *) */
 
-%token TO IN_DOM INCLUDE
+%token TO IN_DOM IS_SET INCLUDE
 %token ADVERSARY ORACLE OPERATOR PERMUTATION TYPE
 %token ASSUMPTION
 %token RANDOM_ORCL RANDOM_FUN FINMAP
@@ -119,6 +120,7 @@
 %token RGUESS RFIND
 %token REXC_ORCL RREWRITE_ORCL
 %token DEDUCE LISTFE RENSURE
+%token SEP_DOM
 
 /*======================================================================
 (* * Production types *) */
@@ -194,40 +196,46 @@ typ :
 (* * Expressions *) */
 
 expr :
-| e1=expr1 EQUAL e2=expr1                          { Eq(e1,e2) }
-| e1=expr1 NEQ e2=expr1                            { Not(Eq(e1,e2)) }
 | e1=expr1 QUESTION e2=expr1 COLON e3=expr1        { Ifte(e1, e2, e3) }
 | EXISTS l=seplist1(COMMA,binding1) COLON e1=expr1 { Quant(Expr.Exists,l,e1) }
 | FORALL l=seplist1(COMMA,binding1) COLON e1=expr1 { Quant(Expr.All,l,e1) }
 | e=expr1                                          { e }
 
-(* | e1=expr1 IN QUERIES LPAR oname=ID RPAR    { InLog(e1,oname) }  *)
-
 expr1 :
-| e1=expr1 PLUS e2=expr1 { Plus(e1, e2) }
-| e1=expr1 XOR e2=expr1  { Xor (e1, e2) }
+| e1=expr1 LAND e2=expr1 { Land(e1,e2) }
+| e1=expr1 LOR  e2=expr1 { Lor(e1,e2) }
 | e=expr2                { e }
 
-expr2:
-| e1=expr2 MINUS e2=expr2 { Minus(e1, e2) }
-| e=expr3 { e }
+(* | e1=expr1 IN QUERIES LPAR oname=ID RPAR    { InLog(e1,oname) }  *)
 
-expr3:
-| e1=expr4 SLASH e2=expr4 { Div(e1, e2) }
-| e=expr4 { e }
+expr2 :
+| e1=expr2 EQUAL e2=expr2 { Eq(e1,e2) }
+| e1=expr2 NEQ   e2=expr2 { Not(Eq(e1,e2)) }
+| e=expr3                 { e }
+
+expr3 :
+| e1=expr3 PLUS e2=expr3 { Plus(e1, e2) }
+| e1=expr3 XOR  e2=expr3 { Xor (e1, e2) }
+| e=expr4                { e }
 
 expr4 :
-| e1=expr4 STAR e2=expr4 { Mult(e1,e2) }
-| e1=expr4 LAND e2=expr4 { Land(e1,e2) }
-| e1=expr4 LOR  e2=expr4 { Lor(e1,e2) }
-| e=expr5 { e }
+| e1=expr4 MINUS e2=expr4 { Minus(e1, e2) }
+| e=expr5                 { e }
 
 expr5:
-| e1=expr6 CARET e2=expr6 { Exp(e1, e2) }
+| e1=expr5 SLASH e2=expr5 { Div(e1, e2) }
 | e=expr6                 { e }
 
-(* FIXME: check how unary/binary minus handled in Haskell/OCaml *)
 expr6 :
+| e1=expr6 STAR e2=expr6 { Mult(e1,e2) }
+| e=expr7                { e }
+
+expr7:
+| e1=expr8 CARET e2=expr8 { Exp(e1, e2) }
+| e=expr8                 { e }
+
+(* FIXME: check how unary/binary minus handled in Haskell/OCaml *)
+expr8 :
 | s=ID                                    { V(Unqual,s) }
 | s1=ID BACKTICK s2=ID                    { V(Qual s1, s2) }
 | i=NAT                                   { CFNat(i) }
@@ -236,15 +244,17 @@ expr6 :
 | TRUE                                    { CB(true) }
 | FALSE                                   { CB(false) }
 | s=ID l=paren_list1(COMMA,expr)          { SApp(s,l) }
-| MINUS e1=expr6                          { Opp(e1) }
-| NOT e=expr6                             { Not(e) }
+| MINUS e1=expr8                          { Opp(e1) }
+| NOT e=expr8                             { Not(e) }
 | LOG LPAR e1=expr RPAR                   { Log(e1) }
 | l=paren_list0(COMMA,expr)               { mk_Tuple l }
 | GETPK LPAR e=expr RPAR                  { ProjPermKey(Type.KeyElem.PKey,e) }
 | GETSK LPAR e=expr RPAR                  { ProjPermKey(Type.KeyElem.SKey,e) }
-| e1=expr6 SHARP i=NAT                    { Proj(i,e1) }
+| e1=expr7 SHARP i=NAT                    { Proj(i,e1) }
 | IN_DOM LPAR e=expr COMMA i=ID RPAR      { SIndom(i,e) }
+| IS_SET LPAR i=ID RPAR                   { SIndom(i,mk_Tuple []) }
 | i=MGET_ID l=seplist1(COMMA,expr) RBRACK { SLookUp(i,l) }
+| i=MVAR_ID                               { SLookUp(i,[mk_Tuple []]) }
 
 /*======================================================================
 (* * Oracle definitions *) */
@@ -260,7 +270,8 @@ lcmd :
     es=loption(except_exprs)                        { L.map (fun i -> LSamp(i,t,es)) is }
 | GUARD LPAR e=expr RPAR                            { [ LGuard(e) ] }
 | i=MGET_ID l=seplist1(COMMA,expr) RBRACK
-    LEFTARROW e=expr                                { [ LMSet(i,l,e) ] }
+    COLONEQ e=expr                                { [ LMSet(i,l,e) ] }
+| i=ID COLONEQ e=expr                             { [ LMSet(i,[mk_Tuple []],e) ] }
 
 obody :
 | LCBRACE cmds=termlist0(SEMICOLON,lcmd)
@@ -292,13 +303,18 @@ var_pat :
 
 gcmd :
 | LET i=ID EQUAL e=expr                                      { [ GLet(i,e) ] }
-| i=MGET_ID l=seplist1(COMMA,expr) RBRACK LEFTARROW e=expr   { [ GMSet(i,l,e) ] }
+| i=MGET_ID l=seplist1(COMMA,expr) RBRACK COLONEQ e=expr     { [ GMSet(i,l,e) ] }
+| i=ID COLONEQ e=expr                                        { [ GMSet(i,[mk_Tuple []],e) ] }
 | is=var_pat LEFTARROW asym=ID e=arglist0 ods=loption(odefs) { [ GCall(is,asym,e,ods) ] }
 | ASSERT LPAR e=expr RPAR                                    { [ GAssert(e) ] }
 | ids=seplist1(COMMA,ID) SAMP t=typ es=loption(except_exprs) { L.map (fun i -> GSamp(i,t,es)) ids }
 
+gcmds:
+| cs = termlist0(SEMICOLON,gcmd) { L.concat cs }
+
 gdef :
-| cs=termlist0(SEMICOLON,gcmd) { L.concat cs }
+| cs=gcmds { CmdList(cs) }
+| gid=ID  { Gname(gid) }
 
 /*======================================================================
 (* * Instructions *) */
@@ -382,12 +398,12 @@ decl :
 | ASSUMPTION
     it=boption(delimited(LBRACK,INFTHEO,RBRACK))
     i=ID sym=loption(sym_vars)
-    LBRACK g0=gdef RBRACK
-    LBRACK g1=gdef RBRACK                        { AssmDec(i, it, g0, g1, sym) }
+    LBRACK g0=gcmds RBRACK
+    LBRACK g1=gcmds RBRACK                       { AssmDec(i, it, g0, g1, sym) }
 | ASSUMPTION
     it=boption(delimited(LBRACK,INFTHEO,RBRACK))
     i1=ID at=atype sym=loption(sym_vars)
-    LBRACK g=gdef RBRACK e=bind_event            { AssmComp(i1, it, at, g, e, sym) }
+    LBRACK g=gcmds RBRACK e=bind_event           { AssmComp(i1, it, at, g, e, sym) }
 | BOUNDSUCC LBRACK g=gdef RBRACK e=bind_event    { JudgSucc(g, e) }
 | BOUNDADV LBRACK g=gdef RBRACK e=bind_event     { JudgAdv(g, e) }
 | BOUNDDIST LBRACK g1=gdef RBRACK e1=bind_event
@@ -439,7 +455,7 @@ move_pos:
 
 diff_cmd:
 | RRENAME i1=ID i2=ID mupto=assgn_pos?            { Drename(i1,i2,mupto) }
-| RINSERT p=assgn_pos LBRACK gd=gdef RBRACK       { Dinsert(p,gd) }
+| RINSERT p=assgn_pos LBRACK gd=gcmds RBRACK      { Dinsert(p,gd) }
 | RSUBST p=assgn_pos LPAR e1=expr TO e2=expr RPAR { Dsubst(p,e1,e2) }
 
 id_pair:
@@ -514,6 +530,9 @@ tactic :
 | RCRUSH               { Rcrush(false,Some(1)) }
 | BYCRUSH              { Rcrush(true,None) }
 | BYCRUSH mi=uopt(NAT) { Rcrush(true,mi) }
+
+/* finite maps */
+| SEP_DOM mid1=ID mid2=ID { Rsep_dom(mid1,mid2) }
 
 /* oracles */
 | RRND op=uopos c1=uopt(ctx) c2=uopt(ctx)           { Rrnd_orcl(op,c1,c2) }

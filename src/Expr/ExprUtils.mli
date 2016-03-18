@@ -31,6 +31,7 @@ val is_Quant       : expr -> bool
 val is_All         : expr -> bool
 val is_Exists      : expr -> bool
 val is_Tuple       : expr -> bool
+val is_Unit        : expr -> bool
 val is_Proj        : expr -> bool
 val is_Cnst        : expr -> bool
 val is_FNat        : expr -> bool

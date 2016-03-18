@@ -161,6 +161,8 @@ let t_assm_comp assm ev_e subst = core_tactic (ct_assm_comp assm ev_e subst)
 
 let t_assm_dec dir ren rngs assm = core_tactic (ct_assm_dec dir ren rngs assm)
 
+let t_sep_dom ms1 ms2 = core_tactic (ct_sep_dom ms1 ms2)
+
 let t_move i delta = core_tactic (ct_move i delta)
 
 let t_except p es = core_tactic (ct_except p es)

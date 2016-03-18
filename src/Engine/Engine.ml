@@ -118,6 +118,22 @@ let t_move inter delta ju =
 let ranges ju l =
   let l = L.map (interval ju) l in
   if l = [] then None else Some l
+    
+let parse_gdef vmap ts pgd =
+  match pgd with
+  | PT.Gname gn ->
+    if not (Mstring.mem gn ts.ts_game_defs) then
+      tacerror "undefined game: %s" gn;
+    Mstring.find gn ts.ts_game_defs
+  | PT.CmdList pgd ->
+    PU.gdef_of_parse_gdef vmap ts pgd
+
+let parse_se vmap ts pgd pev =
+  let gd = parse_gdef vmap ts pgd in
+  let ev = PU.expr_of_parse_expr vmap ts Unqual pev in
+  let se = { se_gdef = gd; se_ev = ev } in
+  Wf.wf_se Wf.NoCheckDivZero se;
+  se
 
 (* ** Tactic handling
  * ----------------------------------------------------------------------- *)
@@ -157,7 +173,8 @@ let handle_tactic ts tac =
 
     let parse_ev se =
       let vmap_se = GameUtils.vmap_of_se ju.ju_se in
-      PU.expr_of_parse_expr vmap_se ts Unqual se in
+      PU.expr_of_parse_expr vmap_se ts Unqual se
+    in
 
     let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); VarSym.mk sv ty in
     match tac with
@@ -308,7 +325,7 @@ let handle_tactic ts tac =
 
     | PT.Rconv(Some sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
-      let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
+      let gd2 = parse_gdef vmap2 ts sgd in
       let ev2 = PU.ev_of_parse_ev vmap2 ts sev in
       T.t_conv true { se_gdef = gd2; se_ev = ev2 } ju
 
@@ -318,7 +335,7 @@ let handle_tactic ts tac =
 
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
-      let gd2 = PU.gdef_of_parse_gdef vmap2 ts sgd in
+      let gd2 = parse_gdef vmap2 ts sgd in
       let ev2 = PU.ev_of_parse_ev vmap2 ts sev in
       T.t_trans { se_gdef = gd2; se_ev = ev2 } ju
 
@@ -486,10 +503,25 @@ let handle_tactic ts tac =
     | PT.Rbad(_i,None,_vsx) ->
       fixme "undefined"
       (* raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx))) *)
+
+    | PT.Rsep_dom(ms1,ms2) ->
+      begin try
+        let ms1 = Mstring.find ms1 ts.ts_fmapdecls in
+        let ms2 = Mstring.find ms2 ts.ts_fmapdecls in
+        if not (   equal_ty ms1.MapSym.dom ms1.MapSym.dom
+                && equal_ty (mk_Prod []) ms2.MapSym.codom) then
+          tacerror "sep_dom: invalid arguments.";
+        T.t_sep_dom ms1 ms2 ju
+      with Not_found ->
+        assert false
+      end
+
     | PT.Rcheck_hash_args(_opos) -> fixme "undefined" (*
        let gen_o_lkup o  = Mstring.find (Fsym.to_string o) ts.ts_lkupdecls in
        CR.t_check_hash_args opos gen_o_lkup ju *)
+
     | PT.Rbad _ -> tacerror "Wrong RBad tactic call in Tactic.ml";
+
     | PT.Rguess(aname, fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
@@ -509,6 +541,7 @@ let handle_tactic ts tac =
           fvs vs
       in
       T.t_guess asym fvs ju
+
     | PT.Rfind((bd,body),arg,aname,fvs) ->
       if (Mstring.mem aname ts.ts_adecls) then
         tacerror "rguess: adversary with same name already declared";
@@ -651,24 +684,34 @@ let rec handle_instr verbose ts instr =
     let ts_fundecls = Mstring.add s hs ts.ts_constdecls in
     let ts = { ts with ts_constdecls = ts_fundecls } in
     (ts, fsprintf "Declared operator %s" s)
-
+    
   | PT.FMDecl(s,t1,t2) ->
-    if Mstring.mem s ts.ts_fmapdecls then
-      tacerror "finite map with same name already declared.";
     let dom, codom = (PU.ty_of_parse_ty ts t1, PU.ty_of_parse_ty ts t2) in
-    let hs = MapSym.mk s dom codom in
-    let ts_fmapdecls = Mstring.add s hs ts.ts_fmapdecls in
-    let ts = { ts with ts_fmapdecls = ts_fmapdecls } in
-    (ts, fsprintf "Declared random oracle %s" s)
+    begin try
+      let hs = Mstring.find s ts.ts_fmapdecls in
+      if not (equal_ty hs.MapSym.dom dom && equal_ty hs.MapSym.codom codom) then
+        tacerror "Finite map with same name already declared.";
+      (ts, fsprintf "Finite map %s with identical type already declared." s)
+    with Not_found ->
+      let hs = MapSym.mk s dom codom in
+      let ts_fmapdecls = Mstring.add s hs ts.ts_fmapdecls in
+      let ts = { ts with ts_fmapdecls = ts_fmapdecls } in
+      (ts, fsprintf "Declared finite map %s" s)
+    end
 
   | PT.RODecl(s,t1,t2) | PT.RFDecl(s,t1,t2) ->
-    if Mstring.mem s ts.ts_rodecls then
-      tacerror "random oracle with same name already declared.";
     let dom, codom = (PU.ty_of_parse_ty ts t1, PU.ty_of_parse_ty ts t2) in
-    let hs = RoSym.mk s dom codom in
-    let ts_rodecls = Mstring.add s hs ts.ts_rodecls in
-    let ts = { ts with ts_rodecls = ts_rodecls } in
-    (ts, fsprintf "Declared random oracle %s" s)
+    begin try
+      let hs = Mstring.find s ts.ts_rodecls in
+      if not (equal_ty hs.RoSym.dom dom && equal_ty hs.RoSym.codom codom) then
+        tacerror "random oracle with same name already declared.";
+      (ts, fsprintf "Random oracle %s with identical type already declared." s)
+    with Not_found ->
+      let hs = RoSym.mk s dom codom in
+      let ts_rodecls = Mstring.add s hs ts.ts_rodecls in
+      let ts = { ts with ts_rodecls = ts_rodecls } in
+      (ts, fsprintf "Declared random oracle %s" s)
+    end
 
   | PT.TyDecl(s) ->
     if Mstring.mem s ts.ts_tydecls then
@@ -736,14 +779,17 @@ let rec handle_instr verbose ts instr =
     let ts = { ts with ts_assms_comp = Mstring.add s assm ts.ts_assms_comp } in
     (ts, "Declared computational assumption.")
 
-  | PT.GameDef(i,gd) ->
+  | PT.GameDef(s,gd) ->
     let vmap = Ht.create 137 in
-    let gd = PU.gdef_of_parse_gdef vmap ts gd in
-    (ts, fsprintf "Defined game: %s := @\n%a" i (pp_gdef ~nonum:false) gd)
+    let gd = parse_gdef vmap ts gd in
+    if Mstring.mem s ts.ts_assms_comp then
+      tacerror "game with the same name already exists";
+    let ts = {ts with ts_game_defs = Mstring.add s gd ts.ts_game_defs } in
+    (ts, fsprintf "Defined game: %s := @\n%a" s (pp_gdef ~nonum:false) gd)
 
   | PT.JudgAdv(gd,e) | PT.JudgSucc(gd,e)->
     let vmap = Ht.create 137 in
-    let se = PU.se_of_parse_se vmap ts gd e in
+    let se = parse_se vmap ts gd e in
     let pt = match instr with PT.JudgAdv _ -> Pr_Adv | _ -> Pr_Succ in
     let ju = { ju_se = se; ju_pr = pt } in
     let ps = first (T.t_id ju) in
@@ -752,9 +798,9 @@ let rec handle_instr verbose ts instr =
 
   | PT.JudgDist(gd1,e1,gd2,e2) ->
     let vmap1 = Ht.create 137 in
-    let se1 = PU.se_of_parse_se vmap1 ts gd1 e1 in
+    let se1 = parse_se vmap1 ts gd1 e1 in
     let vmap2 = Ht.create 137 in
-    let se2 = PU.se_of_parse_se vmap2 ts gd2 e2 in
+    let se2 = parse_se vmap2 ts gd2 e2 in
     let ju = { ju_se = se1; ju_pr = Pr_Dist se2 } in
     let ps = first (T.t_id ju) in
     ({ ts with ts_ps = ActiveProof(ps,[],mempty,None) }

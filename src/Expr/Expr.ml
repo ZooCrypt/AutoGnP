@@ -373,7 +373,6 @@ let mk_Xor = function
   | _ -> failwith "mk_Xor: expected non-empty list"
 
 let mk_Land es = mk_nary "mk_Land" false Land es mk_Bool
-
 let mk_Lor es = mk_nary "mk_Lor" false Lor es mk_Bool
 
 let mk_GMult es =

@@ -700,12 +700,12 @@ let unif_vs ren v1 v2 =
     VarSym.H.add ren v1 v2
 
 (* FIXME: pretty incomplete *)
-let unif_expr _ren _e1 _e2 = ()
-  (* match e1.e_node, e2.e_node with
-     | Exists(_,_,binders1), Exists(_,_,binders2) ->
-        ensure_same_length binders1 binders2;
-        L.iter2 (unif_vs ren) (L.map fst binders1) (L.map fst binders2)
-     | _ -> () *)
+let unif_expr ren e1 e2 =
+  match e1.e_node, e2.e_node with
+  | Quant(_,(binders1,_),_), Quant(_,(binders2,_),_) ->
+    ensure_same_length binders1 binders2;
+    L.iter2 (unif_vs ren) binders1 binders2
+  | _ -> ()
 
 let unif_lcmd ren lc1 lc2 =
   match lc1,lc2 with
@@ -944,8 +944,11 @@ let pp_lcmd ~qual fmt = function
       (pp_expr_qual ~qual) e
   | LBind(vs,h) ->
     F.fprintf fmt "@[<hov 2>%a <-@ L_%a@]" (pp_binder ~qual) vs FunSym.pp h
+  | LMSet(ms,ek,e) when is_Unit ek ->
+    F.fprintf fmt "@[<hov 2>%a :=@ %a@]"
+      MapSym.pp ms (pp_expr_qual ~qual) e
   | LMSet(ms,ek,e) ->
-    F.fprintf fmt "@[<hov 2>%a[%a] <-@ %a@]"
+    F.fprintf fmt "@[<hov 2>%a[%a] :=@ %a@]"
       MapSym.pp ms (pp_expr_qual ~qual) ek (pp_expr_qual ~qual) e
   | LSamp(v,d)  ->
     F.fprintf fmt "@[<hov 2>%a <-$@ %a@]"
@@ -1014,8 +1017,11 @@ let pp_odef ~nonum fmt (o, vs, od, c) =
 let pp_gcmd ~nonum fmt gc = match gc with
   | GLet(vs,e) ->
     F.fprintf fmt "@[<hov 2>let %a =@ %a@]" (pp_binder ~qual:Unqual) [vs] pp_expr e
+  | GMSet(ms,ek,e) when is_Unit ek ->
+    F.fprintf fmt "@[<hov 2>%a :=@ %a@]"
+      MapSym.pp ms pp_expr e
   | GMSet(ms,ek,e) ->
-    F.fprintf fmt "@[<hov 2>%a[%a] <-@ %a@]" MapSym.pp ms pp_expr ek pp_expr e
+    F.fprintf fmt "@[<hov 2>%a[%a] :=@ %a@]" MapSym.pp ms pp_expr ek pp_expr e
   | GAssert(e) ->
     F.fprintf fmt "@[<hov 2>assert(%a)@]" pp_expr e
   | GSamp(v,d) ->
@@ -1056,6 +1062,61 @@ let pp_ps fmt ps =
   F.fprintf fmt "%a\n--------------------\n\n"
     (pp_list "\n\n" pp_se_idx) se_idxs
 
+
+(* ** finite maps transformations
+ * ----------------------------------------------------------------------- *)
+
+let map_expr_finmap ~f_lookup ~f_in_dom =
+  let aux e =
+    match e.e_node with
+    | App(MapIndom(ms),[ek])  -> f_in_dom ms ek
+    | App(MapLookup(ms),[ek]) -> f_lookup ms ek
+    | _   -> raise Not_found
+  in
+  e_map_top aux
+
+let map_lcmd_finmap ~f_lookup ~f_in_dom ~f_LMSet lcmd =
+  let mef = map_expr_finmap ~f_lookup ~f_in_dom in
+  match lcmd with
+  | LLet (v, e)      -> [LLet(v, mef e)]
+  | LMSet (m, ek, e) -> f_LMSet m (mef ek) (mef e)
+  | LBind (vs,lh)    -> [LBind (vs, lh)]
+  | LSamp(v,d)       -> [LSamp(v, map_distr_exp mef d)]
+  | LGuard e         -> [LGuard (mef e)]
+
+let map_obody_finmap ~f_lookup ~f_in_dom ~f_LMSet (lc,e)=
+  let e = map_expr_finmap ~f_lookup ~f_in_dom e in
+  let lc = L.concat (L.map (map_lcmd_finmap ~f_lookup ~f_in_dom ~f_LMSet) lc) in
+  (lc, e)
+
+let map_odecl_finmap ~f_lookup ~f_in_dom ~f_LMSet od =
+  let mob = map_obody_finmap ~f_lookup ~f_in_dom ~f_LMSet in
+  match od with
+  | Oreg ob -> Oreg (mob ob)
+  | Ohyb oh -> Ohyb (map_ohybrid mob oh)
+
+let map_odef_finmap ~f_lookup ~f_in_dom ~f_LMSet (o,vs,od,c) =
+  let od = map_odecl_finmap ~f_lookup ~f_in_dom ~f_LMSet od in
+  (o, vs, od, c)
+
+let map_gcmd_finmap ~f_lookup ~f_in_dom ~f_LMSet ~f_GMSet gcmd =
+  let mef = map_expr_finmap ~f_lookup ~f_in_dom in
+  match gcmd with 
+  | GLet(v,e)        -> [GLet(v, mef e)]
+  | GAssert(e)       -> [GAssert(mef e)]
+  | GMSet (m, ek, e) -> f_GMSet m (mef ek) (mef e)
+  | GSamp(v, d)      -> [GSamp(v, map_distr_exp mef d)]
+  | GCall(vs, asym, e, odefs) ->
+    [GCall(vs, asym, mef e,
+           L.map (map_odef_finmap ~f_lookup ~f_in_dom ~f_LMSet) odefs)]
+
+let map_gdef_finmap ~f_lookup ~f_in_dom ~f_LMSet ~f_GMSet gcmds =
+  L.concat (L.map (map_gcmd_finmap ~f_lookup ~f_in_dom ~f_GMSet ~f_LMSet) gcmds)
+
+let map_se_finmap ~f_lookup ~f_in_dom ~f_LMSet ~f_GMSet se = {
+  se_gdef = map_gdef_finmap ~f_lookup ~f_in_dom ~f_GMSet ~f_LMSet se.se_gdef;
+  se_ev   = map_expr_finmap ~f_lookup ~f_in_dom se.se_ev;
+}
 
 (* ** Old *)
 (* *** Replace hash calls by lookups
