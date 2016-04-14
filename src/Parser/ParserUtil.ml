@@ -60,22 +60,6 @@ let ty_of_parse_ty ts pty =
           let ts = Mstring.find s ts.ts_tydecls in
           T.mk_TySym(ts)
         with Not_found -> tacerror "Undefined type %s" s)
-
-    | KeyPair s ->
-       (try
-         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyPair f.PermSym.id
-         with Not_found -> tacerror "Undefined permutation %s" s)
-    | PKey s ->
-       (try
-         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyElem T.KeyElem.PKey f.PermSym.id
-         with Not_found -> tacerror "Undefined permutation %s" s)
-    | SKey s ->
-       (try
-         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-           T.mk_KeyElem T.KeyElem.SKey f.PermSym.id
-         with Not_found -> tacerror "Undefined permutation %s" s)
     | G(s)      -> T.mk_G(create_groupvar ts s)
   in
   go pty
@@ -145,34 +129,18 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       in
       E.mk_V v
     | Tuple(es) -> E.mk_Tuple (L.map go es)
-    | ProjPermKey(ke,kp) -> E.mk_ProjKeyElem ke (go kp)
     | Proj(i,e) -> E.mk_Proj i (go e)
     | SLookUp(s,es) ->
        let m = try Mstring.find s ts.ts_fmapdecls with
                  Not_found -> fail_parse (F.sprintf "Undefined finite map %s" s) in
        let es = mk_Tuple (L.map go es) in
        E.mk_MapLookup m es
+
     | SIndom(s,e) ->
        let m = try Mstring.find s ts.ts_fmapdecls with
                  Not_found -> fail_parse (F.sprintf "Undefined finite map %s" s) in
        let e = go e in
        E.mk_MapIndom m e
-    | SApp(s,es) when Mstring.mem (s ^ "_inv") ts.ts_permdecls ->
-       begin
-         let f = Mstring.find (s ^ "_inv") ts.ts_permdecls in
-         match es with
-         | [k;e] -> E.mk_Perm f E.NotInv (go k) (go e)
-         | k::es -> E.mk_Perm f E.NotInv (go k) (E.mk_Tuple (L.map go es))
-         | _ -> fail_parse (F.sprintf "Permutation %s expects 2 arguments" s)
-       end
-    | SApp(s_inv,es) when Mstring.mem s_inv ts.ts_permdecls ->
-       begin
-         let f = Mstring.find s_inv ts.ts_permdecls in
-         match es with
-         | [k;e] -> E.mk_Perm f E.IsInv (go k) (go e)
-         | k::es -> E.mk_Perm f E.IsInv (go k) (E.mk_Tuple (L.map go es))
-         | _ -> fail_parse (F.sprintf "Permutation %s expects 2 arguments" s_inv)
-       end
 
     | SApp(s,es) when Mstring.mem s ts.ts_rodecls ->
       let h = Mstring.find s ts.ts_rodecls in
@@ -334,7 +302,7 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       let vts = L.combine vs tys in
       let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
-    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.KeyElem _|Type.KeyPair _|Type.TySym _)
+    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.TySym _)
       , ([] | _ :: _ :: _) ->
       tacerror
         "Parser: wrong argument for adversary return value, expected one variable (type %a), got %i"

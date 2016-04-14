@@ -12,9 +12,6 @@ open Util
 type parse_ty =
   | Bool
   | Fq
-  | KeyPair of string
-  | PKey    of string
-  | SKey    of string
   | BS      of string
   | G       of string
   | TySym   of string
@@ -28,7 +25,6 @@ type parse_expr =
   | SLookUp     of string * parse_expr list
   | SIndom      of string * parse_expr
   | Tuple       of parse_expr list
-  | ProjPermKey of Type.KeyElem.t * parse_expr
   | Proj        of int * parse_expr
   | CB          of bool
   | CZ          of string
@@ -159,7 +155,6 @@ type tactic =
 
 type instr =
   | Include    of string
-  | PermDecl   of string * parse_ty
   | BoundDecl  of string * string
   | TyDecl     of string
   | RODecl     of string * parse_ty * parse_ty

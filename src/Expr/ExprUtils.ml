@@ -71,19 +71,9 @@ let is_some_App e = match e.e_node with App _ -> true | _ -> false
 
 let is_App o e = match e.e_node with App(o',_) -> o = o' | _ -> false
 
-let is_Perm e =  match e.e_node with App(Perm _,_) -> true | _ -> false
-
 let is_MapLookup e = match e.e_node with App(MapLookup _,_) -> true | _ -> false
 
 let is_FunCall e = match e.e_node with App(FunCall _,_) -> true | _ -> false
-
-let is_ProjKeyElem ptype perm e = match e.e_node with
-  | App(ProjKeyElem(ptype'), [e2]) when KeyElem.equal ptype ptype' ->
-    begin match e2.e_ty.ty_node with
-    | KeyPair(perm') -> Permvar.equal perm.PermSym.id perm'
-    | _              -> false
-    end
-  | _ -> false
 
 let is_FDiv e = is_App FDiv e
 
@@ -124,11 +114,11 @@ let is_Not e = is_App Not e
 let is_field_op = function
   | FOpp | FMinus | FInv | FDiv -> true
   | GExp _ | GLog _ | GInv
-  | EMap _ | Perm _
+  | EMap _ 
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | ProjKeyElem _ | FunCall _   -> false
+  | FunCall _   -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -286,10 +276,6 @@ and pp_op_p ~qual above fmt (op, es) =
   | EMap _,[a;b] ->
     let ppe = pp_exp_p ~qual PrefixApp in
     F.fprintf fmt "e(%a,%a)" ppe a ppe b
-  | Perm(ptype,f), [proj_ke;arg] ->
-    F.fprintf fmt
-      "%a%s(%a,%a)" PermSym.pp f (if ptype = IsInv then "_inv" else "")
-      (pp_exp_p ~qual above) proj_ke (pp_exp_p ~qual above) arg
   | Ifte, [a;b;d] ->
     let ppe i = pp_exp_p ~qual (Infix(Ifte,i)) in
     let pp fmt () =
@@ -298,8 +284,6 @@ and pp_op_p ~qual above fmt (op, es) =
     pp_maybe_paren true (notsep above) pp fmt ()
   | GInv, [a] ->
     pp_prefix GInv  ""      "^-1" a
-  | ProjKeyElem kt, [e] ->
-    F.fprintf fmt "%a(%a)" Type.KeyElem.pp kt (pp_exp_p ~qual PrefixApp) e
   | FunCall f, [e] ->
     F.fprintf fmt "%a(%a)" FunSym.pp f (pp_exp_p ~qual PrefixApp) e
   | RoCall h, [e] ->
@@ -310,9 +294,9 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "is_set(%a)" MapSym.pp h
   | MapIndom h, [e] ->
     F.fprintf fmt "in_dom(%a,%a)" (pp_exp_p ~qual PrefixApp) e MapSym.pp h
-  | (ProjKeyElem _ | FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
+  | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
   | (FOpp | FInv | Not | GInv | GLog _), ([] | _::_::_)
-  | (Perm _ | FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)
+  | (FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)
   | Ifte, ([] | [_] | [_;_] | _::_::_::_::_) ->
     failwith "pp_op: invalid expression"
 
@@ -355,15 +339,6 @@ let pp_ctxt fmt (v,e) =
 exception Destr_failure of string
 
 let destr_V e = match e.e_node with V v -> v | _ -> raise (Destr_failure "V")
-
-let destr_Perm e =
-  match e.e_node with
-  | App(o,[k;e]) ->
-    begin match o with
-    | Perm(ptype,f) -> (f,ptype,k,e)
-    | _ -> raise (Destr_failure "Perm")
-    end
-  | _ -> raise (Destr_failure "Perm")
 
 let destr_Quant e =
   match e.e_node with Quant(q,b,e) -> (q,b,e) | _ -> raise (Destr_failure "Quant")
@@ -556,7 +531,7 @@ let sub t =
         L.split
           (L.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
       mk_Tuple es, mk_Tuple zs
-    | Int | KeyElem _ | KeyPair _ | TySym _ -> assert false
+    | Int | TySym _ -> assert false
   in
   let x1 = VarSym.mk "x" t in
   let x2 = VarSym.mk "x" t in

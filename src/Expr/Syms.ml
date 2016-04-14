@@ -6,10 +6,13 @@ open Util
 open Id
 open Type
 
-(* ** Oracle symbols
+(* ** Typed symbols
  * ----------------------------------------------------------------------- *)
 
-module OrclSym = struct
+(* *** Definition
+ * ----------------------------------------------------------------------- *)
+
+module TypedSym = struct
   type t = {
     id    : Id.id;
     dom   : ty;
@@ -44,6 +47,31 @@ module OrclSym = struct
   let to_string os = Id.name os.id
 end
 
+(* *** Oracle symbols
+ * ----------------------------------------------------------------------- *)
+
+module OrclSym : (module type of TypedSym) = TypedSym
+
+(* *** Adversary procedure symbols
+ * ----------------------------------------------------------------------- *)
+
+module AdvSym : (module type of TypedSym) = TypedSym
+
+(* *** Uninterpreted function symbols
+ * ----------------------------------------------------------------------- *)
+
+module FunSym : (module type of TypedSym) = TypedSym
+
+(* *** Random oracle symbols
+ * ----------------------------------------------------------------------- *)
+
+module RoSym : (module type of TypedSym) = TypedSym
+
+(* *** Map symbols
+ * ----------------------------------------------------------------------- *)
+
+module MapSym : (module type of TypedSym) = TypedSym
+
 (* ** Qualified symbols
  * ----------------------------------------------------------------------- *)
 
@@ -52,99 +80,6 @@ type 'a qual = Unqual | Qual of 'a
 let map_qual f = function
   | Unqual -> Unqual
   | Qual x -> Qual (f x)
-
-(* ** Variable symbols
- * ----------------------------------------------------------------------- *)
-
-module VarSym = struct
-
-  type t = {
-    id   : id;
-    qual : OrclSym.t qual; (* we allow qualified variables for eq-Hybrid-oracles *)
-    ty   : ty;
-  }
-
-  let hash ps = Id.hash ps.id
-  let equal vs1 vs2 = Id.equal vs1.id vs2.id
-  let compare x y = Id.tag x.id - Id.tag y.id
-
-  type tt = t
-  module Ps = StructMake (struct
-    type t = tt
-    let tag = hash
-  end)
-
-  module M = Ps.M
-  module S = Ps.S
-  module H = Ps.H
-
-  let mk name ty = { id = Id.mk name; qual = Unqual; ty = ty; }
-
-  let mk_qual name qual ty = { id = Id.mk name; qual = qual; ty = ty; }
-
-  let pp_tag fmt _t =
-    pp_string fmt ""
-    (* F.fprintf fmt ".%i" t *)
-
-  let pp_qual ?qual:(qual=Unqual) fmt vs =
-    let open Id in
-    let qual_eq o =
-      match qual with
-      | Unqual  -> false
-      | Qual o' -> OrclSym.equal o o'
-    in
-    match vs.qual with
-    | Unqual ->
-      F.fprintf fmt "%s%a" (name vs.id) pp_tag (tag vs.id)
-    | Qual o when qual_eq o ->
-      F.fprintf fmt "%s%a" (name vs.id) pp_tag (tag vs.id)
-    | Qual q ->
-      F.fprintf fmt "%s`%s%a" (name q.OrclSym.id) (name vs.id) pp_tag (tag vs.id)
-
-  let pp fmt = pp_qual ~qual:Unqual fmt
-
-  let to_string ps = Id.name ps.id
-
-  let set_of_list l =
-    L.fold_right
-      (fun vs acc -> S.add vs acc)
-      l
-      S.empty
-end
-
-(* ** Adversary procedure symbols
- * ----------------------------------------------------------------------- *)
-
-module AdvSym = struct
-  type t = {
-    id    : Id.id;
-    dom   : ty;    (* arguments type *)
-    codom : ty;    (* return type *)
-  }
-
-  let hash asym = Id.hash asym.id
-  let equal asym1 asym2 = Id.equal asym1.id asym2.id
-  let compare x y = Id.tag x.id - Id.tag y.id
-
-  type tt = t
-  module As = StructMake (struct
-    type t = tt
-    let tag = hash
-  end)
-
-  module M = As.M
-  module S = As.S
-  module H = As.H
-
-  let mk name dom codom = { id = Id.mk name; dom = dom; codom = codom; }
-
-  let pp fmt asym = F.fprintf fmt "%s" (Id.name asym.id)
-
-  let pp_long fmt asym =
-    F.fprintf fmt "%s : %a -> %a" (Id.name asym.id) pp_ty asym.dom pp_ty asym.codom
-
-  let to_string os = Id.name os.id
-end
 
 (* ** Bilinear map symbols
  * ----------------------------------------------------------------------- *)
@@ -213,98 +148,61 @@ module PermSym = struct
   let name hs = Permvar.name hs.id
 end
 
-(* ** Uninterpreted function symbols
+(* ** Variable symbols
  * ----------------------------------------------------------------------- *)
 
-module FunSym = struct
+module VarSym = struct
+
   type t = {
-    id    : Id.id;
-    dom   : ty;
-    codom : ty;
+    id   : id;
+    qual : OrclSym.t qual; (* we allow qualified variables for eq-Hybrid-oracles *)
+    ty   : ty;
   }
 
-  let hash hs = Id.hash hs.id
-  let equal hs1 hs2 = Id.equal hs1.id hs2.id
+  let hash ps = Id.hash ps.id
+  let equal vs1 vs2 = Id.equal vs1.id vs2.id
   let compare x y = Id.tag x.id - Id.tag y.id
 
   type tt = t
-  module Hs = StructMake (struct
+  module Ps = StructMake (struct
     type t = tt
     let tag = hash
   end)
 
-  module M = Hs.M
-  module S = Hs.S
-  module H = Hs.H
+  module M = Ps.M
+  module S = Ps.S
+  module H = Ps.H
 
-  let mk name dom codom = { id = Id.mk name; dom   = dom; codom = codom; }
+  let mk name ty = { id = Id.mk name; qual = Unqual; ty = ty; }
 
-  let to_string hs = Id.name hs.id
+  let mk_qual name qual ty = { id = Id.mk name; qual = qual; ty = ty; }
 
-  let pp fmt hs = pp_string fmt (Id.name hs.id)
-end
+  let pp_tag fmt _t =
+    pp_string fmt ""
+    (* F.fprintf fmt ".%i" t *)
 
-(* ** Random oracle symbols
- * ----------------------------------------------------------------------- *)
+  let pp_qual ?qual:(qual=Unqual) fmt vs =
+    let open Id in
+    let qual_eq o =
+      match qual with
+      | Unqual  -> false
+      | Qual o' -> OrclSym.equal o o'
+    in
+    match vs.qual with
+    | Unqual ->
+      F.fprintf fmt "%s%a" (name vs.id) pp_tag (tag vs.id)
+    | Qual o when qual_eq o ->
+      F.fprintf fmt "%s%a" (name vs.id) pp_tag (tag vs.id)
+    | Qual q ->
+      F.fprintf fmt "%s`%s%a" (name q.OrclSym.id) (name vs.id) pp_tag (tag vs.id)
 
-module RoSym = struct
- 
-  type t = {
-    id    : Id.id;
-    dom   : ty;
-    codom : ty;
-  }
+  let pp fmt = pp_qual ~qual:Unqual fmt
 
-  let hash hs = Id.hash hs.id
-  let equal hs1 hs2 = Id.equal hs1.id hs2.id
-  let compare x y = Id.tag x.id - Id.tag y.id
+  let to_string ps = Id.name ps.id
 
-  type tt = t
-  module Hs = StructMake (struct
-    type t = tt
-    let tag = hash
-  end)
-
-  module M = Hs.M
-  module S = Hs.S
-  module H = Hs.H
-
-  let mk name dom codom = { id = Id.mk name; dom   = dom; codom = codom; }
-
-  let to_string hs = Id.name hs.id
-
-  let pp fmt hs = pp_string fmt (Id.name hs.id)
-end
-
-(* ** Map symbols
- * ----------------------------------------------------------------------- *)
-
-module MapSym = struct
- 
-  type t = {
-    id    : Id.id;
-    dom   : ty;
-    codom : ty;
-  }
-
-  let hash hs = Id.hash hs.id
-  let equal hs1 hs2 = Id.equal hs1.id hs2.id
-  let compare x y = Id.tag x.id - Id.tag y.id
-
-  type tt = t
-  module Hs = StructMake (struct
-    type t = tt
-    let tag = hash
-  end)
-
-  module M = Hs.M
-  module S = Hs.S
-  module H = Hs.H
-
-  let mk name dom codom = { id = Id.mk name; dom   = dom; codom = codom; }
-
-  let to_string hs = Id.name hs.id
-
-  (* let pp fmt hs = F.fprintf fmt "%s@%i" (Id.name hs.id) (Id.tag hs.id) *)
-  let pp fmt hs = F.fprintf fmt "%s" (Id.name hs.id)
+  let set_of_list l =
+    L.fold_right
+      (fun vs acc -> S.add vs acc)
+      l
+      S.empty
 end

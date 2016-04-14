@@ -17,17 +17,6 @@ module Permvar : (module type of Id)
 (** identifier for different groups *)
 module Groupvar : (module type of Id)
 
-(* ** Permutation keys *)
-
-module KeyElem : sig
-  type t = SKey | PKey
-
-  val compare : t -> t -> int
-  val hash : t -> int
-  val equal : t -> t -> bool
-  val pp : F.formatter -> t -> unit
-end
-
 (* ** Types and type nodes *)
 
 type ty = private { ty_node : ty_node; ty_tag : int; }
@@ -39,8 +28,6 @@ and ty_node =
   | Fq
   | Prod of ty list
   | Int (* used during extraction *)
-  | KeyPair of Permvar.id
-  | KeyElem of KeyElem.t * Permvar.id
 
 val equal_ty   : ty -> ty -> bool
 val hash_ty    : ty -> int
@@ -59,8 +46,6 @@ val mk_ty : ty_node -> Hsty.t
 val mk_BS      : Lenvar.id -> ty
 val mk_G       : Groupvar.id -> ty
 val mk_TySym   : Tysym.id -> ty
-val mk_KeyPair : Permvar.id -> ty
-val mk_KeyElem : KeyElem.t -> Permvar.id -> ty
 val mk_Fq      : ty
 val mk_Bool    : ty
 val mk_Prod    : ty list -> ty
@@ -73,8 +58,6 @@ val is_Fq	      : ty -> bool
 val is_Prod	      : ty -> bool
 val destr_G_exn	      : ty -> Groupvar.id
 val destr_BS_exn      : ty -> Lenvar.id
-val destr_KeyPair_exn : ty -> Permvar.id
-val destr_KeyElem_exn : ty -> (KeyElem.t * Permvar.id)
 val destr_Prod_exn    : ty -> ty list
 val destr_Prod        : ty -> (ty list) option
 

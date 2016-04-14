@@ -27,7 +27,6 @@
       ; "game",                     GAME                      (* kw: decl        *)  
       ; "inf",                      INFTHEO                   (* kw: decl        *)
       ; "ppt",                      PPT                       (* kw: decl        *)
-      ; "permutation",              PERMUTATION               (* kw: decl        *)
       ; "adversary",                ADVERSARY                 (* kw: decl        *)
       ; "operator",                 OPERATOR                  (* kw: decl        *)
       ; "type",                     TYPE                      (* kw: decl        *)
@@ -134,8 +133,6 @@
       ; "log",                      LOG                       (* kw: op          *)
       ; "true",                     TRUE                      (* kw: op          *)
       ; "false",                    FALSE                     (* kw: op          *)
-      ; "get_pk",                   GETPK                     (* kw: op          *) 
-      ; "get_sk",                   GETSK                     (* kw: op          *)
       ]
 }
 
@@ -200,9 +197,6 @@ rule lex = parse
   | "BS_"(simple_id as s)       { TBS(s) }                    (* kw: type   *)
   | "G"                         { TG("") }                    (* kw: type   *)
   | "G_"(number_id as s)        { TG(s) }                     (* kw: type   *)
-  | "KeyPair_"(simple_id as s)  { KEYPAIR(s) }                (* kw: type   *)
-  | "PKey_"(simple_id as s)     { PKEY(s) }                   (* kw: type   *)
-  | "SKey_"(simple_id as s)     { SKEY(s) }                   (* kw: type   *)
 
   (* Indexed constants *)
   | "L_"(ident as s)            { LIST(s) }                   (* kw: op     *)

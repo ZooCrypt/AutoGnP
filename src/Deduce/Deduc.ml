@@ -89,7 +89,6 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
           Hty.add sub_solver e.e_ty (Se.singleton e)
       end
     | TySym _ | Int | Prod _ -> ()
-    | KeyPair _ | KeyElem _ -> assert false
   in
   let add_sub e = add_sub_solver e; add_sub_constr e in
   (* for everything except field expressions, there is no nesting in the
@@ -101,7 +100,6 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Proj(_,e1)  -> add_sub e; (register_subexprs false) e1
     | App(op, es) ->
       begin match op with
-      | (ProjKeyElem _) -> fixme "no support for this"
       | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _) ->
         add_sub e; List.iter (register_subexprs false) es
       | FOpp | FMinus | FInv | FDiv ->
@@ -132,7 +130,6 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Eq | Not | Ifte ->
         add_sub_constr e; List.iter (register_subexprs false) es
       | GInv -> failwith "GInv cannot occur in normal-form"
-      | Perm _ -> failwith "No support for permutations"
       (*
       | FDiv ->
         FIXME: not the case, check where/why we need this
@@ -228,7 +225,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
       | Fq           -> DeducField.solve_fq, equal_ty ty
       | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
-      | TySym _ | Prod _ | Int | KeyPair _ | KeyElem _ -> assert false
+      | TySym _ | Prod _ | Int -> assert false
     in
     let k,u = Se.partition is_in subexprs in
     if Se.is_empty u then (

@@ -14,21 +14,6 @@ module Groupvar : (module type of Id) = Id
 
 module Permvar : (module type of Id) = Id
 
-(* ** Permutation keys *)
-
-module KeyElem = struct
-  type t = SKey | PKey
-    with compare
-
-  let hash = Hashtbl.hash
-
-  let equal ke1 ke2 =
-    compare ke1 ke2 = 0
-
-  let pp fmt = function
-    | SKey -> pp_string fmt "get_sk"
-    | PKey -> pp_string fmt "get_pk"
-end
 
 (* ** Types and type nodes *)
 
@@ -44,8 +29,6 @@ and ty_node =
   | Fq
   | Prod of ty list
   | Int
-  | KeyPair of Permvar.id
-  | KeyElem of KeyElem.t * Permvar.id
 
 (* ** Equality, hashing, and hash consing *)
 
@@ -64,8 +47,6 @@ module Hsty = Hashcons.Make (struct
     | TySym ts1, TySym ts2           -> Tysym.equal ts1 ts2
     | Fq, Fq                         -> true
     | Prod ts1, Prod ts2             -> list_eq_for_all2 equal_ty ts1 ts2
-    | KeyPair p1, KeyPair p2         -> Permvar.equal p1 p2
-    | KeyElem(k1,p1), KeyElem(k2,p2) -> KeyElem.equal k1 k2 && Permvar.equal p1 p2
     | _                              -> false
 
   let hash t =
@@ -77,8 +58,6 @@ module Hsty = Hashcons.Make (struct
     | Fq            -> 5
     | Prod ts       -> hcomb_l hash_ty 6 ts
     | Int           -> 7
-    | KeyPair p     -> hcomb 8 (Permvar.hash p)
-    | KeyElem(ke,p) -> hcomb 9 (hcomb (KeyElem.hash ke) (Permvar.hash p))
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -104,10 +83,6 @@ let mk_BS lv = mk_ty (BS lv)
 let mk_G gv = mk_ty (G gv)
 
 let mk_TySym ts = mk_ty (TySym ts)
-
-let mk_KeyPair pid = mk_ty (KeyPair pid)
-
-let mk_KeyElem ke pid = mk_ty (KeyElem(ke,pid))
 
 let mk_Fq = mk_ty Fq
 
@@ -144,16 +119,6 @@ let destr_BS_exn ty =
   | BS lv -> lv
   | _     -> raise Not_found
 
-let destr_KeyPair_exn ty =
-  match ty.ty_node with
-  | KeyPair lv -> lv
-  | _          -> raise Not_found
-
-let destr_KeyElem_exn ty =
-  match ty.ty_node with
-  | KeyElem(ke,lv) -> (ke,lv)
-  | _              -> raise Not_found
-
 let destr_Prod_exn ty =
   match ty.ty_node with
   | Prod ts -> ts
@@ -172,7 +137,6 @@ let pp_group fmt gv =
   else F.fprintf fmt "G_%s" (Groupvar.name gv)
 
 let rec pp_ty fmt ty =
-  let open KeyElem in
   match ty.ty_node with
   | BS lv             -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
   | Bool              -> F.fprintf fmt "Bool"
@@ -180,9 +144,6 @@ let rec pp_ty fmt ty =
   | TySym ts          -> F.fprintf fmt "%s" (Tysym.name ts)
   | Prod ts           -> F.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts
   | Int               -> F.fprintf fmt "Int"
-  | KeyPair pid       -> F.fprintf fmt "KeyPair_%s" (Permvar.name pid)
-  | KeyElem(SKey,pid) -> F.fprintf fmt "PKey_%s" (Permvar.name pid)
-  | KeyElem(PKey,pid) -> F.fprintf fmt "SKey_%s" (Permvar.name pid)
   | G gv ->
     if Groupvar.name gv = ""
     then F.fprintf fmt "G"
