@@ -240,10 +240,6 @@ let handle_tactic ts tac =
       let v = mk_new_var sv e.e_ty in
       t_let_abstract (get_pos i) v e (O.map get_pos mupto) (not no_norm) ju
 
-    | PT.Rlet_abs(None,_sv,Some(_se),_mupto,_no_norm) ->
-       fixme "give hints"
-       (*raise (Handle_this_tactic_instead(PT.Rlet_abstract(Some (PT.Pos(-1)),sv,Some se, mupto, no_norm))) *)
-
     | PT.Rlet_abs_orcl(opos,sv,se,len,no_norm) ->
        let qual = Qual (PU.get_oname_from_opos ju.ju_se opos) in
        let vmap_o = GameUtils.vmap_in_orcl ju.ju_se opos in
@@ -416,36 +412,6 @@ let handle_tactic ts tac =
       let c = v1, e1 in
       T.t_ctxt_ev j c ju
 
-    | PT.Rmove_quant_ev _j -> fixme "undefined"
-       (* CR.t_move_quant_ev j ju *)
-    | PT.Ropen_quant_ev _j -> fixme "undefined"
-       (* CR.t_unwrap_quant_ev j ju *)
-    | PT.Rctxt_ev_inj(_j,Some (_svx,None,_ey),Some (_svy,None,_ex)) ->
-       fixme "undefined"
-       (*
-       let b = try Event.nth j ju.ju_se.se_ev
-       with Failure _ -> tacerror "injective_ctxt_ev: bad index %i" j in
-       let tyx =
-         if is_Eq b then (* (fst (destr_Eq b)).e_ty *)
-           raise (Handle_this_tactic_instead (PT.Rctxt_ev (Some j,Some(svx,None,ey))))
-         else if is_InEq b then (fst (destr_Eq (destr_Not b))).e_ty
-         else tacerror "injective_ctxt_ev: bad event %a, expected \'=\' or \'<>\'" pp_expr b
-       in
-       let vmap = vmap_of_globals ju.ju_se.se_gdef in
-       (* Adding quantified variables *)
-       List.iter (fun (vs,o) -> List.iter
-                      (fun v -> ignore(PU.create_var vmap ts Unqual (Id.name v.VarSym.id) (Oracle.get_dom o))) vs)
-                 (Event.binding ju.ju_se.se_ev);
-       let vx = PU.create_var vmap ts Unqual svx tyx in
-       let ey = PU.expr_of_parse_expr vmap ts Unqual ey in
-       let vy = PU.create_var vmap ts Unqual svy ey.e_ty in
-       let ex = PU.expr_of_parse_expr vmap ts Unqual ex in
-       let c1 = vx, ey and c2 = vy, ex in
-       CR.t_injective_ctxt_ev j c1 c2 ju
-       *)
-
-    | PT.Rctxt_ev_inj _ -> fixme "undefined"
-
     | PT.Rctxt_ev (mj,None) ->
       SimpRules.t_ctx_ev_maybe mj ju
 
@@ -500,9 +466,6 @@ let handle_tactic ts tac =
                          Ht.find vmap_g (Unqual,_vsx) else
                          PU.create_var vmap_g ts Unqual _vsx e.Expr.e_ty in
       CR.t_bad CaseDist p gen_vsx ju *)
-    | PT.Rbad(_i,None,_vsx) ->
-      fixme "undefined"
-      (* raise (Handle_this_tactic_instead(PT.Rbad(i, Some (PT.Pos (-2)), vsx))) *)
 
     | PT.Rsep_dom(ms1,ms2) ->
       begin try

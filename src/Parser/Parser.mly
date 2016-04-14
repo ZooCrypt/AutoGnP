@@ -107,7 +107,7 @@
 %token RSIMP BYSIMP
 %token RBAD1 RBAD2 RCHECK_HASH_ARGS
 %token RCASE_EV RFALSE_EV RREWRITE_EV RSPLIT_EV RREMOVE_EV RCTXT_EV
-%token RCTXT_EV_INJ RUNWRAP_QUANT_EV RMOVE_QUANT_EV RSPLIT_INEQ_EV
+%token RCTXT_EV_INJ RSPLIT_INEQ_EV
 %token RLET_ABS RLET_ABS_DED RLET_UNFOLD
 %token RSUBST RINSERT RCONV RRENAME
 %token ASSUMPTION_DECISIONAL ASSUMPTION_COMPUTATIONAL
@@ -544,11 +544,6 @@ tactic :
 | RCASE_EV e=uopt(expr)                             { Rcase_ev(e) }
 | RREWRITE_EV i=gpos d=dir?                         { Rrewrite_ev(i,O.default LeftToRight d) }
 | RCTXT_EV oj=uopt(gpos) c=uopt(ctx)                { Rctxt_ev(oj,c) }
-| RCTXT_EV_INJ c1=ctx_noty c2=ctx_noty              { Rctxt_ev_inj(0,Some c1,Some c2) }
-| RCTXT_EV_INJ j=gpos c1=ctx_noty c2=ctx_noty       { Rctxt_ev_inj(j,Some c1,Some c2) }
-| RUNWRAP_QUANT_EV                                  { Ropen_quant_ev(0) }
-| RUNWRAP_QUANT_EV j=gpos                           { Ropen_quant_ev(j) }
-| RMOVE_QUANT_EV j=gpos                             { Rmove_quant_ev(j) }
 
 /* probability bounding rules */
 | RINDEP excl=EXCL? { Rindep(excl=None) }

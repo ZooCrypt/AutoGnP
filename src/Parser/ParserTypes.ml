@@ -111,9 +111,6 @@ type tactic =
   | Rmove_to_main  of ocmd_pos_eq * string
   | Rmove_to_orcl  of assgn_pos * ocmd_pos_eq * string
   | Rctxt_ev       of int option * parse_ctx option
-  | Rctxt_ev_inj   of int * parse_ctx option * parse_ctx option
-  | Ropen_quant_ev of int
-  | Rmove_quant_ev of int
   | Rrnd           of bool * assgn_pos option * parse_ctx option *
                       parse_ctx option * parse_expr option
   | Rrnd_exp       of bool * (string * string option) list
