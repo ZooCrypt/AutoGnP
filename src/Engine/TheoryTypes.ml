@@ -34,7 +34,6 @@ type theory_state = {
   ts_gvars      : (string,Groupvar.id) Hashtbl.t;
 
   (* explicitly defined *)
-  ts_permdecls  : PermSym.t Mstring.t;
   ts_rodecls    : RoSym.t   Mstring.t;
   ts_constdecls : FunSym.t  Mstring.t;
   ts_tydecls    : Tysym.id  Mstring.t; 

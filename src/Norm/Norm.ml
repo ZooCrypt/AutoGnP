@@ -18,7 +18,7 @@ let _log_i = mk_log Bolt.Level.INFO
     applied to variables *)
 let rec norm_type e =
   match e.e_ty.ty_node with
-  | TySym _ | Fq | Bool | Int | BS _ | KeyPair _ | KeyElem _ -> e
+  | TySym _ | Fq | Bool | Int | BS _ -> e
 
   | G gv    -> mk_GExp_Gen gv (mk_GLog e)   (* g ^ (log x) *)
 
@@ -83,26 +83,11 @@ and mk_simpl_op ~strong op l =
   match op, l with
 
   | FunCall f,      [e] -> mk_FunCall f e
-  | ProjKeyElem kt, [e] -> mk_ProjKeyElem kt e
   | RoCall h,       [e] -> mk_RoCall h e
   | MapLookup h,    [e] -> mk_MapLookup h e
   | MapIndom h,     [e] -> mk_MapIndom h e
-  | (FunCall _ | ProjKeyElem _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_) ->
+  | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_) ->
     assert false
-
-  | Perm(ptype1, f1),[k1; e1] -> (* f(pk, finv(sk, e)) = e and vice-versa *)
-    let k1 = norm_expr ~strong k1 in
-    let e1 = norm_expr ~strong e1 in
-    begin match e1.e_node with
-    | App(Perm(ptype2,f2),[k2; e2])
-        when    is_ProjKeyElem (key_elem_of_perm_type ptype1) f1 k1
-             && is_ProjKeyElem (key_elem_of_perm_type ptype2) f2 k2
-             && PermSym.equal f1 f2
-             && ptype1 <> ptype2 ->
-      e2
-    | _ -> mk_Perm f1 ptype1 k1 e1
-    end
-  | Perm(_, _),([] | [_] | _::_::_::_) -> assert false
 
   | GExp gv, [g1;p1] -> (* g1 is necessary of the form g ^ a *)
     let a = destr_GExp_Gen gv g1 in

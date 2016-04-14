@@ -664,15 +664,6 @@ let handle_tactic ts tac =
 let rec handle_instr verbose ts instr =
   match instr with
 
-  | PT.PermDecl(_s,_t) -> fixme "undefined" (*
-    let s_inv = s ^ "_inv" in
-    if Mstring.mem s_inv ts.ts_permdecls then
-      tacerror "Permutation with the same name '%s' already declared." s;
-    let f = create_psym ts s (PU.ty_of_parse_ty ts t) in
-    let ts = { ts with ts_permdecls = Mstring.add s_inv f ts.ts_permdecls } in
-    (ts, fsprintf "Declared permutation %s : " s)
-    *)
-
   (* FIXME: do not ignore *)
   | PT.BoundDecl(_b,_i) -> (ts,fsprintf "not implemented yet")
 

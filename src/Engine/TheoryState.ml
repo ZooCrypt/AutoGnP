@@ -17,7 +17,6 @@ let mk_ts () = {
   ts_rodecls    = Mstring.empty;
   ts_constdecls = Mstring.empty;
   ts_tydecls    = Mstring.empty;
-  ts_permdecls  = Mstring.empty;
   ts_odecls     = Mstring.empty;
   ts_adecls     = Mstring.empty;
   ts_emdecls    = Mstring.empty;

@@ -54,9 +54,6 @@ type op =
   | Eq                            (* equality *)
   | Not                           (* negation *)
   | Ifte                          (* if then else *)
-  (* permutations *)
-  | ProjKeyElem of KeyElem.t      (* project out secret/public key *)
-  | Perm of perm_type * PermSym.t (* permutation or inverse permutation *)
   (* uninterpreted functions and random oracles *)
   | FunCall  of FunSym.t          (* function call (uninterpreted) *)
   | RoCall   of RoSym.t           (* random oracle call *)
@@ -112,18 +109,12 @@ module Me : Map.S with type key = expr
 exception TypeError of (ty *  ty * expr * expr option * string)
 
 val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
-val ensure_ty_KeyPair : Type.ty -> string -> Type.Permvar.id
-val ensure_ty_KeyElem : Type.KeyElem.t -> Type.ty -> string -> Type.Permvar.id
 
 (* *** Constant mk functions *)
-
-val key_elem_of_perm_type : perm_type -> KeyElem.t
 
 val mk_V           : VarSym.t -> expr
 val mk_App         : op -> expr list -> ty -> expr
 val mk_Nary        : nop -> expr list -> expr
-val mk_ProjKeyElem : Type.KeyElem.t -> expr -> expr
-val mk_Perm        : PermSym.t -> perm_type -> expr -> expr -> expr
 val mk_FunCall     : FunSym.t -> expr -> expr
 val mk_RoCall      : RoSym.t -> expr -> expr
 val mk_MapLookup   : MapSym.t -> expr -> expr

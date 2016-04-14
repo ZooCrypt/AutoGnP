@@ -23,10 +23,8 @@ val mk_Lor_nofail : expr list -> expr
  * ----------------------------------------------------------------------- *)
 
 val is_V           : expr -> bool
-val is_Perm        : expr -> bool
 val is_MapLookup   : expr -> bool
 val is_FunCall     : expr -> bool
-val is_ProjKeyElem : KeyElem.t -> PermSym.t -> expr -> bool
 val is_Quant       : expr -> bool
 val is_All         : expr -> bool
 val is_Exists      : expr -> bool
@@ -77,7 +75,6 @@ val destr_Exists       : expr -> (VarSym.t list * Olist.t) * expr
 val destr_Tuple        : expr -> expr list
 val destr_Proj         : expr -> int * expr
 val destr_Cnst         : expr -> cnst
-val destr_Perm         : expr -> PermSym.t * perm_type * expr * expr
 val destr_FNat         : expr -> int
 val destr_App          : expr -> op * expr list
 val destr_GMult        : expr -> (expr) list

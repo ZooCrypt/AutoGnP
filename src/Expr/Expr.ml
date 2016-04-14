@@ -64,9 +64,6 @@ type op =
   | Eq                            (* equality *)
   | Not                           (* negation *)
   | Ifte                          (* if then else *)
-  (* permutations *)
-  | ProjKeyElem of KeyElem.t      (* project out secret/public key *)
-  | Perm of perm_type * PermSym.t (* permutation or inverse permutation *)
   (* uninterpreted functions, random oracles, and maps *)
   | FunCall   of FunSym.t         (* function call (uninterpreted) *)
   | RoCall    of RoSym.t          (* random oracle call *)
@@ -121,8 +118,6 @@ let op_hash = function
   | Not            -> 9
   | Ifte           -> 10
   | EMap es        -> hcomb 11 (EmapSym.hash es)
-  | Perm(pt,f)     -> hcomb 12 (hcomb (perm_type_hash pt) (PermSym.hash f))
-  | ProjKeyElem(k) -> hcomb 13 (KeyElem.hash k)
   | FunCall fs     -> hcomb 14 (FunSym.hash fs)
   | RoCall ros     -> hcomb 15 (RoSym.hash ros)
   | MapLookup ms   -> hcomb 16 (MapSym.hash ms)
@@ -205,16 +200,6 @@ exception TypeError of (ty * ty * expr * expr option * string)
 let ensure_ty_equal ty1 ty2 e1 e2 s =
   ignore (equal_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
-let ensure_ty_KeyPair ty s =
-  match ty.ty_node with
-  | KeyPair pid -> pid
-  | _ -> failwith (fsprintf "%s: expected KeyPair, got %a" s pp_ty ty)
-
-let ensure_ty_KeyElem ke ty s =
-  match ty.ty_node with
-  | KeyElem(ke',pid) when ke = ke' -> pid
-  | _ -> failwith (fsprintf "%s: expected %a, got %a" s KeyElem.pp ke pp_ty ty)
-
 let ensure_ty_G ty s =
   match ty.ty_node with
   | G gv -> gv
@@ -295,24 +280,6 @@ let mk_Ifte a b c =
   ensure_ty_equal a.e_ty mk_Bool a None "mk_Ifte";
   ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
   mk_App Ifte [a;b;c] b.e_ty
-
-let mk_ProjKeyElem ke kp =
-  let kp_pid = ensure_ty_KeyPair kp.e_ty "mk_ProjKeyElem" in
-  mk_App (ProjKeyElem ke) [kp] (mk_KeyElem ke kp_pid)
-
-let key_elem_of_perm_type = function
-  | IsInv  -> KeyElem.SKey
-  | NotInv -> KeyElem.PKey
-
-let mk_Perm f ptype k e =
-  let ke = key_elem_of_perm_type ptype in
-  let k_pid = ensure_ty_KeyElem ke k.e_ty "mk_Perm - key" in
-  if (not (Type.Permvar.equal f.PermSym.id k_pid)) then
-    failwith (fsprintf "mk_Perm: The permutation of given Key is not %a." PermSym.pp f);
-  ensure_ty_equal e.e_ty f.PermSym.dom
-    e (Some k)
-    (fsprintf "mk_Perm for %a : expected arg of type %a" PermSym.pp f pp_ty e.e_ty);
-  mk_App (Perm(ptype,f)) [k; e] e.e_ty
 
 (* FIXME: check types? *)
 let mk_FunCall f e =

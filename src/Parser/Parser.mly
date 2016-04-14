@@ -34,11 +34,6 @@
 (* ** Tokens for expressions *) */
 
 %token <string> ID
-%token <string> KEYPAIR
-%token <string> PKEY
-%token <string> SKEY
-
-%token GETPK GETSK
 
 %token PLUS XOR MINUS
 %left PLUS XOR MINUS
@@ -83,7 +78,7 @@
 (* ** Tokens for theories *) */
 
 %token TO IN_DOM IS_SET INCLUDE
-%token ADVERSARY ORACLE OPERATOR PERMUTATION TYPE
+%token ADVERSARY ORACLE OPERATOR TYPE
 %token ASSUMPTION
 %token RANDOM_ORCL RANDOM_FUN FINMAP
 %token BILINEAR_MAP
@@ -182,9 +177,6 @@
 
 typ :
 | i=TBS                          { BS(i) }
-| s=KEYPAIR                      { KeyPair(s) }
-| s=PKEY                         { PKey(s) }
-| s=SKEY                         { SKey(s) }
 | TBOOL                          { Bool }
 | i=TG                           { G(i) }
 | TFQ                            { Fq }
@@ -248,8 +240,6 @@ expr8 :
 | NOT e=expr8                             { Not(e) }
 | LOG LPAR e1=expr RPAR                   { Log(e1) }
 | l=paren_list0(COMMA,expr)               { mk_Tuple l }
-| GETPK LPAR e=expr RPAR                  { ProjPermKey(Type.KeyElem.PKey,e) }
-| GETSK LPAR e=expr RPAR                  { ProjPermKey(Type.KeyElem.SKey,e) }
 | e1=expr7 SHARP i=NAT                    { Proj(i,e1) }
 | IN_DOM LPAR e=expr COMMA i=ID RPAR      { SIndom(i,e) }
 | IS_SET LPAR i=ID RPAR                   { SIndom(i,mk_Tuple []) }
@@ -391,7 +381,6 @@ decl :
 | RANDOM_ORCL i=ID COLON t1=typ TO t2=typ        { RODecl(i, t1, t2)  }
 | RANDOM_FUN  i=ID COLON t1=typ TO t2=typ        { RFDecl(i, t1, t2)  }
 | FINMAP      i=ID COLON t1=typ TO t2=typ        { FMDecl(i, t1, t2)  }
-| PERMUTATION i=ID COLON t=typ                   { PermDecl(i, t)     }
 | OPERATOR i=ID COLON t1=typ TO t2=typ           { FunDecl(i, t1, t2) }
 | BILINEAR_MAP i=ID COLON
     g1=TG STAR g2=TG TO g3=TG                    { EMDecl(i, g1, g2, g3) }
