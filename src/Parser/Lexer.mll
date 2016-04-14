@@ -101,9 +101,6 @@
       ; "case_ev",                  RCASE_EV                  (* kw: tactic      *)
       ; "rewrite_ev",               RREWRITE_EV               (* kw: tactic      *)
       ; "ctxt_ev",                  RCTXT_EV                  (* kw: tactic      *)
-      ; "ctxt_ev_inj",              RCTXT_EV_INJ              (* kw: tactic      *)
-      ; "unwrap_quant_ev",          RUNWRAP_QUANT_EV          (* kw: tactic      *)
-      ; "move_quant_ev",            RMOVE_QUANT_EV            (* kw: tactic      *)
 
       ; "indep",                    RINDEP                    (* kw: tactic      *)
       ; "false_ev",                 RFALSE_EV                 (* kw: tactic      *)

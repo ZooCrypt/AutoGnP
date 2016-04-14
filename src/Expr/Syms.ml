@@ -72,15 +72,6 @@ module RoSym : (module type of TypedSym) = TypedSym
 
 module MapSym : (module type of TypedSym) = TypedSym
 
-(* ** Qualified symbols
- * ----------------------------------------------------------------------- *)
-
-type 'a qual = Unqual | Qual of 'a
-
-let map_qual f = function
-  | Unqual -> Unqual
-  | Qual x -> Qual (f x)
-
 (* ** Bilinear map symbols
  * ----------------------------------------------------------------------- *)
 
@@ -147,6 +138,15 @@ module PermSym = struct
 
   let name hs = Permvar.name hs.id
 end
+
+(* ** Qualified symbols
+ * ----------------------------------------------------------------------- *)
+
+type 'a qual = Unqual | Qual of 'a
+
+let map_qual f = function
+  | Unqual -> Unqual
+  | Qual x -> Qual (f x)
 
 (* ** Variable symbols
  * ----------------------------------------------------------------------- *)
