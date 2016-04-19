@@ -91,7 +91,8 @@ let init_odef_params vmap_g ts ?(qual=true) oname vs =
     try E.Olist.Olist(Mstring.find oname ts.ts_odecls)
     with Not_found ->
       try E.Olist.ROlist(Mstring.find oname ts.ts_rodecls)
-      with Not_found -> fail_parse "oracle name not declared"
+      with Not_found ->
+        fail_parse (F.sprintf "oracle name %s not declared" oname)
   in
   let qual = if qual then (Qual oname) else Unqual in
   let vs =
