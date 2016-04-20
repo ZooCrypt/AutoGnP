@@ -6,6 +6,9 @@ open Util
 open Type
 open Syms
 
+module LI = LeanInternal
+       
+
 (* ** Expressions (hashconsed)
  * ----------------------------------------------------------------------- *)
 
@@ -555,3 +558,72 @@ let e_replace e1 e2 =
 
 let e_subst s =
   e_map_top (fun e -> Me.find e s)
+
+
+
+
+(* *** LEAN EXPRESSIONS *** *)
+            
+module type LeanDecls = sig
+  val olean_files : string list
+  val lean_files : string list
+                          
+  val mk_GExp : string
+  val mk_Eq : string
+end
+                          
+module ImportLeanDefs (LD : LeanDecls) : sig
+  type t
+  type _1ary = t -> t
+  type _2ary = t -> t -> t
+  val mk_Eq : _2ary
+  val mk_GExp : _2ary
+
+end = struct
+  type t = LI.Expr.t
+  type _1ary = t -> t
+  type _2ary = t -> t -> t
+                           
+  let ios =
+    failwith "TODO";
+    Lean.Ios.mk ()
+                     
+  let env =
+    failwith "TODO";
+    let env = Lean.Env.mk () in
+    List.fold_left
+      (fun env_acc filename -> LI.Parse.file env_acc ios filename)
+      (LI.Env.import env ios (LI.ListName.of_list @@ List.map (fun s -> Lean.mk (Lean.Str s)) LD.olean_files)
+      LD.lean_files
+                     
+  let (<@) = LI.Expr.mk_app
+
+  let get_1ary s =
+    let app = LI.Parse.expr env ios s |> fst in
+    fun le -> app <@ le (* i.e. (<@) app *)
+                       
+  let get_2ary s : t -> t -> t =
+    let app = LI.Parse.expr env ios s |> fst in
+    fun le1 le2 -> app <@ le1 <@ le2
+    
+                         
+  let mk_Eq = LD.mk_Eq |> get_2ary
+  let mk_GExp = LD.mk_GExp |> get_2ary
+end
+        
+(* Now that the functor is defined,
+the module only needs to be instanciated with a call to the functor,
+e.g., *)
+
+module LeanExpr =
+  ImportLeanDefs(
+      struct
+        let olean_files = []
+        let lean_files = ["lean_defs/expr.lean"]
+        let mk_Eq = "eq"
+        let mk_GExp = "expr.Exp"
+      end)
+        
+                                
+                    
+                    

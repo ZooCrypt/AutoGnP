@@ -219,3 +219,22 @@ val e_replace : expr -> expr -> expr -> expr
 (** [e_subst s e] replaces all occurences (in [e]) of elements [e1]
     in [dom(s)] with [s(e1)]. *)
 val e_subst : expr Me.t -> expr -> expr
+
+                                     
+(* *** LEAN EXPRESSIONS *** *)
+            
+module type LeanDecls = sig
+  val olean_files : string list
+  val lean_files : string list
+                          
+  val mk_GExp : string
+  val mk_Eq : string
+end
+                          
+module ImportLeanDefs (LD : LeanDecls) : sig
+  type t
+  type _1ary = t -> t
+  type _2ary = t -> t -> t
+  val mk_Eq : _2ary
+  val mk_GExp : _2ary
+end 
