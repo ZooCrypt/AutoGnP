@@ -584,26 +584,33 @@ end = struct
   type _1ary = t -> t
   type _2ary = t -> t -> t
                            
-  let ios =
+  let ios = ref (
     failwith "TODO";
-    Lean.Ios.mk ()
+    Lean.Ios.mk ())
+
+  let get_env (env',ios') =
+    ios := ios';
+    env'
                      
   let env =
     failwith "TODO";
-    let env = Lean.Env.mk () in
+    let env = Lean.Env.mk !ios in
     List.fold_left
-      (fun env_acc filename -> LI.Parse.file env_acc ios filename)
-      (LI.Env.import env ios (LI.ListName.of_list @@ List.map (fun s -> Lean.mk (Lean.Str s)) LD.olean_files)
+      (fun env_acc filename ->
+        LI.Parse.file env_acc !ios filename |> get_env)
+      (LI.Env.import env !ios
+                     (Lean.Name.mk_list @@ List.map (fun s -> Lean.Str s) LD.olean_files))
       LD.lean_files
                      
+  let parse_lexpr = LI.Parse.expr env !ios in
   let (<@) = LI.Expr.mk_app
 
   let get_1ary s =
-    let app = LI.Parse.expr env ios s |> fst in
+    let app = parse_lexpr s |> fst in
     fun le -> app <@ le (* i.e. (<@) app *)
                        
   let get_2ary s : t -> t -> t =
-    let app = LI.Parse.expr env ios s |> fst in
+    let app = parse_lexpr s |> fst in
     fun le1 le2 -> app <@ le1 <@ le2
     
                          
