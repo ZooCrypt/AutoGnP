@@ -222,7 +222,7 @@ val e_subst : expr Me.t -> expr -> expr
 
                                      
 (* *** LEAN EXPRESSIONS *** *)
-            
+(*            
 module type LeanDecls = sig
   val olean_files : string list
   val lean_files : string list
@@ -238,3 +238,4 @@ module ImportLeanDefs (LD : LeanDecls) : sig
   val mk_Eq : _2ary
   val mk_GExp : _2ary
 end 
+ *)
