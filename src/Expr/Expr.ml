@@ -602,7 +602,7 @@ end = struct
                      (Lean.Name.mk_list @@ List.map (fun s -> Lean.Str s) LD.olean_files))
       LD.lean_files
                      
-  let parse_lexpr = LI.Parse.expr env !ios in
+  let parse_lexpr = LI.Parse.expr env !ios
   let (<@) = LI.Expr.mk_app
 
   let get_1ary s =
