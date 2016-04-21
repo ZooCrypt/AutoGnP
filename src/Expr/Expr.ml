@@ -6,6 +6,10 @@ open Util
 open Type
 open Syms
 
+let () =
+  let _l = Lean.Name.mk Lean.Anon in
+  ()
+
 (* ** Expressions (hashconsed)
  * ----------------------------------------------------------------------- *)
 
