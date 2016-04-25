@@ -7,7 +7,7 @@ open Type
 open Syms
 
 let () =
-  let _l = Lean.Name.mk Lean.Anon in
+  let _l = Lean.Name.mk Lean.Name.Anon in
   ()
 
 (* ** Expressions (hashconsed)
