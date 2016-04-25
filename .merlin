@@ -27,4 +27,4 @@ B _build/src/Poly/
 B _build/src/Engine/
 B _build/src/Util/
 
-PKG unix websocket yojson ctypes bolt lwt lwt.ppx uri cohttp.lwt ppx_deriving.std containers nocrypto.lwt conduit batteries
+PKG unix websocket yojson ctypes bolt lwt lwt.ppx uri cohttp.lwt ppx_deriving.std containers nocrypto.lwt conduit batteries lean lean_bindings
