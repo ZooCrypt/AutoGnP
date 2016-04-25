@@ -34,7 +34,7 @@ to install the opam package manager for Ocaml.
 To get the required C++ libraries, follow these instructions.
 
 1) download and install NTL from
-http://www.shoup.net/ntl/ntl-6.2.1.tar.gz
+http://www.shoup.net/ntl/ntl-9.7.1.tar.gz 
 
 **On Linux:**
 ```
@@ -53,9 +53,9 @@ sudo make install
 ```
 
 2) download and install libfactory from
-http://www.mathematik.uni-kl.de/ftp/pub/Math/Factory/factory-4.0.1.tar.gz
+http://www.mathematik.uni-kl.de/ftp/pub/Math/Factory/factory-4.0.2.tar.gz
 
-** On Linux and OS X:**
+**On Linux and OS X:**
 ```
 ./configure --disable-streamio --without-Singular --disable-static
 make
@@ -65,7 +65,7 @@ sudo make install
 ## Compiling AutoG&P
 
 We recommend cloning the AutoG&P repository, compiling the tool, and
-it running directly from the cloned directory. To achieve this, perform
+running it directly from the cloned directory. To achieve this, perform
 the following steps:
 
 Clone the repos
