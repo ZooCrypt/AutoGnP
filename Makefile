@@ -12,14 +12,6 @@ INSTALL    := scripts/install/install-sh
 
 #############################################################################
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-  LIBFLAGS=-lflags -cclib,-Xlinker,-cclib,--no-as-needed,-cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
-endif
-ifeq ($(UNAME_S),Darwin)
-  LIBFLAGS=-lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
-endif
-
 OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48-37" -use-menhir -menhir "menhir -v" -use-ocamlfind
 
 ifeq ($(shell echo $$TERM), dumb)
@@ -33,14 +25,8 @@ endif
 
 all: autognp.native
 
-autognp.native : stubs
-	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
-
-stubs:
-	@test -d _build/c_src || mkdir -p _build/c_src
-	@c++ -fPIC -c c_src/factory_stubs.cc -o _build/c_src/factory_stubs.o -I/usr/local/include/factory
-	@ar rc _build/c_src/libfactorystubs.a _build/c_src/factory_stubs.o
-	@c++ -shared -o _build/c_src/libfactorystubs.so _build/c_src/factory_stubs.o -lfactory
+autognp.native :
+	ocamlbuild $(OCAMLBUILDFLAGS) autognp.native
 
 install:
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
@@ -52,12 +38,6 @@ uninstall:
 clean:
 	ocamlbuild -clean
 	-@rm -rf tutor.docdir
-
-factory : stubs
-	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Factory.native
-
-wsautognp.native : stubs
-	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wsautognp.native
 
 ##########################################################################
 # Used for development and testing
