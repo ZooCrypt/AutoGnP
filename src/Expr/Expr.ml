@@ -525,17 +525,4 @@ let e_replace e1 e2 =
 
 let e_subst s =
   e_map_top (fun e -> Me.find e s)
-
-
-module type Converters = sig
-  type t
-  val of_expr_node_leaf : expr_node -> t
-  val of_op : op -> t list -> t
-end
-                           
-module OfExpr (C : Converters) = struct
-  type t = C.t
-
-  let f = fun _ -> failwith "TODO"
-end
                                    

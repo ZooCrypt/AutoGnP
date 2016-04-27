@@ -210,17 +210,4 @@ val e_replace : expr -> expr -> expr -> expr
 (** [e_subst s e] replaces all occurences (in [e]) of elements [e1]
     in [dom(s)] with [s(e1)]. *)
 val e_subst : expr Me.t -> expr -> expr
-
-                                     
-module type Converters = sig
-  type t
-  val of_expr_node_leaf : expr_node -> t
-  val of_op : op -> (t list -> t)
-end
-                           
-module OfExpr (C : Converters) : sig
-  type t = C.t
-
-  val f : expr -> t
-end
                    
