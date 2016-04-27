@@ -95,7 +95,7 @@ let mk_Nary ~(go : E.expr -> lean_expr) assoc_op =
   | x::xs -> assoc_op (go x) (aux xs) in
   aux
     
-let lean_expr_of_expr_node_leaf e =
+let lean_expr_of_expr e =
   let rec go e = match e.E.e_node with
     | E.V vs ->
        L.Expr.mk_const @@ VarSym.to_string vs
