@@ -6,27 +6,37 @@ let _TODO _ = failwith "Not implemented (TODO)"
              
 module ImportLeanDefs (LF : L.LeanFiles) = struct
   include L.GetExprParser(LF)
+  (* Lean types *)
+  let lty_bool = get "ty.Bl"
+  let lty_G    = get "ty.Grp"
+  let lty_Fq   = get "ty.Fq"
+                     
+  let as_lty ty =
+    match ty.Type.ty_node with
+    | Type.Bool -> lty_bool
+    | Type.G _  -> lty_G
+    | Type.Fq   -> lty_Fq
+    | _    -> invalid_arg "Unsupported type" (* TODO : Add more type support ? *) 
   (* Groups *)
   let mk_GExp = get "expr.Exp"  |> as_2ary
   let mk_GGen = get "expr.Ggen"
   let mk_GLog = get "expr.Log" |> as_1ary
   let mk_GInv = get "expr.Ginv" |> as_1ary
   let mk_GMult = get "expr.Gmul" |> as_2ary
-  (* Constants *)
-  let mk_Z    = _TODO
+  (* Constants *)    
+  let mk_V =
+    let mk_var = get "var.Var" |> as_2ary
+    and le_of_var = get "@expr.V" |> as_2ary in
+    fun ~ty i ->
+    let ty = as_lty ty in
+    le_of_var ty @@ mk_var ty @@ lnat_of_posint i
+    let mk_Z    = _TODO
   let mk_B =
     let ltrue,lfalse = (get "true", get "false") in
     fun b -> if b then ltrue else lfalse
-  let mk_FNat : int -> t =
-    let nat_zero = get "nat.zero" in
-    let nat_succ = get "nat.succ" |> as_1ary in
-    let neg_succ_of_nat = get "neg_succ_of_nat" |> as_1ary in
-    let rec lint_of_int = function
-      | 0 -> nat_zero
-      | n when n < 0 -> neg_succ_of_nat @@ lint_of_int (-n - 1)
-      | n -> nat_succ @@ lint_of_int (n-1) in
-    let t_of_lint = get "expr.Fint" |> as_1ary in
-    fun n -> t_of_lint @@ lint_of_int n
+  let mk_FNat n =
+    get "expr.Fint" <@ lint_of_int n
+    
   (* Field *)
   let mk_FPlus = get "expr.Fop2 E.expr.fop2.Fadd" |> as_2ary
   let mk_FOpp = get "expr.Fop1 fop1.Fop" |> as_1ary
@@ -95,10 +105,10 @@ let mk_Nary ~(go : E.expr -> lean_expr) assoc_op =
   | x::xs -> assoc_op (go x) (aux xs) in
   aux
     
-let lean_expr_of_expr e =
+let of_expr e =
   let rec go e = match e.E.e_node with
     | E.V vs ->
-       L.Expr.mk_const @@ VarSym.to_string vs
+       LE.mk_V ~ty:e.E.e_ty (Id.tag vs.VarSym.id)
     | E.Cnst c ->
        mk_Const c
     | E.Tuple ((x::_) as es) ->
@@ -129,14 +139,14 @@ let lean_expr_of_expr e =
         | E.Not    ->
            !~ go LE.mk_Not es
         | _        -> _TODO ())
-    | E.Nary (nop, es) ->
-       (match nop with
-        | E.GMult -> mk_Nary ~go LE.mk_GMult es
-        | E.FPlus -> mk_Nary ~go LE.mk_FPlus es
-        | E.FMult -> mk_Nary ~go LE.mk_FMult es
-        | E.Land  -> mk_Nary ~go LE.mk_Land es
-        | E.Lor   -> mk_Nary ~go LE.mk_Lor es
-        | E.Xor   -> _TODO ())
+    | E.Nary (nop, es) -> let lean_assoc_op = match nop with
+                            | E.GMult -> LE.mk_GMult
+                            | E.FPlus -> LE.mk_FPlus
+                            | E.FMult -> LE.mk_FMult
+                            | E.Land  -> LE.mk_Land
+                            | E.Lor   -> LE.mk_Lor
+                            | E.Xor   -> _TODO () in
+                          mk_Nary ~go lean_assoc_op es
     | E.Quant(E.All, binding, e)
       | E.Quant(_, binding, e) -> _TODO () in
   go e
