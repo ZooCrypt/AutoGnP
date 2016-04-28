@@ -822,6 +822,14 @@ let rec handle_instr verbose ts instr =
     | _ -> tacerror "admit: no goals"
     end
 
+  | PT.DLeanAdd(pe) ->
+     let vmap = Ht.create 137 in
+     let e = PU.expr_of_parse_expr vmap ts Unqual pe in
+     let le = LeanExpr.of_expr e in
+     LeanExpr.LEnv.add_proof_obligation le;     
+     let msg = fsprintf "Added '%a' Lean proof obligation;\nTotal : %s" pp_expr e @@ LeanExpr.LEnv.proof_obligations_to_string () in
+     (ts, msg)
+      
   | PT.PrintGoals(s) ->
     begin match ts.ts_ps with
     | ActiveProof(ps,_uback,_back,_) ->

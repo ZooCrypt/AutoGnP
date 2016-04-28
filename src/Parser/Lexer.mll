@@ -34,6 +34,9 @@
       ; "for",                      FOR                       (* kw: decl        *)
       ; "assumption",               ASSUMPTION                (* kw: decl        *)
 
+      (* debug *)
+      ; "lean_add",		    DLEANADD                  (* kw: debug       *)
+
       (* commands *)
       ; "extract",                  EXTRACT                   (* kw: cmd         *)
       ; "print_goals",              PRINTGOALS                (* kw: cmd         *)

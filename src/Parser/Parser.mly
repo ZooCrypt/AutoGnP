@@ -88,6 +88,11 @@
 %token BOUND FOR GAME
 
 /*----------------------------------------------------------------------
+(* ** Tokens for debug *) */
+
+%token DLEANADD
+
+/*----------------------------------------------------------------------
 (* ** Tokens for commands *) */
 
 %token ADMIT LAST BACK UNDOBACK QED EXTRACT RESTART
@@ -402,6 +407,8 @@ decl :
 
 /*----------------------------------------------------------------------
 (* ** proof commands *) */
+debug_command :
+| DLEANADD e=expr		       { DLeanAdd(e) }
 
 proof_command :
 | ADMIT                                { Admit }
@@ -568,6 +575,7 @@ selector:
 instr :
 | i=decl { [i] }
 | i=proof_command { [i] }
+| i=debug_command { [i] }
 | ir=selector? is=separated_nonempty_list(SEMICOLON,tactic)
   { let tacs =
       match is with

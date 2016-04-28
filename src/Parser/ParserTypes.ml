@@ -149,7 +149,7 @@ type tactic =
   | Rguess         of string * string list
   | Rfind          of (string list * parse_expr) * parse_expr * string * string list
   | Rsep_dom       of string * string
-
+                    
 type instr =
   | Include    of string
   | BoundDecl  of string * string
@@ -167,6 +167,7 @@ type instr =
   | JudgAdv    of gdef * parse_ev
   | JudgDist   of gdef * parse_ev * gdef * parse_ev
   | GameDef    of string * gdef
+  | DLeanAdd   of parse_expr
   | PrintGoal  of string
   | PrintGoals of string
   | PrintProof of bool * string option
