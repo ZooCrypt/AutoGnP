@@ -24,6 +24,4 @@ depends: [
   "cohttp"
   "batteries"
   "comparelib"
-  "lean"
-  "lean_bindings"
 ]
