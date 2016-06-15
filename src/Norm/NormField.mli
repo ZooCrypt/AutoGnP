@@ -15,6 +15,8 @@ val abstract_non_field_multiple :
       (Expr.expr -> Expr.He.key) ->
       Expr.expr list -> fexp list * int * (int, expr) Hashtbl.t
 
+val ep_to_ip : EP.t list -> Poly.IP.t list * (int, Expr.expr) Hashtbl.t
+
 val exp_of_poly : EP.t -> expr
 
 val reduce : EP.t -> EP.t -> expr
