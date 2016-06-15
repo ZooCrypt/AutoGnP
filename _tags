@@ -1,6 +1,6 @@
 true: bin_annot, debug
 
-<src/**/*>: package(bolt), package(batteries), package(lean), package(factory)
+<src/**/*>: package(bolt), package(batteries), package(factory)
 
 <src/Game/*> or <src/Core/*> or <src/Expr/*>: syntax(camlp4o), package(comparelib.syntax)
 
@@ -27,9 +27,7 @@ true: bin_annot, debug
                       package(ctypes.foreign), \
                       package(num), \
                       package(bolt), \
-                      package(batteries), \
-                      package(lean), \
-                      package(lean_bindings)
+                      package(batteries)
 
 
 <src/Main/wsautognp.*>: thread,\
