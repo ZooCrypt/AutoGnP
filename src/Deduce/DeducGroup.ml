@@ -160,90 +160,27 @@ let solve_group (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
   let known_polys = Hep.fold (fun fe i acc -> (fe,expr_of_inverter i) ::acc) known_Gt [] in
   let fully_known_vars =  He.fold (fun fe _ acc -> fe::acc) known_Fq [] in
   let k_fQ =  He.fold (fun fe i acc -> (fe,expr_of_inverter i)::acc) known_Fq [] in
+  List.iter    (fun (a,b) -> log_i (lazy (fsprintf "known F-Q %a et %a" pp_expr a pp_expr b))) k_fQ;
 
   let (secret::polys),vars,mh = eps_to_polys ((f,gexp (mk_GGen gt) (mk_FNat 0))::known_polys) in
-  let private_vars = List.map (fun i-> if List.mem (Hashtbl.find mh i) fully_known_vars then 0 else 1 ) vars in
+    List.iter    (fun x -> log_i (lazy (fsprintf "var %i : %a" x pp_expr (Hashtbl.find mh x) ))) vars;
+
+    let private_vars = List.map (fun i-> if List.mem (Hashtbl.find mh i) fully_known_vars then 0 else 1 ) vars in
+        List.iter    (fun x -> log_i (lazy (fsprintf "pvar %i" x ))) private_vars;
+
   let groebner_basis = GroebnerBasis.groebner vars mh k_fQ (List.map (fun p-> (p,private_vars)) polys) in
     let debug = polys_to_eps (List.map fst groebner_basis) vars mh in 
 List.iter ( fun ((p,inver)) -> log_i (lazy (fsprintf "GB %a , %a"pp_expr p  pp_expr inver))) debug;
 let success,inver = GroebnerBasis.get_inverter vars mh k_fQ  groebner_basis secret in
-let final_inv= norm_expr_strong @@ expr_of_inverter (i_trans (I( gexp (inver)(mk_FOpp (mk_FNat 1)) ))) in
-  if success then
+let final_inv=  expr_of_inverter (i_trans (I( gexp (inver)(mk_FOpp (mk_FNat 1)) ))) in
+ 
+   if success then
     (
       log_i (lazy (fsprintf "GB found %a " pp_expr inver));
-        log_i (lazy (fsprintf "final inverter found %a " pp_expr final_inv)))
+      log_i (lazy (fsprintf "final inverter found %a " pp_expr final_inv));
+    I(final_inv)
+    )
 
   else 
-    log_i (lazy (fsprintf "GB fail %a " pp_expr inver));
-
-  (* search for inverter by performing division with remainder in different orders *)
-  let open Nondet in
-  let search () =
-    let k_Gt =
-      Hep.fold (fun k _v l -> k::l) known_Gt []
-      |> L.filter (fun e -> not (EP.is_const e))
-    in
-    let rec go f i_trans unused =
-      log_i (lazy (fsprintf ">>> go\n  f = %a\n  i_trans = %a\n  unused = (%a)"
-                     EP.pp f pp_inverter (i_trans (I (mk_V (VarSym.mk "<_>" e.e_ty))))
-                     (pp_list "," EP.pp) unused));
-
-      if EP.is_const f then (
-        (* f is a constant, we are done *)
-        ret (i_trans (I (gexp (mk_GGen gt) (exp_of_poly f))))
-      ) else (
-        (* choose unknown polynomial h that is known in exponent and try division *)
-        mconcat unused >>= fun h ->
-        let unused = L.filter (fun g -> not (EP.equal g h)) unused in
-        let d = div_EP f h in
-        let r = EP.(minus f (mult h d)) in
-
-        log_i (lazy (fsprintf "try division by %a" EP.pp h));
-
-        log_i (lazy (fsprintf "division:\n  f = %a\n  h = %a\n  d = %a\n  r = %a"
-                       EP.pp f EP.pp h EP.pp d EP.pp r));
-
-        let d, i_poly_d = subtract_known d known_Fq in
-        let r, i_poly_r = subtract_known r known_Fq in
-
-        log_i (lazy (fsprintf "d simpl: %a @\n  with %a" EP.pp d pp_expr i_poly_d));
-        log_i (lazy (fsprintf "r simpl: %a @\n  with %a" EP.pp r pp_expr i_poly_r));
-        if (EP.equal EP.zero d) then (
-          let i_trans = fun i ->
-            let e1 = gmult (expr_of_inverter i) (gexp (mk_GGen gt) i_poly_r) in
-            let e2 = gexp (expr_of_inverter (Hep.find known_Gt h)) i_poly_d in
-            i_trans (I (gmult e1 e2))
-          in
-          go r i_trans unused
-        ) else (
-          mempty
-        )
-      )
-    in
-    let f_exprs = Se.of_list (EP.vars f) in
-    let k_exprs =
-      Se.union
-        (Hep.fold (fun fe _ se -> Se.union se (Se.of_list (EP.vars fe))) known_Gt Se.empty)
-        (He.fold (fun fe _ se -> Se.add fe se) known_Fq Se.empty)
-    in 
-    (* log_i (lazy (fsprintf "f expressions: %a@\n" (pp_list "," pp_exp) (Se.elements f_exprs)));
-       log_i (lazy (fsprintf "potentially known expressions: %a@\n" (pp_list "," pp_exp) (Se.elements k_exprs))); *)
-    guard (Se.cardinal (Se.diff f_exprs k_exprs) = 0)  >>= fun _ ->
-    go f i_trans k_Gt
-  in
-
-
-                                              
-  match run 1 (search ()) with
-  | I ie as i::_ ->
-    let e' = norm_expr_strong (e_subst (me_of_list (L.map (fun (e,I e') -> (e',e)) ecs)) ie) in
-    let e = norm_expr_strong e in
-    if equal_expr e e' then (
-      log_i (lazy "#### found inverter");
-      i
-    ) else (
-      log_i (lazy (fsprintf "#### wrong inverter@\n  inv = %a@\n  inv[known] = %a@\n  e = %a"
-                     pp_expr ie pp_expr e' pp_expr e));
-      raise Not_found
-    )
-  | []  -> raise Not_found
+    (log_i (lazy (fsprintf "GB fail %a " pp_expr inver));
+       raise Not_found)

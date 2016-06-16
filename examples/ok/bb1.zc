@@ -41,9 +41,9 @@ bound_adv
 
     ] : b = b'.
 
-        deduce ppt [g^(c+d), g^d] e(g,g)^(c*d+d*d+c*c).  
+  deduce ppt [g^(c+d), g^d] e(g,g)^(c*d+d*d+c*c).
+  bycrush 100.
 
-        
 qed.
 print_proof.
 extract "extraction/bb1.ec".

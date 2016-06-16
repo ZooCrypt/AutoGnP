@@ -11,8 +11,8 @@ open ExprUtils;;
 open Expr;;
 open Type;;
 
-  let log_i _ls  = ()
-                     
+let log_i _ls  = ()
+
 (* ------------------------------------------------------------------------- *)
 (*  Utility functions                                                        *)
 (* ------------------------------------------------------------------------- *)
@@ -70,21 +70,11 @@ type i_var_set = int list;;
 
 
 
-let ipoly_to_poly vars (p:Poly.ipoly) : pol =
-  let pol = Poly.IP.to_terms p in
-  map (fun (m,c) -> (num_of_big_int c, mapi (fun i _ -> try assoc (i+1) m
-                                                        with Not_found -> 0
-                                            ) vars  )) pol;;
+
 
 let poly_to_ipoly vars (p:pol) : Poly.ipoly =
   Poly.IP.from_terms @@ map (fun (c,m) -> ((map2 (fun pow t-> (t,pow)) m vars, ((big_int_of_num c)))) ) p;;
-  
-let eps_to_polys (eps:(NormField.EP.t * Expr.expr) list )=
-  let exprs,invs = List.split eps in
-                         
-  let ipolys, mp = ep_to_ip exprs in
-  let vars = Hashtbl.fold (fun i _ acc -> i::acc) mp [] in
-  (combine (map (ipoly_to_poly vars) ipolys) invs),vars,mp;;
+
                                          
   let polys_to_eps polys vars mp =
       let polys,invs = List.split polys in
@@ -131,7 +121,8 @@ let mpoly_mmul vars mp k_fQ cm ((pol,inv):pol_i) :pol_i= (map (mmul cm) pol, gex
 let mpoly_neg ((pol,inv):pol_i) :pol_i= map (fun (c,m) -> (minus_num c,m)) pol , gexp inv (mk_FOpp (mk_FNat (1)));;
 
 
-
+let mpoly_const (vars) c :pol=
+  if c =/ Int 0 then [] else [c,map (fun k -> 0) vars];;
 
 let rec mpoly_add_aux (l1:pol) (l2:pol):pol =
   match (l1,l2) with
@@ -140,7 +131,7 @@ let rec mpoly_add_aux (l1:pol) (l2:pol):pol =
   | ((c1,m1)::o1,(c2,m2)::o2) ->
         if m1 = m2 then
           let c = c1+/c2 and rest = mpoly_add_aux o1 o2 in
-          if c =/ Int 0 then rest else (c,m1)::rest
+          if c = Int 0 then rest else (c,m1)::rest
         else if morder_lt m2 m1 then (c1,m1)::(mpoly_add_aux o1 l2)
         else (c2,m2)::(mpoly_add_aux l1 o2);;
 
@@ -154,6 +145,18 @@ let rec mpoly_add ((l1,i1):pol_i) ((l2,i2):pol_i):pol_i =
 
 let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 
+
+    let ipoly_to_poly vars (p:Poly.ipoly) : pol =
+  let pol = Poly.IP.to_terms p in
+  fold_right (fun (m,c) acc ->mpoly_add_aux [(num_of_big_int c, map (fun i  -> try assoc (i) m
+                                                        with Not_found -> 0
+                                            ) vars  )] acc ) pol (mpoly_const vars (Int 0));;
+let eps_to_polys (eps:(NormField.EP.t * Expr.expr) list )=
+  let exprs,invs = List.split eps in
+                         
+  let ipolys, mp = ep_to_ip exprs in
+  let vars = Hashtbl.fold (fun i _ acc -> i::acc) mp [] in
+  (combine (map (ipoly_to_poly vars) ipolys) invs),vars,mp;;
 
 (* ------------------------------------------------------------------------- *)
 (* Reduce monomial cm by polynomial pol, returning replacement for cm.       *)
@@ -183,8 +186,7 @@ let rec reduce  vars mp k_fQ pols (pol,i) :pol_i=
   match pol with
     [] -> ([],i)
   | cm::ptl -> try reduce  vars mp k_fQ pols (mpoly_add (reduceb  vars mp k_fQ cm pols) (ptl,i))
-               with Failure _ ->         log_i (lazy (fsprintf "reduce failed "));
-let pol,inv = (reduce  vars mp k_fQ pols (ptl,i)) in
+               with Failure _ -> let pol,inv = (reduce  vars mp k_fQ pols (ptl,i)) in
                                  cm::pol,inv
 ;;
 
