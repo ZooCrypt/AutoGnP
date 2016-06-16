@@ -39,8 +39,11 @@ bound_adv
         return (g^(c*d + r*(d*i + h)), g^r)
       };
 
-  ] : b = b'.
-  bycrush 100.
+    ] : b = b'.
+
+        deduce ppt [g^(c+d), g^d] e(g,g)^(c*d+d*d+c*c).  
+
+        
 qed.
 print_proof.
 extract "extraction/bb1.ec".

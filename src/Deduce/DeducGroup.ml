@@ -9,8 +9,11 @@ open Expr
 open ExprUtils
 open NormField
 open Norm
+open GroebnerBasis
+       
+let mk_log level = mk_logger "Deduce.DeducGroup" level "DeducGroup.ml"
+let log_i = mk_log Bolt.Level.INFO
 
-let log_i _ = ()
 
 (* ** Solving function
  * ----------------------------------------------------------------------- *)
@@ -34,6 +37,8 @@ let solve_group (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
     else if is_GOne e2 then e1
     else mk_GMult [e1; e2]
   in
+
+
   (* returns polynomial and inverter polynomial *)
   let subtract_known f k_Fq =
     let covered_terms, remaining_terms =
@@ -150,7 +155,26 @@ let solve_group (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
   (* simplify secret by subtracting known (in Fq) terms *)
   let (f,i_trans) = group_to_poly_simp false e gt known_Fq in
   log_i (lazy (fsprintf "searching for exponent: %a @\n  with %a"
-                 EP.pp f pp_inverter (i_trans (I (mk_V (VarSym.mk "[_]" e.e_ty))))));
+   EP.pp f pp_inverter (i_trans (I (mk_V (VarSym.mk "[_]" e.e_ty))))));
+
+  let known_polys = Hep.fold (fun fe i acc -> (fe,expr_of_inverter i) ::acc) known_Gt [] in
+  let fully_known_vars =  He.fold (fun fe _ acc -> fe::acc) known_Fq [] in
+  let k_fQ =  He.fold (fun fe i acc -> (fe,expr_of_inverter i)::acc) known_Fq [] in
+
+  let (secret::polys),vars,mh = eps_to_polys ((f,gexp (mk_GGen gt) (mk_FNat 0))::known_polys) in
+  let private_vars = List.map (fun i-> if List.mem (Hashtbl.find mh i) fully_known_vars then 0 else 1 ) vars in
+  let groebner_basis = GroebnerBasis.groebner vars mh k_fQ (List.map (fun p-> (p,private_vars)) polys) in
+    let debug = polys_to_eps (List.map fst groebner_basis) vars mh in 
+List.iter ( fun ((p,inver)) -> log_i (lazy (fsprintf "GB %a , %a"pp_expr p  pp_expr inver))) debug;
+let success,inver = GroebnerBasis.get_inverter vars mh k_fQ  groebner_basis secret in
+let final_inv= norm_expr_strong @@ expr_of_inverter (i_trans (I( gexp (inver)(mk_FOpp (mk_FNat 1)) ))) in
+  if success then
+    (
+      log_i (lazy (fsprintf "GB found %a " pp_expr inver));
+        log_i (lazy (fsprintf "final inverter found %a " pp_expr final_inv)))
+
+  else 
+    log_i (lazy (fsprintf "GB fail %a " pp_expr inver));
 
   (* search for inverter by performing division with remainder in different orders *)
   let open Nondet in
@@ -201,12 +225,15 @@ let solve_group (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
       Se.union
         (Hep.fold (fun fe _ se -> Se.union se (Se.of_list (EP.vars fe))) known_Gt Se.empty)
         (He.fold (fun fe _ se -> Se.add fe se) known_Fq Se.empty)
-    in
+    in 
     (* log_i (lazy (fsprintf "f expressions: %a@\n" (pp_list "," pp_exp) (Se.elements f_exprs)));
        log_i (lazy (fsprintf "potentially known expressions: %a@\n" (pp_list "," pp_exp) (Se.elements k_exprs))); *)
     guard (Se.cardinal (Se.diff f_exprs k_exprs) = 0)  >>= fun _ ->
     go f i_trans k_Gt
   in
+
+
+                                              
   match run 1 (search ()) with
   | I ie as i::_ ->
     let e' = norm_expr_strong (e_subst (me_of_list (L.map (fun (e,I e') -> (e',e)) ecs)) ie) in
