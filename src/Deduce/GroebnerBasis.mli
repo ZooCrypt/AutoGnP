@@ -28,6 +28,6 @@ val get_inverter : int list ->
            (pol_i * int list) list ->
            pol_i -> bool * Expr.expr
 
-val global_rnd_deduce : string list ->
-           (string * string list) list ->
-           string list -> frac list -> frac list ->  basis_r list
+val global_rnd_deduce :  Expr.expr list ->
+           (Expr.expr * Expr.expr list) list ->
+           Expr.expr list -> frac list -> frac list -> basis_r list

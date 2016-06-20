@@ -486,12 +486,13 @@ let rec tcombine l1 l2 l3 =
   | (a::x,b::y,c::z) -> let tail  = tcombine x y z  in (a,b,c)::tail  ;;
 
 let fintersect vars (gen1:basis_r) (gen2:basis_r) :basis_r =
+  let fresh_var = Expr.mk_V (Syms.VarSym.mk ("plopi") (Type.mk_ty Type.Int)) in
   let fracs,pvars,da = tsplit gen1 in
   let fracs2,pvars2,da2 = tsplit gen2 in
-  let vars = "plop"::vars in
+  let vars = fresh_var::vars in
   let fracs  = add_var fracs and fracs2 = add_var fracs2 in
   let pvars = map (fun x-> 1::x) pvars and   pvars2 = map (fun x-> 1::x) pvars2 in
-  let t_poly =  frac_var vars "plop" in
+  let t_poly =  frac_var vars fresh_var in
   let mt_poly = frac_sub (frac_const vars (Int (1)) ) t_poly in 
   (*map (fun p -> printert (term_of_poly (vars) p)) (List.map (mpoly_mul mt_poly) pols2) ;print_newline();*)
   let basis = fgroebner vars ((tcombine (List.map (fun (f,i)-> frac_mul t_poly f, frac_mul t_poly i) fracs) pvars da)@(tcombine (List.map (fun (f,i)-> frac_mul mt_poly f, frac_mul t_poly i) fracs2) pvars2 da2)) in
@@ -532,7 +533,7 @@ let split_poly vars poly rnd_vars =
     else
       failwith "non linear";;
 
-let rnd_deduce vars rndvars pvars fracs ((pol,q):frac) :basis_r=
+let rnd_deduce (vars:Expr.expr list) rndvars pvars fracs ((pol,q):frac) :basis_r=
   let pvars = map (fun x -> if mem x pvars then 1 else 0 ) vars in
   let remainder::splits = split_poly vars pol rndvars in
   if concat splits = [] then
@@ -571,8 +572,8 @@ let add_vars (fracs:frac list) vars :frac list=
   map (fun f -> add_vars_aux f vars) fracs;;
 
 let global_rnd_deduce vars rndvars pvars poly_pub_list poly_sec_list =
- 
-  let fresh_nu_vars = mapi (fun i _ -> "plop"^(string_of_int i)) poly_sec_list in 
+  let fresh_expr i = Expr.mk_V (Syms.VarSym.mk ("plop"^(string_of_int i)) (Type.mk_ty Type.Int)) in
+  let fresh_nu_vars = mapi (fun i _ -> fresh_expr i) poly_sec_list in 
   let vars = vars@fresh_nu_vars in
   let pols_sec = add_vars poly_sec_list fresh_nu_vars and pols_pub = add_vars poly_pub_list fresh_nu_vars in
   let pols_sec = map2 (fun pol var_nu -> frac_mul (frac_var vars var_nu) pol) pols_sec fresh_nu_vars in
