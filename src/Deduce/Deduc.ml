@@ -15,7 +15,7 @@ let log_i = mk_log Bolt.Level.INFO
 
 exception Found of expr
 
-let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
+let invert' ?rnd_deduce_enable:(rnd_deduce=false)  ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let to_ = Norm.norm_expr_strong to_ in
   let known = He.create 17 in
   let progress = ref false in
@@ -216,73 +216,81 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Cnst _ -> reg_constr e e
   in
 
-  (* Try do deduce interesting subterms for the given type using solvers *)
-  let solve ty subexprs =
-    log_i (lazy (fsprintf "@[<hov>solve: started for type %a@]" pp_ty ty));
-    if is_G ty && not ppt then () else
-    let solver, ty_rel =
-      match ty.ty_node with
-      | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
-      | Fq           -> DeducField.solve_fq, equal_ty ty
-      | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
-      | TySym _ | Prod _ | Int -> assert false
-    in
-    let k,u = Se.partition is_in subexprs in
-    if Se.is_empty u then (
-      log_i (lazy (fsprintf "@[<hov>solve: done for type %a@]" pp_ty ty));
-      Hty.remove sub_solver ty
-    ) else (
-      let k' = Se.filter (fun e -> ty_rel e.e_ty) (he_keys known) in
-      let k = Se.elements (Se.union k k') in
-      let k = ref (List.map (fun e -> (e, I (get e))) k) in
-      log_i (lazy (fsprintf "@[<hov>known:@ @[<hov 2>%a@]@]"
-                     (pp_list "," pp_expr) (List.map fst !k)));
-      log_i (lazy (fsprintf "@[<hov>unknown:@ @[<hov 2>%a@]@]"
-                     (pp_list "," pp_expr) (Se.elements u)));
-      Se.iter (fun u ->
-        try
-          let inv = solver !k u in
-          add_known u (expr_of_inverter inv);
-          k := (u,inv) :: !k
-        with Not_found -> ()) u
+  if not rnd_deduce then
+    (
+      (* Try do deduce interesting subterms for the given type using solvers *)
+      let solve ty subexprs =
+        log_i (lazy (fsprintf "@[<hov>solve: started for type %a@]" pp_ty ty));
+        if is_G ty && not ppt then () else
+          let solver, ty_rel =
+            match ty.ty_node with
+            | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
+            | Fq           -> DeducField.solve_fq, equal_ty ty
+            | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
+            | TySym _ | Prod _ | Int -> assert false
+          in
+          let k,u = Se.partition is_in subexprs in
+          if Se.is_empty u then (
+            log_i (lazy (fsprintf "@[<hov>solve: done for type %a@]" pp_ty ty));
+            Hty.remove sub_solver ty
+          ) else (
+            let k' = Se.filter (fun e -> ty_rel e.e_ty) (he_keys known) in
+            let k = Se.elements (Se.union k k') in
+            let k = ref (List.map (fun e -> (e, I (get e))) k) in
+            log_i (lazy (fsprintf "@[<hov>known:@ @[<hov 2>%a@]@]"
+                           (pp_list "," pp_expr) (List.map fst !k)));
+            log_i (lazy (fsprintf "@[<hov>unknown:@ @[<hov 2>%a@]@]"
+                           (pp_list "," pp_expr) (Se.elements u)));
+            Se.iter (fun u ->
+                try
+                  let inv = solver !k u in
+                  add_known u (expr_of_inverter inv);
+                  k := (u,inv) :: !k
+                with Not_found -> ()) u
+          )
+      in
+
+      (* Initialisation *)
+      try
+        (* initialize for all known expressions *)
+        let init_known (e,I i) =
+          let e = Norm.norm_expr_strong e in
+          log_i (lazy (fsprintf "@[<hov>init_known:@ @[<hov 2>%a@]@]" pp_expr e));
+          register_subexprs false e;
+          add_known e i
+        in
+        List.iter init_known known_es;
+
+        (* Register subterms of expression that we want to deduce *)
+        register_subexprs false to_;
+
+        (* First try to construct all interesting subterms,
+           if progress stops, call xor, group, or field solver *)
+        while !progress do
+          progress := false;
+          Se.iter construct !sub_constr;
+          if not (!progress) then Hty.iter solve sub_solver
+        done;
+        raise Not_found
+      with
+      | Found inv -> I inv
+      | Not_found -> raise Not_found
+      | e ->
+        let err = Printexc.to_string e in
+        let bt = Printexc.get_backtrace () in
+        log_i (lazy (fsprintf "@[invert:@ %s@ %s@]" err bt)); raise e
+
     )
-  in
+  else
+    (
+        raise Not_found
 
-  (* Initialisation *)
-  try
-    (* initialize for all known expressions *)
-    let init_known (e,I i) =
-      let e = Norm.norm_expr_strong e in
-      log_i (lazy (fsprintf "@[<hov>init_known:@ @[<hov 2>%a@]@]" pp_expr e));
-      register_subexprs false e;
-      add_known e i
-    in
-    List.iter init_known known_es;
-
-    (* Register subterms of expression that we want to deduce *)
-    register_subexprs false to_;
-
-    (* First try to construct all interesting subterms,
-       if progress stops, call xor, group, or field solver *)
-    while !progress do
-      progress := false;
-      Se.iter construct !sub_constr;
-      if not (!progress) then Hty.iter solve sub_solver
-    done;
-    raise Not_found
-  with
-  | Found inv -> I inv
-  | Not_found -> raise Not_found
-  | e ->
-    let err = Printexc.to_string e in
-    let bt = Printexc.get_backtrace () in
-    log_i (lazy (fsprintf "@[invert:@ %s@ %s@]" err bt)); raise e
-
+    )
 
 (* ** Wrapper function
  * ----------------------------------------------------------------------- *)
 
-let invert ?ppt_inverter:(ppt=false) ts known_es to_ =
+let invert ?rnd_deduce_enable:(rnd_deduce=false)  ?ppt_inverter:(ppt=false) ts known_es to_ =
   let open TheoryTypes in
   let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in
   invert' ~ppt_inverter:ppt emaps false known_es to_
