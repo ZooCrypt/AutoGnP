@@ -6,6 +6,9 @@ type mon
        
 type pol_i = mon list * Expr.expr
 
+type frac
+
+type basis_r
        
 val groebner : int list -> (int, Expr.expr) Hashtbl.t ->
            (Expr.Me.key * Expr.expr) list ->
@@ -24,3 +27,7 @@ val get_inverter : int list ->
            (Expr.Me.key * Expr.expr) list ->
            (pol_i * int list) list ->
            pol_i -> bool * Expr.expr
+
+val global_rnd_deduce : string list ->
+           (string * string list) list ->
+           string list -> frac list -> frac list ->  basis_r list

@@ -52,6 +52,15 @@ let rec funpow n f x =
     else if is_GOne e2 then e1
     else mk_GMult [e1; e2]  ;;
 
+
+  let rec subset l = 
+   match l with
+   | [] -> [[]] 
+   | (h::tl) ->
+               let second = subset tl in
+               append (map (fun x -> h::x) second) second;;
+
+
 (* ------------------------------------------------------------------------- *)
 (* Defining polynomial types                                                 *)
 (* ------------------------------------------------------------------------- *)
@@ -548,3 +557,30 @@ let rnd_deduce vars rndvars pvars fracs ((pol,q):frac) :basis_r=
         global_basis
     )
              
+
+
+
+
+
+let add_vars_aux ((nom,dem):frac) vars :frac=
+  let nvars = map (fun _->0) vars in 
+  (map (fun (c,m) -> (c,m@nvars)) nom,map (fun (c,m) -> (c,m@nvars)) dem);;
+
+
+let add_vars (fracs:frac list) vars :frac list= 
+  map (fun f -> add_vars_aux f vars) fracs;;
+
+let global_rnd_deduce vars rndvars pvars poly_pub_list poly_sec_list =
+ 
+  let fresh_nu_vars = mapi (fun i _ -> "plop"^(string_of_int i)) poly_sec_list in 
+  let vars = vars@fresh_nu_vars in
+  let pols_sec = add_vars poly_sec_list fresh_nu_vars and pols_pub = add_vars poly_pub_list fresh_nu_vars in
+  let pols_sec = map2 (fun pol var_nu -> frac_mul (frac_var vars var_nu) pol) pols_sec fresh_nu_vars in
+  let nu_pol_sec = fold_right (fun pol acc -> frac_add pol acc) pols_sec (frac_const vars (Int 0)) in
+     let rndvars = subset rndvars in
+     map (fun rnd_vars -> if rnd_vars <> [] then
+                          
+             rnd_deduce vars rnd_vars pvars pols_pub nu_pol_sec
+         else []) rndvars
+       
+;;
