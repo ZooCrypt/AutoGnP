@@ -106,6 +106,8 @@
       ; "false_ev",                 RFALSE_EV                 (* kw: tactic      *)
 
       ; "deduce",                   DEDUCE                    (* kw: tactic      *)
+      ; "rnd_deduce",               RND_DEDUCE                    (* kw: tactic      *)
+
       ; "field_exprs",              LISTFE                    (* kw: tactiv      *)
 
       (* programs *)

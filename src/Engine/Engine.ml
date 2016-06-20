@@ -451,7 +451,7 @@ let handle_tactic ts tac =
       let eret = PU.expr_of_parse_expr vmap ts (Qual oname) eret in
       T.t_hybrid i j lcmds eret ju
 
-    | PT.Radd_test(_) | PT.Deduce(_) | PT.FieldExprs(_) | PT.Rguard _ ->
+    | PT.Radd_test(_) | PT.Deduce(_) | PT.Rnd_deduce(_) | PT.FieldExprs(_) | PT.Rguard _ ->
       tacerror "add_test and debugging tactics cannot be combined with ';'"
 
     | PT.Rbad(1,Some _ap,_vsx) -> fixme "undefined" (*
@@ -573,6 +573,24 @@ let handle_tactic ts tac =
     tacerror "radd_test expects either all values or only placeholders"
 
   | PT.Deduce(ppt,pes,pe) ->
+    let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
+    let e = PU.expr_of_parse_expr vmap_g ts Unqual pe in
+    log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_expr) es pp_expr e));
+    (try
+        let frame =
+          L.mapi
+            (fun i e -> (e, I (mk_V (VarSym.mk ("x"^(string_of_int i)) e.e_ty))))
+            es
+        in
+        let recipe = Deduc.invert ~ppt_inverter:ppt ts frame e in
+        let msg = fsprintf "Found %a@\n" pp_inverter recipe in
+        log_i (lazy msg);
+        (ts,lazy msg)
+      with
+        Not_found ->
+        tacerror "Not found@\n")
+
+| PT.Rnd_deduce(ppt,pes,pe) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
     let e = PU.expr_of_parse_expr vmap_g ts Unqual pe in
     log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_expr) es pp_expr e));

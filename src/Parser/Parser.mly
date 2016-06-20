@@ -114,7 +114,7 @@
 %token RHYBRID RADD_TEST
 %token RGUESS RFIND
 %token REXC_ORCL RREWRITE_ORCL
-%token DEDUCE LISTFE RENSURE
+%token DEDUCE RND_DEDUCE LISTFE RENSURE
 %token SEP_DOM
 
 /*======================================================================
@@ -556,6 +556,8 @@ tactic :
 /* debugging */
 | DEDUCE  ppt=PPT?
     LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Deduce(ppt<>None,es,e) }
+| RND_DEDUCE  ppt=PPT?
+    LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Rnd_deduce(ppt<>None,es,e) }
 | LISTFE LBRACK es=seplist1(COMMA,expr) RBRACK   { FieldExprs(es) }
 
 /*----------------------------------------------------------------------
