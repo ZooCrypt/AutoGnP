@@ -22,7 +22,7 @@ let log_i = mk_log Bolt.Level.INFO
    exponent. It might be possible to generalize the current algorithm
    by performing something similar to the cross-multiplication used to
    reduce equality of field-expressions to equality of ring-expressions. *)
-let solve_group (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
+let solve_group  ?mult_secrets:(e_tail=[]) (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
   log_i (lazy (fsprintf "solve_group %a |- %a"
                  (pp_list "," (pp_pair pp_expr pp_inverter)) ecs pp_expr e));
 
@@ -152,35 +152,40 @@ let solve_group (emaps : EmapSym.t list) (ecs : (expr * inverter) list) e =
     (fun f i -> log_i (lazy (fsprintf "known in exponent: %a with %a" EP.pp f pp_inverter i)))
     known_Gt;
 
-  (* simplify secret by subtracting known (in Fq) terms *)
-  let (f,i_trans) = group_to_poly_simp false e gt known_Fq in
-  log_i (lazy (fsprintf "searching for exponent: %a @\n  with %a"
-   EP.pp f pp_inverter (i_trans (I (mk_V (VarSym.mk "[_]" e.e_ty))))));
-
-  let known_polys = Hep.fold (fun fe i acc -> (fe,expr_of_inverter i) ::acc) known_Gt [] in
-  let fully_known_vars =  He.fold (fun fe _ acc -> fe::acc) known_Fq [] in
-  let k_fQ =  He.fold (fun fe i acc -> (fe,expr_of_inverter i)::acc) known_Fq [] in
-  List.iter    (fun (a,b) -> log_i (lazy (fsprintf "known F-Q %a et %a" pp_expr a pp_expr b))) k_fQ;
-
-  let (secret::polys),vars,mh = eps_to_polys ((f,gexp (mk_GGen gt) (mk_FNat 0))::known_polys) in
-    List.iter    (fun x -> log_i (lazy (fsprintf "var %i : %a" x pp_expr (Hashtbl.find mh x) ))) vars;
-
-    let private_vars = List.map (fun i-> if List.mem (Hashtbl.find mh i) fully_known_vars then 0 else 1 ) vars in
-        List.iter    (fun x -> log_i (lazy (fsprintf "pvar %i" x ))) private_vars;
-
-  let groebner_basis = GroebnerBasis.groebner vars mh k_fQ (List.map (fun p-> (p,private_vars)) polys) in
-    let debug = polys_to_eps (List.map fst groebner_basis) vars mh in 
-List.iter ( fun ((p,inver)) -> log_i (lazy (fsprintf "GB %a , %a"pp_expr p  pp_expr inver))) debug;
-let success,inver = GroebnerBasis.get_inverter vars mh k_fQ  groebner_basis secret in
-let final_inv=  expr_of_inverter (i_trans (I( gexp (inver)(mk_FOpp (mk_FNat 1)) ))) in
- 
-   if success then
+  if e_tail = [] then
     (
-      log_i (lazy (fsprintf "GB found %a " pp_expr inver));
-      log_i (lazy (fsprintf "final inverter found %a " pp_expr final_inv));
-    I(final_inv)
-    )
+      (* simplify secret by subtracting known (in Fq) terms *)
+      let (f,i_trans) = group_to_poly_simp false e gt known_Fq in
+      log_i (lazy (fsprintf "searching for exponent: %a @\n  with %a"
+                     EP.pp f pp_inverter (i_trans (I (mk_V (VarSym.mk "[_]" e.e_ty))))));
 
-  else 
-    (log_i (lazy (fsprintf "GB fail %a " pp_expr inver));
-       raise Not_found)
+      let known_polys = Hep.fold (fun fe i acc -> (fe,expr_of_inverter i) ::acc) known_Gt [] in
+      let fully_known_vars =  He.fold (fun fe _ acc -> fe::acc) known_Fq [] in
+      let k_fQ =  He.fold (fun fe i acc -> (fe,expr_of_inverter i)::acc) known_Fq [] in
+      List.iter (fun (a,b) -> log_i (lazy (fsprintf "known F-Q %a et %a" pp_expr a pp_expr b))) k_fQ;
+      let (secret::polys),vars,mh = eps_to_polys ((f,gexp (mk_GGen gt) (mk_FNat 0))::known_polys) in
+      List.iter    (fun x -> log_i (lazy (fsprintf "var %i : %a" x pp_expr (Hashtbl.find mh x) ))) vars;
+      let private_vars = List.map (fun i-> if List.mem (Hashtbl.find mh i) fully_known_vars then 0 else 1 ) vars in
+      List.iter    (fun x -> log_i (lazy (fsprintf "pvar %i" x ))) private_vars;
+      let groebner_basis = GroebnerBasis.groebner vars mh k_fQ (List.map (fun p-> (p,private_vars)) polys) in
+      let debug = polys_to_eps (List.map fst groebner_basis) vars mh in 
+      List.iter ( fun ((p,inver)) -> log_i (lazy (fsprintf "GB %a , %a"pp_expr p  pp_expr inver))) debug;
+      let success,inver = GroebnerBasis.get_inverter vars mh k_fQ  groebner_basis secret in
+      let final_inv=  expr_of_inverter (i_trans (I( gexp (inver)(mk_FOpp (mk_FNat 1)) ))) in
+
+      if success then
+        (
+          log_i (lazy (fsprintf "GB found %a " pp_expr inver));
+          log_i (lazy (fsprintf "final inverter found %a " pp_expr final_inv));
+          I(final_inv)
+        )
+      else 
+        (log_i (lazy (fsprintf "GB fail %a " pp_expr inver));
+         raise Not_found
+        )
+    )
+  else
+    (
+
+      raise Not_found
+    )
