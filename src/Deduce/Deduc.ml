@@ -216,9 +216,7 @@ let invert' ?rnd_deduce_enable:(rnd_deduce=false)  ?ppt_inverter:(ppt=false) ema
     | Cnst _ -> reg_constr e e
   in
 
-  if not rnd_deduce then
-    (
-      (* Try do deduce interesting subterms for the given type using solvers *)
+   (* Try do deduce interesting subterms for the given type using solvers *)
       let solve ty subexprs =
         log_i (lazy (fsprintf "@[<hov>solve: started for type %a@]" pp_ty ty));
         if is_G ty && not ppt then () else
@@ -249,6 +247,10 @@ let invert' ?rnd_deduce_enable:(rnd_deduce=false)  ?ppt_inverter:(ppt=false) ema
                 with Not_found -> ()) u
           )
       in
+
+  if not rnd_deduce then
+    (
+     
 
       (* Initialisation *)
       try
@@ -283,7 +285,42 @@ let invert' ?rnd_deduce_enable:(rnd_deduce=false)  ?ppt_inverter:(ppt=false) ema
     )
   else
     (
-        raise Not_found
+      let target_groups_elem_to_deduce = ref [] in
+         
+        (* Try do deduce interesting subterms for the given type using solvers *)
+    
+              (* Initialisation *)
+              try
+                (* initialize for all known expressions *)
+                let init_known (e,I i) =
+                  let e = Norm.norm_expr_strong e in
+                  log_i (lazy (fsprintf "@[<hov>init_known:@ @[<hov 2>%a@]@]" pp_expr e));
+                  register_subexprs false e;
+                  add_known e i
+                in
+                List.iter init_known known_es;
+
+                (* Register subterms of expression that we want to deduce *)
+                register_subexprs false to_;
+
+                (* First try to construct all interesting subterms,
+                   if progress stops, call xor, group, or field solver *)
+                while !progress do
+                  progress := false;
+                  Se.iter construct !sub_constr;
+                  if not (!progress) then
+
+                    Hty.iter solve sub_solver
+                done;
+                raise Not_found
+              with
+              | Found inv -> I inv
+              | Not_found -> raise Not_found
+              | e ->
+                let err = Printexc.to_string e in
+                let bt = Printexc.get_backtrace () in
+                log_i (lazy (fsprintf "@[invert:@ %s@ %s@]" err bt)); raise e
+
 
     )
 
