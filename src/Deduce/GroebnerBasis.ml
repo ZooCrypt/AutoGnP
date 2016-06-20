@@ -267,9 +267,14 @@ let get_inverter vars mp k_fQ basis pol =
 
 type frac = pol * pol;;
 
+type frac_r = frac * frac;; (* the second frac will represent the bijection applied to the variable*)
 type gen = frac*i_var_set*bool;;
  (* gen =  polynom, the set of private variables and bool =true means that we can also divide *) 
 type basis = gen list;;
+
+type gen_r = frac_r*i_var_set*bool;;
+ (* gen =  polynom, the set of private variables and bool =true means that we can also divide *) 
+type basis_r = gen_r list;;
 
 
 let unit vars :pol= [(Int 1,map (fun _ -> 0) vars)];;
@@ -364,47 +369,55 @@ let fdiv_cond (pvars:i_var_set) (div_allowed:bool) (p:frac) (q:frac) :frac=
                          if (List.fold_left (fun  a (x,y) -> (y=1 && x>0)|| a ) false checker) then failwith "mdiv") ((fst res)@(snd res));
   res;;
   
-let freduce1 (cm:frac) (((pol,q),pvars,div_allowed):gen) =
+let freduce1 (cm:frac) ((((pol,q),inv),pvars,div_allowed):gen_r) =
   match pol with
     [] -> failwith "reduce1"
-  | hm::cms -> let multiplier = fdiv_cond pvars div_allowed cm ([hm],q)  in frac_mul (frac_neg multiplier)  (cms,q);;
+  | hm::cms -> let multiplier = fdiv_cond pvars div_allowed cm ([hm],q)  in frac_mul (frac_neg multiplier)  (cms,q), frac_mul (frac_neg multiplier) inv;;
 
 (* ------------------------------------------------------------------------- *)
 (* Try this for all polynomials in a basis.                                  *)
 (* ------------------------------------------------------------------------- *)
 
-let freduceb cm pols = tryfind (freduce1 cm) pols;;
+let freduceb cm (pols:gen_r list) = tryfind (freduce1 cm) pols;;
 
 (* ------------------------------------------------------------------------- *)
 (* Reduction of a polynomial (always picking largest monomial possible).     *)
 (* ------------------------------------------------------------------------- *)
 
-let rec freduce (pols:basis) ((p,q):frac) =
+let rec freduce (pols:gen_r list) (((p,q),inv):frac_r) =
   match p with
-    [] -> let (_,vars,_) = hd pols in ([],unit vars)
+    [] -> let (_,vars,_) = hd pols in ([],unit vars),frac_const vars (Int 0)
   | cm::ptl -> try
-               let _ = (freduceb (cm::ptl,q) pols) in
-               ([],munit @@ snd cm)
-               with Failure _ -> try freduce pols (frac_add (freduceb ([cm],q) pols) (ptl,q))
-                                 with Failure _ ->frac_add ([cm],q) (freduce pols (ptl,q));;
+               let _,inv = (freduceb (cm::ptl,q) pols) in
+               ([],munit @@ snd cm),inv
+    with Failure _ -> try
+        let new_pol,inv = freduceb ([cm],q) pols in 
+        freduce pols (frac_add new_pol (ptl,q), frac_add inv (ptl,q))
+                                 with Failure _ ->        let new_pol,inv = freduce pols ((ptl,q),inv) in 
+ frac_add ([cm],q) new_pol, frac_add ([cm],q) inv ;;
 
 (* ------------------------------------------------------------------------- *)
 (* Compute S-polynomial of two polynomials.                                  *)
 (* ------------------------------------------------------------------------- *)
 
-let fspoly (gen1:gen) (gen2:gen) =
-  let ((p1,q1),pvar1,div_allowed1)=gen1 and ((p2,q2),pvar2,div_allowed2) = gen2 in
+let fspoly (gen1:gen_r) (gen2:gen_r) =
+  let (((p1,q1),i1),pvar1,div_allowed1)=gen1 and (((p2,q2),i2),pvar2,div_allowed2) = gen2 in
   try
   match (p1,p2) with
-    ([],_) -> ([],unit pvar1)
-  | (_,[]) -> ([],unit pvar1)
+    ([],_) -> ([],unit pvar1), ([],unit pvar1)
+  | (_,[]) -> ([],unit pvar1), ([],unit pvar1)
   | (m1::ptl1,m2::ptl2) ->
      let m = mlcm m1 m2 and q = mpoly_lcm pvar1 q1 q2 in
-     let fact = simp ([m],q) in 
-        frac_sub (frac_mul (fdiv_cond pvar1 div_allowed1 fact ([m1],q1)) (ptl1,q1))
-                 (frac_mul (fdiv_cond pvar2 div_allowed2 fact ([m2],q2)) (ptl2,q2))
-  with Failure "mdiv" ->  try freduce [gen2] (p1,q1)
-                                      with Failure "mdiv" -> freduce [gen1] (p2,q2);;
+     let fact = simp ([m],q) in
+     let mult1 = fdiv_cond pvar1 div_allowed1 fact ([m1],q1) in
+     let mult2 = fdiv_cond pvar2 div_allowed2 fact ([m2],q2) in
+        frac_sub (frac_mul mult1 (ptl1,q1))
+          (frac_mul mult2 (ptl2,q2))
+        ,
+        frac_sub (frac_mul mult1 i1)
+                 (frac_mul mult2 i2)
+  with Failure "mdiv" ->  try freduce [gen2] ((p1,q1),i1)
+                                      with Failure "mdiv" -> freduce [gen1] ((p2,q2),i2);;
 
 let is_indep (pol:pol) pvars =
    fold_left (fun acc ((_,m):mon)-> let checker = List.combine m pvars in
@@ -415,7 +428,7 @@ let is_indep (pol:pol) pvars =
 (* Grobner basis algorithm for free multi-module                             *)
 (* ------------------------------------------------------------------------- *)
 
-let rec fgrobner vars basis pairs =
+let rec fgrobner vars (basis:basis_r) pairs =
  (*print_string(string_of_int(length basis)^" basis elements and "^
                string_of_int(length pairs)^" pairs");
   print_newline();*)
@@ -425,7 +438,7 @@ let rec fgrobner vars basis pairs =
         try
           let sp = freduce basis (fspoly p1 p2) in
           (*map (fun (x,y)-> print_string "toto";print_int @@ int_of_num x) (fst sp); *) 
-          if fst sp = [] then fgrobner vars basis opairs
+          if fst (fst sp) = [] then fgrobner vars basis opairs
         (*else if for_all (for_all ()) sp then basis*) else
             let (_,pv1,da1) = p1 and (_,pv2,da2) = p2 in
             let sp_pvars = map2 (fun x y -> x +y - x*y) pv1 pv2 in
@@ -446,9 +459,12 @@ let fgroebner vars basis = fgrobner vars basis (distinctpairs basis);;
 (* ------------------------------------------------------------------------- *)
 
 
-let add_var (fracs:frac list) :frac list= 
-  map (fun (nom,dem) -> (map (fun (c,m) -> (c,0::m)) nom,map (fun (c,m) -> (c,0::m)) dem)) fracs;;
+let add_var_aux ((nom,dem):frac) :frac= 
+  (map (fun (c,m) -> (c,0::m)) nom,map (fun (c,m) -> (c,0::m)) dem);;
 
+
+let add_var (fracs:frac_r list) :frac_r list= 
+  map (fun (f,i) -> add_var_aux f,add_var_aux i) fracs;;
 
 let rec tsplit list =
   match list with
@@ -460,7 +476,7 @@ let rec tcombine l1 l2 l3 =
   |[],[],[] -> []
   | (a::x,b::y,c::z) -> let tail  = tcombine x y z  in (a,b,c)::tail  ;;
 
-let fintersect vars (gen1:basis) (gen2:basis) :basis =
+let fintersect vars (gen1:basis_r) (gen2:basis_r) :basis_r =
   let fracs,pvars,da = tsplit gen1 in
   let fracs2,pvars2,da2 = tsplit gen2 in
   let vars = "plop"::vars in
@@ -469,15 +485,15 @@ let fintersect vars (gen1:basis) (gen2:basis) :basis =
   let t_poly =  frac_var vars "plop" in
   let mt_poly = frac_sub (frac_const vars (Int (1)) ) t_poly in 
   (*map (fun p -> printert (term_of_poly (vars) p)) (List.map (mpoly_mul mt_poly) pols2) ;print_newline();*)
-  let basis = fgroebner vars ((tcombine (List.map (frac_mul t_poly) fracs) pvars da)@(tcombine (List.map (frac_mul mt_poly) fracs2) pvars2 da2)) in
+  let basis = fgroebner vars ((tcombine (List.map (fun (f,i)-> frac_mul t_poly f, frac_mul t_poly i) fracs) pvars da)@(tcombine (List.map (fun (f,i)-> frac_mul mt_poly f, frac_mul t_poly i) fracs2) pvars2 da2)) in
   (*map printert (map (fun (x,y)-> term_of_poly (vars) x) (basis));print_newline();*)
   
   (* we only keep polynoms independant of plop *)
-  let reduce_basis = fold_right (fun ((nom,dem),pvars,da) acc -> if
+  let reduce_basis = fold_right (fun (((nom,dem),(inv1,inv2)),pvars,da) acc -> if
                                     for_all (fun x-> hd  (snd x) = 0) nom
                                             &&
                                          for_all (fun x-> hd  (snd x) = 0) dem
-                                  then ((( map (fun (c,m) -> (c,tl m)) nom),( map (fun (c,m) -> (c,tl m)) dem)),tl pvars,da)::acc
+                                  then (((( map (fun (c,m) -> (c,tl m)) nom),( map (fun (c,m) -> (c,tl m)) dem)),(map (fun (c,m) -> (c,tl m)) inv1,map (fun (c,m) -> (c,tl m)) inv2) ),tl pvars,da)::acc
                                   else acc ) basis [] in
   
   reduce_basis;;
@@ -486,14 +502,14 @@ let fintersect vars (gen1:basis) (gen2:basis) :basis =
 (* Rnd Deduce                                                                *)
 (* ------------------------------------------------------------------------- *)
   
-let simp_gen (gen:gen) =
-  let ((p,q), pvars, div_allowed) = gen in
+let simp_gen (gen:gen_r) =
+  let (((p,q),i), pvars, div_allowed) = gen in
   if div_allowed then
     let p= mpoly_factor pvars p and q = mpoly_factor pvars q in
     let p = filter (fun (pol,_)->  not (is_indep pol pvars) ) p and  q = filter (fun (pol,_)->  not (is_indep pol pvars) ) q in
     let p = fold_right (fun (pol,pow) acc -> mpoly_mul acc (mpoly_pow pvars pol pow)) p (mpoly_const pvars (Int 1))
     and q =  fold_right (fun (pol,pow) acc -> mpoly_mul acc (mpoly_pow pvars pol pow)) q (mpoly_const pvars (Int 1)) in
-    (simp (p,q), pvars, div_allowed) 
+    ((simp (p,q),i), pvars, div_allowed) 
   else gen;;
 
 
@@ -507,25 +523,26 @@ let split_poly vars poly rnd_vars =
     else
       failwith "non linear";;
 
-let rnd_deduce vars rndvars pvars fracs ((pol,q):frac) :basis=
+let rnd_deduce vars rndvars pvars fracs ((pol,q):frac) :basis_r=
   let pvars = map (fun x -> if mem x pvars then 1 else 0 ) vars in
   let remainder::splits = split_poly vars pol rndvars in
   if concat splits = [] then
     (                                                
-    let left_gen = (map (fun p->p,pvars,false) fracs) in
-    let right_basis = [((remainder,q), map (fun _ -> 1 ) vars,false)] in
+    let left_gen = (map (fun p->(p,([],munit pvars)),pvars,false) fracs) in
+    let right_basis = [(((remainder,q),([],munit pvars)), map (fun _ -> 1 ) vars,false)] in
     let global_basis = fintersect vars left_gen (right_basis) in
     global_basis
     )
   else
     (
-    let left_gen = ((remainder,q), map (fun _ -> 1 ) vars,false)::(map (fun p->p,pvars,false) fracs) in
-     let left_gen = filter (fun ((u,_),_,_)-> u <> []) left_gen in
+     
+    let left_gen = (((remainder,q), frac_const vars (Int 0) ), map (fun _ -> 1 ) vars,false)::(map (fun p->(p, frac_const vars (Int 0) ) ,pvars,false) fracs) in
+     let left_gen = filter (fun (((u,_),_),_,_)-> u <> []) left_gen in
      let left_basis = fgroebner vars left_gen in
      let right_basis = map2 (fun poly (x,puvars)-> let rev_puvars =  map (fun y -> if mem y puvars then 0 else 1 ) vars
                                                in
-                                               [((poly,q),rev_puvars,true);(frac_mul (poly,q) (frac_var vars x),rev_puvars,true)] ) splits rndvars in
-     let right_basis = filter (fun ((u,_),_,_)-> u <> []) (concat right_basis) in
+                                               [(((poly,q),frac_var vars x),rev_puvars,true);((frac_mul (poly,q) (frac_var vars x),(munit vars,munit vars)),rev_puvars,true)] ) splits rndvars in
+     let right_basis = filter (fun (((u,_),i),_,_)-> u <> []) (concat right_basis) in
      let right_basis = map simp_gen right_basis in
      let global_basis = fintersect vars left_basis (right_basis) in
         global_basis
