@@ -144,7 +144,7 @@ type tactic =
   | Rsplit_ev      of int
   | Rsplit_ineq    of int
   | Deduce         of bool * parse_expr list * parse_expr
-  | Rnd_deduce         of bool * parse_expr list * parse_expr
+  | Rnd_deduce     of bool * parse_expr list * parse_expr list * parse_expr
   | FieldExprs     of parse_expr list
   | Rguard         of ocmd_pos * parse_expr option
   | Rguess         of string * string list

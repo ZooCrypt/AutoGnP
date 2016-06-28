@@ -4,4 +4,5 @@ open Syms
 open Expr
 open ExprUtils
 
-val solve_group :  ?mult_secrets:'a list -> EmapSym.t list -> (expr * inverter) list -> expr -> inverter
+val solve_group :      ?rnd_vars:(Expr.He.key * Expr.He.key list) list ->
+           ?mult_secrets:Expr.expr list -> EmapSym.t list -> (expr * inverter) list -> expr -> inverter

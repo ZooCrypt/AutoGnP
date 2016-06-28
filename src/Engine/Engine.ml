@@ -590,23 +590,24 @@ let handle_tactic ts tac =
         Not_found ->
         tacerror "Not found@\n")
 
-| PT.Rnd_deduce(ppt,pes,pe) ->
+  | PT.Rnd_deduce(ppt,rnds,pes,pe) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
-    let e = PU.expr_of_parse_expr vmap_g ts Unqual pe in
-    log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_expr) es pp_expr e));
-    (try
-        let frame =
-          L.mapi
-            (fun i e -> (e, I (mk_V (VarSym.mk ("x"^(string_of_int i)) e.e_ty))))
-            es
-        in
-        let recipe = Deduc.invert ~ppt_inverter:ppt ts frame e in
-        let msg = fsprintf "Found %a@\n" pp_inverter recipe in
-        log_i (lazy msg);
-        (ts,lazy msg)
-      with
-        Not_found ->
-        tacerror "Not found@\n")
+    let rnds =  L.map (PU.expr_of_parse_expr vmap_g ts Unqual) rnds in
+      let e = PU.expr_of_parse_expr vmap_g ts Unqual pe in
+      log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_expr) es pp_expr e));
+      (try
+         let frame =
+           L.mapi
+             (fun i e -> (e, I (mk_V (VarSym.mk ("x"^(string_of_int i)) e.e_ty))))
+             es
+         in
+         let recipe = Deduc.rnd_deduce ~ppt_inverter:ppt rnds ts frame e in
+         let msg = fsprintf "Found %a@\n" pp_inverter recipe in
+         log_i (lazy msg);
+         (ts,lazy msg)
+       with
+         Not_found ->
+         tacerror "Not found@\n")
 
   | PT.FieldExprs(pes) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in

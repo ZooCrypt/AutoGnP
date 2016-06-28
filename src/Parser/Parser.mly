@@ -557,7 +557,7 @@ tactic :
 | DEDUCE  ppt=PPT?
     LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Deduce(ppt<>None,es,e) }
 | RND_DEDUCE  ppt=PPT?
-    LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Rnd_deduce(ppt<>None,es,e) }
+    LBRACK es1=seplist1(COMMA,expr) RBRACK LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Rnd_deduce(ppt<>None,es1,es,e) }
 | LISTFE LBRACK es=seplist1(COMMA,expr) RBRACK   { FieldExprs(es) }
 
 /*----------------------------------------------------------------------

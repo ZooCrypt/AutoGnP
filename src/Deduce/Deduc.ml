@@ -291,9 +291,45 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
 let invert ?ppt_inverter:(ppt=false) ts known_es to_ =
   let open TheoryTypes in
   let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in
-  invert' ~ppt_inverter:ppt emaps false known_es to_
+  invert' ~ppt_inverter:ppt emaps false known_es to_;;
 
 
 
 
-(* Function initialising the knowledge and the goals *)
+(* rnd_deduce returns a list of rnd rules to apply to be able to deduce the secret *)
+let rnd_deduce' ?ppt_inverter:(ppt=false) rnds emaps do_div known_es to_ =
+  
+  let ctxt = { to_ =  Norm.norm_expr_strong to_ ;  known = He.create 17;  progress = false;  sub_constr =  Se.empty; sub_solver = Hty.create 7; ppt = ppt; do_div=do_div; emaps = emaps} in
+      (* Initialisation *)
+      
+        (* initialize for all known expressions *)
+        let init_known (e,I i) =
+          let e = Norm.norm_expr_strong e in
+          log_i (lazy (fsprintf "@[<hov>init_known:@ @[<hov 2>%a@]@]" pp_expr e));
+          register_subexprs ctxt false e;
+          add_known ctxt e i
+        in
+        List.iter init_known known_es;
+
+        (* Register subterms of expression that we want to deduce *)
+        register_subexprs ctxt false ctxt.to_;
+
+        let group_elements = Hty.fold (fun ty subexpr acc -> match ty.ty_node with
+            | G _ ->Se.union acc subexpr
+            | _ -> acc ) ctxt.sub_solver Se.empty in
+        (* First try to construct all interesting subterms,
+           if progress stops, call xor, group, or field solver *)
+        let k,u = Se.partition (is_in ctxt) group_elements in
+        let k' = Se.filter (fun e -> (fun t -> is_G t || is_Fq t) e.e_ty) (he_keys ctxt.known) in
+        let k = Se.elements (Se.union k k') in
+        let known = (List.map (fun e -> (e, I (get ctxt e))) k) in
+        let unknown = Se.elements u in  
+        DeducGroup.solve_group ~rnd_vars:rnds ~mult_secrets:(List.tl unknown) ctxt.emaps known (List.hd unknown)
+(* ** Wrapper function
+ * ----------------------------------------------------------------------- *)
+
+let rnd_deduce ?ppt_inverter:(ppt=false) rnds ts known_es to_ =
+  let open TheoryTypes in
+  let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in
+  let rnds = [(List.hd rnds,List.tl rnds)] in (* Patch, todo : parse list of list *)
+  rnd_deduce' ~ppt_inverter:ppt rnds emaps false known_es to_
