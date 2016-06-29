@@ -8,7 +8,6 @@ open Type
 open Expr
 open ExprUtils
 open NormField
-open Norm
 open GroebnerBasis
        
 let mk_log level = mk_logger "Deduce.DeducGroup" level "DeducGroup.ml"
@@ -187,14 +186,14 @@ let solve_group  ?rnd_vars:(rnd_vars = []) ?mult_secrets:(e_tail=[]) (emaps : Em
   else
     (
 
-      let group_to_poly_simp e gn k_Fq =
+      let group_to_poly_simp e k_Fq =
         let exp = if is_GExp e then (snd (destr_GExp e)) else mk_GLog e in
         let (f, mh) = polys_of_field_expr (CAS.norm id exp) in
         (* NOTE: for now, we don't perform divide_known since this requires non-zero constraints *)
         match mh with
         | None -> f
         | Some h0 ->
-          let (h,i_poly_h) = subtract_known h0 k_Fq in
+          let (h,_) = subtract_known h0 k_Fq in
           if not (EP.equal EP.zero h)
           then (
             log_i (lazy (fsprintf "unknown denominator %a" EP.pp h0));
@@ -204,7 +203,7 @@ let solve_group  ?rnd_vars:(rnd_vars = []) ?mult_secrets:(e_tail=[]) (emaps : Em
             f
           )
       in
-      let secret_polys = List.map (fun p-> group_to_poly_simp p gt known_Fq) (e::e_tail) in 
+      let secret_polys = List.map (fun p-> group_to_poly_simp p known_Fq) (e::e_tail) in 
       let known_polys = Hep.fold (fun fe i acc -> (fe,expr_of_inverter i) ::acc) known_Gt [] in
       let fully_known_vars =  He.fold (fun fe _ acc -> fe::acc) known_Fq [] in
       let k_fQ =  He.fold (fun fe i acc -> (fe,expr_of_inverter i)::acc) known_Fq [] in
@@ -232,7 +231,8 @@ let solve_group  ?rnd_vars:(rnd_vars = []) ?mult_secrets:(e_tail=[]) (emaps : Em
       if rnds = [] then
         raise Not_found
       else
-        (let res = GroebnerBasis.fracs_to_eps rnds vars mh in
+        (      log_i (lazy (fsprintf "rnd found"));
+let res = GroebnerBasis.fracs_to_eps rnds vars mh in
                log_i (lazy (fsprintf "Ending rnd_deduc"));
 
         List.iter (fun a->log_i (lazy (fsprintf "rnd_deduce with %a" pp_expr a))) res;
