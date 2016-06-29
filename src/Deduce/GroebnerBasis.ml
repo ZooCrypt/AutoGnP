@@ -423,16 +423,16 @@ let rec freduce vars mp (pols:gen_r list) (((p,q),inv):frac_r) =
     log_i (lazy (fsprintf "reduce2 %a " pp_expr debug  ));
     ([],unit vars),frac_const vars (Int 0)
   | cm::ptl -> try
-      let _,inv = (freduceb vars mp (cm::ptl,q) pols) in
-      ([],munit @@ snd cm),inv
+      let _,inv2 = (freduceb vars mp (cm::ptl,q) pols) in
+      ([],munit @@ snd cm), frac_add vars inv2 inv
     with Failure _ -> try
         let [(debug)] =  (fracs_to_eps [([cm],q)] vars mp)  in
         log_i (lazy (fsprintf "reduce3 %a " pp_expr debug  ));
-        let new_pol,inv = freduceb vars mp ([cm],q) pols in
-        freduce vars mp pols (frac_add vars new_pol (ptl,q), frac_add vars inv (ptl,q))
+        let new_pol,inv2 = freduceb vars mp ([cm],q) pols in
+        freduce vars mp pols (frac_add vars new_pol (ptl,q), frac_add vars inv inv2)
       with Failure _ ->                  log_i (lazy (fsprintf "reduce4 "   ));
-        let new_pol,inv = freduce vars mp pols ((ptl,q),inv) in 
-        frac_add vars ([cm],q) new_pol, frac_add vars ([cm],q) inv ;;
+        let new_pol,inv2 = freduce vars mp pols ((ptl,q),inv) in 
+        frac_add vars ([cm],q) new_pol, frac_add vars inv2 inv ;;
 
 (* ------------------------------------------------------------------------- *)
 (* Compute S-polynomial of two polynomials.                                  *)
@@ -676,7 +676,7 @@ let rnd_deduce (vars:int list) mp rndvars pvars fracs ((pol,q):frac) :basis_r=
 
       let right_basis = map2 (fun poly (x,puvars)-> let rev_puvars =  map (fun y -> if mem y puvars then 0 else 1 ) vars
                                in
-                               [(((poly,q),frac_var vars x),rev_puvars,true);((frac_mul vars (poly,q) (frac_var vars x),(munit vars,munit vars)),rev_puvars,true)] ) splits rndvars in
+                               [(((poly,q),frac_var vars x),rev_puvars,true);((frac_mul vars (poly,q) (frac_var vars x),(frac_mul vars (frac_var vars x) (frac_var vars x))),rev_puvars,true)] ) splits rndvars in
 
       let fracs = map (fun ((f,_),_,_)-> f ) (concat right_basis) in
       let debugs =  (fracs_to_eps fracs vars mp)  in
@@ -755,18 +755,21 @@ let global_rnd_deduce mh vars rndvars pvars poly_pub_list poly_sec_list =
                     if bl then  log_i (lazy (fsprintf "div allowed"   )))
             debugs gens;
 
+          if gens = [] then []
+          else
+            (
+              let red,rnds =  freduce vars mh gens (nu_pol_sec,(frac_const vars (Int 0))) in
+              log_i (lazy (fsprintf "red done"  ));
+              let [(debug)] =  (fracs_to_eps [rnds] vars mh)  in
 
+              log_i (lazy (fsprintf "rnds %a " pp_expr debug  ));
+              let [(debug)] =  (fracs_to_eps [red] vars mh)  in
 
-          let red,rnds =  freduce vars mh gens (nu_pol_sec,(frac_const vars (Int 0))) in
-          log_i (lazy (fsprintf "red done"  ));
-          let [(debug)] =  (fracs_to_eps [rnds] vars mh)  in
+              log_i (lazy (fsprintf "red %a " pp_expr debug  ));
+              if fst red = [] then fracs_to_eps [rnds] vars mh 
 
-          log_i (lazy (fsprintf "rnds %a " pp_expr debug  ));
-          let [(debug)] =  (fracs_to_eps [red] vars mh)  in
-
-          log_i (lazy (fsprintf "red %a " pp_expr debug  ));
-          if fst red = [] then [rnds]
-          else []
+              else []
+            )
         )
       else []
     ) rndvars []

@@ -231,12 +231,11 @@ let solve_group  ?rnd_vars:(rnd_vars = []) ?mult_secrets:(e_tail=[]) (emaps : Em
       if rnds = [] then
         raise Not_found
       else
-        (      log_i (lazy (fsprintf "rnd found"));
-let res = GroebnerBasis.fracs_to_eps rnds vars mh in
+        (      
                log_i (lazy (fsprintf "Ending rnd_deduc"));
 
-        List.iter (fun a->log_i (lazy (fsprintf "rnd_deduce with %a" pp_expr a))) res;
-        I(List.hd res)
+        List.iter (fun a->log_i (lazy (fsprintf "rnd_deduce with %a" pp_expr a))) rnds;
+        I(List.hd rnds)
                   )
     )
       (*let success,inver = GroebnerBasis.get_rnd groebner_basis secret in

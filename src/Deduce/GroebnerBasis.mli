@@ -51,6 +51,6 @@ val get_inverter : int list ->
 val global_rnd_deduce : (int, Expr.expr) Hashtbl.t ->
   int list ->
   (int * int list) list ->
-  int list -> frac list -> frac list -> frac list
+  int list -> frac list -> frac list -> Expr.expr list
 
 
