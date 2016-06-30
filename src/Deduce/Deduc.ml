@@ -331,5 +331,4 @@ let rnd_deduce' ?ppt_inverter:(ppt=false) rnds emaps do_div known_es to_ =
 let rnd_deduce ?ppt_inverter:(ppt=false) rnds ts known_es to_ =
   let open TheoryTypes in
   let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in
-  let rnds = [(List.hd rnds,List.tl rnds)] in (* Patch, todo : parse list of list *)
   rnd_deduce' ~ppt_inverter:ppt rnds emaps false known_es to_

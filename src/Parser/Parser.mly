@@ -246,6 +246,9 @@ expr8 :
 | i=MGET_ID l=seplist1(COMMA,expr) RBRACK { SLookUp(i,l) }
 | i=MVAR_ID                               { SLookUp(i,[mk_Tuple []]) }
 
+epair:
+| LPAR e=expr COMMA LBRACK es1=seplist1(COMMA,expr) RBRACK RPAR { (e,es1) }
+
 /*======================================================================
 (* * Oracle definitions *) */
 
@@ -557,8 +560,9 @@ tactic :
 | DEDUCE  ppt=PPT?
     LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Deduce(ppt<>None,es,e) }
 | RND_DEDUCE  ppt=PPT?
-    LBRACK es1=seplist1(COMMA,expr) RBRACK LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Rnd_deduce(ppt<>None,es1,es,e) }
+    LBRACK es1=seplist1(COMMA,epair) RBRACK LBRACK es=seplist1(COMMA,expr) RBRACK e=expr { Rnd_deduce(ppt<>None,es1,es,e) }
 | LISTFE LBRACK es=seplist1(COMMA,expr) RBRACK   { FieldExprs(es) }
+
 
 /*----------------------------------------------------------------------
 (* ** instructions and theories *) */

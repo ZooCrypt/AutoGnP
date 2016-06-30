@@ -592,7 +592,7 @@ let handle_tactic ts tac =
 
   | PT.Rnd_deduce(ppt,rnds,pes,pe) ->
     let es = L.map (PU.expr_of_parse_expr vmap_g ts Unqual) pes in
-    let rnds =  L.map (PU.expr_of_parse_expr vmap_g ts Unqual) rnds in
+    let rnds =  L.map ( fun (v,l) -> (PU.expr_of_parse_expr vmap_g ts Unqual v),  L.map (PU.expr_of_parse_expr vmap_g ts Unqual) l) rnds in
       let e = PU.expr_of_parse_expr vmap_g ts Unqual pe in
       log_i (lazy (fsprintf "deduce %a |- %a@\n" (pp_list "," pp_expr) es pp_expr e));
       (try
