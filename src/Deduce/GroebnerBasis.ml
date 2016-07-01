@@ -402,13 +402,27 @@ let fdiv_cond vars mp (pvars:i_var_set) (div_allowed:bool) (p:frac) (q:frac) :fr
 let freduce1 vars mp (cm:frac) ((((pol,q),inv),pvars,div_allowed):gen_r) =
   match pol with
     [] -> failwith "reduce1"
-  | hm::cms -> let multiplier = fdiv_cond vars mp pvars div_allowed cm ([hm],q)  in frac_mul vars (frac_neg multiplier)  (cms,q), frac_mul vars (frac_neg multiplier) inv;;
+  | hm::cms -> let multiplier = fdiv_cond vars mp pvars div_allowed cm ([hm],q)  in frac_mul vars (frac_neg multiplier)  (cms,q), frac_div vars inv  multiplier ;;
 
 (* ------------------------------------------------------------------------- *)
 (* Try this for all polynomials in a basis.                                  *)
 (* ------------------------------------------------------------------------- *)
 
 let freduceb vars mp cm (pols:gen_r list) = tryfind (freduce1 vars mp cm) pols;;
+
+
+(* We also need to try to reduce full polynomials, not just monom *)
+
+let freduce2 vars mp (cm:frac) ((((pol,q),inv),pvars,div_allowed):gen_r) =
+  match pol with
+    [] -> failwith "reduce1"
+  | pol -> let multiplier = fdiv_cond vars mp pvars div_allowed cm (pol,q)  in frac_mul vars (frac_neg multiplier)  (pol,q), frac_div vars inv multiplier;;
+
+(* ------------------------------------------------------------------------- *)
+(* Try this for all polynomials in a basis.                                  *)
+(* ------------------------------------------------------------------------- *)
+
+let freduceb2 vars mp cm (pols:gen_r list) = tryfind (freduce2 vars mp cm) pols;;
 
 (* ------------------------------------------------------------------------- *)
 (* Reduction of a polynomial (always picking largest monomial possible).     *)
@@ -423,14 +437,18 @@ let rec freduce vars mp (pols:gen_r list) (((p,q),inv):frac_r) =
     log_i (lazy (fsprintf "reduce2 %a " pp_expr debug  ));
     ([],unit vars),frac_const vars (Int 0)
   | cm::ptl -> try
-      let _,inv2 = (freduceb vars mp (cm::ptl,q) pols) in
+      let res,inv2 = (freduceb2 vars mp (cm::ptl,q) pols) in
+          let [(debug)] =  (fracs_to_eps [res] vars mp)  in
+
+          log_i (lazy (fsprintf "reduce3  %a" pp_expr debug  ));
+
       ([],munit @@ snd cm), frac_add vars inv2 inv
     with Failure _ -> try
         let [(debug)] =  (fracs_to_eps [([cm],q)] vars mp)  in
-        log_i (lazy (fsprintf "reduce3 %a " pp_expr debug  ));
+        log_i (lazy (fsprintf "reduce4 %a " pp_expr debug  ));
         let new_pol,inv2 = freduceb vars mp ([cm],q) pols in
         freduce vars mp pols (frac_add vars new_pol (ptl,q), frac_add vars inv inv2)
-      with Failure _ ->                  log_i (lazy (fsprintf "reduce4 "   ));
+      with Failure _ ->                  log_i (lazy (fsprintf "reduce5 "   ));
         let new_pol,inv2 = freduce vars mp pols ((ptl,q),inv) in 
         frac_add vars ([cm],q) new_pol, frac_add vars inv2 inv ;;
 
@@ -736,6 +754,7 @@ let global_rnd_deduce mh vars rndvars pvars poly_pub_list poly_sec_list =
   let pols_sec = add_vars poly_sec_list fresh_nu_vars and pols_pub = add_vars poly_pub_list fresh_nu_vars in
   let pols_sec = map2 (fun pol var_nu -> frac_mul vars (frac_var vars var_nu) pol) pols_sec fresh_nu_vars in
   let nu_pol_sec = fold_right (fun pol acc -> frac_add vars pol acc) pols_sec (frac_const vars (Int 0)) in
+  (* let rndvars = map ( fun (v,l)->(v,l@fresh_nu_vars)) rndvars in *)
   let rndvars = subset rndvars in
   fold_right (fun rnd_vars acc ->
       if acc <> [] then acc 
@@ -766,7 +785,9 @@ let global_rnd_deduce mh vars rndvars pvars poly_pub_list poly_sec_list =
               let [(debug)] =  (fracs_to_eps [red] vars mh)  in
 
               log_i (lazy (fsprintf "red %a " pp_expr debug  ));
-              if fst red = [] then fracs_to_eps [rnds] vars mh 
+              if fst red = [] then
+                  (iter (fun i-> Hashtbl.add mh i (mk_FNat 1)) fresh_nu_vars;
+                fracs_to_eps [rnds] vars mh )
 
               else []
             )

@@ -41,8 +41,7 @@ bound_adv
 
     ] : b = b'.
 
-  deduce ppt [g^(c+d), g^d] e(g,g)^(c*d+d*d+c*c).
-  bycrush 100.
+  rnd_deduce ppt [c,d] [h,e',e(g,g)^(c)] (e(g,g)^(c*d*d*d),e(g,g)^(c*d+d)).  
 
 qed.
 print_proof.

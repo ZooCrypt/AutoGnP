@@ -9,3 +9,6 @@ zoocrypt.log
 _build/*
 proofgeneral/_local/*
 extraction/*.ec
+*#
+*.#*
+*~
