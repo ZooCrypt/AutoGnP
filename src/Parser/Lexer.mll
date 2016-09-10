@@ -117,6 +117,7 @@
 
       (* types *)
       ; "Fq",                       TFQ                       (* kw: type        *)
+      ; "Zq",                       TFQ                       (* kw: type        *)
       ; "Bool",                     TBOOL                     (* kw: type        *)
 
       (* operators *)
