@@ -78,7 +78,7 @@ let useful_subexprs se rv mgen e =
 
   (* if a generator [g1] is given, prefer coefficients of [g1], i.e., we
      want to simplify [g1^(r*a + b)] to [g1^r] rather than [g^r]. *)
-    match mgen with
+  match mgen with
   | None    -> mplus (ret e) (msum (L.map get_coeff fac_candidates))
   | Some ge ->
     let lge = if is_G ge.e_ty then  mk_GLog ge else ge in
@@ -112,6 +112,21 @@ let contexts se rv mgen =
 
   (* find useful subexpressions of e (in the right order) *)
   useful_subexprs se rv mgen e
+
+let contexts_xor se rv =
+  let re = mk_V rv in
+
+  (* collect all expressions containing rv *)
+  let es = ref [] in  (* we need order of occurence in game *)
+  let add_subterms e =
+    e_iter
+      (fun e ->
+        if is_Xor e && Se.mem re (e_vars e) && not (L.mem e !es) then es := e::!es)
+      e
+  in
+  iter_gdef_exp add_subterms se.se_gdef;
+  add_subterms se.se_ev;
+  !es
 
 let check_tannot ts ty mty =
   match mty with
@@ -148,7 +163,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     let (v1,e1) = parse v1_ty (sv1,se1) in
     ret ((v1,e1), deduc e1 v1)
   | None, None ->
-    let ctxts =
+    let ctxts_fq =
       run (-1) (contexts se rv mgen)
       |> L.map NormUtils.norm_expr_nice
       |> L.unique ~eq:equal_expr
@@ -156,6 +171,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
       (* FIXME: for bycrush, we exclude contexts rv -> - rv *)
       |> L.filter (fun e -> (not (equal_expr (mk_FOpp (mk_V rv)) e)))
     in
+    let ctxts = ctxts_fq @ contexts_xor se rv in
     log_i (lazy (fsprintf "context_num: %i v=%a %a" (L.length ctxts)
                    pp_expr (mk_V rv) (pp_list "," pp_expr) ctxts));
     let e2s =

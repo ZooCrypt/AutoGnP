@@ -140,6 +140,14 @@ let solve_mixed_type k s =
     let ce = solve_fq_vars_known k_fq v_fq in
     (v_fq, to_gn1 ce)
 
+  | BS l1, BS l2 when Lenvar.equal l1 l2 ->
+    if Expr.equal_expr (mk_V s) (Norm.norm_expr_strong (e_replace (mk_V s) k k)) then
+      (s,k)
+    else
+      tacerror "t_rnd_pos: cannot invert for BS_n, (%a -> %a) not self-inverse"
+        VarSym.pp s
+        pp_expr k
+
   | _ ->
     tacerror "t_rnd_pos: cannot invert for given types, known %a, secret %a"
       pp_ty ty_k pp_ty ty_s
