@@ -202,7 +202,7 @@ and mk_simpl_nop ~strong op l =
       | e1::((e2::l) as l1) ->
         if equal_expr e1 e2 then aux l else e1 :: aux l1
     in
-    L.iter (fun e -> F.printf "%a " pp_expr e) l;
+    (* L.iter (fun e -> F.printf "%a " pp_expr e) l; *)
     let l = aux l in
     let l = List.filter (fun e -> not (is_Zero e)) l in
     if l = [] then mk_Zero e.e_ty
