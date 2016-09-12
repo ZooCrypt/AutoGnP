@@ -7,7 +7,6 @@ open NormField
 open Poly
 
 module Ht = Hashtbl
-module YS = Yojson.Safe
 
 let mk_log level = mk_logger "CAS.CAS" level "CAS.ml"
 let log_i = mk_log Bolt.Level.INFO

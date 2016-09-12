@@ -12,23 +12,20 @@ true: bin_annot, debug
 
 <src/Parser> or <src/CAS> or <src/Game> or <src/Main>: include
 
-<src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), package(yojson), thread
+<src/Test/Test_*.d.byte> or <src/Test/Test_*.ml>: package(ounit), thread
 
-<src/Main/autognp.d.byte>: thread, package(unix), package(yojson), package(bolt)
+<src/Main/autognp.d.byte>: thread, package(unix), package(bolt)
 
-<src/Main/autognp.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num), package(bolt), package(batteries)
-<src/Main/autognp.p.native>: thread, package(unix), package(yojson), package(bolt)
+<src/Main/autognp.native>: thread, package(unix), package(ctypes.foreign), package(num), package(bolt), package(batteries)
+<src/Main/autognp.p.native>: thread, package(unix), package(bolt)
 
-<src/CAS/Factory.native>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num)
+<src/CAS/Factory.native>: thread, package(unix), package(ctypes.foreign), package(num)
 
-<src/CAS/Factory.ml>: thread, package(unix), package(yojson), package(ctypes.foreign), package(num)
-
-<src/CAS/CAS.ml>: package(yojson)
+<src/CAS/Factory.ml>: thread, package(unix), package(ctypes.foreign), package(num)
 
 <src/Main/wsautognp.*>: thread,\
                         package(unix),\
                         package(websocket.lwt),\
-                        package(yojson),\
                         package(ctypes.foreign),\
                         package(num),\
                         package(bolt),\
