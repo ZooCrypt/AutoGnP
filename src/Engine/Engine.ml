@@ -176,7 +176,11 @@ let handle_tactic ts tac =
       PU.expr_of_parse_expr vmap_se ts Unqual se
     in
 
-    let mk_new_var sv ty = assert (not (Ht.mem vmap_g (Unqual,sv))); VarSym.mk sv ty in
+    let mk_new_var sv ty =
+      if (Ht.mem vmap_g (Unqual,sv)) then
+        tacerror "Variable %s is already used" sv;
+      VarSym.mk sv ty
+    in
     match tac with
     | PT.Rnorm(do_strong)      -> t_norm ~fail_eq:false ~strong:do_strong ju
     | PT.Rnorm_nounfold        -> t_norm_nounfold ju
