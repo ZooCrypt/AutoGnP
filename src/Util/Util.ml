@@ -316,12 +316,23 @@ let fsprintf fmt =
 
 let no_log = ref false
 
-let mk_logger logger_name level file ls =
+let my_log_buf = Buffer.create 127
+
+let get_buffer_log () =
+  let res = Buffer.contents my_log_buf in
+  Buffer.clear my_log_buf;
+  res
+
+let mk_logger _logger_name _level _file ls =
   if not !no_log then
+    Buffer.add_string my_log_buf (Lazy.force ls);
+    Buffer.add_string my_log_buf "\n"
+   (*
     let lines = BatString.nsplit (Lazy.force ls) ~by:"\n" in
     L.iter
       (fun s -> Bolt.Logger.log logger_name level ~file s)
       lines
+   *)
 
 let log_ig _ls = ()
 

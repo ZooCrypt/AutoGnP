@@ -207,3 +207,5 @@ val fail_opt : 'a option -> string -> 'a
 val mk_logger : string -> Bolt.Level.t -> string -> string Lazy.t -> unit
 
 val log_ig : string Lazy.t -> unit
+
+val get_buffer_log : unit -> string

@@ -13,7 +13,7 @@ module PT = ParserTools
 (* ** Logging
  * ----------------------------------------------------------------------- *)
 
-let log_buf = Buffer.create 127
+(* let log_buf = Buffer.create 127 *)
 
 let log_file = ref ""
 
@@ -21,6 +21,7 @@ let log_settings = ref ""
 
 let enable_debug = ref false
 
+(*
 let no_rotation =
   { Bolt.Output.seconds_elapsed = None; Bolt.Output.signal_caught = None }
 
@@ -37,20 +38,21 @@ let register_buffer_logger () =
     end
   in
   Bolt.Output.register "buffer" buffer
+*)
 
 let initialize_logging () =
+  ()
+(*
   let open Bolt in
   register_buffer_logger ();
   let mode = Mode.direct () in
+  (* Logger.register "buffer_logger" Level.TRACE "all" "default" mode "buffer"
+    ("",no_rotation) *)
   if !log_file<>"" then (
-    Logger.register "" Level.TRACE "all" "default" mode "file"
+    Logger.register "file_logger" Level.TRACE "all" "default" mode "file"
       (!log_file,no_rotation)
   )
-
-let get_buffer_log () =
-  let res = Buffer.contents log_buf in
-  Buffer.clear log_buf;
-  res
+*)
 
 (* ** Emacs mode
  * ----------------------------------------------------------------------- *)
@@ -68,6 +70,7 @@ let decode s =
   BatString.nreplace ~str:s ~sub:"\\<^newline>" ~by:"\n"
 
 let eval_emacs () =
+  let last_debug = ref "" in
   let exec_instr cmd0 =
     let cmd = decode cmd0 in
     let (ts,msg) =
@@ -102,15 +105,21 @@ let eval_emacs () =
         let (ts,msg) =
           L.fold_left
             (fun (ts, msg) i ->
-               let (ts', msg') = handle_instr true ts i in
-               (ts', if msg = "" then msg' else msg'^"---\n"^msg))
+              try
+                let (ts', msg') = handle_instr true ts i in
+                last_debug := get_buffer_log ();
+                (ts', if msg = "" then msg' else msg'^"---\n"^msg)
+              with
+              | e -> 
+                last_debug := get_buffer_log ();
+                raise e)
             (ts,"")
             is
         in
         theory_states := ts::!theory_states;
         let debug =
           if !enable_debug then
-            "\nDEBUG:\n"^get_buffer_log ()
+            "\nDEBUG:\n"^(!last_debug)
           else ""
         in
         (ts,msg^debug)
@@ -147,8 +156,9 @@ let eval_emacs () =
                  pe.PT.pe_char_start pe.PT.pe_char_end
                  (PT.error_string "<emacs>" pe))
        | Invalid_rule es ->
-         outp (fsprintf "[error-0-%i]invalid rule application: %s"
-                           (String.length s) es)
+         outp (fsprintf "[error-0-%i]invalid rule application: %s\n%s"
+                           (String.length s) es
+                           (!last_debug))
        | Expr.TypeError e ->
          outp (fsprintf "[error-0-3]type error: %s"
                  (ExprUtils.typeError_to_string e))

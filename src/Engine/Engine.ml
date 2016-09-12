@@ -149,7 +149,7 @@ let handle_tactic ts tac =
       let ts = O.map_default (fun ad -> { ts with ts_adecls = ad }) ts adecls in
       let pss = T.apply_first r ps in
       begin match pull pss with
-      | Left None      -> tacerror "tactic failed, no error message"
+      | Left None      -> tacerror "tactic failed"
       | Left (Some s)  -> tacerror "%s" (Lazy.force s)
       | Right(nps,pss) ->
         let ops = Some ps in
