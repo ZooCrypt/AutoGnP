@@ -196,7 +196,7 @@ let t_rnd_pos ts mctxt1 mctxt2 rv mgen i ju =
     let ls =
       lazy
         (fsprintf (  "@[<hov 2>t_rnd_pos: variable %a@ undefined"
-                   ^^" in @[<hov 2>%a@],@ not in @[<hov 2>%a@]")
+                   ^^" in @[<hov 2>%a@],@ not in defined variables @[<hov 2>%a@]")
            VarSym.pp vs pp_expr e
            (pp_list "," VarSym.pp) (VarSym.S.elements def_vars)) in
     log_i ls;
@@ -261,8 +261,8 @@ let t_rnd_maybe ?i_rvars:(irvs=VarSym.S.empty) ts exact mi mctx1 mctx2 mgen ju =
   let vs = vars_dexc rv es in
   guard (not (VarSym.S.mem rv irvs)) >>= fun _ ->
   log_t (lazy "###############################");
-  log_t (lazy (fsprintf "t_rnd_maybe %i\n%!" i));
-  log_t (lazy (fsprintf "sampling: %i, %a@\n%!" i VarSym.pp rv));
+  log_t (lazy (fsprintf "t_rnd_maybe %i\n%!" (i + 1)));
+  log_t (lazy (fsprintf "sampling: %i, %a@\n%!" (i+1) VarSym.pp rv));
 
   (* move (if requested) and continue with fixed position *)
   let rnd i = t_rnd_pos ts mctx1 mctx2 rv mgen i in
