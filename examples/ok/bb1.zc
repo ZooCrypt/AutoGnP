@@ -1,20 +1,39 @@
+(* * Boneh-Boyen IBE *)
+(* Efficient Selective-ID Secure Identity Based Encryption
+   Without Random Oracles,
+   D. Boneh, X. Boyen
+   EuroCrypt 2004 *)
+
+(* ** Declare bilinear map *)
+
 bilinear_map e : G * G -> G_t.
 
-adversary A1 : () -> Fq.
-adversary A2 : (G * G * G) -> (G_t * G_t).
-adversary A3 : (G_t * G * G) -> Bool.
+(* ** Define DBDH assumption *)
 
-oracle Kg1 : Fq -> (G * G).
-oracle Kg2 : Fq -> (G * G).
+(* *** Declare DBDH adversary *)
 
-(* DBDH assumption *)
 adversary A_dbdh : (G * G * G * G_t) -> Bool.
+
+(* *** Define decisional bilinear Diffie-Hellman assumption *)
 
 assumption dbdh
   [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq;
     b <- A_dbdh(g^c1, g^c2, g^c3, e(g,g)^(c1*c2*c3)); ]
   [ c1 <-$ Fq; c2 <-$ Fq; c3 <-$ Fq; t <-$ Fq;
     b <- A_dbdh(g^c1, g^c2,g^c3, e(g,g)^t); ].
+
+(* ** Declare IBE adversaries *)
+
+adversary A1 : () -> Fq.
+adversary A2 : (G * G * G) -> (G_t * G_t).
+adversary A3 : (G_t * G * G) -> Bool.
+
+(* ** Declare IBE oracles *)
+
+oracle Kg1 : Fq -> (G * G).
+oracle Kg2 : Fq -> (G * G).
+
+(* ** Define IBE experiment *)
 
 bound_adv
   [ i' <- A1();
@@ -42,5 +61,4 @@ bound_adv
   ] : b = b'.
   bycrush 100.
 qed.
-print_proof.
-extract "extraction/bb1.ec".
+print_proof!.
